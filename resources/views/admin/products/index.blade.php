@@ -35,7 +35,7 @@
                     @foreach ($products as $product)
                         <tr>
                             <td class="px-4 py-3">
-                                <p class="font-medium text-slate-900">{{ $product->name }}</p>
+                                <p class="font-medium text-slate-900 break-words">{{ $product->name }}</p>
                                 <p class="mt-0.5 text-xs text-slate-500" dir="ltr">{{ $product->slug }}</p>
                             </td>
                             <td class="px-4 py-3 text-slate-600">{{ $product->category->label() }}</td>

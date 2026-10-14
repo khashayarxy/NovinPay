@@ -1,5 +1,44 @@
 @import 'tailwindcss';
 
+/*
+|-------------------------------------------------------------------------------
+| Vazirmatn (OFL licence) — bundled from the `vazirmatn` npm package so the
+| site renders with the intended Persian typeface on every platform without
+| a runtime CDN dependency. Only the four weights actually used by the
+| design (normal/medium/semibold/bold) are shipped.
+*/
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../../node_modules/vazirmatn/fonts/webfonts/Vazirmatn-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../../node_modules/vazirmatn/fonts/webfonts/Vazirmatn-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../../node_modules/vazirmatn/fonts/webfonts/Vazirmatn-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../../node_modules/vazirmatn/fonts/webfonts/Vazirmatn-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';

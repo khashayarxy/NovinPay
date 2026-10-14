@@ -159,6 +159,20 @@ class ProductCatalogTest extends TestCase
             ->assertSee('جزئیات', false);
     }
 
+    public function test_search_treats_backslash_literally(): void
+    {
+        // With ESCAPE '!' the backslash is an ordinary character in the
+        // bound LIKE pattern on both SQLite and MySQL (parameter binding
+        // bypasses MySQL string-literal escape processing).
+        $this->makeProduct(['name' => 'مسیر C:\\Users\\test', 'slug' => 'backslash-path']);
+        $this->makeProduct(['name' => 'کالای معمولی', 'slug' => 'plain-backslash-case']);
+
+        $this->get('/products?q='.urlencode('C:\\Users'))
+            ->assertOk()
+            ->assertSee('مسیر C:\\Users\\test')
+            ->assertDontSee('کالای معمولی');
+    }
+
     public function test_search_matches_persian_words_across_zwnj_variants(): void
     {
         // Stored WITH ZWNJ (می‌شود); searched WITHOUT.

@@ -21,7 +21,7 @@
             @endif
         </div>
 
-        <h3 class="text-base font-semibold leading-7">
+        <h3 class="text-base font-semibold leading-7 break-words">
             <a href="{{ route('products.show', $product) }}" class="transition-colors hover:text-brand-700">
                 {{ $product->name }}
             </a>

@@ -52,7 +52,7 @@ php artisan db:seed --class=SampleProductSeeder
 
 - **توسعه (موقت):** SQLite (`database/database.sqlite`) — در محیط فعلی سرور MySQL/MariaDB در دسترس نیست.
 - **تولید (هدف):** MySQL یا MariaDB. پیش از استقرار باید `DB_CONNECTION` و اعتبارنامه‌های دیتابیس در `.env` تنظیم شوند.
-- سازگاری با MySQL واقعی **آزموده شد** (MySQL 8.0.46 با `utf8mb4_unicode_ci`): همهٔ migrationها (شامل backfill جستجو) و کل ۱۰۲ تست (۳۷۵ assertion) روی MySQL سبز بودند. ستون JSON برای `specifications`، ایندکس یکتای `slug`، ستون `boolean` با مقدار پیش‌فرض و `like` در جستجو همگی سازگارند.
+- سازگاری با MySQL واقعی **آزموده شد** (MySQL 8.0.46 با `utf8mb4_unicode_ci`): همهٔ migrationها (شامل backfill جستجو) و کل ۱۱۶ تست (۴۳۵ assertion) روی MySQL سبز بودند. ستون JSON برای `specifications`، ایندکس یکتای `slug`، ستون `boolean` با مقدار پیش‌فرض و `like` در جستجو همگی سازگارند.
 - **جستجو نرمال‌سازی می‌شود:** ارقام فارسی/عربی به ASCII، حروف `ي/ك` به `ی/ک`، حذف نیم‌فاصلهٔ مخفی (ZWNJ) و فشردن فاصله‌های تکراری انجام می‌شود تا جستجو با هر variant کارا باشد؛ کاراکترهای `%`/`_` نیز در ورودی کاربر به‌صورت تحت‌اللفظی match می‌شوند (wildcard نیستند). در ستون مشتق `search_text` ذخیره می‌شود و متن نمایشی دست نمی‌خورد.
 
 هیچ `.env` واقعی نباید متعهد (commit) شود؛ فقط `.env.example` بدون رمز عبور.

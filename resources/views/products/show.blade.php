@@ -42,7 +42,7 @@
                     @endif
                 </div>
 
-                <h1 class="mt-4 text-2xl font-bold leading-9 tracking-tight sm:text-3xl">{{ $product->name }}</h1>
+                <h1 class="mt-4 text-2xl font-bold leading-9 tracking-tight break-words sm:text-3xl">{{ $product->name }}</h1>
 
                 @if ($product->summary)
                     <p class="mt-3 text-sm leading-8 text-slate-600 sm:text-base">{{ $product->summary }}</p>
