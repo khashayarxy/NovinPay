@@ -190,4 +190,52 @@ class ProductCatalogTest extends TestCase
         $this->get('/products')->assertDontSee('/admin', false);
         $this->get('/')->assertDontSee('/admin', false);
     }
+
+    public function test_unknown_product_slug_shows_persian_not_found_page(): void
+    {
+        $response = $this->get('/products/does-not-exist');
+
+        $response->assertNotFound();
+        $response->assertSee('صفحه پیدا نشد');
+        $response->assertSee('خطای ۴۰۴');
+        $response->assertSee(route('products.index'), false);
+        $response->assertDontSee('Sorry', false);
+        $response->assertDontSee('Not Found', false);
+    }
+
+    public function test_product_title_and_meta_description_are_escaped(): void
+    {
+        $product = $this->makeProduct([
+            'name' => '</title><script>alert(1)</script>',
+            'slug' => 'xss-title-product',
+            'summary' => 'x" onmouseover="alert(2)',
+        ]);
+
+        $response = $this->get(route('products.show', $product));
+
+        $response->assertOk();
+        $response->assertDontSee('<script>alert(1)</script>', false);
+        $response->assertSee('&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;', false);
+        $response->assertDontSee('onmouseover="alert(2)"', false);
+    }
+
+    public function test_home_featured_section_describes_live_pricing(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('به‌صورت روزآمد نمایش داده می‌شوند')
+            ->assertDontSee('پس از تکمیل بخش مدیریت');
+    }
+
+    public function test_filter_validation_error_is_rendered_in_focusable_summary(): void
+    {
+        $this->from('/products')
+            ->get('/products?category=unknown')
+            ->assertRedirect('/products');
+
+        $this->get('/products')
+            ->assertOk()
+            ->assertSee('id="error-summary"', false)
+            ->assertSee('دسته‌بندی انتخاب‌شده معتبر نیست');
+    }
 }

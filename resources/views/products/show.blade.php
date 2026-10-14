@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', $product->name)
-@section('meta_description', \Illuminate\Support\Str::limit(strip_tags($product->summary ?? $product->description ?? ''), 150))
+@section('title', e($product->name))
+@section('meta_description', e(\Illuminate\Support\Str::limit(strip_tags($product->summary ?? $product->description ?? ''), 150)))
 
 @section('content')
     <div class="container-page section">

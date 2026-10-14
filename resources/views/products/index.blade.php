@@ -14,7 +14,8 @@
 
         <form method="get" action="{{ route('products.index') }}" class="card mt-8 p-4 sm:p-5">
             @if ($errors->any())
-                <p role="alert" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <p id="error-summary" role="alert" tabindex="-1"
+                    class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                     {{ $errors->first() }}
                 </p>
             @endif
