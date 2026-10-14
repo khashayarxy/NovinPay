@@ -65,7 +65,14 @@ class Product extends Model
             return $query;
         }
 
-        return $query->where('search_text', 'like', "%{$term}%");
+        // Escape LIKE wildcards so user input is matched literally. The '!'
+        // escape character is used instead of a backslash because SQLite has
+        // no default ESCAPE clause while MySQL treats '\' specially inside
+        // string literals — '!' is portable across both and vanishingly rare
+        // in Persian catalogue text.
+        $pattern = '%'.strtr($term, ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
+
+        return $query->whereRaw("search_text LIKE ? ESCAPE '!'", [$pattern]);
     }
 
     public function scopeCategory(Builder $query, ProductCategory $category): Builder

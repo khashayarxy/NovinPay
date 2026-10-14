@@ -29,7 +29,14 @@ final class SearchNormalizer
             $value
         );
 
-        return mb_strtolower($value, 'UTF-8');
+        // ZWNJ (U+200C) is pervasive in Persian orthography (می‌شود) but is
+        // routinely dropped when typing; remove it so both forms match the
+        // same haystack. Collapse Unicode whitespace runs (including NBSP)
+        // to a single space and trim so multi-spaced input still matches.
+        $value = str_replace("\u{200C}", '', $value);
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        return mb_strtolower(trim($value), 'UTF-8');
     }
 
     /**

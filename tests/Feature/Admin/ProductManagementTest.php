@@ -411,4 +411,18 @@ class ProductManagementTest extends TestCase
             ->assertRedirect(route('admin.login'))
             ->assertDontSee('اطلاعات محرمانهٔ مدیریت');
     }
+
+    public function test_admin_index_paginates_products(): void
+    {
+        foreach (range(1, 16) as $i) {
+            $this->createProduct(['name' => "محصول {$i}", 'slug' => "admin-paginated-{$i}"]);
+        }
+
+        $response = $this->get(route('admin.products.index'));
+
+        $response->assertOk();
+        $this->assertSame(15, $response->viewData('products')->count());
+        $this->assertSame(16, $response->viewData('products')->total());
+        $response->assertSee('page=2', false);
+    }
 }

@@ -103,4 +103,38 @@ class SearchTextMigrationTest extends TestCase
             DB::table('products')->where('id', $broken->id)->value('search_text'),
         );
     }
+
+    public function test_renormalize_migration_recomputes_stale_search_text(): void
+    {
+        // A row saved before ZWNJ/whitespace normalization existed holds a
+        // stale haystack that still contains ZWNJ. The renormalize migration
+        // must recompute it from the display columns.
+        $staleName = "دستگاه می\u{200C}شود"; // with ZWNJ
+
+        DB::table('products')->insert([
+            'name' => $staleName,
+            'slug' => 'stale-zwnj-product',
+            'summary' => null,
+            'description' => null,
+            'category' => ProductCategory::PosTerminal->value,
+            'condition' => ProductCondition::New->value,
+            'price' => 100,
+            'stock_status' => StockStatus::InStock->value,
+            'search_text' => 'stale-haystack-with-zwnj',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $renormalize = require database_path(
+            'migrations/2026_10_14_000002_renormalize_search_text.php'
+        );
+
+        $renormalize->up();
+        $renormalize->up(); // idempotent
+
+        $stored = DB::table('products')->where('slug', 'stale-zwnj-product')->value('search_text');
+
+        $this->assertSame(SearchNormalizer::forProduct($staleName, null, null), $stored);
+        $this->assertStringNotContainsString("\u{200C}", $stored);
+    }
 }

@@ -124,6 +124,97 @@ class ProductCatalogTest extends TestCase
             ->assertDontSee('کارتخوان مخفی');
     }
 
+    public function test_search_treats_like_wildcards_literally(): void
+    {
+        $this->makeProduct(['name' => 'تخفیف 50%', 'slug' => 'discount-percent']);
+        $this->makeProduct(['name' => 'کالای دیگر', 'slug' => 'other-item']);
+
+        // '%' must not act as a match-everything wildcard: only the product
+        // that literally contains '%' may match, not every row.
+        $this->get('/products?q='.urlencode('%'))
+            ->assertOk()
+            ->assertSee('تخفیف 50%')
+            ->assertDontSee('کالای دیگر');
+
+        // '50%' must match the literal string only.
+        $this->get('/products?q='.urlencode('50%'))
+            ->assertOk()
+            ->assertSee('تخفیف 50%')
+            ->assertDontSee('کالای دیگر');
+
+        // '_' must not act as a single-character wildcard.
+        $this->makeProduct(['name' => 'کالای abc', 'slug' => 'abc-product']);
+        $this->get('/products?q='.urlencode('a_c'))
+            ->assertOk()
+            ->assertDontSee('کالای abc');
+    }
+
+    public function test_search_treats_escape_character_literally(): void
+    {
+        $this->makeProduct(['name' => 'هشدار!', 'slug' => 'warning-bang']);
+
+        $this->get('/products?q='.urlencode('!'))
+            ->assertOk()
+            ->assertSee('هشدار!')
+            ->assertSee('جزئیات', false);
+    }
+
+    public function test_search_matches_persian_words_across_zwnj_variants(): void
+    {
+        // Stored WITH ZWNJ (می‌شود); searched WITHOUT.
+        $this->makeProduct(['name' => "دستگاه می\u{200C}شود", 'slug' => 'with-zwnj']);
+        $this->get('/products?q='.urlencode('میشود'))
+            ->assertOk()
+            ->assertSee('دستگاه می‌شود');
+
+        // Stored WITHOUT ZWNJ; searched WITH.
+        $this->makeProduct(['name' => 'کالای میشود', 'slug' => 'without-zwnj']);
+        $this->get('/products?q='.urlencode("می\u{200C}شود"))
+            ->assertOk()
+            ->assertSee('کالای میشود');
+    }
+
+    public function test_search_collapses_repeated_whitespace(): void
+    {
+        $this->makeProduct(['name' => 'کارتخوان  سیار', 'slug' => 'double-space']);
+
+        $this->get('/products?q='.urlencode('کارتخوان سیار'))
+            ->assertOk()
+            ->assertSee('کارتخوان  سیار');
+    }
+
+    public function test_blank_search_term_shows_all_products(): void
+    {
+        $this->makeProduct(['name' => 'محصول الف', 'slug' => 'blank-q-a']);
+
+        $this->get('/products?q=')->assertOk()->assertSee('محصول الف');
+        $this->get('/products?q='.urlencode('   '))->assertOk()->assertSee('محصول الف');
+    }
+
+    public function test_pagination_preserves_search_and_category_query_parameters(): void
+    {
+        foreach (range(1, 13) as $i) {
+            $this->makeProduct([
+                'name' => "محصول شماره {$i}",
+                'slug' => "paginated-{$i}",
+                'category' => ProductCategory::Printer,
+            ]);
+        }
+
+        $response = $this->get('/products?category=printer&q='.urlencode('محصول'));
+
+        $response->assertOk();
+        $response->assertSee('page=2', false);
+        $response->assertSee('category=printer', false);
+    }
+
+    public function test_page_beyond_range_returns_empty_results_gracefully(): void
+    {
+        $this->makeProduct();
+
+        $this->get('/products?page=99')->assertOk();
+    }
+
     public function test_category_filter_returns_only_matching_products(): void
     {
         $this->makeProduct(['category' => ProductCategory::Printer, 'name' => 'پرینتر رسید', 'slug' => 'printer-2']);
