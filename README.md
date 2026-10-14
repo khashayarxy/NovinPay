@@ -18,6 +18,7 @@ cp .env.example .env        # در صورت نیاز
 php artisan key:generate
 touch database/database.sqlite
 php artisan migrate
+php artisan test             # اجرای تست‌ها
 npm install
 npm run build               # یا npm run dev برای توسعه
 php artisan serve
