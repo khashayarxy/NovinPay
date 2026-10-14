@@ -10,7 +10,7 @@ class HomeController extends Controller
     public function index(): View
     {
         return view('home', [
-            'featuredProducts' => Product::latest()->take(4)->get(),
+            'featuredProducts' => Product::published()->latest()->take(4)->get(),
         ]);
     }
 }

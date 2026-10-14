@@ -27,6 +27,7 @@ class ProductController extends Controller
             : null;
 
         $products = Product::query()
+            ->published()
             ->when($term !== '', fn ($query) => $query->search($term))
             ->when($category !== null, fn ($query) => $query->category($category))
             ->latest()
@@ -44,6 +45,8 @@ class ProductController extends Controller
 
     public function show(Product $product): View
     {
+        abort_unless($product->is_published, 404);
+
         return view('products.show', [
             'product' => $product,
         ]);

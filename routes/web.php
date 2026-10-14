@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\LoginController;
+use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductController;
@@ -15,3 +17,16 @@ Route::get('/repair', [PageController::class, 'repair'])->name('repair');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
 Route::get('/terms', [PageController::class, 'terms'])->name('terms');
 Route::get('/privacy', [PageController::class, 'privacy'])->name('privacy');
+
+Route::middleware('guest')->group(function (): void {
+    Route::get('/admin/login', [LoginController::class, 'create'])->name('admin.login');
+    Route::post('/admin/login', [LoginController::class, 'store'])->name('admin.login.store');
+});
+
+Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): void {
+    Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
+
+    Route::get('/', fn () => redirect()->route('admin.products.index'))->name('dashboard');
+
+    Route::resource('products', AdminProductController::class)->except('show');
+});

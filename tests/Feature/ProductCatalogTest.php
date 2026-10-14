@@ -147,4 +147,47 @@ class ProductCatalogTest extends TestCase
             ->assertOk()
             ->assertSee('داده نمونه');
     }
+
+    public function test_unpublished_products_are_hidden_from_listing(): void
+    {
+        $this->makeProduct(['name' => 'محصول منتشرشده', 'slug' => 'visible-1']);
+        $this->makeProduct(['name' => 'محصول پیش‌نویس', 'slug' => 'hidden-1', 'is_published' => false]);
+
+        $this->get('/products')
+            ->assertOk()
+            ->assertSee('محصول منتشرشده')
+            ->assertDontSee('محصول پیش‌نویس');
+    }
+
+    public function test_unpublished_products_are_hidden_from_search(): void
+    {
+        $this->makeProduct(['name' => 'پرینتر مخفی', 'slug' => 'hidden-printer', 'is_published' => false]);
+
+        $this->get('/products?q='.urlencode('پرینتر'))
+            ->assertOk()
+            ->assertDontSee('پرینتر مخفی');
+    }
+
+    public function test_unpublished_products_are_hidden_from_home_page(): void
+    {
+        $this->makeProduct(['name' => 'محصول پیش‌نویس در خانه', 'slug' => 'hidden-home', 'is_published' => false]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertDontSee('محصول پیش‌نویس در خانه')
+            ->assertSee('هنوز محصولی ثبت نشده است');
+    }
+
+    public function test_unpublished_product_detail_returns_404(): void
+    {
+        $product = $this->makeProduct(['is_published' => false]);
+
+        $this->get(route('products.show', $product))->assertNotFound();
+    }
+
+    public function test_public_pages_do_not_link_to_admin_panel(): void
+    {
+        $this->get('/products')->assertDontSee('/admin', false);
+        $this->get('/')->assertDontSee('/admin', false);
+    }
 }

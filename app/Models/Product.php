@@ -21,6 +21,7 @@ class Product extends Model
         'stock_status',
         'image_path',
         'is_sample',
+        'is_published',
         'specifications',
     ];
 
@@ -32,6 +33,7 @@ class Product extends Model
             'stock_status' => StockStatus::class,
             'price' => 'integer',
             'is_sample' => 'boolean',
+            'is_published' => 'boolean',
             'specifications' => 'array',
         ];
     }
@@ -59,5 +61,10 @@ class Product extends Model
     public function scopeCategory(Builder $query, ProductCategory $category): Builder
     {
         return $query->where('category', $category->value);
+    }
+
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('is_published', true);
     }
 }
