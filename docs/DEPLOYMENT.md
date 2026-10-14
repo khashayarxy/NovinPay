@@ -168,7 +168,7 @@ php artisan storage:link
 # 1) وابستگی‌ها (اگر SSH/Composer در دسترس است)
 composer install --no-dev --optimize-autoloader
 
-# 2) بیلد فرانت‌اند (لوکال: npm run build — سپس public/build را آپلود کنید)
+# 2) بیلد فرانت‌اند (لوکال: npm ci && npm run build — سپس public/build را آپلود کنید)
 
 # 3) مایگریشن (بخش ۴)
 php artisan migrate --force
@@ -199,7 +199,8 @@ php artisan cache:warm   # در صورت وجود
 
 1. **وابستگی‌ها را لوکال نصب کنید:** `composer install --no-dev --optimize-autoloader`
    سپس کل پوشهٔ `vendor/` را بارگذاری کنید.
-2. **بیلد فرانت‌اند را لوکال انجام دهید:** `npm run build` و پوشهٔ `public/build/` را
+2. **بیلد فرانت‌اند را لوکال انجام دهید:** `npm ci && npm run build` (نسخه‌های
+   دقیق از `package-lock.json` نصب می‌شوند) و پوشهٔ `public/build/` را
    بارگذاری کنید.
 3. **مایگریشن را لوکال اجرا نکنید** روی دیتابیس تولید؛ در عوض از «phpMyAdmin» هاست
    استفاده کنید یا از پشتیبانی بخواهید artisan را اجرا کنند. ساده‌تر: اگر هاست

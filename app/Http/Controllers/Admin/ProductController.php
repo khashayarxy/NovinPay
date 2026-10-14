@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class ProductController extends Controller
 {
@@ -42,11 +43,24 @@ class ProductController extends Controller
 
         $data = $this->productData($request, $validated);
 
+        $newImagePath = null;
+
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store(self::IMAGE_DIRECTORY, 'public');
+            $newImagePath = $this->storeImageOrAbort($request);
+            $data['image_path'] = $newImagePath;
         }
 
-        Product::create($data);
+        try {
+            Product::create($data);
+        } catch (Throwable $exception) {
+            // The database write failed after the upload was persisted;
+            // remove the just-stored file so it does not become orphaned.
+            if ($newImagePath !== null) {
+                $this->deleteImage($newImagePath);
+            }
+
+            throw $exception;
+        }
 
         return redirect()
             ->route('admin.products.index')
@@ -68,14 +82,27 @@ class ProductController extends Controller
         $data = $this->productData($request, $validated);
 
         $oldImagePath = $product->image_path;
+        $newImagePath = null;
 
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store(self::IMAGE_DIRECTORY, 'public');
+            $newImagePath = $this->storeImageOrAbort($request);
+            $data['image_path'] = $newImagePath;
         }
 
-        $product->update($data);
+        try {
+            $product->update($data);
+        } catch (Throwable $exception) {
+            // The database write failed after the replacement was persisted;
+            // remove the new file so it does not become orphaned. The old
+            // image and the record both stay untouched.
+            if ($newImagePath !== null) {
+                $this->deleteImage($newImagePath);
+            }
 
-        if (isset($data['image_path']) && $oldImagePath !== null && $oldImagePath !== $data['image_path']) {
+            throw $exception;
+        }
+
+        if ($newImagePath !== null && $oldImagePath !== null && $oldImagePath !== $newImagePath) {
             $this->deleteImage($oldImagePath);
         }
 
@@ -193,16 +220,34 @@ class ProductController extends Controller
         return $specifications;
     }
 
+    private function storeImageOrAbort(Request $request): string
+    {
+        $path = $request->file('image')->store(self::IMAGE_DIRECTORY, 'public');
+
+        if (! is_string($path) || $path === '') {
+            abort(500, 'ذخیرهٔ تصویر در سرور انجام نشد.');
+        }
+
+        return $path;
+    }
+
     private function deleteImage(?string $path): void
     {
         if ($path === null || ! str_starts_with($path, self::IMAGE_DIRECTORY.'/')) {
             return;
         }
 
-        $disk = Storage::disk('public');
+        // Best-effort cleanup: a failed delete must not turn an already
+        // successful store/update/destroy into a 500 for the admin. Any
+        // leftover file is reported and can be removed manually.
+        try {
+            $disk = Storage::disk('public');
 
-        if ($disk->exists($path)) {
-            $disk->delete($path);
+            if ($disk->exists($path)) {
+                $disk->delete($path);
+            }
+        } catch (Throwable $exception) {
+            report($exception);
         }
     }
 }

@@ -32,7 +32,13 @@ class ProductController extends Controller
             ->when($category !== null, fn ($query) => $query->category($category))
             ->latest()
             ->paginate(12)
-            ->withQueryString();
+            // Append only the validated filter parameters — never the raw
+            // query string — so unrelated or potentially sensitive params
+            // (e.g. tracking tokens) are not propagated into page links.
+            ->appends(array_filter([
+                'q' => $term !== '' ? $term : null,
+                'category' => $category?->value,
+            ]));
 
         return view('products.index', [
             'products' => $products,

@@ -29,6 +29,20 @@ class SecurityHeadersTest extends TestCase
         $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
     }
 
+    public function test_not_found_response_carries_baseline_security_headers(): void
+    {
+        // The exception path must still run the global middleware so error
+        // pages (and any other HttpException response, including 419) get
+        // the same headers as successful ones.
+        $response = $this->get('/definitely-missing-page-'.uniqid());
+
+        $response->assertNotFound();
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->assertSee('خطای ۴۰۴');
+    }
+
     public function test_persian_error_pages_render_rtl_layout(): void
     {
         foreach (['errors.403', 'errors.419', 'errors.500', 'errors.503'] as $view) {

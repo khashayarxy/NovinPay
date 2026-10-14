@@ -222,6 +222,24 @@ class ProductCatalogTest extends TestCase
         $response->assertSee('category=printer', false);
     }
 
+    public function test_pagination_links_drop_unrelated_query_parameters(): void
+    {
+        foreach (range(1, 13) as $i) {
+            $this->makeProduct(['name' => "محصول شماره {$i}", 'slug' => "param-drop-{$i}"]);
+        }
+
+        $response = $this->get('/products?q='.urlencode('محصول').'&tracking_token=secret-value');
+
+        $response->assertOk();
+        $response->assertSee('page=2', false);
+        $response->assertSee('q=', false);
+        $this->assertStringNotContainsString(
+            'secret-value',
+            $response->getContent(),
+            'Pagination links must not propagate unrelated query parameters.'
+        );
+    }
+
     public function test_page_beyond_range_returns_empty_results_gracefully(): void
     {
         $this->makeProduct();

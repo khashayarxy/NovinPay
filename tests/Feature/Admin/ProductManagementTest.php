@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class ProductManagementTest extends TestCase
@@ -424,5 +426,84 @@ class ProductManagementTest extends TestCase
         $this->assertSame(15, $response->viewData('products')->count());
         $this->assertSame(16, $response->viewData('products')->total());
         $response->assertSee('page=2', false);
+    }
+
+    public function test_store_deletes_uploaded_file_when_database_persistence_fails(): void
+    {
+        Storage::fake('public');
+
+        Product::creating(function (): void {
+            throw new RuntimeException('Simulated database failure.');
+        });
+
+        $response = $this->post(route('admin.products.store'), $this->validPayload([
+            'image' => UploadedFile::fake()->image('photo.jpg'),
+        ]));
+
+        $response->assertStatus(500);
+        $this->assertSame(0, Product::query()->count());
+        $this->assertEmpty(Storage::disk('public')->allFiles(), 'The just-stored upload must be compensated away.');
+    }
+
+    public function test_update_deletes_new_upload_when_database_persistence_fails(): void
+    {
+        Storage::fake('public');
+
+        $oldPath = 'products/old-image.jpg';
+        Storage::disk('public')->put($oldPath, 'old-image-data');
+
+        $product = $this->createProduct(['image_path' => $oldPath]);
+
+        Product::updating(function (): void {
+            throw new RuntimeException('Simulated database failure.');
+        });
+
+        $response = $this->put(route('admin.products.update', $product), $this->validPayload([
+            'image' => UploadedFile::fake()->image('new.jpg'),
+        ]));
+
+        $response->assertStatus(500);
+
+        $this->assertSame($oldPath, $product->refresh()->image_path);
+        $this->assertSame([$oldPath], Storage::disk('public')->allFiles(), 'Only the old image may remain.');
+    }
+
+    public function test_store_returns_server_error_when_file_storage_fails(): void
+    {
+        $disk = Mockery::mock();
+        $disk->shouldReceive('putFileAs')->andReturn(false);
+        Storage::shouldReceive('disk')->with('public')->andReturn($disk);
+
+        $response = $this->post(route('admin.products.store'), $this->validPayload([
+            'image' => UploadedFile::fake()->image('photo.jpg'),
+        ]));
+
+        $response->assertStatus(500);
+        $this->assertSame(0, Product::query()->count(), 'A failed upload must not create a product row.');
+    }
+
+    public function test_destroy_succeeds_even_when_filesystem_cleanup_fails(): void
+    {
+        $product = $this->createProduct(['image_path' => 'products/orphan-cleanup.jpg']);
+
+        $disk = Mockery::mock();
+        $disk->shouldReceive('exists')->with('products/orphan-cleanup.jpg')->andReturn(true);
+        $disk->shouldReceive('delete')->andThrow(new RuntimeException('Disk offline.'));
+        Storage::shouldReceive('disk')->with('public')->andReturn($disk);
+
+        $this->delete(route('admin.products.destroy', $product))
+            ->assertRedirect(route('admin.products.index'));
+
+        $this->assertDatabaseMissing('products', ['id' => $product->getKey()]);
+    }
+
+    public function test_destroy_refuses_to_delete_files_outside_the_products_directory(): void
+    {
+        $product = $this->createProduct(['image_path' => '../../outside/products/x.jpg']);
+
+        $this->delete(route('admin.products.destroy', $product))
+            ->assertRedirect(route('admin.products.index'));
+
+        $this->assertDatabaseMissing('products', ['id' => $product->getKey()]);
     }
 }
