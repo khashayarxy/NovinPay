@@ -33,8 +33,9 @@ php artisan db:seed --class=AdminUserSeeder
 ```
 
 - امکانات: ایجاد/ویرایش/حذف محصول، انتشار/پیش‌نویس، مشخصات فنی (برچسب/مقدار)، بارگذاری و جایگزینی تصویر (JPEG/PNG/WebP تا ۲ مگابایت) با حذف امن فایل‌های قبلی.
-- مسیرهای مدیریت پشت `auth` هستند؛ لاگین دارای محدودیت نرخ با پیام فارسی است: ۵ تلاش ناموفق برای هر ایمیل و ۳۰ تلاش برای هر IP در دقیقه (سقف IP پیش از اعتبارسنجی بررسی می‌شود و با `config('admin.login_ip_max_attempts')` قابل تغییر است).
-- تصاویر روی دیسک `public` و در `storage/app/public/products/` ذخیره می‌شوند (در گیت نادیده گرفته می‌شوند)؛ در محیط توسعه `php artisan storage:link` لازم است.
+- مسیرهای مدیریت پشت `auth` هستند؛ لاگین دارای محدودیت نرخ با پیام فارسی است: ۵ تلاش ناموفق برای هر ایمیل و ۳۰ تلاش برای هر IP در دقیقه (سقف IP با متغیر `ADMIN_LOGIN_IP_MAX_ATTEMPTS` در `.env` و از طریق `config/admin.php` قابل تغییر است).
+- ساخت مدیر از `config('admin.email')` / `config('admin.password')` خوانده می‌شود (نه `env()` مستقیم)، بنابراین بعد از `php artisan config:cache` هم کار می‌کند.
+- تصاویر روی دیسک `public` و در `storage/app/public/products/` ذخیره می‌شوند (در گیت نادیده گرفته می‌شوند)؛ در محیط توسعه `php artisan storage:link` لازم است. راهنمای کامل استقرار در `docs/DEPLOYMENT.md` است.
 
 ## داده‌های نمونه
 
@@ -50,7 +51,8 @@ php artisan db:seed --class=SampleProductSeeder
 
 - **توسعه (موقت):** SQLite (`database/database.sqlite`) — در محیط فعلی سرور MySQL/MariaDB در دسترس نیست.
 - **تولید (هدف):** MySQL یا MariaDB. پیش از استقرار باید `DB_CONNECTION` و اعتبارنامه‌های دیتابیس در `.env` تنظیم شوند.
-- فرضیات سازگاری (فقط روی SQLite آزموده شده، نه MySQL): ستون JSON برای `specifications`، ایندکس یکتای `slug`، ستون `boolean` با مقدار پیش‌فرض و عملگر `like` در جستجو. پیش از استقرار تولید باید روی MySQL/MariaDB نیز آزموده شود.
+- سازگاری با MySQL واقعی **آزموده شد** (MySQL 8.0.46 با `utf8mb4_unicode_ci`): همهٔ migrationها (شامل backfill جستجو) و کل ۱۰۲ تست (۳۷۵ assertion) روی MySQL سبز بودند. ستون JSON برای `specifications`، ایندکس یکتای `slug`، ستون `boolean` با مقدار پیش‌فرض و `like` در جستجو همگی سازگارند.
+- **جستجو نرمال‌سازی می‌شود:** ارقام فارسی/عربی به ASCII و حروف `ي/ك` به `ی/ک` نرمال می‌شوند تا جستجو با هر variant کارا باشد؛ در ستون مشتق `search_text` ذخیره می‌شود و متن نمایشی دست نمی‌خورد.
 
 هیچ `.env` واقعی نباید متعهد (commit) شود؛ فقط `.env.example` بدون رمز عبور.
 

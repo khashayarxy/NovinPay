@@ -264,6 +264,26 @@ class LoginTest extends TestCase
         $this->assertSame(1, User::query()->count());
     }
 
+    public function test_admin_seeder_run_reads_credentials_from_config(): void
+    {
+        // AdminUserSeeder::run() must read config('admin.*') (not env()) so
+        // provisioning keeps working after `php artisan config:cache`.
+        config([
+            'admin.email' => 'cached-admin@novinpay.test',
+            'admin.password' => 'long-enough-password',
+        ]);
+
+        (new AdminUserSeeder)->run();
+
+        $this->assertDatabaseHas('users', ['email' => 'cached-admin@novinpay.test']);
+        $this->assertSame(1, User::query()->count());
+    }
+
+    public function test_login_ip_throttle_limit_is_configurable(): void
+    {
+        $this->assertSame(30, (int) config('admin.login_ip_max_attempts'));
+    }
+
     public function test_default_database_seeder_creates_no_login_accounts(): void
     {
         $this->seed();

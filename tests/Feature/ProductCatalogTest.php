@@ -81,6 +81,49 @@ class ProductCatalogTest extends TestCase
         $response->assertDontSee('کیف محافظ');
     }
 
+    public function test_search_matches_persian_and_ascii_digits_interchangeably(): void
+    {
+        // Stored with ASCII digits; a shopper typing Persian digits must still match.
+        $this->makeProduct(['name' => 'پوز مدل 1200', 'slug' => 'pos-1200']);
+
+        $this->get('/products?q='.urlencode('۱۲۰۰'))
+            ->assertOk()
+            ->assertSee('پوز مدل 1200');
+
+        // And the reverse: stored with Persian digits, searched with ASCII.
+        $this->makeProduct(['name' => 'رول کاغذ ۵۷', 'slug' => 'paper-57']);
+
+        $this->get('/products?q='.urlencode('57'))
+            ->assertOk()
+            ->assertSee('رول کاغذ ۵۷');
+    }
+
+    public function test_search_matches_persian_and_arabic_letter_variants(): void
+    {
+        // Stored with Persian kaf (ک); a shopper typing Arabic kaf (ك) must match.
+        $this->makeProduct(['name' => 'کارتخوان سیار', 'slug' => 'pos-movable']);
+
+        $this->get('/products?q='.urlencode('كارتخوان'))
+            ->assertOk()
+            ->assertSee('کارتخوان سیار');
+
+        // Stored with Arabic yeh (ي); a shopper typing Persian yeh (ی) must match.
+        $this->makeProduct(['name' => 'رسيد حرارتي', 'slug' => 'receipt-1']);
+
+        $this->get('/products?q='.urlencode('رسید'))
+            ->assertOk()
+            ->assertSee('رسيد حرارتي');
+    }
+
+    public function test_search_still_ignores_unpublished_products_after_normalization(): void
+    {
+        $this->makeProduct(['name' => 'کارتخوان مخفی', 'slug' => 'hidden-pos', 'is_published' => false]);
+
+        $this->get('/products?q='.urlencode('كارتخوان'))
+            ->assertOk()
+            ->assertDontSee('کارتخوان مخفی');
+    }
+
     public function test_category_filter_returns_only_matching_products(): void
     {
         $this->makeProduct(['category' => ProductCategory::Printer, 'name' => 'پرینتر رسید', 'slug' => 'printer-2']);

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
+use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,6 +25,19 @@ class Product extends Model
         'is_published',
         'specifications',
     ];
+
+    protected static function booted(): void
+    {
+        // Keep the derived search haystack in sync with the display fields so
+        // search matches regardless of Persian/Arabic digit or letter variant.
+        static::saving(function (Product $product): void {
+            $product->search_text = SearchNormalizer::forProduct(
+                $product->name,
+                $product->summary,
+                $product->description,
+            );
+        });
+    }
 
     protected function casts(): array
     {
@@ -45,17 +59,13 @@ class Product extends Model
 
     public function scopeSearch(Builder $query, string $term): Builder
     {
-        $term = trim($term);
+        $term = SearchNormalizer::normalize(trim($term));
 
         if ($term === '') {
             return $query;
         }
 
-        return $query->where(function (Builder $builder) use ($term) {
-            $builder->where('name', 'like', "%{$term}%")
-                ->orWhere('summary', 'like', "%{$term}%")
-                ->orWhere('description', 'like', "%{$term}%");
-        });
+        return $query->where('search_text', 'like', "%{$term}%");
     }
 
     public function scopeCategory(Builder $query, ProductCategory $category): Builder
