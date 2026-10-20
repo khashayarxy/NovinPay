@@ -13,6 +13,39 @@ class LoginTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['admin.email' => 'admin@novinpay.test']);
+    }
+
+    public function test_ordinary_user_cannot_log_in_through_admin_form_even_with_valid_credentials(): void
+    {
+        User::factory()->create(['email' => 'customer@novinpay.test', 'password' => 'secret-password']);
+
+        $this->post(route('admin.login.store'), [
+            'email' => 'customer@novinpay.test',
+            'password' => 'secret-password',
+            'is_admin' => true,
+        ])->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+    }
+
+    public function test_missing_admin_configuration_rejects_valid_credentials(): void
+    {
+        User::factory()->create(['email' => 'admin@novinpay.test', 'password' => 'secret-password']);
+        config(['admin.email' => null]);
+
+        $this->post(route('admin.login.store'), [
+            'email' => 'admin@novinpay.test',
+            'password' => 'secret-password',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+    }
+
     public static function registrationProvider(): array
     {
         return [

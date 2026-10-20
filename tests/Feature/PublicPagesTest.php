@@ -63,12 +63,14 @@ class PublicPagesTest extends TestCase
         $response->assertSee('کد پیگیری');
     }
 
-    public function test_contact_page_marks_business_details_as_placeholders(): void
+    public function test_contact_page_displays_official_business_details(): void
     {
         $response = $this->get('/contact');
 
         $response->assertOk();
-        $response->assertSee('در حال تکمیل');
+        $response->assertSee('09362896373');
+        $response->assertSee('پاساژ الماس شهر');
+        $response->assertDontSee('[در حال تکمیل]');
     }
 
     public function test_legal_pages_do_not_publish_final_policies(): void

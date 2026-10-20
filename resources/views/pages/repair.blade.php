@@ -18,8 +18,8 @@
                 <p class="text-xs font-semibold text-brand-700">مرحلهٔ ۱</p>
                 <h2 id="step-1" class="mt-2 text-base font-semibold">ثبت درخواست</h2>
                 <p class="mt-3 text-sm leading-7 text-slate-600">
-                    در حال حاضر ثبت درخواست به‌صورت حضوری و با مراجعه به محل کسب‌وکار انجام می‌شود. شماره تماس رسمی
-                    در حال تکمیل است و به‌زودی در همین صفحه اعلام خواهد شد.
+                    در حال حاضر ثبت درخواست به‌صورت حضوری و با مراجعه به محل کسب‌وکار انجام می‌شود. برای هماهنگی با
+                    <a href="{{ config('business.phone_uri') }}" class="contact-link" dir="ltr">{{ config('business.phone') }}</a> تماس بگیرید.
                 </p>
             </section>
 

@@ -24,9 +24,12 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): void {
+    // Keep logout available even if administrator authorization is revoked.
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
-    Route::get('/', fn () => redirect()->route('admin.products.index'))->name('dashboard');
+    Route::middleware('can:access-admin')->group(function (): void {
+        Route::get('/', fn () => redirect()->route('admin.products.index'))->name('dashboard');
 
-    Route::resource('products', AdminProductController::class)->except('show');
+        Route::resource('products', AdminProductController::class)->except('show');
+    });
 });

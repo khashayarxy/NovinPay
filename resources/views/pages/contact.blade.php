@@ -8,45 +8,36 @@
         <header>
             <h1 class="section-title">تماس با ما</h1>
             <p class="section-lead">
-                {{ config('app.name') }} در شهریار فعالیت می‌کند. اطلاعات تماس رسمی هنوز نهایی نشده است و مقادیر
-                زیر موقتی و نمادین هستند.
+                برای مشاورهٔ خرید یا هماهنگی مراجعهٔ حضوری به {{ config('business.name') }}، از اطلاعات زیر استفاده کنید.
             </p>
         </header>
-
-        <div class="mt-8 rounded-xl border border-dashed border-amber-300 bg-amber-50 px-5 py-4">
-            <p class="text-sm leading-7 text-amber-800">
-                <strong class="font-semibold">توجه:</strong> نشانی دقیق، شماره تلفن، ایمیل و ساعات کاری در این
-                نسخه اعلام نشده‌اند. پیش از انتشار نهایی وب‌سایت، این مقادیر با اطلاعات تأییدشده جایگزین خواهند شد.
-            </p>
-        </div>
 
         <dl class="mt-6 grid gap-6 sm:grid-cols-2">
             <div class="card p-6">
                 <dt class="text-sm font-semibold text-slate-900">نشانی</dt>
                 <dd class="mt-2 text-sm leading-7 text-slate-600">
-                    شهریار، استان تهران<br>
-                    <span class="text-slate-500">[خیابان و پلاک — در حال تکمیل]</span>
+                    {{ config('business.address') }}
                 </dd>
             </div>
 
             <div class="card p-6">
                 <dt class="text-sm font-semibold text-slate-900">تلفن</dt>
                 <dd class="mt-2 text-sm leading-7 text-slate-600">
-                    <span class="text-slate-500">[شماره تماس — در حال تکمیل]</span>
+                    <a href="{{ config('business.phone_uri') }}" class="contact-link" dir="ltr">{{ config('business.phone') }}</a>
                 </dd>
             </div>
 
             <div class="card p-6">
-                <dt class="text-sm font-semibold text-slate-900">ایمیل</dt>
+                <dt class="text-sm font-semibold text-slate-900">مسیریابی</dt>
                 <dd class="mt-2 text-sm leading-7 text-slate-600">
-                    <span class="text-slate-500">[نشانی ایمیل — در حال تکمیل]</span>
+                    <x-map-links />
                 </dd>
             </div>
 
             <div class="card p-6">
                 <dt class="text-sm font-semibold text-slate-900">ساعات کاری</dt>
                 <dd class="mt-2 text-sm leading-7 text-slate-600">
-                    <span class="text-slate-500">[ساعات کاری — در حال تکمیل]</span>
+                    {{ config('business.hours.open') }}<br>{{ config('business.hours.closed') }}
                 </dd>
             </div>
         </dl>

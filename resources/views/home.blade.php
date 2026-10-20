@@ -157,20 +157,17 @@
             <dl class="mt-4 grid gap-4 text-sm sm:grid-cols-3">
                 <div class="rounded-lg border border-dashed border-slate-300 p-4">
                     <dt class="font-medium text-slate-500">نشانی</dt>
-                    <dd class="mt-1 text-slate-700">شهریار — [نشانی دقیق در حال تکمیل]</dd>
+                    <dd class="mt-1 text-slate-700">{{ config('business.address') }}</dd>
                 </div>
                 <div class="rounded-lg border border-dashed border-slate-300 p-4">
                     <dt class="font-medium text-slate-500">تلفن</dt>
-                    <dd class="mt-1 text-slate-700">[در حال تکمیل]</dd>
+                    <dd class="mt-1 text-slate-700"><a href="{{ config('business.phone_uri') }}" class="contact-link" dir="ltr">{{ config('business.phone') }}</a></dd>
                 </div>
                 <div class="rounded-lg border border-dashed border-slate-300 p-4">
                     <dt class="font-medium text-slate-500">ساعات کاری</dt>
-                    <dd class="mt-1 text-slate-700">[در حال تکمیل]</dd>
+                    <dd class="mt-1 text-slate-700">{{ config('business.hours.open') }}<br>{{ config('business.hours.closed') }}</dd>
                 </div>
             </dl>
-            <p class="mt-4 text-xs leading-6 text-slate-500">
-                این مقادیر موقتی هستند و پیش از انتشار نهایی با اطلاعات رسمی جایگزین می‌شوند.
-            </p>
         </div>
     </section>
 @endsection

@@ -3,12 +3,99 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class AuthorizationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['admin.email' => 'admin@novinpay.test']);
+    }
+
+    public function test_ordinary_authenticated_user_cannot_read_or_write_any_admin_product_route(): void
+    {
+        Storage::fake('public');
+        $product = Product::create([
+            'name' => 'Original', 'slug' => 'protected-product', 'category' => 'pos_terminal',
+            'condition' => 'new', 'stock_status' => 'in_stock', 'is_published' => false,
+        ]);
+        $original = $product->fresh()->getAttributes();
+        $this->actingAs(User::factory()->create(['email' => 'customer@novinpay.test']));
+
+        foreach (['/admin', '/admin/products', '/admin/products/create', '/admin/products/protected-product/edit'] as $uri) {
+            $this->get($uri)->assertForbidden();
+        }
+
+        $payload = [
+            'name' => 'Unauthorized change', 'slug' => 'unauthorized-change', 'category' => 'pos_terminal',
+            'condition' => 'new', 'stock_status' => 'in_stock', 'is_published' => true,
+            'email' => 'admin@novinpay.test', 'is_admin' => true,
+            'image' => UploadedFile::fake()->image('unauthorized.jpg'),
+        ];
+        $this->post('/admin/products', $payload)->assertForbidden();
+        $this->put('/admin/products/protected-product', $payload)->assertForbidden();
+        $this->patch('/admin/products/protected-product', $payload)->assertForbidden();
+        $this->delete('/admin/products/protected-product')->assertForbidden();
+
+        $this->assertSame(1, Product::count());
+        $this->assertSame($original, $product->fresh()->getAttributes());
+        $this->assertEmpty(Storage::disk('public')->allFiles());
+    }
+
+    public static function invalidAdminConfigurationProvider(): array
+    {
+        return ['missing' => [null], 'empty' => [''], 'whitespace' => ['  '], 'wrong type' => [[]], 'unknown account' => ['unknown@novinpay.test']];
+    }
+
+    #[DataProvider('invalidAdminConfigurationProvider')]
+    public function test_admin_access_defaults_to_denial(mixed $email): void
+    {
+        $user = User::factory()->create(['email' => 'admin@novinpay.test']);
+        config(['admin.email' => $email]);
+
+        $this->actingAs($user)->get('/admin/products')->assertForbidden();
+    }
+
+    public function test_existing_configured_admin_is_authorized_without_reprovisioning(): void
+    {
+        $admin = User::factory()->create(['email' => 'admin@novinpay.test']);
+        $original = $admin->fresh()->getAttributes();
+
+        $this->actingAs($admin)->get('/admin')->assertRedirect(route('admin.products.index'));
+        $this->get('/admin/products')->assertOk();
+        $this->assertSame($original, $admin->fresh()->getAttributes());
+    }
+
+    public function test_gate_checks_persisted_identity_and_does_not_trust_a_spoofed_email(): void
+    {
+        User::factory()->create(['email' => 'admin@novinpay.test']);
+        $ordinary = User::factory()->create(['email' => 'customer@novinpay.test']);
+        $ordinary->email = 'admin@novinpay.test';
+
+        $this->assertFalse(Gate::forUser($ordinary)->allows('access-admin'));
+        $this->assertFalse(Gate::forUser(new User(['email' => 'admin@novinpay.test']))->allows('access-admin'));
+    }
+
+    public function test_removing_authorization_denies_an_existing_session_but_allows_logout(): void
+    {
+        $admin = User::factory()->create(['email' => 'admin@novinpay.test']);
+        $this->actingAs($admin)->get('/admin/products')->assertOk();
+        config(['admin.email' => null]);
+
+        $this->get('/admin/products')->assertForbidden();
+        $this->post('/admin/logout')->assertRedirect(route('admin.login'));
+        $this->assertGuest();
+    }
 
     public function test_every_admin_route_requires_authentication(): void
     {

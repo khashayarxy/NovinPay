@@ -21,6 +21,11 @@ return [
     | Admin Provisioning Credentials
     |--------------------------------------------------------------------------
     |
+    | The email also identifies the ONLY persisted account allowed by the
+    | access-admin gate. Empty/missing email denies administrator access.
+    | Keep it aligned with the existing administrator; no seeding is needed
+    | when deploying the gate. Never populate it from a request.
+    |
     | Used by AdminUserSeeder to create the single admin account. These are
     | read through config() (not env()) so provisioning keeps working after
     | `php artisan config:cache`, where env() would otherwise return null.

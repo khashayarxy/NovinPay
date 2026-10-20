@@ -19,7 +19,8 @@ class ProductManagementTest extends TestCase
     {
         parent::setUp();
 
-        $this->actingAs(User::factory()->create());
+        config(['admin.email' => 'admin@novinpay.test']);
+        $this->actingAs(User::factory()->create(['email' => 'admin@novinpay.test']));
     }
 
     private function validPayload(array $overrides = []): array

@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Support\FaNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -61,7 +63,7 @@ class LoginController extends Controller
             ]);
         }
 
-        if (! Auth::attempt($credentials)) {
+        if (! Auth::attemptWhen($credentials, fn (User $user): bool => Gate::forUser($user)->allows('access-admin'))) {
             RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
             RateLimiter::hit($ipKey, self::DECAY_SECONDS);
 

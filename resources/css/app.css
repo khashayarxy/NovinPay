@@ -48,23 +48,23 @@
 |-------------------------------------------------------------------------------
 | Brand tokens
 |-------------------------------------------------------------------------------
-| The accent palette below is a neutral placeholder. Replace the brand-* scale
-| once the official NovinPay brand colour is confirmed.
+| Official brand-500 is preserved exactly. Darker action/text shades provide
+| readable contrast against white without recolouring the supplied logo.
 */
-@theme {
+@theme static {
     --font-sans: 'Vazirmatn', Tahoma, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
-    --color-brand-50: #f0fdfa;
-    --color-brand-100: #ccfbf1;
-    --color-brand-200: #99f6e4;
-    --color-brand-300: #5eead4;
-    --color-brand-400: #2dd4bf;
-    --color-brand-500: #14b8a6;
-    --color-brand-600: #0d9488;
-    --color-brand-700: #0f766e;
-    --color-brand-800: #115e59;
-    --color-brand-900: #134e4a;
+    --color-brand-50: #eff8ff;
+    --color-brand-100: #dceeff;
+    --color-brand-200: #b9dfff;
+    --color-brand-300: #86caff;
+    --color-brand-400: #48adfc;
+    --color-brand-500: #098CF7;
+    --color-brand-600: #0674cf;
+    --color-brand-700: #075da6;
+    --color-brand-800: #0a4f89;
+    --color-brand-900: #103f6b;
 }
 
 @layer base {
@@ -110,7 +110,11 @@
     }
 
     .btn {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors;
+        @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors;
+    }
+
+    .contact-link {
+        @apply rounded-sm underline underline-offset-4 hover:decoration-2;
     }
 
     .btn-primary {

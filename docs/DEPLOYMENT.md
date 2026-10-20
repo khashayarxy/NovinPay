@@ -10,7 +10,7 @@
 
 | مورد | حداقل نیاز | چگونه بررسی کنیم |
 | --- | --- | --- |
-| نسخهٔ PHP | `8.3` یا بالاتر (تارگت: `8.4`) | `php -v` یا «Select PHP Version» در cPanel |
+| نسخهٔ PHP | حداقل `8.4.1` برای وابستگی‌های فعلی قفل‌شده؛ هم CLI و هم وب | `php -v` یا «Select PHP Version» در cPanel |
 | افزونه‌های PHP | `mbstring`, `openssl`, `pdo_mysql` (یا `pdo_mariadb`), `tokenizer`, `xml`, `ctype`, `json`, `fileinfo`, `dom`, `bcmath` | `php -m` |
 | Composer | نصب و در دسترس CLI | `composer -V` |
 | دسترسی CLI/SSH | برای `artisan` (migrate, cache, storage:link) | تماس با پشتیبانی |

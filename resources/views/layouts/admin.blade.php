@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    <x-brand-head />
     @hasSection('title')
         <title>@yield('title') | پنل مدیریت {{ config('app.name') }}</title>
     @else
@@ -18,10 +19,10 @@
 
     <header class="border-b border-slate-200 bg-white">
         <div class="container-page flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-4">
-            <div class="flex items-baseline gap-3">
-                <a href="{{ route('home') }}" class="flex items-baseline gap-2"
-                    aria-label="بازگشت به وب‌سایت {{ config('app.name') }}">
-                    <span class="text-lg font-bold tracking-tight text-slate-900">{{ config('app.name') }}</span>
+            <div class="flex items-center gap-6">
+                <a href="{{ route('home') }}" class="inline-flex rounded-lg"
+                    aria-label="بازگشت به وب‌سایت {{ config('business.name') }}">
+                    <x-brand-logo />
                 </a>
                 <span class="badge badge-neutral">پنل مدیریت</span>
             </div>
@@ -29,9 +30,11 @@
             <nav aria-label="ناوبری مدیریت">
                 <ul class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
                     @auth
+                        @can('access-admin')
                         <li>
                             <a href="{{ route('admin.products.index') }}"
                                 @class([
+                                    'inline-flex min-h-11 items-center rounded-sm' => true,
                                     'transition-colors hover:text-slate-900' => true,
                                     'font-semibold text-brand-700' => request()->routeIs('admin.products.*'),
                                     'text-slate-600' => !request()->routeIs('admin.products.*'),
@@ -40,8 +43,9 @@
                                 محصولات
                             </a>
                         </li>
+                        @endcan
                         <li>
-                            <a href="{{ route('home') }}" class="text-slate-600 transition-colors hover:text-slate-900">
+                            <a href="{{ route('home') }}" class="inline-flex min-h-11 items-center rounded-sm text-slate-600 transition-colors hover:text-slate-900">
                                 مشاهدهٔ وب‌سایت
                             </a>
                         </li>
@@ -49,14 +53,14 @@
                             <form method="POST" action="{{ route('admin.logout') }}">
                                 @csrf
                                 <button type="submit"
-                                    class="text-slate-600 transition-colors hover:text-slate-900">
+                                    class="inline-flex min-h-11 items-center rounded-sm text-slate-600 transition-colors hover:text-slate-900">
                                     خروج
                                 </button>
                             </form>
                         </li>
                     @else
                         <li>
-                            <a href="{{ route('admin.login') }}" class="text-slate-600 transition-colors hover:text-slate-900">
+                            <a href="{{ route('admin.login') }}" class="inline-flex min-h-11 items-center rounded-sm text-slate-600 transition-colors hover:text-slate-900">
                                 ورود مدیر
                             </a>
                         </li>
