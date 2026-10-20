@@ -34,6 +34,13 @@ final class StaffAdministration
                     throw ValidationException::withMessages(['permissions' => 'مجوز «'.$extra->label().'» به «'.$base->label().'» نیاز دارد.']);
                 }
             }
+            foreach (AdminPermission::cases() as $permission) {
+                if (str_starts_with($permission->value, 'repairs.') && in_array($permission->value, $permissions, true) && $permission !== AdminPermission::RepairsView) {
+                    if (! in_array(AdminPermission::RepairsView->value, $permissions, true) || (! in_array($permission, [AdminPermission::RepairsAssign, AdminPermission::RepairsManage, AdminPermission::RepairsCustomerData], true) && ! in_array(AdminPermission::RepairsCustomerData->value, $permissions, true))) {
+                        throw ValidationException::withMessages(['permissions' => 'عملیات تعمیر به مشاهدهٔ پرونده و برای اطلاعات حساس به مجوز اطلاعات مشتری نیاز دارد.']);
+                    }
+                }
+            }
             $creating = $target === null;
             $account = $creating ? new AdminAccount : AdminAccount::query()->lockForUpdate()->findOrFail($target->id);
             // Owner/self accounts cannot be updated, demoted, replaced or deactivated here.

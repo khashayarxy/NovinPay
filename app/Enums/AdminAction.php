@@ -18,6 +18,15 @@ enum AdminAction: string
     case ProductUpdated = 'product.updated';
     case ProductDeleted = 'product.deleted';
     case RepairCustomerViewed = 'repair.customer_data_viewed';
+    case RepairIntake = 'repair.intake';
+    case RepairAssigned = 'repair.assigned';
+    case RepairTransition = 'repair.transition';
+    case RepairInspection = 'repair.inspection';
+    case RepairEstimate = 'repair.estimate';
+    case RepairDecision = 'repair.estimate_decision';
+    case RepairWork = 'repair.work';
+    case RepairDelivery = 'repair.delivery';
+    case RepairDocument = 'repair.document_viewed';
 
     public function label(): string
     {
@@ -36,6 +45,11 @@ enum AdminAction: string
             self::ProductUpdated => 'ویرایش محصول',
             self::ProductDeleted => 'حذف محصول',
             self::RepairCustomerViewed => 'مشاهدهٔ اطلاعات شخصی درخواست تعمیر',
+            self::RepairIntake => 'پذیرش فیزیکی دستگاه', self::RepairAssigned => 'تغییر تخصیص تکنسین',
+            self::RepairTransition => 'تغییر مرحلهٔ عملیاتی تعمیر', self::RepairInspection => 'ثبت بررسی فنی',
+            self::RepairEstimate => 'صدور نسخهٔ برآورد', self::RepairDecision => 'ثبت تصمیم مشتری توسط کارمند',
+            self::RepairWork => 'ثبت کار تعمیر', self::RepairDelivery => 'ثبت تحویل دستگاه',
+            self::RepairDocument => 'مشاهدهٔ سند قابل چاپ تعمیر',
         };
     }
 }

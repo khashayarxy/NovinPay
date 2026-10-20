@@ -10,7 +10,7 @@
             @if ($matched === false)
                 <div class="public-notice public-notice--error" role="status"><h2>اطلاعات واردشده قابل تأیید نیست.</h2><p>کد و شماره را بررسی کنید و دوباره تلاش کنید. برای راهنمایی با نوین‌پی تماس بگیرید.</p></div>
             @elseif ($matched === true)
-                <div class="public-notice public-notice--success" role="status"><h2>{{ \App\Enums\RepairRequestStatus::OnlineSubmitted->label() }}</h2><p>این نتیجه تأیید پذیرش، تعمیر یا تحویل دستگاه نیست. برای هماهنگی مراجعه با نوین‌پی تماس بگیرید.</p></div>
+                <div class="public-notice public-notice--success" role="status"><h2>{{ ($physicalMatch ?? false) ? 'پروندهٔ خدمات برای این کد ثبت شده است' : \App\Enums\RepairRequestStatus::OnlineSubmitted->label() }}</h2><p>این نتیجه تأیید پذیرش، تعمیر یا تحویل دستگاه نیست. برای هماهنگی مراجعه با نوین‌پی تماس بگیرید.</p></div>
             @endif
             <form method="post" action="{{ route('repair.track.store') }}" class="public-form">
                 @csrf

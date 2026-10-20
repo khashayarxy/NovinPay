@@ -6,6 +6,7 @@ use App\Enums\RepairBrand;
 use App\Enums\RepairRequestStatus;
 use App\Http\Requests\StoreRepairRequest;
 use App\Http\Requests\TrackRepairRequest;
+use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Support\RepairIdentity;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -77,6 +78,9 @@ class RepairRequestController extends Controller
     {
         $data = $request->validated();
         // Never hydrate or decrypt customer/device fields for a tracking response.
+        $physical = RepairCase::query()->select(['phone_digest'])
+            ->where('tracking_digest', RepairIdentity::digest('tracking', $data['tracking_reference']))->first();
+        $physicalMatch = hash_equals($physical?->phone_digest ?? str_repeat('0', 64), RepairIdentity::digest('phone', $data['contact_phone']));
         $repair = RepairRequest::query()->select(['phone_digest', 'status'])
             ->where('tracking_reference', $data['tracking_reference'])->first();
         $matched = hash_equals(
@@ -86,7 +90,8 @@ class RepairRequestController extends Controller
 
         // Only the explicitly supported initial state can be exposed in Phase 4.
         return view('pages.repair-tracking', [
-            'matched' => $matched && $repair?->status === RepairRequestStatus::OnlineSubmitted,
+            'matched' => $physicalMatch || ($matched && $repair?->status === RepairRequestStatus::OnlineSubmitted),
+            'physicalMatch' => $physicalMatch,
         ]);
     }
 

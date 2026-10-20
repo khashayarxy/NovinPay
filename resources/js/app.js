@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const template = document.getElementById('spec-row-template');
 
     document.addEventListener('click', (event) => {
+        if (event.target.closest('[data-print-document]')) {
+            window.print();
+            return;
+        }
         const addButton = event.target.closest('[data-add-spec-row]');
         if (addButton && rows && template) {
             let nextIndex = Number(rows.dataset.specNextIndex ?? 0);

@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'نمای کلی')
 @section('content')
+@if($openRepairCount !== null)<div class="admin-notice"><a class="admin-text-link" href="{{ route('admin.repair-cases.index') }}">عملیات تعمیر ←</a><p>پروندهٔ فیزیکی باز: {{ \App\Support\FaNumber::digits($openRepairCount) }} · آمادهٔ مراجعه: {{ \App\Support\FaNumber::digits($readyRepairCount) }}</p></div>@endif
     <header class="admin-page-heading"><div><p class="admin-eyebrow">پیشخوان نوین‌پی</p><h1>نمای کلی کسب‌وکار</h1><p>سلام {{ auth()->user()->name }}؛ اطلاعات این صفحه از داده‌های ثبت‌شدهٔ سامانه است.</p></div><span class="admin-status"><span aria-hidden="true">●</span> حساب فعال</span></header>
     <div class="admin-stats">
         @foreach ([['count' => $productCount, 'label' => 'محصول ثبت‌شده', 'icon' => 'shopping-bag', 'route' => 'admin.products.index', 'note' => 'کاتالوگ و پیش‌نویس‌ها'], ['count' => $publishedCount, 'label' => 'محصول منتشرشده', 'icon' => 'check', 'route' => 'admin.products.index', 'note' => 'قابل مشاهده در وب‌سایت'], ['count' => $repairCount, 'label' => 'درخواست آنلاین تعمیر', 'icon' => 'tool', 'route' => 'admin.repairs.index', 'note' => 'دریافت فیزیکی تأیید نشده'], ['count' => $staffCount, 'label' => 'همکار فعال', 'icon' => 'user', 'route' => 'admin.staff.index', 'note' => 'با دسترسی مشخص']] as $stat)
@@ -13,7 +14,7 @@
         <section class="admin-panel" aria-labelledby="recent-requests"><div class="admin-panel-heading"><div><p class="admin-eyebrow">دید عملیاتی</p><h2 id="recent-requests">درخواست‌های آنلاین اخیر</h2></div>@can('repairs.view')<a href="{{ route('admin.repairs.index') }}" class="admin-text-link">همه درخواست‌ها ←</a>@endcan</div>
             @can('repairs.view')
                 @forelse($recentRepairs as $repair)
-                    <a class="admin-request-row" href="{{ route('admin.repairs.show', $repair) }}"><span class="admin-icon"><x-home.icon name="tool" /></span><div><h3>درخواست {{ \App\Support\FaNumber::digits($repair->id) }} · <bdi>{{ $repair->device_brand->value }}</bdi></h3><p>ثبت آنلاین؛ دریافت دستگاه تأیید نشده است</p></div><x-home.icon name="arrow-left" /></a>
+                    <a class="admin-request-row" href="{{ route('admin.repairs.show', $repair) }}"><span class="admin-icon"><x-home.icon name="tool" /></span><div><h3>درخواست {{ \App\Support\FaNumber::digits($repair->id) }} · <bdi>{{ $repair->device_brand->value }}</bdi></h3><p>{{ $repair->physical_case_exists ? 'پذیرش فیزیکی در پروندهٔ جداگانه ثبت شده است' : 'ثبت آنلاین؛ دریافت دستگاه تأیید نشده است' }}</p></div><x-home.icon name="arrow-left" /></a>
                 @empty
                     <div class="admin-empty"><x-home.icon name="tool" /><h3>هنوز درخواستی ثبت نشده است</h3><p>درخواست‌های فرم عمومی پس از ثبت در اینجا قرار می‌گیرند.</p></div>
                 @endforelse

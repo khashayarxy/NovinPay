@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\PasswordController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\RepairCaseController;
 use App\Http\Controllers\Admin\RepairOverviewController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\HomeController;
@@ -62,5 +63,17 @@ Route::middleware([PrivateAdminResponse::class, 'auth'])->prefix('admin')->name(
         Route::get('activities', [ActivityController::class, 'index'])->middleware('can:activity.view')->name('activities.index');
         Route::get('repair-requests', [RepairOverviewController::class, 'index'])->middleware('can:repairs.view')->name('repairs.index');
         Route::get('repair-requests/{repairRequest}', [RepairOverviewController::class, 'show'])->middleware('can:view,repairRequest')->name('repairs.show');
+        Route::middleware('can:repairs.view')->group(function (): void {
+            Route::get('repairs', [RepairCaseController::class, 'index'])->name('repair-cases.index');
+            Route::post('repairs/search', [RepairCaseController::class, 'search'])->defaults('operation', 'search')->name('repair-cases.search');
+            Route::post('repairs/search/reset', [RepairCaseController::class, 'resetSearch'])->name('repair-cases.reset');
+            Route::get('repairs/intake', [RepairCaseController::class, 'create'])->name('repair-cases.create');
+            Route::post('repairs/intake', [RepairCaseController::class, 'store'])->defaults('operation', 'intake')->middleware('throttle:20,1')->name('repair-cases.store');
+            Route::get('repairs/{repairCase}', [RepairCaseController::class, 'show'])->name('repair-cases.show');
+            foreach (['assign', 'transition', 'inspect', 'estimate', 'decision', 'work', 'delivery'] as $operation) {
+                Route::post('repairs/{repairCase}/'.$operation, [RepairCaseController::class, 'update'])->defaults('operation', $operation)->middleware('throttle:30,1')->name('repair-cases.'.$operation);
+            }
+            Route::get('repairs/{repairCase}/documents/{document}', [RepairCaseController::class, 'document'])->name('repair-cases.document');
+        });
     });
 });
