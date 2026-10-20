@@ -33,7 +33,7 @@ class LoginTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_missing_admin_configuration_rejects_valid_credentials(): void
+    public function test_matching_email_without_database_grant_rejects_valid_credentials(): void
     {
         User::factory()->create(['email' => 'admin@novinpay.test', 'password' => 'secret-password']);
         config(['admin.email' => null]);
@@ -69,7 +69,7 @@ class LoginTest extends TestCase
 
     public function test_user_can_log_in_with_valid_credentials(): void
     {
-        $user = User::factory()->create([
+        $user = User::factory()->superAdmin()->create([
             'email' => 'admin@novinpay.test',
             'password' => 'secret-password',
         ]);
@@ -79,13 +79,13 @@ class LoginTest extends TestCase
             'password' => 'secret-password',
         ]);
 
-        $response->assertRedirect(route('admin.products.index'));
+        $response->assertRedirect(route('admin.dashboard'));
         $this->assertAuthenticatedAs($user);
     }
 
     public function test_login_redirects_back_to_previously_requested_admin_page(): void
     {
-        User::factory()->create([
+        User::factory()->superAdmin()->create([
             'email' => 'admin@novinpay.test',
             'password' => 'secret-password',
         ]);
@@ -102,7 +102,7 @@ class LoginTest extends TestCase
 
     public function test_invalid_credentials_are_rejected_with_persian_message(): void
     {
-        User::factory()->create([
+        User::factory()->superAdmin()->create([
             'email' => 'admin@novinpay.test',
             'password' => 'secret-password',
         ]);
@@ -140,7 +140,7 @@ class LoginTest extends TestCase
 
     public function test_login_is_throttled_after_repeated_failures(): void
     {
-        User::factory()->create([
+        User::factory()->superAdmin()->create([
             'email' => 'admin@novinpay.test',
             'password' => 'secret-password',
         ]);
@@ -173,7 +173,7 @@ class LoginTest extends TestCase
             ])->assertSessionHasErrors('email');
         }
 
-        User::factory()->create([
+        User::factory()->superAdmin()->create([
             'email' => 'admin@novinpay.test',
             'password' => 'secret-password',
         ]);
@@ -213,7 +213,7 @@ class LoginTest extends TestCase
 
     public function test_successful_login_resets_throttle_counters(): void
     {
-        User::factory()->create([
+        User::factory()->superAdmin()->create([
             'email' => 'admin@novinpay.test',
             'password' => 'secret-password',
         ]);
@@ -228,7 +228,7 @@ class LoginTest extends TestCase
         $this->post(route('admin.login.store'), [
             'email' => 'admin@novinpay.test',
             'password' => 'secret-password',
-        ])->assertRedirect(route('admin.products.index'));
+        ])->assertRedirect(route('admin.dashboard'));
 
         $this->post(route('admin.logout'))->assertRedirect(route('admin.login'));
 

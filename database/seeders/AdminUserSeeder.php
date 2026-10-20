@@ -9,10 +9,10 @@ use RuntimeException;
 class AdminUserSeeder extends Seeder
 {
     /**
-     * Create the single admin account from config('admin.email') / config('admin.password').
+     * Create a missing initial user from trusted configuration, without granting access.
      *
-     * There is no public registration; this is the only way to provision
-     * an admin user. Credentials are read through config() (not env()) so
+     * Existing credentials are preserved. Super-admin bootstrap is separate;
+     * staff provisioning requires the protected owner. Read config() so
      * provisioning keeps working after `php artisan config:cache`, and are
      * never committed to the repository.
      */
@@ -33,7 +33,9 @@ class AdminUserSeeder extends Seeder
             throw new RuntimeException('ADMIN_PASSWORD must be at least 8 characters long.');
         }
 
-        User::query()->updateOrCreate(
+        // Existing accounts and credentials are never overwritten by provisioning.
+        // Administrative access is a separate explicit admin:bootstrap operation.
+        User::query()->firstOrCreate(
             ['email' => trim($email)],
             ['name' => 'مدیر', 'password' => $password],
         );

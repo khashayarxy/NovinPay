@@ -10,13 +10,13 @@
                 محصولات منتشرشده در وب‌سایت عمومی نمایش داده می‌شوند.
             </p>
         </div>
-        <a href="{{ route('admin.products.create') }}" class="btn btn-primary">افزودن محصول</a>
+        @can('products.manage')<a href="{{ route('admin.products.create') }}" class="btn btn-primary">افزودن محصول</a>@endcan
     </div>
 
     @if ($products->isEmpty())
         <div class="card mt-6 p-8 text-center">
             <p class="text-sm text-slate-600">هنوز محصولی ثبت نشده است.</p>
-            <a href="{{ route('admin.products.create') }}" class="btn btn-primary mt-4">افزودن اولین محصول</a>
+            @can('products.manage')<a href="{{ route('admin.products.create') }}" class="btn btn-primary mt-4">افزودن اولین محصول</a>@endcan
         </div>
     @else
         <div class="card mt-6 overflow-x-auto">
@@ -60,7 +60,7 @@
                                 </div>
                             </td>
                             <td class="px-4 py-3">
-                                <div class="flex items-center justify-end gap-3">
+                                @can('products.manage')<div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('admin.products.edit', $product) }}"
                                         class="font-medium text-brand-700 hover:underline">ویرایش</a>
                                     <form method="POST" action="{{ route('admin.products.destroy', $product) }}"
@@ -69,7 +69,7 @@
                                         @method('DELETE')
                                         <button type="submit" class="font-medium text-red-600 hover:underline">حذف</button>
                                     </form>
-                                </div>
+                                </div>@else<span class="text-xs text-slate-500">فقط مشاهده</span>@endcan
                             </td>
                         </tr>
                     @endforeach

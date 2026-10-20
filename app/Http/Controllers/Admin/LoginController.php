@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminAction;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AdminAccess;
+use App\Support\AdminHistory;
 use App\Support\FaNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -75,16 +78,30 @@ class LoginController extends Controller
         RateLimiter::clear($throttleKey);
         RateLimiter::clear($ipKey);
         $request->session()->regenerate();
+        AdminHistory::record(AdminAction::Login, 'user', Auth::id());
+        $account = AdminAccess::account(Auth::user());
+        $request->session()->put('admin_session_version', $account->session_version);
+        if ($account->must_change_password) {
+            return redirect()->route('admin.password.edit');
+        }
 
-        return redirect()->intended(route('admin.products.index'));
+        if ($account->isSuperAdmin()) {
+            return redirect()->intended(AdminAccess::landingUrl(Auth::user()));
+        }
+        // Staff may have arrived through a module they cannot access.
+        $request->session()->forget('url.intended');
+
+        return redirect(AdminAccess::landingUrl(Auth::user()));
     }
 
     public function destroy(Request $request): RedirectResponse
     {
+        $actorId = Auth::id();
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        AdminHistory::record(AdminAction::Logout, 'user', $actorId, $actorId);
 
         return redirect()->route('admin.login');
     }

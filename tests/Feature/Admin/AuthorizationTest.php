@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\AdminAccount;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -70,15 +71,16 @@ class AuthorizationTest extends TestCase
     {
         $admin = User::factory()->create(['email' => 'admin@novinpay.test']);
         $original = $admin->fresh()->getAttributes();
+        $this->artisan('admin:bootstrap', ['user' => $admin->id, '--apply' => true])->assertSuccessful();
 
-        $this->actingAs($admin)->get('/admin')->assertRedirect(route('admin.products.index'));
+        $this->actingAs($admin)->get('/admin')->assertOk();
         $this->get('/admin/products')->assertOk();
         $this->assertSame($original, $admin->fresh()->getAttributes());
     }
 
     public function test_gate_checks_persisted_identity_and_does_not_trust_a_spoofed_email(): void
     {
-        User::factory()->create(['email' => 'admin@novinpay.test']);
+        User::factory()->superAdmin()->create(['email' => 'admin@novinpay.test']);
         $ordinary = User::factory()->create(['email' => 'customer@novinpay.test']);
         $ordinary->email = 'admin@novinpay.test';
 
@@ -88,11 +90,14 @@ class AuthorizationTest extends TestCase
 
     public function test_removing_authorization_denies_an_existing_session_but_allows_logout(): void
     {
-        $admin = User::factory()->create(['email' => 'admin@novinpay.test']);
+        $admin = User::factory()->staff(['products.view'])->create(['email' => 'staff@novinpay.test']);
         $this->actingAs($admin)->get('/admin/products')->assertOk();
-        config(['admin.email' => null]);
+        $adminAccount = AdminAccount::query()->where('user_id', $admin->id)->firstOrFail();
+        $adminAccount->is_active = false;
+        $adminAccount->save();
 
-        $this->get('/admin/products')->assertForbidden();
+        $this->get('/admin/products')->assertRedirect(route('admin.login'));
+        $this->actingAs($admin);
         $this->post('/admin/logout')->assertRedirect(route('admin.login'));
         $this->assertGuest();
     }

@@ -21,12 +21,12 @@ return [
     | Admin Provisioning Credentials
     |--------------------------------------------------------------------------
     |
-    | The email also identifies the ONLY persisted account allowed by the
-    | access-admin gate. Empty/missing email denies administrator access.
-    | Keep it aligned with the existing administrator; no seeding is needed
-    | when deploying the gate. Never populate it from a request.
+    | ADMIN_EMAIL is used only to verify the existing user selected by the
+    | explicit admin:bootstrap command. Runtime authorization uses persisted
+    | admin_accounts grants, not this email. Never populate it from a request.
     |
-    | Used by AdminUserSeeder to create the single admin account. These are
+    | AdminUserSeeder can create a missing initial user without overwriting
+    | an existing account or granting permissions. These credentials are
     | read through config() (not env()) so provisioning keeps working after
     | `php artisan config:cache`, where env() would otherwise return null.
     | Never commit a real .env with actual values.

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\AdminAccount;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -41,5 +42,32 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $account = new AdminAccount;
+            $account->user_id = $user->id;
+            $account->role = 'super_admin';
+            $account->owner_slot = 1;
+            $account->is_active = true;
+            $account->permissions = [];
+            $account->must_change_password = false;
+            $account->save();
+        });
+    }
+
+    public function staff(array $permissions = [], bool $active = true, bool $mustChangePassword = false): static
+    {
+        return $this->afterCreating(function (User $user) use ($permissions, $active, $mustChangePassword): void {
+            $account = new AdminAccount;
+            $account->user_id = $user->id;
+            $account->role = 'staff';
+            $account->is_active = $active;
+            $account->permissions = $permissions;
+            $account->must_change_password = $mustChangePassword;
+            $account->save();
+        });
     }
 }

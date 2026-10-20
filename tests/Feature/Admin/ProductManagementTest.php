@@ -20,7 +20,7 @@ class ProductManagementTest extends TestCase
         parent::setUp();
 
         config(['admin.email' => 'admin@novinpay.test']);
-        $this->actingAs(User::factory()->create(['email' => 'admin@novinpay.test']));
+        $this->actingAs(User::factory()->superAdmin()->create(['email' => 'admin@novinpay.test']));
     }
 
     private function validPayload(array $overrides = []): array

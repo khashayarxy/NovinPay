@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminAction;
 use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Support\AdminHistory;
 use App\Support\FaNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -51,7 +54,10 @@ class ProductController extends Controller
         }
 
         try {
-            Product::create($data);
+            DB::transaction(function () use ($data): void {
+                $product = Product::create($data);
+                AdminHistory::record(AdminAction::ProductCreated, 'product', $product->id);
+            });
         } catch (Throwable $exception) {
             // The database write failed after the upload was persisted;
             // remove the just-stored file so it does not become orphaned.
@@ -90,7 +96,10 @@ class ProductController extends Controller
         }
 
         try {
-            $product->update($data);
+            DB::transaction(function () use ($product, $data): void {
+                $product->update($data);
+                AdminHistory::record(AdminAction::ProductUpdated, 'product', $product->id);
+            });
         } catch (Throwable $exception) {
             // The database write failed after the replacement was persisted;
             // remove the new file so it does not become orphaned. The old
@@ -115,7 +124,10 @@ class ProductController extends Controller
     {
         $imagePath = $product->image_path;
 
-        $product->delete();
+        DB::transaction(function () use ($product): void {
+            $product->delete();
+            AdminHistory::record(AdminAction::ProductDeleted, 'product', $product->id);
+        });
 
         $this->deleteImage($imagePath);
 

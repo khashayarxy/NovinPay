@@ -7,7 +7,7 @@
         <div class="card p-6 sm:p-8">
             <h1 class="text-xl font-bold">ورود به پنل مدیریت</h1>
             <p class="mt-2 text-sm leading-7 text-slate-600">
-                برای مدیریت محصولات وارد شوید. ثبت‌نام عمومی در این وب‌سایت وجود ندارد.
+                برای ورود به فضای مدیریت کسب‌وکار، اطلاعات حساب خود را وارد کنید. ثبت‌نام عمومی در این وب‌سایت وجود ندارد.
             </p>
 
             <form method="POST" action="{{ route('admin.login.store') }}" class="mt-6 space-y-4">
@@ -26,7 +26,7 @@
 
                 <div>
                     <label class="label" for="email">ایمیل</label>
-                    <input class="input" type="email" id="email" name="email" value="{{ old('email') }}"
+                    <input class="input" type="email" id="email" name="email" value="{{ is_string(old('email')) ? old('email') : '' }}"
                         autocomplete="username" required autofocus aria-describedby="email-hint">
                     <p class="mt-1 text-xs text-slate-500" id="email-hint">ایمیل مدیریت حساب</p>
                 </div>
