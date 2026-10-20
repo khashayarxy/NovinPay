@@ -1,173 +1,99 @@
 @extends('layouts.app')
 
+@section('meta_description', 'فروش دستگاه‌های کارتخوان نو و کارکرده و خدمات تعمیر PAX، NewPOS و Newland در شهریار. مشاوره و استعلام قیمت از نوین‌پی.')
+
 @section('content')
-    <section class="border-b border-slate-200 bg-white">
-        <div class="container-page section grid items-center gap-10 lg:grid-cols-2">
-            <div>
-                <p class="text-sm font-semibold text-brand-700">دستگاه کارتخوان (POS)</p>
-                <h1 class="mt-3 text-3xl font-bold leading-10 tracking-tight sm:text-4xl">
-                    فروش و تعمیر دستگاه‌های کارتخوان در شهریار
-                </h1>
-                <p class="mt-5 max-w-xl text-base leading-8 text-slate-600 sm:text-lg">
-                    {{ config('app.name') }} در زمینهٔ فروش، نصب و تعمیر دستگاه‌های کارتخوان برای فروشگاه‌ها و
-                    کسب‌وکارها فعالیت می‌کند. این نسخهٔ اولیهٔ وب‌سایت است؛ امکان خرید آنلاین و ثبت درخواست تعمیر
-                    به‌صورت آنلاین در نسخه‌های بعدی اضافه خواهد شد.
-                </p>
-                <div class="mt-7 flex flex-wrap gap-3">
-                    <a href="{{ route('products.index') }}" class="btn btn-primary">مشاهده محصولات</a>
-                    <a href="{{ route('repair') }}" class="btn btn-secondary">درخواست تعمیر دستگاه</a>
+    <section class="np-hero" aria-labelledby="hero-title">
+        <div class="np-container np-hero__grid">
+            <div class="np-hero__copy">
+                <p class="np-eyebrow">به {{ config('business.name') }} خوش آمدید</p>
+                <h1 id="hero-title">فروش و تعمیر تخصصی<br><span>کارتخوان</span></h1>
+                <p class="np-hero__description">دستگاه‌های کارتخوان نو و کارکرده از برندهای <bdi lang="en">PAX</bdi>، <bdi lang="en">NewPOS</bdi> و <bdi lang="en">Newland</bdi>؛ همراه شما در انتخاب، راه‌اندازی و تعمیر دستگاه.</p>
+                <div class="np-hero__actions">
+                    <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده محصولات<x-home.icon name="arrow-left" /></a>
+                    <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />خدمات تعمیرات<x-home.icon name="arrow-left" /></a>
                 </div>
             </div>
+            <x-home.artwork name="hero" label="ماسکات آبی نوین‌پی" class="np-hero__art" />
+        </div>
+    </section>
 
-            <div class="card p-6 sm:p-7">
-                <h2 class="text-base font-semibold text-slate-900">خدمات {{ config('app.name') }}</h2>
-                <ul class="mt-5 space-y-5">
-                    <li class="flex gap-4">
-                        <span class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700">
-                            ۱
-                        </span>
-                        <div>
-                            <p class="text-sm font-semibold text-slate-900">فروش دستگاه کارتخوان</p>
-                            <p class="mt-1 text-sm leading-7 text-slate-600">
-                                ارائهٔ دستگاه‌های نو و کارکرده به همراه لوازم جانبی و مصرفی موردنیاز کسب‌وکار.
-                            </p>
-                        </div>
-                    </li>
-                    <li class="flex gap-4">
-                        <span class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700">
-                            ۲
-                        </span>
-                        <div>
-                            <p class="text-sm font-semibold text-slate-900">تعمیر و سرویس</p>
-                            <p class="mt-1 text-sm leading-7 text-slate-600">
-                                عیب‌یابی و تعمیر دستگاه‌های کارتخوان توسط کارشناسان و پیگیری مرحله به مرحلهٔ تعمیر.
-                            </p>
-                        </div>
-                    </li>
-                    <li class="flex gap-4">
-                        <span class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700">
-                            ۳
-                        </span>
-                        <div>
-                            <p class="text-sm font-semibold text-slate-900">لوازم جانبی و مصرفی</p>
-                            <p class="mt-1 text-sm leading-7 text-slate-600">
-                                کابل، کیف محافظ، کاغذ حرارتی و سایر ملزومات دستگاه‌های کارتخوان.
-                            </p>
-                        </div>
-                    </li>
+    <section class="np-trust np-container" aria-label="همراه شما در خرید و تعمیر">
+        @foreach ([['tag', 'مشاورهٔ خرید', 'متناسب با نیاز شما'], ['shield-check', 'شفافیت وضعیت', 'نو یا کارکرده'], ['truck', 'هماهنگی تحویل', 'جزئیات هنگام استعلام'], ['headphones', 'راهنمایی تخصصی', 'برای خرید و تعمیر']] as [$icon, $title, $text])
+            <div class="np-trust__item"><x-home.icon :name="$icon" /><h2>{{ $title }}</h2><p>{{ $text }}</p></div>
+        @endforeach
+    </section>
+
+    <section class="np-container np-promotions" aria-label="فروش و تعمیر کارتخوان">
+        <article class="np-promo np-promo--sales">
+            <div class="np-promo__copy">
+                <p class="np-pill"><x-home.icon name="shopping-bag" />فروش دستگاه کارتخوان</p>
+                <h2>کارتخوان مناسب<br>برای کسب‌وکار شما</h2>
+                <p>انتخاب از میان دستگاه‌های نو و کارکرده، با مشخصات و وضعیت روشن.</p>
+                <a href="{{ route('products.index') }}" class="np-button np-button--sales">مشاهده محصولات<x-home.icon name="arrow-left" /></a>
+            </div>
+            <x-home.artwork name="sales" label="دستگاه‌های کارتخوان" />
+        </article>
+        <article class="np-promo np-promo--repairs">
+            <div class="np-promo__copy">
+                <p class="np-pill"><x-home.icon name="tool" />خدمات تخصصی تعمیر</p>
+                <h2>دستگاه کارتخوان شما<br>دوباره آمادهٔ کار</h2>
+                <p>برای بررسی مشکلات سخت‌افزاری و نرم‌افزاری دستگاه، با ما هماهنگ کنید.</p>
+                <a href="{{ route('repair') }}" class="np-button np-button--repairs">مشاهده خدمات تعمیرات<x-home.icon name="arrow-left" /></a>
+            </div>
+            <x-home.artwork name="repairs" label="تعمیر دستگاه کارتخوان" />
+        </article>
+    </section>
+
+    <section class="np-container np-services" aria-labelledby="popular-services-title">
+        <div class="np-section-heading">
+            <div><h2 id="popular-services-title">خدمات پرکاربرد ما</h2><p>برای هر مرحله از کار با کارتخوان، راهی برای راهنمایی شما داریم.</p></div>
+            <a href="{{ route('services') }}" class="np-small-link">همه خدمات<x-home.icon name="arrow-left" /></a>
+        </div>
+        <div class="np-services__grid">
+            @foreach ([['user', 'انتقال مالکیت', 'راهنمایی و انجام مراحل', 'services'], ['building-bank', 'تغییر حساب', 'بررسی و راه‌اندازی مجدد', 'services'], ['printer', 'رفع مشکل پرینتر', 'بررسی چاپ و قطعات', 'repair'], ['power', 'رفع مشکل خاموشی', 'عیب‌یابی دستگاه', 'repair'], ['antenna-bars-5', 'رفع مشکل آنتن‌دهی', 'بررسی ارتباط و آنتن', 'repair'], ['battery-charging', 'رفع مشکل شارژ', 'بررسی باتری و تغذیه', 'repair'], ['settings', 'سایر خدمات', 'راه‌اندازی و پشتیبانی', 'services']] as [$icon, $title, $text, $destination])
+                <a href="{{ route($destination) }}" class="np-service"><x-home.icon :name="$icon" /><h3>{{ $title }}</h3><p>{{ $text }}</p></a>
+            @endforeach
+        </div>
+    </section>
+
+    <div class="np-container np-about-grid">
+        <section class="np-why" aria-labelledby="why-title">
+            <div class="np-why__copy">
+                <h2 id="why-title"><x-home.icon name="diamond" />چرا نوین‌پی؟</h2>
+                <p>از انتخاب کارتخوان تا بررسی مشکل دستگاه، پاسخ پرسش‌هایتان را از ما بخواهید.</p>
+                <ul>
+                    @foreach (['راهنمای انتخاب متناسب با کسب‌وکار', 'اعلام وضعیت نو یا کارکردهٔ دستگاه', 'هماهنگی پیش از انجام تعمیر', 'امکان مراجعهٔ حضوری در شهریار'] as $advantage)
+                        <li><x-home.icon name="check" />{{ $advantage }}</li>
+                    @endforeach
                 </ul>
-                <a href="{{ route('services') }}" class="mt-6 inline-block text-sm font-semibold text-brand-700 hover:underline">
-                    توضیحات کامل خدمات →
-                </a>
             </div>
-        </div>
-    </section>
-
-    <section class="section" aria-labelledby="services-heading">
-        <div class="container-page">
-            <h2 id="services-heading" class="section-title">فروش و تعمیر دستگاه کارتخوان</h2>
-            <p class="section-lead">
-                دو خدمت اصلی {{ config('app.name') }} از این بخش قابل دسترسی است؛ جزئیات هر خدمت در صفحهٔ خدمات آمده
-                است.
-            </p>
-
-            <div class="mt-8 grid gap-6 md:grid-cols-2">
-                <article class="card p-6">
-                    <h3 class="text-lg font-semibold">فروش دستگاه کارتخوان</h3>
-                    <p class="mt-3 text-sm leading-8 text-slate-600">
-                        دستگاه‌های کارتخوان نو و کارکرده برای فروشگاه‌ها، رستوران‌ها و کسب‌وکارهای کوچک، همراه با
-                        راهنمای انتخاب دستگاه متناسب با نوع کسب‌وکار.
-                    </p>
-                    <ul class="mt-4 space-y-2 text-sm text-slate-600">
-                        <li>— دستگاه‌های ثابت و سیار</li>
-                        <li>— وضعیت نو و کارکرده با ذکر شفاف وضعیت کالا</li>
-                        <li>— لوازم جانبی و مصرفی مرتبط</li>
-                    </ul>
-                    <a href="{{ route('products.index') }}" class="btn btn-secondary mt-6">مشاهده محصولات</a>
-                </article>
-
-                <article class="card p-6">
-                    <h3 class="text-lg font-semibold">تعمیر و سرویس دستگاه</h3>
-                    <p class="mt-3 text-sm leading-8 text-slate-600">
-                        عیب‌یابی و تعمیر دستگاه‌های کارتخوان، تعیین وضعیت دستگاه پس از بررسی و هماهنگی با شما پیش از
-                        انجام کارهای هزینه‌بر.
-                    </p>
-                    <ul class="mt-4 space-y-2 text-sm text-slate-600">
-                        <li>— پذیرش حضوری دستگاه</li>
-                        <li>— عیب‌یابی و اعلام وضعیت قبل از تعمیر</li>
-                        <li>— کد پیگیری برای پیگیری روند تعمیر</li>
-                    </ul>
-                    <a href="{{ route('repair') }}" class="btn btn-secondary mt-6">توضیحات درخواست تعمیر</a>
-                </article>
+            <x-home.artwork name="support" label="تصویر مشاورهٔ نوین‌پی" />
+        </section>
+        <section class="np-brands" aria-labelledby="brands-title">
+            <h2 id="brands-title">برندهای تحت پوشش</h2>
+            <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
+            <div class="np-brands__grid">
+                @foreach (['Newland', 'NewPOS', 'PAX'] as $brand)
+                    <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand"><span lang="en" dir="ltr">{{ $brand }}</span><span>مشاهده دستگاه‌ها<x-home.icon name="arrow-left" /></span></a>
+                @endforeach
             </div>
-        </div>
-    </section>
+        </section>
+    </div>
 
-    <section class="border-y border-slate-200 bg-white" aria-labelledby="featured-heading">
-        <div class="container-page section">
-            <div class="flex flex-wrap items-end justify-between gap-4">
-                <div>
-                    <h2 id="featured-heading" class="section-title">محصولات</h2>
-                    <p class="section-lead">
-                        نمونه‌ای از کالاهای قابل ارائه. قیمت‌ها و وضعیت موجودی به‌صورت روزآمد نمایش داده می‌شوند؛
-                        برای استعلام و خرید با ما تماس بگیرید.
-                    </p>
-                </div>
-                <a href="{{ route('products.index') }}" class="btn btn-secondary">مشاهده همه محصولات</a>
-            </div>
-
-            <div class="mt-8">
-                @if ($featuredProducts->isEmpty())
-                    <x-empty-state title="هنوز محصولی ثبت نشده است"
-                        message="کاتالوگ محصولات در حال تکمیل است. به‌محض انتشار اطلاعات کالاها، این بخش نمایش داده خواهد شد.">
-                        <a href="{{ route('repair') }}" class="btn btn-secondary">درخواست تعمیر دستگاه</a>
-                    </x-empty-state>
-                @else
-                    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                        @foreach ($featuredProducts as $product)
-                            <x-product-card :product="$product" />
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-        </div>
-    </section>
-
-    <section class="section" aria-labelledby="repair-cta-heading">
-        <div class="container-page">
-            <div class="card flex flex-col items-start gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <h2 id="repair-cta-heading" class="text-xl font-bold sm:text-2xl">دستگاه شما مشکل دارد؟</h2>
-                    <p class="mt-3 max-w-2xl text-sm leading-8 text-slate-600">
-                        روند پذیرش و تعمیر دستگاه، مدارک موردنیاز و شیوهٔ پیگیری وضعیت تعمیر را در صفحهٔ تعمیر بخوانید.
-                        ثبت آنلاین درخواست در نسخه‌های بعدی فعال می‌شود.
-                    </p>
-                </div>
-                <div class="flex shrink-0 flex-wrap gap-3">
-                    <a href="{{ route('repair') }}" class="btn btn-primary">ورود به صفحهٔ تعمیر</a>
-                    <a href="{{ route('contact') }}" class="btn btn-secondary">تماس با ما</a>
+    <section class="np-location" aria-labelledby="location-title">
+        <div class="np-container np-location__grid">
+            <x-home.artwork name="store" label="تصویر تأییدشدهٔ فروشگاه" />
+            <div class="np-location__copy">
+                <h2 id="location-title"><x-home.icon name="map-pin" />مراجعهٔ حضوری</h2>
+                <address>{{ config('business.address') }}</address>
+                <p class="np-location__hours">{{ config('business.hours.open') }}<span> · {{ config('business.hours.closed') }}</span></p>
+                <div class="np-location__maps">
+                    @foreach (config('business.maps') as $label => $url)
+                        <a href="{{ $url }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" />{{ $label }}<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
+                    @endforeach
                 </div>
             </div>
-        </div>
-    </section>
-
-    <section class="border-t border-slate-200 bg-white" aria-labelledby="contact-strip-heading">
-        <div class="container-page py-10">
-            <h2 id="contact-strip-heading" class="text-base font-semibold text-slate-900">اطلاعات تماس</h2>
-            <dl class="mt-4 grid gap-4 text-sm sm:grid-cols-3">
-                <div class="rounded-lg border border-dashed border-slate-300 p-4">
-                    <dt class="font-medium text-slate-500">نشانی</dt>
-                    <dd class="mt-1 text-slate-700">{{ config('business.address') }}</dd>
-                </div>
-                <div class="rounded-lg border border-dashed border-slate-300 p-4">
-                    <dt class="font-medium text-slate-500">تلفن</dt>
-                    <dd class="mt-1 text-slate-700"><a href="{{ config('business.phone_uri') }}" class="contact-link" dir="ltr">{{ config('business.phone') }}</a></dd>
-                </div>
-                <div class="rounded-lg border border-dashed border-slate-300 p-4">
-                    <dt class="font-medium text-slate-500">ساعات کاری</dt>
-                    <dd class="mt-1 text-slate-700">{{ config('business.hours.open') }}<br>{{ config('business.hours.closed') }}</dd>
-                </div>
-            </dl>
         </div>
     </section>
 @endsection

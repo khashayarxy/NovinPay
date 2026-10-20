@@ -1,0 +1,70 @@
+<?php
+
+namespace Tests\Feature;
+
+use DOMDocument;
+use DOMXPath;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class HomePageTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_homepage_presents_all_approved_sections_and_seven_service_links(): void
+    {
+        $response = $this->get('/')->assertOk();
+        foreach (['hero-title', 'popular-services-title', 'brands-title', 'why-title', 'location-title'] as $section) {
+            $response->assertSee('id="'.$section.'"', false);
+        }
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+        $xpath = new DOMXPath($document);
+        $this->assertSame(1, $xpath->query('//h1')->length);
+        $this->assertSame(7, $xpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " np-service ")]')->length);
+        $this->assertSame(4, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " np-trust__item ")]')->length);
+        foreach ($xpath->query('//a') as $link) {
+            $this->assertNotSame('', $link->getAttribute('href'));
+            $this->assertNotSame('#', $link->getAttribute('href'));
+        }
+    }
+
+    public function test_homepage_only_names_supported_brands_and_links_to_existing_catalogue_filters(): void
+    {
+        $response = $this->get('/')->assertOk();
+        foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
+            $response->assertSee(route('products.index', ['q' => $brand]), false);
+            $this->get(route('products.index', ['q' => $brand]))->assertOk();
+        }
+        $response->assertDontSee('Verifone')->assertDontSee('Ingenico');
+    }
+
+    public function test_missing_original_artwork_has_five_labelled_slots_without_fake_images(): void
+    {
+        $response = $this->get('/')->assertOk();
+        foreach (['hero', 'sales', 'repairs', 'support', 'store'] as $slot) {
+            $response->assertSee('data-artwork-slot="'.$slot.'"', false);
+        }
+        $response->assertSee('تصویر در حال آماده‌سازی');
+        $response->assertDontSee('mascot-newpos.png');
+        $response->assertDontSee('file_00000000');
+        $response->assertDontSee('تضمین اصالت')->assertDontSee('تحویل سریع');
+    }
+
+    public function test_artwork_slot_can_load_a_local_asset_and_falls_back_for_a_missing_file(): void
+    {
+        config(['homepage.artwork.hero' => 'brand/novinpay-np-blue.svg']);
+        $this->get('/')->assertOk()->assertSee('fetchpriority="high"', false);
+
+        config(['homepage.artwork.hero' => 'images/not-supplied.png']);
+        $this->get('/')->assertOk()->assertDontSee('fetchpriority="high"', false)
+            ->assertSee('ماسکات آبی نوین‌پی');
+    }
+
+    public function test_homepage_specific_header_and_footer_do_not_replace_other_pages(): void
+    {
+        $this->get('/contact')->assertOk()->assertDontSee('np-header__inner')
+            ->assertDontSee('np-footer__grid');
+        $this->get('/admin/login')->assertOk()->assertDontSee('np-header__inner');
+    }
+}

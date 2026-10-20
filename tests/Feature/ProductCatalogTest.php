@@ -38,11 +38,13 @@ class ProductCatalogTest extends TestCase
             ->assertSee('هنوز محصولی ثبت نشده است');
     }
 
-    public function test_home_page_shows_empty_state_when_there_are_no_products(): void
+    public function test_home_page_introduces_services_even_when_catalogue_is_empty(): void
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('هنوز محصولی ثبت نشده است');
+            ->assertSee('خدمات پرکاربرد ما')
+            ->assertSee(route('products.index'))
+            ->assertDontSee('هنوز محصولی ثبت نشده است');
     }
 
     public function test_products_page_lists_product_details_and_sample_badge(): void
@@ -59,13 +61,14 @@ class ProductCatalogTest extends TestCase
         $response->assertSee('داده نمونه');
     }
 
-    public function test_home_page_shows_featured_products(): void
+    public function test_home_page_links_to_catalogue_without_duplicating_product_cards(): void
     {
         $this->makeProduct(['name' => 'کالای شاخص']);
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('کالای شاخص')
+            ->assertSee(route('products.index'))
+            ->assertDontSee('کالای شاخص')
             ->assertDontSee('هنوز محصولی ثبت نشده است');
     }
 
@@ -341,7 +344,7 @@ class ProductCatalogTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertDontSee('محصول پیش‌نویس در خانه')
-            ->assertSee('هنوز محصولی ثبت نشده است');
+            ->assertSee('خدمات پرکاربرد ما');
     }
 
     public function test_unpublished_product_detail_returns_404(): void
@@ -385,11 +388,12 @@ class ProductCatalogTest extends TestCase
         $response->assertDontSee('onmouseover="alert(2)"', false);
     }
 
-    public function test_home_featured_section_describes_live_pricing(): void
+    public function test_home_page_offers_price_inquiry_without_inventing_prices(): void
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('به‌صورت روزآمد نمایش داده می‌شوند')
+            ->assertSee('استعلام قیمت')
+            ->assertSee('href="tel:09362896373"', false)
             ->assertDontSee('پس از تکمیل بخش مدیریت');
     }
 

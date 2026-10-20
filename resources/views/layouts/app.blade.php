@@ -14,7 +14,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body class="flex min-h-screen flex-col">
+<body @class(['flex min-h-screen flex-col', 'homepage' => request()->routeIs('home')])>
     <a class="skip-link" href="#main-content">پرش به محتوای اصلی</a>
 
     @php
@@ -27,6 +27,9 @@
         ];
     @endphp
 
+    @if (request()->routeIs('home'))
+        <x-home.header />
+    @else
     <header class="border-b border-slate-200 bg-white">
         <div class="container-page flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-4">
             <a href="{{ route('home') }}" class="inline-flex rounded-lg"
@@ -54,11 +57,15 @@
             </nav>
         </div>
     </header>
+    @endif
 
     <main id="main-content" class="flex-1">
         @yield('content')
     </main>
 
+    @if (request()->routeIs('home'))
+        <x-home.footer />
+    @else
     <footer class="border-t border-slate-800 bg-slate-900 text-slate-200">
         <div class="container-page grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-3">
             <div>
@@ -94,6 +101,7 @@
             </div>
         </div>
     </footer>
+    @endif
 </body>
 
 </html>
