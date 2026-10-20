@@ -6,6 +6,9 @@
                 <p class="np-footer__hours"><x-home.icon name="clock" /><span>{{ config('business.hours.open') }}<br>{{ config('business.hours.closed') }}</span></p>
                 <a href="{{ config('business.phone_uri') }}" class="np-footer__phone" dir="ltr">{{ config('business.phone') }}</a>
                 <p>{{ config('business.address') }}</p>
+                @unless (request()->routeIs('home'))
+                    <x-map-links class="np-footer__maps" />
+                @endunless
             </div>
             <nav aria-label="خدمات نوین‌پی">
                 <h2>خدمات</h2>
@@ -25,7 +28,9 @@
                 <h2>دسترسی سریع</h2>
                 <a href="{{ route('home') }}">صفحه اصلی</a>
                 <a href="{{ route('products.index') }}">محصولات</a>
-                <a href="{{ route('repair') }}">راهنمای درخواست تعمیر</a>
+                <a href="{{ route('repair') }}">ثبت درخواست تعمیر</a>
+                <a href="{{ route('repair.track') }}">پیگیری درخواست</a>
+                <a href="{{ route('about') }}">درباره ما</a>
                 <a href="{{ route('contact') }}">تماس با ما</a>
             </nav>
             <div class="np-footer__brand">

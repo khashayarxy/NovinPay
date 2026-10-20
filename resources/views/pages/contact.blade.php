@@ -1,57 +1,13 @@
 @extends('layouts.app')
-
 @section('title', 'تماس با ما')
-@section('meta_description', 'اطلاعات تماس NovinPay — شهریار')
-
+@section('meta_description', 'شماره تماس، نشانی و ساعات کاری نوین‌پی در شهریار')
 @section('content')
-    <div class="container-page section">
-        <header>
-            <h1 class="section-title">تماس با ما</h1>
-            <p class="section-lead">
-                برای مشاورهٔ خرید یا هماهنگی مراجعهٔ حضوری به {{ config('business.name') }}، از اطلاعات زیر استفاده کنید.
-            </p>
-        </header>
-
-        <dl class="mt-6 grid gap-6 sm:grid-cols-2">
-            <div class="card p-6">
-                <dt class="text-sm font-semibold text-slate-900">نشانی</dt>
-                <dd class="mt-2 text-sm leading-7 text-slate-600">
-                    {{ config('business.address') }}
-                </dd>
-            </div>
-
-            <div class="card p-6">
-                <dt class="text-sm font-semibold text-slate-900">تلفن</dt>
-                <dd class="mt-2 text-sm leading-7 text-slate-600">
-                    <a href="{{ config('business.phone_uri') }}" class="contact-link" dir="ltr">{{ config('business.phone') }}</a>
-                </dd>
-            </div>
-
-            <div class="card p-6">
-                <dt class="text-sm font-semibold text-slate-900">مسیریابی</dt>
-                <dd class="mt-2 text-sm leading-7 text-slate-600">
-                    <x-map-links />
-                </dd>
-            </div>
-
-            <div class="card p-6">
-                <dt class="text-sm font-semibold text-slate-900">ساعات کاری</dt>
-                <dd class="mt-2 text-sm leading-7 text-slate-600">
-                    {{ config('business.hours.open') }}<br>{{ config('business.hours.closed') }}
-                </dd>
-            </div>
-        </dl>
-
-        <section class="mt-8 card p-6" aria-labelledby="contact-form-heading">
-            <h2 id="contact-form-heading" class="text-lg font-bold">پیام اینترنتی</h2>
-            <p class="mt-3 text-sm leading-8 text-slate-600">
-                فرم ارسال پیام هنوز به سامانه‌ای متصل نیست و در نسخه‌های بعدی وب‌سایت اضافه خواهد شد. تا زمان
-                راه‌اندازی، از طریق مراجعهٔ حضوری می‌توانید با ما در ارتباط باشید.
-            </p>
-            <div class="mt-5 flex flex-wrap gap-3">
-                <a href="{{ route('repair') }}" class="btn btn-secondary">درخواست تعمیر دستگاه</a>
-                <a href="{{ route('products.index') }}" class="btn btn-secondary">مشاهده محصولات</a>
-            </div>
-        </section>
+<div class="np-container public-section">
+    <x-page-heading title="با نوین‌پی در تماس باشید" eyebrow="تماس با ما" icon="headphones" lead="برای مشاورهٔ خرید، پرسش دربارهٔ تعمیرات یا هماهنگی مراجعهٔ حضوری، از راه‌های ارتباطی زیر استفاده کنید." />
+    <div class="public-split">
+        <section class="public-panel public-contact-primary" aria-labelledby="phone-title"><span class="public-icon"><x-home.icon name="phone" /></span><h2 id="phone-title">گفت‌وگو با نوین‌پی</h2><a class="public-phone" href="{{ config('business.phone_uri') }}" dir="ltr">{{ config('business.phone') }}</a><p>{{ config('business.hours.open') }}<br>{{ config('business.hours.closed') }}</p><a href="{{ route('repair') }}" class="np-button np-button--primary">ثبت آنلاین درخواست تعمیر <x-home.icon name="arrow-left" /></a></section>
+        <section class="public-panel" aria-labelledby="address-title"><span class="public-icon"><x-home.icon name="map-pin" /></span><h2 id="address-title">مراجعهٔ حضوری</h2><address>{{ config('business.address') }}</address><p class="public-hint">برای انتخاب مسیر، یکی از نقشه‌ها را باز کنید.</p><x-map-links class="public-map-links" /></section>
     </div>
+    <div class="public-callout"><div><h2>قبلاً درخواست تعمیر ثبت کرده‌اید؟</h2><p>با کد پیگیری و شمارهٔ همراه ثبت‌شده، وضعیت اولیهٔ درخواست آنلاین را بررسی کنید.</p></div><a class="np-button np-button--outline" href="{{ route('repair.track') }}">پیگیری درخواست <x-home.icon name="arrow-left" /></a></div>
+</div>
 @endsection

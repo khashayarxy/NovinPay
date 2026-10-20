@@ -61,10 +61,10 @@ class HomePageTest extends TestCase
             ->assertSee('ماسکات آبی نوین‌پی');
     }
 
-    public function test_homepage_specific_header_and_footer_do_not_replace_other_pages(): void
+    public function test_public_pages_share_homepage_chrome_while_admin_remains_separate(): void
     {
-        $this->get('/contact')->assertOk()->assertDontSee('np-header__inner')
-            ->assertDontSee('np-footer__grid');
+        $this->get('/contact')->assertOk()->assertSee('np-header__inner')
+            ->assertSee('np-footer__grid');
         $this->get('/admin/login')->assertOk()->assertDontSee('np-header__inner');
     }
 }

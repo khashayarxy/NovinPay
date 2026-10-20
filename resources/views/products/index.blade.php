@@ -3,16 +3,16 @@
 @section('title', 'محصولات')
 
 @section('content')
-    <div class="container-page section">
-        <header>
-            <h1 class="section-title">محصولات</h1>
-            <p class="section-lead">
-                فهرست دستگاه‌های کارتخوان و لوازم جانبی. جستجو و دسته‌بندی بر اساس داده‌های ثبت‌شده در وب‌سایت
-                انجام می‌شود.
-            </p>
-        </header>
+    <div class="np-container public-section public-catalogue">
+        <x-page-heading title="کارتخوان مناسب کسب‌وکار شما" eyebrow="محصولات نوین‌پی" icon="shopping-bag" lead="محصولات ثبت‌شده را بررسی و مقایسه کنید. برای استعلام قیمت و انتخاب دستگاه با نوین‌پی تماس بگیرید.">
+            <div class="public-brand-filters" aria-label="جستجوی برند">
+                @foreach (['PAX', 'NewPOS', 'Newland'] as $brand)
+                    <a href="{{ route('products.index', ['q' => $brand]) }}" lang="en" @if ($term === $brand) aria-current="true" @endif>{{ $brand }}</a>
+                @endforeach
+            </div>
+        </x-page-heading>
 
-        <form method="get" action="{{ route('products.index') }}" class="card mt-8 p-4 sm:p-5">
+        <form method="get" action="{{ route('products.index') }}" class="card public-filter p-4 sm:p-5" aria-label="جستجو و فیلتر محصولات">
             @if ($errors->any())
                 <p id="error-summary" role="alert" tabindex="-1"
                     class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -74,7 +74,7 @@
                     </x-empty-state>
                 @endif
             @else
-                <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="public-product-grid">
                     @foreach ($products as $product)
                         <x-product-card :product="$product" />
                     @endforeach

@@ -408,4 +408,24 @@ class ProductCatalogTest extends TestCase
             ->assertSee('id="error-summary"', false)
             ->assertSee('دسته‌بندی انتخاب‌شده معتبر نیست');
     }
+
+    public function test_brand_search_and_category_paginate_only_published_matches_without_propagating_other_parameters(): void
+    {
+        for ($i = 1; $i <= 13; $i++) {
+            $this->makeProduct(['name' => 'PAX کارتخوان آزمایشی '.$i, 'slug' => 'pax-filter-'.$i]);
+        }
+        $hidden = $this->makeProduct(['name' => 'PAX کالای منتشرنشده', 'is_published' => false]);
+        $printer = $this->makeProduct(['name' => 'PAX چاپگر آزمایشی', 'category' => ProductCategory::Printer]);
+        $other = $this->makeProduct(['name' => 'Newland کالای دیگر']);
+
+        $response = $this->get('/products?q=PAX&category=pos_terminal&tracking_reference=PRIVATE-UNRELATED');
+        $response->assertOk()->assertSee('۱۳ محصول یافت شد')->assertDontSee('PRIVATE-UNRELATED');
+        foreach ([$hidden, $printer, $other] as $excluded) {
+            $response->assertDontSee($excluded->name);
+        }
+        $response->assertViewHas('products', fn ($products) => $products->total() === 13 && $products->count() === 12);
+        $this->get('/products?q=PAX&category=pos_terminal&page=2')->assertOk()
+            ->assertViewHas('products', fn ($products) => $products->count() === 1);
+        $this->get(route('products.show', $hidden))->assertNotFound();
+    }
 }

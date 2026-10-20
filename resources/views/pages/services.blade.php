@@ -1,67 +1,20 @@
 @extends('layouts.app')
-
 @section('title', 'خدمات')
-@section('meta_description', 'فروش، نصب و تعمیر دستگاه‌های کارتخوان (POS) — خدمات NovinPay')
-
+@section('meta_description', 'خدمات فروش، بررسی و تعمیر کارتخوان PAX، NewPOS و Newland در نوین‌پی شهریار')
 @section('content')
-    <div class="container-page section">
-        <header>
-            <h1 class="section-title">خدمات فروش و تعمیر دستگاه کارتخوان</h1>
-            <p class="section-lead">
-                {{ config('app.name') }} دو خدمت اصلی به کسب‌وکارهای شهریار ارائه می‌دهد: تأمین دستگاه کارتخوان و
-                تعمیر دستگاه‌های موجود. جزئیات قیمت، شرایط گارانتی و زمان‌بندی هنوز نهایی نشده است.
-            </p>
-        </header>
-
-        <div class="mt-10 grid gap-6 lg:grid-cols-2">
-            <section class="card p-6 sm:p-8" aria-labelledby="sales-heading">
-                <h2 id="sales-heading" class="text-xl font-bold">فروش دستگاه کارتخوان</h2>
-                <p class="mt-4 text-sm leading-8 text-slate-600">
-                    دستگاه‌های کارتخوان برای فروشگاه‌ها، رستوران‌ها، واحدهای خدماتی و سایر کسب‌وکارها در دو دستهٔ
-                    ثابت و سیار عرضه می‌شوند. پیش از خرید، نوع دستگاه بر اساس نوع کسب‌وکار، حجم تراکنش و محل نصب
-                    به شما پیشنهاد می‌شود.
-                </p>
-                <ul class="mt-5 space-y-3 text-sm text-slate-600">
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> دستگاه‌های کارتخوان نو و کارکرده با ذکر شفاف وضعیت کالا</li>
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> راهنمای انتخاب دستگاه متناسب با نیاز کسب‌وکار</li>
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> لوازم جانبی: کابل، کیف محافظ و لوازم مصرفی</li>
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> راهنمای نصب و راه‌اندازی اولیهٔ دستگاه</li>
-                </ul>
-                <div class="mt-6 flex flex-wrap gap-3">
-                    <a href="{{ route('products.index') }}" class="btn btn-primary">مشاهده محصولات</a>
-                </div>
-                <p class="mt-4 text-xs leading-6 text-slate-500">
-                    شرایط قیمت‌گذاری، ارسال و گارانتی پس از تأیید نهایی در این صفحه اعلام می‌شود.
-                </p>
-            </section>
-
-            <section class="card p-6 sm:p-8" aria-labelledby="repair-service-heading">
-                <h2 id="repair-service-heading" class="text-xl font-bold">تعمیر و سرویس دستگاه</h2>
-                <p class="mt-4 text-sm leading-8 text-slate-600">
-                    دستگاه‌های کارتخوان پس از پذیرش، توسط کارشناسان عیب‌یابی می‌شوند. وضعیت دستگاه و هزینهٔ احتمالی
-                    پیش از انجام کارهای هزینه‌بر با شما هماهنگ خواهد شد.
-                </p>
-                <ul class="mt-5 space-y-3 text-sm text-slate-600">
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> پذیرش حضوری دستگاه و ثبت مشکل اعلامی</li>
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> عیب‌یابی و اعلام وضعیت پیش از تعمیر</li>
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> تعمیر، سرویس دوره‌ای و تعویض قطعات</li>
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> ارائهٔ کد پیگیری برای پیگیری روند تعمیر</li>
-                </ul>
-                <div class="mt-6 flex flex-wrap gap-3">
-                    <a href="{{ route('repair') }}" class="btn btn-primary">درخواست تعمیر</a>
-                </div>
-                <p class="mt-4 text-xs leading-6 text-slate-500">
-                    ثبت آنلاین درخواست و پیگیری آنلاین تعمیر در نسخه‌های بعدی وب‌سایت فعال می‌شود.
-                </p>
-            </section>
-        </div>
-
-        <section class="mt-10 rounded-xl border border-dashed border-slate-300 p-6" aria-labelledby="pending-heading">
-            <h2 id="pending-heading" class="text-base font-semibold text-slate-800">در حال تکمیل</h2>
-            <p class="mt-2 text-sm leading-7 text-slate-600">
-                تعرفهٔ خدمات، شرایط گارانتی، زمان تقریبی تعمیر و نحوهٔ ارسال دستگاه هنوز اعلام نشده است. این موارد
-                پس از تأیید نهایی به همین صفحه اضافه خواهد شد.
-            </p>
-        </section>
+<div class="np-container public-section">
+    <x-page-heading title="خدمات کارتخوان، در کنار شما" eyebrow="خدمات نوین‌پی" icon="tool" lead="از انتخاب دستگاه تا بررسی مشکل کارتخوان فعلی؛ خدمت مورد نیازتان را انتخاب کنید و برای هماهنگی با ما در تماس باشید." />
+    <div class="public-split">
+        <section class="public-panel public-feature public-feature--mint"><span class="public-icon"><x-home.icon name="shopping-bag" /></span><h2>فروش دستگاه کارتخوان</h2><p>دستگاه‌های نو و کارکردهٔ <bdi lang="en">PAX</bdi>، <bdi lang="en">NewPOS</bdi> و <bdi lang="en">Newland</bdi> را در کاتالوگ ببینید. وضعیت، مشخصات و قیمت فقط بر اساس اطلاعات ثبت‌شدهٔ هر کالا نمایش داده می‌شود.</p><a class="np-button np-button--primary" href="{{ route('products.index') }}">مشاهدهٔ محصولات <x-home.icon name="arrow-left" /></a></section>
+        <section class="public-panel public-feature public-feature--peach"><span class="public-icon"><x-home.icon name="tool" /></span><h2>بررسی و تعمیر کارتخوان</h2><p>برای خاموشی، مشکل شارژ، آنتن‌دهی یا چاپ دستگاه درخواست آنلاین ثبت کنید. ثبت درخواست، تأیید دریافت فیزیکی دستگاه یا شروع تعمیر نیست.</p><a class="np-button np-button--primary" href="{{ route('repair') }}">ثبت درخواست تعمیر <x-home.icon name="arrow-left" /></a></section>
     </div>
+    <section class="public-section-block" aria-labelledby="service-list-title"><div class="public-section-title"><div><span>خدمات پرکاربرد</span><h2 id="service-list-title">چه کمکی نیاز دارید؟</h2></div><a href="{{ config('business.phone_uri') }}" class="public-inline-link">مشاورهٔ تلفنی <x-home.icon name="phone" /></a></div>
+        <div class="public-service-grid">
+            @foreach ([['user', 'انتقال مالکیت', 'راهنمایی دربارهٔ انتقال مالکیت دستگاه'], ['building-bank', 'تغییر حساب', 'بررسی و راهنمایی تنظیم حساب دستگاه'], ['printer', 'مشکل پرینتر', 'بررسی چاپ و قطعات مرتبط'], ['power', 'مشکل خاموشی', 'بررسی روشن‌نشدن دستگاه'], ['antenna-bars-5', 'مشکل آنتن‌دهی', 'بررسی ارتباط و آنتن دستگاه'], ['battery-charging', 'مشکل شارژ', 'بررسی باتری و مسیر شارژ']] as [$icon, $title, $copy])
+                <a href="{{ route(in_array($icon, ['user', 'building-bank'], true) ? 'contact' : 'repair') }}" class="public-service"><x-home.icon :name="$icon" /><h3>{{ $title }}</h3><p>{{ $copy }}</p><span>{{ in_array($icon, ['user', 'building-bank'], true) ? 'درخواست راهنمایی' : 'درخواست بررسی' }} ←</span></a>
+            @endforeach
+        </div>
+    </section>
+    <div class="public-callout"><div><h2>پیش از مراجعه، هماهنگ کنید</h2><p>هزینه، امکان تعمیر و زمان انجام کار با ثبت فرم تعیین نمی‌شود. برای پرسش دربارهٔ خدمت مورد نیاز با ما تماس بگیرید.</p></div><a href="{{ config('business.phone_uri') }}" class="np-button np-button--outline" dir="ltr">{{ config('business.phone') }} <x-home.icon name="phone" /></a></div>
+</div>
 @endsection

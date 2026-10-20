@@ -20,6 +20,8 @@ class PublicPagesTest extends TestCase
             'contact' => ['/contact'],
             'terms' => ['/terms'],
             'privacy' => ['/privacy'],
+            'about' => ['/about'],
+            'tracking' => ['/repair/track'],
         ];
     }
 
@@ -54,13 +56,14 @@ class PublicPagesTest extends TestCase
         $response->assertSee(route('repair'));
     }
 
-    public function test_repair_page_labels_online_submission_as_coming_soon(): void
+    public function test_repair_page_distinguishes_online_submission_from_physical_receipt(): void
     {
         $response = $this->get('/repair');
 
         $response->assertOk();
-        $response->assertSee('به‌زودی');
+        $response->assertSee('به معنی دریافت دستگاه نیست');
         $response->assertSee('کد پیگیری');
+        $response->assertSee('method="post"', false)->assertDontSee('fieldset disabled');
     }
 
     public function test_contact_page_displays_official_business_details(): void

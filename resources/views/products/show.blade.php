@@ -4,7 +4,7 @@
 @section('meta_description', e(\Illuminate\Support\Str::limit(strip_tags($product->summary ?? $product->description ?? ''), 150)))
 
 @section('content')
-    <div class="container-page section">
+    <div class="np-container public-section public-product-detail">
         <nav aria-label="مسیر صفحه" class="text-sm text-slate-500">
             <ol class="flex flex-wrap items-center gap-2">
                 <li><a href="{{ route('home') }}" class="hover:text-brand-700">خانه</a></li>
@@ -15,7 +15,7 @@
             </ol>
         </nav>
 
-        <div class="mt-6 grid gap-8 lg:grid-cols-2">
+        <div class="mt-6 grid gap-8 lg:grid-cols-2 public-product-overview">
             <div class="card overflow-hidden">
                 <div class="aspect-square bg-slate-100">
                     <x-product-image :product="$product" />
@@ -69,8 +69,9 @@
                     </p>
                 @endif
 
-                <div class="mt-6 flex flex-wrap gap-3">
-                    <a href="{{ route('contact') }}" class="btn btn-primary">استعلام و خرید</a>
+                <div class="mt-6 flex flex-wrap gap-3 public-actions">
+                    <a href="{{ config('business.phone_uri') }}" class="btn btn-primary"><x-home.icon name="phone" /> تماس برای استعلام</a>
+                    <a href="{{ route('contact') }}" class="btn btn-secondary">استعلام و خرید</a>
                     <a href="{{ route('repair') }}" class="btn btn-secondary">درخواست تعمیر دستگاه</a>
                 </div>
             </div>
@@ -87,7 +88,7 @@
             <section class="card p-6" aria-labelledby="specs-heading">
                 <h2 id="specs-heading" class="text-lg font-semibold">مشخصات فنی</h2>
                 @if ($product->specifications && count($product->specifications) > 0)
-                    <dl class="mt-4 divide-y divide-slate-100 text-sm">
+                    <dl class="mt-4 divide-y divide-slate-100 text-sm public-specifications">
                         @foreach ($product->specifications as $label => $value)
                             <div class="flex items-start justify-between gap-4 py-3">
                                 <dt class="text-slate-500">{{ $label }}</dt>

@@ -11,9 +11,9 @@ class PageController extends Controller
         return view('pages.services');
     }
 
-    public function repair(): View
+    public function about(): View
     {
-        return view('pages.repair');
+        return view('pages.about');
     }
 
     public function contact(): View

@@ -1,6 +1,6 @@
 @props(['product'])
 
-<article class="card flex flex-col overflow-hidden">
+<article class="card public-product-card flex flex-col overflow-hidden">
     <a href="{{ route('products.show', $product) }}" class="block bg-slate-100" tabindex="-1" aria-hidden="true">
         <div class="aspect-[4/3]">
             <x-product-image :product="$product" />
@@ -28,7 +28,7 @@
         </h3>
 
         @if ($product->summary)
-            <p class="text-sm leading-7 text-slate-600">{{ $product->summary }}</p>
+            <p class="text-sm leading-7 text-slate-600 public-product-summary">{{ $product->summary }}</p>
         @endif
 
         <div class="mt-auto flex items-end justify-between gap-3 border-t border-slate-100 pt-3">

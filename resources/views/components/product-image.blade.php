@@ -2,7 +2,7 @@
 
 @if ($product->image_path)
     <img src="{{ asset('storage/' . $product->image_path) }}" alt="تصویر {{ $product->name }}" loading="lazy"
-        class="h-full w-full object-cover">
+        class="h-full w-full object-contain">
 @else
     <div class="flex h-full w-full items-center justify-center bg-slate-100" role="img"
         aria-label="تصویری برای {{ $product->name }} ثبت نشده است">

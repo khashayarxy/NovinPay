@@ -1,111 +1,33 @@
 @extends('layouts.app')
-
 @section('title', 'درخواست تعمیر')
-@section('meta_description', 'روند پذیرش، تعمیر و پیگیری دستگاه کارتخوان — NovinPay')
-
+@section('meta_description', 'ثبت آنلاین درخواست تعمیر کارتخوان و دریافت کد پیگیری نوین‌پی')
 @section('content')
-    <div class="container-page section">
-        <header>
-            <h1 class="section-title">درخواست تعمیر دستگاه کارتخوان</h1>
-            <p class="section-lead">
-                در این صفحه می‌توانید با روند پذیرش و تعمیر دستگاه و شیوهٔ پیگیری وضعیت آن آشنا شوید. ثبت آنلاین
-                درخواست هنوز راه‌اندازی نشده است و در نسخه‌های بعدی وب‌سایت فعال خواهد شد.
-            </p>
-        </header>
-
-        <div class="mt-10 grid gap-6 lg:grid-cols-3">
-            <section class="card p-6" aria-labelledby="step-1">
-                <p class="text-xs font-semibold text-brand-700">مرحلهٔ ۱</p>
-                <h2 id="step-1" class="mt-2 text-base font-semibold">ثبت درخواست</h2>
-                <p class="mt-3 text-sm leading-7 text-slate-600">
-                    در حال حاضر ثبت درخواست به‌صورت حضوری و با مراجعه به محل کسب‌وکار انجام می‌شود. برای هماهنگی با
-                    <a href="{{ config('business.phone_uri') }}" class="contact-link" dir="ltr">{{ config('business.phone') }}</a> تماس بگیرید.
-                </p>
-            </section>
-
-            <section class="card p-6" aria-labelledby="step-2">
-                <p class="text-xs font-semibold text-brand-700">مرحلهٔ ۲</p>
-                <h2 id="step-2" class="mt-2 text-base font-semibold">عیب‌یابی و اعلام وضعیت</h2>
-                <p class="mt-3 text-sm leading-7 text-slate-600">
-                    دستگاه پس از پذیرش عیب‌یابی می‌شود. وضعیت دستگاه و هزینهٔ احتمالی پیش از انجام تعمیر هزینه‌بر با
-                    شما هماهنگ خواهد شد.
-                </p>
-            </section>
-
-            <section class="card p-6" aria-labelledby="step-3">
-                <p class="text-xs font-semibold text-brand-700">مرحلهٔ ۳</p>
-                <h2 id="step-3" class="mt-2 text-base font-semibold">تحویل دستگاه</h2>
-                <p class="mt-3 text-sm leading-7 text-slate-600">
-                    پس از تعمیر و کنترل نهایی، دستگاه به همراه شرح انجام‌شده به شما تحویل داده می‌شود.
-                </p>
-            </section>
-        </div>
-
-        <div class="mt-8 grid gap-6 lg:grid-cols-2">
-            <section class="card p-6 sm:p-8" aria-labelledby="tracking-heading">
-                <h2 id="tracking-heading" class="text-lg font-bold">پیگیری وضعیت تعمیر</h2>
-                <p class="mt-4 text-sm leading-8 text-slate-600">
-                    برای هر درخواست تعمیر یک <strong class="font-semibold text-slate-800">کد پیگیری</strong> صادر
-                    می‌شود. با این کد می‌توانید وضعیت دستگاه خود را پیگیری کنید. پیگیری حضوری و تلفنی در حال حاضر
-                    امکان‌پذیر است و پیگیری آنلاین از طریق وب‌سایت در نسخه‌های بعدی اضافه خواهد شد.
-                </p>
-                <ul class="mt-5 space-y-3 text-sm text-slate-600">
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> وضعیت‌ها: پذیرش‌شده، در حال عیب‌یابی، در انتظار قطعه، آمادهٔ تحویل</li>
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> ارائهٔ کد پیگیری هنگام تحویل دستگاه</li>
-                    <li class="flex gap-3"><span class="text-brand-700">—</span> امکان پیگیری آنلاین با کد پیگیری: به‌زودی</li>
-                </ul>
-            </section>
-
-            <section aria-labelledby="online-form-heading">
-                <div class="card overflow-hidden">
-                    <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
-                        <h2 id="online-form-heading" class="text-lg font-bold">فرم آنلاین ثبت درخواست</h2>
-                        <p class="mt-1 text-xs text-slate-500">پیش‌نمایش — ارسال نمی‌شود</p>
-                    </div>
-
-                    <div class="border-b border-amber-200 bg-amber-50 px-6 py-3">
-                        <p class="text-xs leading-6 text-amber-800">
-                            <strong class="font-semibold">به‌زودی:</strong> این فرم هنوز به سامانهٔ ثبت درخواست متصل
-                            نشده است و دکمهٔ ثبت غیرفعال است. تا زمان فعال‌سازی، درخواست شما را حضوری ثبت می‌کنیم.
-                        </p>
-                    </div>
-
-                    <form class="p-6" aria-disabled="true">
-                        <fieldset disabled class="space-y-4">
-                            <div>
-                                <label for="repair-name" class="label">نام و نام خانوادگی</label>
-                                <input id="repair-name" name="name" type="text" class="input" placeholder="نام شما">
-                            </div>
-                            <div>
-                                <label for="repair-phone" class="label">شماره تماس</label>
-                                <input id="repair-phone" name="phone" type="tel" class="input"
-                                    placeholder="۰۹۱۲۰۰۰۰۰۰۰" dir="ltr">
-                            </div>
-                            <div>
-                                <label for="repair-device" class="label">مدل دستگاه</label>
-                                <input id="repair-device" name="device" type="text" class="input"
-                                    placeholder="مدل یا برچسب دستگاه">
-                            </div>
-                            <div>
-                                <label for="repair-issue" class="label">شرح مشکل</label>
-                                <textarea id="repair-issue" name="issue" rows="4" class="input" placeholder="مشکل دستگاه را شرح دهید"></textarea>
-                            </div>
-                            <button type="button" class="btn btn-primary w-full" aria-disabled="true" disabled>
-                                ثبت درخواست (به‌زودی)
-                            </button>
-                        </fieldset>
-                    </form>
+<div class="np-container public-section">
+    <x-page-heading title="درخواست تعمیر کارتخوان" eyebrow="تعمیرات نوین‌پی" icon="tool" lead="مشکل دستگاه را برای ما بنویسید و کد پیگیری دریافت کنید. ثبت این فرم فقط یک درخواست آنلاین است و به معنی دریافت دستگاه نیست.">
+        <a href="{{ route('repair.track') }}" class="public-inline-link">قبلاً درخواست داده‌اید؟ پیگیری درخواست <x-home.icon name="arrow-left" /></a>
+    </x-page-heading>
+    <div class="public-split public-split--form">
+        <section class="public-panel" aria-labelledby="repair-form-title">
+            <div class="public-panel__heading"><span class="public-icon"><x-home.icon name="tool" /></span><div><h2 id="repair-form-title">ثبت درخواست آنلاین</h2><p>همهٔ موارد ستاره‌دار ضروری هستند.</p></div></div>
+            <x-form-errors />
+            <form method="post" action="{{ route('repair.store') }}" class="public-form">
+                @csrf
+                <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
+                <div class="public-form__grid">
+                    <x-repair-field name="customer_name" label="نام و نام خانوادگی"><input id="customer_name" name="customer_name" class="input" autocomplete="name" required minlength="2" maxlength="100" aria-invalid="{{ $errors->has('customer_name') ? 'true' : 'false' }}" aria-describedby="customer_name-feedback"></x-repair-field>
+                    <x-repair-field name="contact_phone" label="شمارهٔ همراه" hint="شمارهٔ ۱۱ رقمی با ۰۹؛ برای پیگیری هم لازم است."><input type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="tel" autocomplete="tel" required maxlength="40" placeholder="0912 000 0000" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback"></x-repair-field>
+                    <x-repair-field name="device_brand" label="برند دستگاه"><select id="device_brand" name="device_brand" class="input" required aria-invalid="{{ $errors->has('device_brand') ? 'true' : 'false' }}" aria-describedby="device_brand-feedback"><option value="">انتخاب برند</option>@foreach ($brands as $brand)<option value="{{ $brand->value }}">{{ $brand->value }}</option>@endforeach</select></x-repair-field>
+                    <x-repair-field name="device_model" label="مدل دستگاه" hint="مدل را از روی برچسب دستگاه بنویسید."><input id="device_model" name="device_model" class="input" required maxlength="100" aria-invalid="{{ $errors->has('device_model') ? 'true' : 'false' }}" aria-describedby="device_model-feedback"></x-repair-field>
                 </div>
-
-                <p class="mt-4 rounded-lg border border-dashed border-slate-300 px-4 py-3 text-xs leading-6 text-slate-600">
-                    این بخش صرفاً پیش‌نمایش ظاهری فرم آینده است؛ هیچ داده‌ای دریافت یا ذخیره نمی‌شود.
-                </p>
-            </section>
-        </div>
-
-        <div class="mt-8 flex flex-wrap gap-3">
-            <a href="{{ route('contact') }}" class="btn btn-secondary">اطلاعات تماس</a>
-            <a href="{{ route('services') }}" class="btn btn-secondary">سایر خدمات</a>
-        </div>
+                <x-repair-field name="issue" label="شرح مشکل" hint="۱۰ تا ۲۰۰۰ نویسه؛ اطلاعات کارت بانکی، رمز یا اطلاعات حساب را وارد نکنید."><textarea id="issue" name="issue" class="input" rows="5" required minlength="10" maxlength="2000" aria-invalid="{{ $errors->has('issue') ? 'true' : 'false' }}" aria-describedby="issue-feedback"></textarea></x-repair-field>
+                <p class="public-hint">نام، شماره تماس، مدل و شرح مشکل برای ثبت این درخواست ذخیره می‌شوند. <a class="public-inline-link" href="{{ route('privacy') }}">اطلاعات حریم خصوصی</a></p>
+                <button class="np-button np-button--primary" type="submit">ثبت درخواست و دریافت کد <x-home.icon name="arrow-left" /></button>
+            </form>
+        </section>
+        <aside class="public-sidebar">
+            <div class="public-notice"><x-home.icon name="shield-check" /><h2>درخواست آنلاین، پیش از پذیرش دستگاه</h2><p>در این مرحله فقط اطلاعات درخواست ثبت می‌شود. دریافت فیزیکی، هزینه و زمان تعمیر با ارسال فرم تأیید نمی‌شوند.</p></div>
+            <div class="public-panel"><h2>پس از ثبت چه می‌بینید؟</h2><ol class="public-steps"><li><span>۱</span><div><h3>کد پیگیری اختصاصی</h3><p>کد نمایش‌داده‌شده را در جای امن نگه دارید.</p></div></li><li><span>۲</span><div><h3>پیگیری با شمارهٔ همراه</h3><p>فقط با کد کامل و شمارهٔ ثبت‌شده، وضعیت اولیه را ببینید.</p></div></li><li><span>۳</span><div><h3>هماهنگی مراجعه</h3><p>برای هماهنگی مراجعه یا پرسش دربارهٔ دستگاه با ما تماس بگیرید.</p></div></li></ol><a class="public-inline-link" href="{{ config('business.phone_uri') }}" dir="ltr">{{ config('business.phone') }} <x-home.icon name="phone" /></a></div>
+        </aside>
     </div>
+</div>
 @endsection
