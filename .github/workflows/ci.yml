@@ -33,8 +33,6 @@ jobs:
     name: PHP SQLite
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    env:
-      APP_CONFIG_CACHE: ${{ runner.temp }}/novinpay-config.php
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -50,6 +48,7 @@ jobs:
           key="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
           echo "::add-mask::$key"
           echo "APP_KEY=$key" >> "$GITHUB_ENV"
+          echo "APP_CONFIG_CACHE=$RUNNER_TEMP/novinpay-config.php" >> "$GITHUB_ENV"
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/composer/files
@@ -84,7 +83,6 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     env:
-      APP_CONFIG_CACHE: ${{ runner.temp }}/novinpay-config.php
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: '3307'
@@ -93,7 +91,6 @@ jobs:
       DB_PASSWORD: disposable-ci
       DB_URL: mysql://novinpay_ci:disposable-ci@127.0.0.1:3307/novinpay_phase6c_ci
       NOVINPAY_DISPOSABLE_COMMERCE: '1'
-      NOVINPAY_COMMERCE_ARTIFACTS: ${{ runner.temp }}/novinpay-commerce
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -109,6 +106,8 @@ jobs:
           key="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
           echo "::add-mask::$key"
           echo "APP_KEY=$key" >> "$GITHUB_ENV"
+          echo "APP_CONFIG_CACHE=$RUNNER_TEMP/novinpay-config.php" >> "$GITHUB_ENV"
+          echo "NOVINPAY_COMMERCE_ARTIFACTS=$RUNNER_TEMP/novinpay-commerce" >> "$GITHUB_ENV"
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/composer/files
