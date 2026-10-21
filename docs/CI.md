@@ -12,7 +12,10 @@ push to `main`. Keep these job names stable: they are the required GitHub checks
 Both PHP jobs set testing environment variables before Composer hooks execute,
 use array sessions/cache and a randomly generated masked application key, and
 avoid cached application configuration. No owner environment, database, key,
-hosting credentials or GitHub repository secrets are required. MySQL credentials
+configuration or data is copied into CI. Each runner creates an empty `.env` to
+avoid missing-file warnings; all testing settings come from explicit variables.
+Both HTTP suites build Vite assets before rendering pages and fail on warnings.
+No hosting credentials or GitHub repository secrets are required. MySQL credentials
 in the workflow are public disposable service credentials, not deployment values.
 The concurrency harness independently rejects non-disposable database targets.
 Migration rollback is destructive only to that job's synthetic service data.

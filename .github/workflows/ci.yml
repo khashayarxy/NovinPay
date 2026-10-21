@@ -48,6 +48,7 @@ jobs:
           tools: composer:v2
       - name: Generate disposable application key
         run: |
+          touch .env
           key="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
           echo "::add-mask::$key"
           echo "APP_KEY=$key" >> "$GITHUB_ENV"
@@ -69,7 +70,7 @@ jobs:
       - name: Build assets required by rendered PHP responses
         run: npm ci && npm run build
       - name: Full SQLite regression suite
-        run: php artisan test --compact --display-warnings
+        run: php artisan test --compact --display-warnings --fail-on-warning
 
   php-mysql:
     name: PHP MySQL 8
@@ -112,6 +113,7 @@ jobs:
           tools: composer:v2
       - name: Generate disposable application key
         run: |
+          touch .env
           key="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
           echo "::add-mask::$key"
           echo "APP_KEY=$key" >> "$GITHUB_ENV"
@@ -130,7 +132,7 @@ jobs:
       - name: Build assets required by rendered PHP responses
         run: npm ci && npm run build
       - name: Full MySQL regression suite
-        run: php artisan test --compact --display-warnings
+        run: php artisan test --compact --display-warnings --fail-on-warning
       - name: Actual competing-connection scenarios
         run: |
           mkdir -p "$NOVINPAY_COMMERCE_ARTIFACTS"
