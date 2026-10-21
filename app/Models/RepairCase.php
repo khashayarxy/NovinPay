@@ -11,6 +11,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class RepairCase extends Model
 {
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
     protected $guarded = ['*'];
 
     protected $visible = ['public_id', 'status'];

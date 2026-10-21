@@ -42,6 +42,19 @@ final class StaffAdministration
                 }
             }
             $creating = $target === null;
+            foreach ($permissions as $permission) {
+                $dependencies = match ($permission) {
+                    'customers.contact' => ['customers.view'],
+                    'customers.manage', 'customers.link', 'customers.notes' => ['customers.view', 'customers.contact'],
+                    'customers.reconcile' => ['customers.view', 'customers.contact', 'customers.manage', 'customers.link', 'customers.notes'],
+                    'consultations.contact', 'consultations.manage' => ['consultations.view'],
+                    'consultations.history' => ['consultations.view', 'consultations.contact'],
+                    default => [],
+                };
+                if (array_diff($dependencies, $permissions)) {
+                    throw ValidationException::withMessages(['permissions' => 'مجوز مشتری یا مشاوره به مجوزهای پایهٔ مشاهده و اطلاعات خصوصی نیاز دارد.']);
+                }
+            }
             $account = $creating ? new AdminAccount : AdminAccount::query()->lockForUpdate()->findOrFail($target->id);
             // Owner/self accounts cannot be updated, demoted, replaced or deactivated here.
             abort_if(! $creating && ($account->role !== 'staff' || $account->owner_slot !== null || $account->user_id === $actor->id), 403);

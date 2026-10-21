@@ -19,6 +19,16 @@ enum AdminPermission: string
     case RepairsDeliver = 'repairs.deliver';
     case RepairsPrint = 'repairs.print';
     case ActivityView = 'activity.view';
+    case CustomersView = 'customers.view';
+    case CustomersContact = 'customers.contact';
+    case CustomersManage = 'customers.manage';
+    case CustomersLink = 'customers.link';
+    case CustomersReconcile = 'customers.reconcile';
+    case CustomersNotes = 'customers.notes';
+    case ConsultationsView = 'consultations.view';
+    case ConsultationsContact = 'consultations.contact';
+    case ConsultationsManage = 'consultations.manage';
+    case ConsultationsHistory = 'consultations.history';
 
     public function label(): string
     {
@@ -38,6 +48,16 @@ enum AdminPermission: string
             self::RepairsDeliver => 'تحویل یا بازگرداندن دستگاه',
             self::RepairsPrint => 'مشاهدهٔ اسناد قابل چاپ تعمیر',
             self::ActivityView => 'مشاهدهٔ تاریخچهٔ فعالیت مدیریت',
+            self::CustomersView => 'مشاهدهٔ فهرست و شناسهٔ پروفایل مشتری',
+            self::CustomersContact => 'مشاهدهٔ نام و تماس مشتری',
+            self::CustomersManage => 'ایجاد، ویرایش و بایگانی پروفایل مشتری',
+            self::CustomersLink => 'اتصال و جداسازی تأییدشدهٔ سوابق مشتری',
+            self::CustomersReconcile => 'تطبیق و انتقال کنترل‌شدهٔ پروفایل تکراری',
+            self::CustomersNotes => 'مشاهدهٔ یادداشت‌ها و تاریخچهٔ خصوصی مشتری',
+            self::ConsultationsView => 'مشاهدهٔ فرادادهٔ صندوق مشاوره',
+            self::ConsultationsContact => 'مشاهدهٔ اطلاعات تماس و پرسش مشاوره',
+            self::ConsultationsManage => 'تخصیص و مدیریت مرحلهٔ مشاوره',
+            self::ConsultationsHistory => 'مشاهدهٔ یادداشت‌ها و سابقهٔ تماس مشاوره',
         };
     }
 }

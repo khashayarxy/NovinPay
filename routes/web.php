@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityController;
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\PasswordController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\RepairCaseController;
 use App\Http\Controllers\Admin\RepairOverviewController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductController;
@@ -32,6 +34,11 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
 });
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
+Route::middleware(PrivateRepairResponse::class)->group(function (): void {
+    Route::get('/consultation', [ConsultationController::class, 'create'])->name('consultation');
+    Route::post('/consultation', [ConsultationController::class, 'store'])->middleware('throttle:consultation-submit')->name('consultation.store');
+    Route::get('/consultation/confirmation', [ConsultationController::class, 'confirmation'])->name('consultation.confirmation');
+});
 Route::get('/terms', [PageController::class, 'terms'])->name('terms');
 Route::get('/privacy', [PageController::class, 'privacy'])->name('privacy');
 
@@ -61,6 +68,28 @@ Route::middleware([PrivateAdminResponse::class, 'auth'])->prefix('admin')->name(
         Route::post('staff', [StaffController::class, 'store'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.store');
         Route::match(['put', 'patch'], 'staff/{staff}', [StaffController::class, 'update'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.update');
         Route::get('activities', [ActivityController::class, 'index'])->middleware('can:activity.view')->name('activities.index');
+        Route::middleware('can:customers.view')->group(function (): void {
+            $controller = CustomerController::class;
+            Route::get('customers', [$controller, 'index'])->name('customers.index');
+            Route::post('customers/search', [$controller, 'search'])->name('customers.search');
+            Route::get('customers/create', [$controller, 'create'])->name('customers.create');
+            Route::post('customers', [$controller, 'store'])->defaults('operation', 'customer.save')->middleware('throttle:20,1')->name('customers.store');
+            Route::get('customers/{customer}', [$controller, 'show'])->name('customers.show');
+            Route::get('customers/{customer}/edit', [$controller, 'edit'])->name('customers.edit');
+            Route::put('customers/{customer}', [$controller, 'update'])->defaults('operation', 'customer.save')->middleware('throttle:20,1')->name('customers.update');
+            foreach (['link', 'note', 'reconcile'] as $operation) {
+                Route::post('customers/{customer}/'.$operation, [$controller, 'operation'])->defaults('operation', 'customer.'.$operation)->middleware('throttle:20,1')->name('customers.'.$operation);
+            }
+        });
+        Route::middleware('can:consultations.view')->group(function (): void {
+            $controller = App\Http\Controllers\Admin\ConsultationController::class;
+            Route::get('consultations', [$controller, 'index'])->name('consultations.index');
+            Route::post('consultations/search', [$controller, 'search'])->name('consultations.search');
+            Route::get('consultations/{consultation}', [$controller, 'show'])->name('consultations.show');
+            foreach (['assign', 'transition', 'entry'] as $operation) {
+                Route::post('consultations/{consultation}/'.$operation, [$controller, 'update'])->defaults('operation', 'consultation.'.$operation)->middleware('throttle:30,1')->name('consultations.'.$operation);
+            }
+        });
         Route::get('repair-requests', [RepairOverviewController::class, 'index'])->middleware('can:repairs.view')->name('repairs.index');
         Route::get('repair-requests/{repairRequest}', [RepairOverviewController::class, 'show'])->middleware('can:view,repairRequest')->name('repairs.show');
         Route::middleware('can:repairs.view')->group(function (): void {

@@ -13,6 +13,15 @@ class RepairServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $response = fn (Request $request, array $headers) => response()->view('errors.429', [], 429, $headers);
+        RateLimiter::for('consultation-submit', function (Request $request) use ($response): array {
+            $limits = [Limit::perHour(10)->by('consultation-ip:'.RepairIdentity::digest('ip', $request->ip() ?? ''))->response($response)];
+            $phone = RepairIdentity::phone($request->input('contact_phone'));
+            if (preg_match('/\A09[0-9]{9}\z/', $phone)) {
+                $limits[] = Limit::perHour(3)->by('consultation-phone:'.RepairIdentity::digest('phone', $phone))->response($response);
+            }
+
+            return $limits;
+        });
         RateLimiter::for('repair-submit', function (Request $request) use ($response): array {
             $limits = [Limit::perHour(10)->by('submit-ip:'.RepairIdentity::digest('ip', $request->ip() ?? ''))->response($response)];
             $phone = RepairIdentity::phone($request->input('contact_phone'));

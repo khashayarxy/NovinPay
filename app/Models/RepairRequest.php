@@ -5,10 +5,16 @@ namespace App\Models;
 use App\Enums\RepairBrand;
 use App\Enums\RepairRequestStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class RepairRequest extends Model
 {
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
     public function physicalCase(): HasOne
     {
         return $this->hasOne(RepairCase::class);
@@ -20,7 +26,7 @@ class RepairRequest extends Model
     // Do not expose records through accidental JSON serialization.
     protected $hidden = [
         'id', 'customer_name', 'contact_phone', 'phone_digest', 'device_brand',
-        'device_model', 'issue', 'submission_digest', 'created_at', 'updated_at',
+        'device_model', 'issue', 'submission_digest', 'created_at', 'updated_at', 'customer_id',
     ];
 
     protected function casts(): array

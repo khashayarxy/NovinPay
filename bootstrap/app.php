@@ -35,10 +35,12 @@ return Application::configure(basePath: dirname(__DIR__))
         });
         $exceptions->render(function (Throwable $exception, Request $request) {
             if (! SafeDatabaseErrors::query($exception)) {
-                if ($exception instanceof HttpException && $request->is('admin/repairs*') && in_array($exception->getStatusCode(), [409, 422], true)) {
+                if ($exception instanceof HttpException && $request->is('admin/repairs*', 'admin/customers*', 'admin/consultations*') && in_array($exception->getStatusCode(), [409, 422], true)) {
                     $message = $exception->getMessage() ?: 'اطلاعات عملیات را بررسی و پرونده را دوباره باز کنید.';
 
-                    return $request->expectsJson() ? response()->json(['message' => $message], $exception->getStatusCode()) : response()->view('admin.repair-cases.error', ['status' => $exception->getStatusCode(), 'message' => $message], $exception->getStatusCode());
+                    $view = $request->is('admin/repairs*') ? 'admin.repair-cases.error' : 'admin.crm-error';
+
+                    return $request->expectsJson() ? response()->json(['message' => $message], $exception->getStatusCode()) : response()->view($view, ['status' => $exception->getStatusCode(), 'message' => $message], $exception->getStatusCode());
                 }
 
                 return null;

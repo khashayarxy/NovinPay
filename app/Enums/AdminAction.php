@@ -27,6 +27,17 @@ enum AdminAction: string
     case RepairWork = 'repair.work';
     case RepairDelivery = 'repair.delivery';
     case RepairDocument = 'repair.document_viewed';
+    case CustomerCreated = 'customer.created';
+    case CustomerUpdated = 'customer.updated';
+    case CustomerLinked = 'customer.linked';
+    case CustomerUnlinked = 'customer.unlinked';
+    case CustomerReconciled = 'customer.reconciled';
+    case CustomerNote = 'customer.note';
+    case CustomerViewed = 'customer.contact_viewed';
+    case ConsultationViewed = 'consultation.contact_viewed';
+    case ConsultationAssigned = 'consultation.assigned';
+    case ConsultationTransition = 'consultation.transition';
+    case ConsultationEntry = 'consultation.entry';
 
     public function label(): string
     {
@@ -50,6 +61,12 @@ enum AdminAction: string
             self::RepairEstimate => 'صدور نسخهٔ برآورد', self::RepairDecision => 'ثبت تصمیم مشتری توسط کارمند',
             self::RepairWork => 'ثبت کار تعمیر', self::RepairDelivery => 'ثبت تحویل دستگاه',
             self::RepairDocument => 'مشاهدهٔ سند قابل چاپ تعمیر',
+            self::CustomerCreated => 'ایجاد پروفایل مشتری', self::CustomerUpdated => 'ویرایش یا بایگانی پروفایل مشتری',
+            self::CustomerLinked => 'اتصال تأییدشدهٔ سابقه به مشتری', self::CustomerUnlinked => 'جداسازی سابقه از مشتری',
+            self::CustomerReconciled => 'تطبیق کنترل‌شدهٔ پروفایل تکراری', self::CustomerNote => 'افزودن یادداشت مشتری',
+            self::CustomerViewed => 'مشاهدهٔ تماس مشتری', self::ConsultationViewed => 'مشاهدهٔ اطلاعات خصوصی مشاوره',
+            self::ConsultationAssigned => 'تخصیص مشاوره', self::ConsultationTransition => 'تغییر مرحلهٔ مشاوره',
+            self::ConsultationEntry => 'ثبت یادداشت یا تلاش تماس مشاوره',
         };
     }
 }

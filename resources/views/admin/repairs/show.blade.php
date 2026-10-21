@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'جزئیات درخواست آنلاین')
 @section('content')
+<x-customer-association :record="$repair"/>
 @if($physicalCase)<div class="admin-notice"><h2>پذیرش فیزیکی جداگانه ثبت شده است</h2><a class="admin-text-link" href="{{ route('admin.repair-cases.show', $physicalCase) }}">مشاهدهٔ پروندهٔ دستگاه ←</a></div>@else @can('repairs.intake') @can('repairs.customer_data')<div class="admin-notice"><h2>این درخواست هنوز پذیرش فیزیکی نیست</h2><p>تنها هنگام دریافت واقعی دستگاه پذیرش را ثبت کنید.</p><a class="btn btn-primary" href="{{ route('admin.repair-cases.create', ['request'=>$repair->id]) }}">ثبت دریافت حضوری مرتبط</a></div>@endcan @endcan @endif
 <header class="admin-page-heading"><div><p class="admin-eyebrow">نمای فقط‌خواندنی</p><h1>درخواست آنلاین شمارهٔ {{ \App\Support\FaNumber::digits($repair->id) }}</h1><p>{{ $physicalCase ? 'ثبت اولیهٔ مشتری؛ اطلاعات دریافت در پروندهٔ مرتبط نگهداری می‌شود.' : 'ثبت اولیهٔ مشتری؛ دریافت فیزیکی دستگاه تأیید نشده است.' }}</p></div><a href="{{ route('admin.repairs.index') }}" class="admin-text-link">بازگشت به فهرست ←</a></header>
 <div class="admin-notice"><h2>{{ $physicalCase ? 'درخواست اولیهٔ آنلاین؛ دارای پذیرش فیزیکی مرتبط' : $repair->status->label() }}</h2><p>سوابق هزینه، تعمیر و تحویل در پروندهٔ فیزیکی جداگانه نگهداری می‌شوند.</p></div>

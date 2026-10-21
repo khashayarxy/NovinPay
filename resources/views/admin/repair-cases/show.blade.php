@@ -4,6 +4,7 @@
 @php($stage = $case->status->value)
 <header class="admin-page-heading"><div><p class="admin-eyebrow">دستگاه دارای پذیرش فیزیکی</p><h1>پروندهٔ تعمیر {{ $case->device_brand->value }}</h1><p class="repair-id" dir="ltr">{{ $case->public_id }}</p></div><a class="admin-text-link" href="{{ route('admin.repair-cases.index') }}">بازگشت به فهرست ←</a></header>
 <x-admin.errors />
+<x-customer-association :record="$case"/>
 <div class="repair-status-banner"><div><span class="admin-eyebrow">مرحلهٔ فعلی</span><h2>{{ $case->status->label() }}</h2><p>دریافت: {{ \App\Support\RepairTime::display($case->received_at) }} · {{ $case->receiver->name }}</p></div><div><p>تکنسین: <strong>{{ $case->technician?->name ?? 'تخصیص نیافته' }}</strong></p><p>نوع پذیرش: {{ $case->repair_request_id ? 'مرتبط با درخواست آنلاین' : 'مستقیم در فروشگاه' }}</p></div></div>
 <nav aria-label="میانبرهای پرونده" class="admin-actions repair-jump-links"><a class="admin-text-link" href="#repair-actions">عملیات پرونده ↓</a><a class="admin-text-link" href="#repair-timeline">خط زمانی ↓</a></nav>
 <div class="repair-layout mt-6"><div class="repair-main-stack">

@@ -1,0 +1,41 @@
+@extends('layouts.admin')
+@section('title', 'پروفایل مشتری')
+@section('content')
+@php($canOperate = $contact && $customer->is_active && !$customer->merged_into_id && (auth()->user()->can('customers.link') || ($notes && auth()->user()->can('customers.manage'))))
+@php($hasSideContent = $canOperate || ($contact && $duplicates->isNotEmpty()))
+<header class="admin-page-heading"><div><p class="admin-eyebrow">پروفایل مشتری · نسخهٔ {{ \App\Support\FaNumber::digits($customer->version) }}</p><h1>{{ $contact ? $customer->name : 'پروفایل با اطلاعات محدود' }}</h1><p class="crm-code">{{ $customer->public_id }}</p></div><div class="admin-actions"><a class="admin-text-link" href="{{ route('admin.customers.index') }}">دفتر مشتریان ←</a>@if(!$customer->merged_into_id) @can('customers.manage') @can('customers.contact')<a class="btn btn-secondary" href="{{ route('admin.customers.edit', $customer) }}">ویرایش / بایگانی</a>@endcan @endcan @endif</div></header>
+<x-admin.errors/>
+<nav class="admin-actions repair-jump-links" aria-label="میانبرهای پروفایل"><a class="admin-text-link" href="#customer-history">سوابق مرتبط ↓</a>@if($canOperate)<a class="admin-text-link" href="#customer-actions">عملیات پروفایل ↓</a>@endif</nav>
+<div @class(['crm-two-column' => $hasSideContent, 'repair-main-stack' => !$hasSideContent])><div class="repair-main-stack">
+<section class="admin-panel"><div class="admin-panel-heading"><h2>اطلاعات جاری مشتری</h2><span class="admin-status">{{ $customer->is_active ? 'فعال' : 'بایگانی‌شده' }}</span></div>
+@if($contact)<dl class="admin-definition"><div><dt>نام ثبت‌شده</dt><dd>{{ $customer->name }}</dd></div><div><dt>همراه</dt><dd dir="ltr">{{ $customer->contact_phone }}</dd></div></dl>@else<p class="admin-hint">نام، شماره و یادداشت‌ها برای این حساب نمایش داده نمی‌شوند.</p>@endif
+<p class="admin-hint">این پروفایل، تأیید دیجیتال مالکیت شماره نیست. اطلاعات تاریخی هر درخواست و پذیرش جداگانه حفظ می‌شود.</p>
+@if($customer->merged_into_id)<a class="admin-text-link" href="{{ route('admin.customers.show', $customer->mergedInto) }}">این پروفایل تطبیق یافته؛ مشاهدهٔ مقصد ←</a>@endif
+@foreach($predecessors as $previous)<a class="admin-text-link crm-code" href="{{ route('admin.customers.show', $previous) }}">سابقهٔ پروفایل تطبیق‌یافته: {{ $previous->public_id }}</a>@endforeach
+</section>
+<section class="admin-panel" id="customer-history"><h2>سوابق مرتبط</h2><p class="admin-hint">فقط سوابقی که صریحاً متصل شده‌اند نمایش داده می‌شوند؛ نمایش جزئیات به مجوز همان بخش نیاز دارد.</p>
+@if($requests) <h3 class="mt-4">درخواست آنلاین تعمیر</h3>@forelse($requests as $record)<div class="crm-related"><div><strong>{{ $record->device_brand->value }}</strong><p>درخواست شمارهٔ {{ \App\Support\FaNumber::digits($record->id) }} · ثبت آنلاین</p></div><a class="admin-text-link" href="{{ route('admin.repairs.show', $record) }}">درخواست آنلاین ←</a></div>@empty<p class="admin-hint">درخواست آنلاین مرتبطی وجود ندارد.</p>@endforelse {{ $requests->links() }} @endif
+@if($cases)<h3 class="mt-4">پذیرش فیزیکی</h3>@forelse($cases as $record)<div class="crm-related"><div><strong>{{ $record->device_brand->value }} · {{ $record->status->label() }}</strong><p class="crm-code">{{ $record->public_id }}</p></div><a class="admin-text-link" href="{{ route('admin.repair-cases.show', $record) }}">پروندهٔ تعمیر ←</a></div>@empty<p class="admin-hint">پذیرش فیزیکی مرتبطی وجود ندارد.</p>@endforelse {{ $cases->links() }} @endif
+@if($consultations)<h3 class="mt-4">مشاوره‌ها</h3>@forelse($consultations as $record)<div class="crm-related"><div><strong>{{ \App\Models\Consultation::TOPICS[$record->topic] }}</strong><p>{{ \App\Models\Consultation::STATUSES[$record->status] }}</p><small class="crm-code">{{ $record->public_id }}</small></div><a class="admin-text-link" href="{{ route('admin.consultations.show', $record) }}">درخواست مشاوره ←</a></div>@empty<p class="admin-hint">مشاورهٔ مرتبطی وجود ندارد.</p>@endforelse {{ $consultations->links() }} @endif
+@if(!$requests && !$cases && !$consultations)<p class="admin-hint">مشاهدهٔ سوابق به مجوز تعمیرات یا مشاوره نیاز دارد.</p>@endif
+</section>
+@if($notes)<section class="admin-panel"><h2>یادداشت‌ها و تاریخچهٔ خصوصی</h2>@forelse($notes as $note)<article class="crm-history"><p class="whitespace-pre-line">{{ $note->body }}</p><small>{{ $note->actor->name }} · {{ \App\Support\RepairTime::display($note->created_at) }} · {{ ['profile'=>'پروفایل', 'link'=>'اتصال سابقه', 'reconciliation'=>'تطبیق هویت', 'note'=>'یادداشت'][$note->kind] }}</small></article>@empty<p class="admin-hint">یادداشتی ثبت نشده است.</p>@endforelse {{ $notes->links() }}</section>@endif
+</div><aside class="repair-main-stack" id="customer-actions">
+@if($contact && $duplicates->isNotEmpty())<section class="admin-panel"><h2>شمارهٔ مشترک؛ نیازمند بررسی</h2><p class="admin-hint">این موارد فقط نامزد تطبیق‌اند؛ یکسان بودن شماره مجوز ادغام نیست.</p>@foreach($duplicates as $duplicate)<div class="crm-history"><strong>{{ $duplicate->name }}</strong><a class="admin-text-link" href="{{ route('admin.customers.show', $duplicate) }}">بررسی پروفایل ←</a></div>@endforeach</section>@endif
+@if(!$customer->merged_into_id && $customer->is_active)
+@can('customers.link') @can('customers.contact')
+<x-crm-operation :action="route('admin.customers.link', $customer)" :version="$customer->version" title="اتصال یا جداسازی سابقه">
+<div><label class="label" for="link-type">نوع سابقه</label><select id="link-type" name="type" class="input">@can('repairs.customer_data') @can('repairs.view')<option value="request">درخواست آنلاین تعمیر</option><option value="case">پذیرش فیزیکی</option>@endcan @endcan @can('consultations.contact') @can('consultations.view')<option value="consultation">درخواست مشاوره</option>@endcan @endcan</select></div>
+<x-operation-field name="record" label="شمارهٔ درخواست آنلاین یا شناسهٔ کامل پرونده / مشاوره" :maxlength="64"/>
+<div><label for="link-mode" class="label">عملیات</label><select name="unlink" id="link-mode" class="input"><option value="0">اتصال سابقهٔ بدون پروفایل</option><option value="1">جداسازی سابقه از همین پروفایل</option></select></div>
+<x-operation-field name="reason" label="دلیل و مرجع بررسی هویت؛ خصوصی" kind="textarea" :maxlength="1000"/>
+<label class="admin-checkbox"><input type="checkbox" name="identity_reviewed" value="1" required> هویت شخص در سابقه را مستقل از شمارهٔ همراه بررسی کرده‌ام.</label><button class="btn btn-primary" type="submit">ثبت ارتباط بررسی‌شده</button>
+</x-crm-operation>@endcan @endcan
+@if($notes) @can('customers.manage')<x-crm-operation :action="route('admin.customers.note', $customer)" :version="$customer->version" title="یادداشت داخلی"><x-operation-field name="body" label="یادداشت خصوصی مشتری" kind="textarea"/><p class="admin-hint">گذرواژه، اطلاعات بانکی یا مدرک غیرضروری وارد نکنید. یادداشت پس از ثبت قابل تغییر نیست.</p><button class="btn btn-secondary" type="submit">ثبت یادداشت</button></x-crm-operation>@endcan @endif
+@can('customers.reconcile') @can('customers.manage') @can('customers.link') @can('customers.notes') @can('customers.contact')
+<section class="admin-panel"><details><summary>تطبیق پروفایل تکراری</summary><p class="admin-hint mt-4">تمام اتصال‌های این پروفایل به مقصد منتقل و این پروفایل فقط خواندنی می‌شود. نام، شماره، یادداشت‌های قبلی و اطلاعات تعمیرات بازنویسی نمی‌شود. مقصد را جداگانه باز و نسخهٔ جاری آن را بررسی کنید.</p>
+<form class="admin-form mt-4" method="post" action="{{ route('admin.customers.reconcile', $customer) }}">@csrf<input type="hidden" name="version" value="{{ $customer->version }}"><x-operation-field name="destination" label="شناسهٔ کامل پروفایل مقصد" :maxlength="36"/><x-operation-field name="destination_version" label="نسخهٔ جاری پروفایل مقصد" type="number"/><x-operation-field name="reason" label="دلیل و مرجع احراز یکسان بودن هویت؛ خصوصی" kind="textarea" :maxlength="1000"/><label class="admin-checkbox"><input type="checkbox" name="identity_reviewed" value="1" required> هر دو شخص را یک هویت واحد احراز کرده‌ام؛ فقط بر شمارهٔ مشترک تکیه نکرده‌ام و انتقال اتصال‌ها را تأیید می‌کنم.</label><button class="btn btn-secondary" type="submit">انتقال ارتباط‌ها و بایگانی این پروفایل</button></form>
+</details></section>@endcan @endcan @endcan @endcan @endcan
+@endif
+</aside></div>
+@endsection
