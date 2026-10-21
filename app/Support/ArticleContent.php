@@ -45,34 +45,43 @@ final class ArticleContent
 
     private static function inlines(string $text): array
     {
-        preg_match_all('/\[[^\]\n]*\]\(([^)\n]*)\)/u', $text, $links);
-        foreach ($links[1] as $url) {
-            $parts = parse_url($url);
-            if (! filter_var($url, FILTER_VALIDATE_URL) || ! $parts || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true) || isset($parts['user']) || isset($parts['pass']) || preg_match('/[\x00-\x20\x7f]/', $url)) {
-                self::invalid();
-            }
-        }
-        preg_match_all('/\*\*[^*\n]+\*\*|\*[^*\n]+\*|\[[^\]\n]{1,200}\]\([^\s)]{1,2048}\)/u', $text, $matches, PREG_OFFSET_CAPTURE);
+        // One tokenizer owns both recognition and validation. Brackets are reserved
+        // for complete links; malformed markup must not silently become plain text.
+        preg_match_all('/\[[^\[\]\r\n]*\]\([^()\r\n]*\)|\*\*[^*\[\]\r\n]+\*\*|\*[^*\[\]\r\n]+\*/u', $text, $matches, PREG_OFFSET_CAPTURE);
         $nodes = [];
         $cursor = 0;
         foreach ($matches[0] as [$token,$offset]) {
             if ($offset > $cursor) {
-                $nodes[] = ['type' => 'text', 'text' => substr($text, $cursor, $offset - $cursor)];
+                $nodes[] = self::plain(substr($text, $cursor, $offset - $cursor));
             }
             if (str_starts_with($token, '**')) {
                 $nodes[] = ['type' => 'strong', 'text' => substr($token, 2, -2)];
             } elseif (str_starts_with($token, '*')) {
                 $nodes[] = ['type' => 'em', 'text' => substr($token, 1, -1)];
             } else {
-                preg_match('/\A\[([^\]]+)\]\((.+)\)\z/u', $token, $link);
-                $nodes[] = ['type' => 'link', 'text' => $link[1], 'url' => $link[2]];
+                preg_match('/\A\[([^\]]*)\]\((.*)\)\z/u', $token, $link);
+                $url = $link[2];
+                $parts = parse_url($url);
+                if (trim($link[1]) === '' || mb_strlen($link[1]) > 200 || strlen($url) > 2048 || ! filter_var($url, FILTER_VALIDATE_URL) || ! $parts || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true) || isset($parts['user']) || isset($parts['pass']) || preg_match('/[\s\p{Z}\x00-\x20\x7f]/u', $url)) {
+                    self::invalid();
+                }
+                $nodes[] = ['type' => 'link', 'text' => $link[1], 'url' => $url];
             }
             $cursor = $offset + strlen($token);
         }
         if ($cursor < strlen($text)) {
-            $nodes[] = ['type' => 'text', 'text' => substr($text, $cursor)];
+            $nodes[] = self::plain(substr($text, $cursor));
         }
 
         return $nodes;
+    }
+
+    private static function plain(string $text): array
+    {
+        if (str_contains($text, '[') || str_contains($text, ']')) {
+            self::invalid();
+        }
+
+        return ['type' => 'text', 'text' => $text];
     }
 }

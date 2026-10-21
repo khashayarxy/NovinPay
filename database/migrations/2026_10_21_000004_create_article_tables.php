@@ -18,8 +18,31 @@ return new class extends Migration
                 throw new RuntimeException('Article migrations require MySQL 8.0.16+.');
             }
             $policy = DB::selectOne('SELECT @@global.log_bin AS logging, @@global.log_bin_trust_function_creators AS trusted');
-            $grants = implode(' ', array_map(fn ($row) => implode(' ', (array) $row), DB::select('SHOW GRANTS FOR CURRENT_USER')));
-            if ($policy->logging && ! $policy->trusted && ! str_contains($grants, 'SUPER') && ! preg_match('/ALL PRIVILEGES ON \*\.\*/', $grants)) {
+            $grants = DB::select('SHOW GRANTS FOR CURRENT_USER');
+            $database = DB::connection()->getDatabaseName();
+            $trigger = false;
+            $super = false;
+            foreach ($grants as $row) {
+                $grant = array_values((array) $row)[0];
+                if (! preg_match('/\AGRANT (.+?) ON (.+?) TO /', $grant, $match)) {
+                    continue;
+                }
+                $privileges = array_map('trim', explode(',', $match[1]));
+                // SHOW GRANTS may escape schema wildcard characters. Role-only or
+                // wildcard schema grants are deliberately not inferred as authority.
+                $scope = str_replace(['\\_', '\\%'], ['_', '%'], $match[2]);
+                $schema = '`'.str_replace('`', '``', $database).'`';
+                $global = $scope === '*.*';
+                $all = in_array('ALL PRIVILEGES', $privileges, true);
+                $super = $super || ($global && ($all || in_array('SUPER', $privileges, true)));
+                if ($global || in_array($scope, [$schema.'.*', $schema.'.`article_versions`'], true)) {
+                    $trigger = $trigger || $all || in_array('TRIGGER', $privileges, true);
+                }
+            }
+            if (! $trigger) {
+                throw new RuntimeException('Article history requires a verifiable direct TRIGGER grant on the target schema/table; request a deployment-account/provider preflight.');
+            }
+            if ($policy->logging && ! $policy->trusted && ! $super) {
                 throw new RuntimeException('Article history triggers are restricted by server logging policy; request a deployment-account/provider preflight.');
             }
         }
