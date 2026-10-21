@@ -7,6 +7,7 @@ use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
 use App\Http\Controllers\Controller;
+use App\Models\InventoryItem;
 use App\Models\Product;
 use App\Support\AdminHistory;
 use App\Support\FaNumber;
@@ -125,6 +126,9 @@ class ProductController extends Controller
         $imagePath = $product->image_path;
 
         DB::transaction(function () use ($product): void {
+            // The catalog association is part of retained stock history.
+            $locked = Product::query()->lockForUpdate()->findOrFail($product->id);
+            abort_if(InventoryItem::query()->where('product_id', $locked->id)->exists(), 409, 'محصول مرتبط با موجودی قابل حذف نیست؛ انتشار آن را غیرفعال کنید.');
             $product->delete();
             AdminHistory::record(AdminAction::ProductDeleted, 'product', $product->id);
         });

@@ -29,6 +29,16 @@ enum AdminPermission: string
     case ConsultationsContact = 'consultations.contact';
     case ConsultationsManage = 'consultations.manage';
     case ConsultationsHistory = 'consultations.history';
+    case InventoryView = 'inventory.view';
+    case InventoryConfigure = 'inventory.configure';
+    case InventoryReceive = 'inventory.receive';
+    case InventoryAdjust = 'inventory.adjust';
+    case OrdersView = 'orders.view';
+    case OrdersCreate = 'orders.create';
+    case OrdersReserve = 'orders.reserve';
+    case OrdersConfirm = 'orders.confirm';
+    case OrdersFulfill = 'orders.fulfill';
+    case OrdersCustomerData = 'orders.customer_data';
 
     public function label(): string
     {
@@ -58,6 +68,16 @@ enum AdminPermission: string
             self::ConsultationsContact => 'مشاهدهٔ اطلاعات تماس و پرسش مشاوره',
             self::ConsultationsManage => 'تخصیص و مدیریت مرحلهٔ مشاوره',
             self::ConsultationsHistory => 'مشاهدهٔ یادداشت‌ها و سابقهٔ تماس مشاوره',
+            self::InventoryView => 'مشاهدهٔ موجودی، سریال و گردش کالا',
+            self::InventoryConfigure => 'تعریف کالا و آستانهٔ کمبود',
+            self::InventoryReceive => 'ثبت ورود موجودی',
+            self::InventoryAdjust => 'اصلاح مستدل موجودی آزاد',
+            self::OrdersView => 'مشاهدهٔ سفارش‌ها و تاریخچهٔ غیرشخصی',
+            self::OrdersCreate => 'ایجاد و ویرایش پیش‌نویس سفارش',
+            self::OrdersReserve => 'رزرو، آزادسازی و لغو سفارش',
+            self::OrdersConfirm => 'تأیید سفارش رزروشده',
+            self::OrdersFulfill => 'ثبت تحویل کامل سفارش',
+            self::OrdersCustomerData => 'مشاهدهٔ مشتری و اطلاعات خصوصی تحویل سفارش',
         };
     }
 }

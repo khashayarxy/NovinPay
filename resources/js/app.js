@@ -12,6 +12,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const template = document.getElementById('spec-row-template');
 
     document.addEventListener('click', (event) => {
+        if (event.target.closest('[data-add-order-line]')) {
+            const container = document.getElementById('order-line-rows');
+            const lineTemplate = document.getElementById('order-line-template');
+            if (!container || !lineTemplate || container.children.length >= 30) return;
+            const next = Number(container.dataset.nextIndex ?? 0);
+            const fragment = lineTemplate.content.cloneNode(true);
+            fragment.querySelectorAll('[id],[for],[name]').forEach((element) => {
+                ['id','for','name'].forEach((attribute) => {
+                    if (element.hasAttribute(attribute)) element.setAttribute(attribute, element.getAttribute(attribute).replaceAll('__INDEX__', String(next)));
+                });
+            });
+            container.append(fragment);
+            container.dataset.nextIndex = String(next + 1);
+            container.lastElementChild?.querySelector('input')?.focus();
+            return;
+        }
+        const removeLine = event.target.closest('[data-remove-order-line]');
+        if (removeLine) {
+            const container = document.getElementById('order-line-rows');
+            if (container?.children.length > 1) removeLine.closest('[data-order-line]')?.remove();
+            return;
+        }
         if (event.target.closest('[data-print-document]')) {
             window.print();
             return;

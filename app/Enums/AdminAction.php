@@ -38,6 +38,11 @@ enum AdminAction: string
     case ConsultationAssigned = 'consultation.assigned';
     case ConsultationTransition = 'consultation.transition';
     case ConsultationEntry = 'consultation.entry';
+    case InventoryConfigured = 'inventory.configured';
+    case InventoryReceived = 'inventory.received';
+    case InventoryAdjusted = 'inventory.adjusted';
+    case OrderChanged = 'order.changed';
+    case OrderCustomerViewed = 'order.customer_viewed';
 
     public function label(): string
     {
@@ -67,6 +72,11 @@ enum AdminAction: string
             self::CustomerViewed => 'مشاهدهٔ تماس مشتری', self::ConsultationViewed => 'مشاهدهٔ اطلاعات خصوصی مشاوره',
             self::ConsultationAssigned => 'تخصیص مشاوره', self::ConsultationTransition => 'تغییر مرحلهٔ مشاوره',
             self::ConsultationEntry => 'ثبت یادداشت یا تلاش تماس مشاوره',
+            self::InventoryConfigured => 'تعریف کالا یا تغییر آستانهٔ موجودی',
+            self::InventoryReceived => 'ثبت ورود موجودی',
+            self::InventoryAdjusted => 'ثبت اصلاح موجودی با دلیل',
+            self::OrderChanged => 'عملیات داخلی سفارش',
+            self::OrderCustomerViewed => 'مشاهدهٔ اطلاعات خصوصی مشتری سفارش',
         };
     }
 }

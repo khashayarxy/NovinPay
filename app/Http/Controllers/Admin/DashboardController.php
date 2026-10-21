@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AdminAccount;
 use App\Models\AdminActivity;
+use App\Models\InventoryItem;
 use App\Models\Product;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
+use App\Models\SalesOrder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -16,6 +18,8 @@ class DashboardController extends Controller
     public function __invoke(): View
     {
         return view('admin.dashboard', [
+            'pendingOrderCount' => Gate::allows('orders.view') ? SalesOrder::query()->whereIn('status', ['draft', 'reserved', 'confirmed'])->count() : null,
+            'lowStockCount' => Gate::allows('inventory.view') ? InventoryItem::query()->where('is_low_stock', true)->count() : null,
             'productCount' => Gate::allows('products.view') ? Product::query()->count() : null,
             'publishedCount' => Gate::allows('products.view') ? Product::query()->published()->count() : null,
             'repairCount' => Gate::allows('repairs.view') ? RepairRequest::query()->where('status', 'online_submitted')->whereDoesntHave('physicalCase')->count() : null,

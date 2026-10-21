@@ -44,6 +44,11 @@ final class StaffAdministration
             $creating = $target === null;
             foreach ($permissions as $permission) {
                 $dependencies = match ($permission) {
+                    'inventory.configure', 'inventory.receive', 'inventory.adjust' => ['inventory.view'],
+                    'orders.create' => ['orders.view', 'inventory.view', 'orders.customer_data', 'customers.view', 'customers.contact'],
+                    'orders.reserve', 'orders.confirm' => ['orders.view'],
+                    'orders.fulfill' => ['orders.view', 'orders.customer_data', 'customers.view', 'customers.contact'],
+                    'orders.customer_data' => ['orders.view', 'customers.view', 'customers.contact'],
                     'customers.contact' => ['customers.view'],
                     'customers.manage', 'customers.link', 'customers.notes' => ['customers.view', 'customers.contact'],
                     'customers.reconcile' => ['customers.view', 'customers.contact', 'customers.manage', 'customers.link', 'customers.notes'],

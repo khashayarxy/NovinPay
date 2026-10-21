@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'نمای کلی')
 @section('content')
+<div class="commerce-dashboard-summary">@if($pendingOrderCount !== null)<a class="admin-panel" href="{{ route('admin.orders.index') }}"><strong>{{ \App\Support\FaNumber::digits($pendingOrderCount) }}</strong><span>سفارش باز · پیش‌نویس، رزرو یا تأیید</span></a>@endif @if($lowStockCount !== null)<a class="admin-panel" href="{{ route('admin.inventory.index',['low'=>'1']) }}"><strong>{{ \App\Support\FaNumber::digits($lowStockCount) }}</strong><span>کالا در آستانهٔ کمبود موجودی آزاد</span></a>@endif</div>
 @if($openRepairCount !== null)<div class="admin-notice"><a class="admin-text-link" href="{{ route('admin.repair-cases.index') }}">عملیات تعمیر ←</a><p>پروندهٔ فیزیکی باز: {{ \App\Support\FaNumber::digits($openRepairCount) }} · آمادهٔ مراجعه: {{ \App\Support\FaNumber::digits($readyRepairCount) }}</p></div>@endif
     <header class="admin-page-heading"><div><p class="admin-eyebrow">پیشخوان نوین‌پی</p><h1>نمای کلی کسب‌وکار</h1><p>سلام {{ auth()->user()->name }}؛ اطلاعات این صفحه از داده‌های ثبت‌شدهٔ سامانه است.</p></div><span class="admin-status"><span aria-hidden="true">●</span> حساب فعال</span></header>
     <div class="admin-stats">

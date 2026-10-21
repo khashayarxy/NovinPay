@@ -3,7 +3,9 @@
 use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\LoginController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PasswordController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\RepairCaseController;
@@ -68,6 +70,29 @@ Route::middleware([PrivateAdminResponse::class, 'auth'])->prefix('admin')->name(
         Route::post('staff', [StaffController::class, 'store'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.store');
         Route::match(['put', 'patch'], 'staff/{staff}', [StaffController::class, 'update'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.update');
         Route::get('activities', [ActivityController::class, 'index'])->middleware('can:activity.view')->name('activities.index');
+        Route::middleware('can:inventory.view')->group(function (): void {
+            $controller = InventoryController::class;
+            Route::get('inventory', [$controller, 'index'])->name('inventory.index');
+            Route::get('inventory/create', [$controller, 'create'])->name('inventory.create');
+            Route::get('inventory/movements', [$controller, 'movements'])->name('inventory.movements');
+            Route::post('inventory', [$controller, 'store'])->defaults('operation', 'item.create')->middleware('throttle:30,1')->name('inventory.store');
+            Route::get('inventory/{item}', [$controller, 'show'])->name('inventory.show');
+            foreach (['receive', 'adjust', 'configure'] as $action) {
+                Route::post('inventory/{item}/'.$action, [$controller, 'update'])->defaults('operation', 'item.'.$action)->middleware('throttle:30,1')->name('inventory.'.$action);
+            }
+        });
+        Route::middleware('can:orders.view')->group(function (): void {
+            $controller = OrderController::class;
+            Route::get('orders', [$controller, 'index'])->name('orders.index');
+            Route::get('orders/create', [$controller, 'create'])->name('orders.create');
+            Route::post('orders', [$controller, 'store'])->defaults('operation', 'order.save')->middleware('throttle:30,1')->name('orders.store');
+            Route::get('orders/{order}', [$controller, 'show'])->name('orders.show');
+            Route::get('orders/{order}/edit', [$controller, 'edit'])->name('orders.edit');
+            Route::put('orders/{order}', [$controller, 'update'])->defaults('operation', 'order.save')->middleware('throttle:30,1')->name('orders.update');
+            foreach (['reserve', 'release', 'cancel', 'confirm', 'fulfill'] as $action) {
+                Route::post('orders/{order}/'.$action, [$controller, 'update'])->defaults('operation', 'order.'.$action)->middleware('throttle:30,1')->name('orders.'.$action);
+            }
+        });
         Route::middleware('can:customers.view')->group(function (): void {
             $controller = CustomerController::class;
             Route::get('customers', [$controller, 'index'])->name('customers.index');
