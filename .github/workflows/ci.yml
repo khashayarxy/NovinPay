@@ -26,7 +26,7 @@ env:
   LOG_CHANNEL: stderr
   DB_CONNECTION: sqlite
   DB_DATABASE: ':memory:'
-  DB_URL: sqlite:///:memory:
+  DB_URL: 'sqlite:///:memory:'
 
 jobs:
   php-sqlite:
