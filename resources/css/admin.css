@@ -260,3 +260,23 @@
 @media(max-width:800px) { .repair-filters .admin-form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:560px) { .repair-status-banner { display:block; padding:18px; } .repair-status-banner h2 { font-size:19px; } .repair-document { padding:16px; } .repair-document-header { gap:12px; } .repair-document h1 { font-size:22px; } .repair-filters .admin-form-grid { grid-template-columns:1fr; } }
 @media print { .admin-sidebar,.admin-topbar,.admin-mobile-navigation,.admin-footer,.skip-link,.repair-print-controls { display:none!important; } .admin-shell,.admin-workspace { display:block!important; } .admin-main { padding:0!important; } .admin-site { background:white!important; } .repair-document { max-width:none; margin:0; border:0; box-shadow:none; padding:10mm; color:black; } .repair-document * { color:black!important; } .repair-history-card,.repair-document-header,.admin-definition>div { break-inside:avoid; } a { text-decoration:none; } @page { size:A4; margin:10mm; } }
+
+/* Phase 7A content administration only. */
+.article-card-list { display:grid; gap:16px; }
+.article-form { display:grid; gap:20px; max-width:840px; }
+.article-form .input { min-width:0; min-height:48px; }
+.article-form textarea[name=content] { min-height:360px; line-height:2; }
+.article-form :is(input,textarea,select,button,a):focus-visible { outline:3px solid #075fa8; outline-offset:3px; }
+.article-form input[name=title],.article-form input[name=name] { direction:rtl; text-align:right; }
+.article-help { line-height:2.2; overflow-wrap:anywhere; }
+.article-help dl { margin-block:16px; }
+.article-help dt { font-weight:700; margin-top:12px; }
+.article-copy { line-height:2.3; overflow-wrap:anywhere; }
+.article-copy :is(h2,h3,p,ul,ol) { margin-block:20px; }
+.article-copy h2 { font-size:22px; font-weight:800; }
+.article-copy h3 { font-size:18px; font-weight:700; }
+.article-copy ul { list-style:disc; padding-inline-start:24px; }
+.article-copy ol { list-style:decimal; padding-inline-start:24px; }
+.article-copy a { color:#075fa8; text-decoration:underline; text-underline-offset:4px; }
+.article-summary { border-block:1px solid #e5ecf5; margin-block:20px; padding-block:16px; line-height:2; }
+@media(max-width:640px) { .article-card-list .admin-panel-heading { flex-wrap:wrap; gap:12px; } .article-form .btn { white-space:normal; } }

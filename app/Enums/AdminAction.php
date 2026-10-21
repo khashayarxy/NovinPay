@@ -4,6 +4,10 @@ namespace App\Enums;
 
 enum AdminAction: string
 {
+    case ArticleDraftSaved = 'article.draft_saved';
+    case ArticlePublished = 'article.published';
+    case ArticleUnpublished = 'article.unpublished';
+    case ArticleCategoryChanged = 'article_category.changed';
     case Bootstrap = 'super_admin.bootstrapped';
     case StaffCreated = 'staff.created';
     case StaffUpdated = 'staff.updated';
@@ -48,6 +52,10 @@ enum AdminAction: string
     public function label(): string
     {
         return match ($this) {
+            self::ArticleDraftSaved => 'ذخیرهٔ نسخهٔ پیش‌نویس مقاله',
+            self::ArticlePublished => 'انتشار صریح مقاله',
+            self::ArticleUnpublished => 'لغو انتشار مقاله',
+            self::ArticleCategoryChanged => 'تغییر دستهٔ مقاله',
             self::Bootstrap => 'تعیین مدیر کل محافظت‌شده',
             self::StaffCreated => 'ایجاد حساب همکار با نقش کارمند',
             self::StaffUpdated => 'ویرایش حساب همکار',

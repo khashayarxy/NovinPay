@@ -5,8 +5,8 @@ push to `main`. Keep these job names stable: they are the required GitHub checks
 
 | Check | Validation |
 | --- | --- |
-| PHP SQLite | PHP 8.4, locked Composer install/audit, Pint, full PHPUnit suite with in-memory SQLite |
-| PHP MySQL 8 | Full PHPUnit suite on a disposable MySQL 8 service, eight inventory and six financial competing-connection scenarios, complete migration rollback and reapply |
+| PHP SQLite | PHP 8.4, locked Composer install/audit, Pint, full PHPUnit suite with in-memory SQLite, article upgrade/rollback/reapply preservation |
+| PHP MySQL 8 | Full PHPUnit suite on a disposable MySQL 8 service, eight inventory, six financial and six article competing-connection scenarios, article upgrade preservation, complete migration rollback and reapply |
 | Frontend | Node 24 (within locked Vite engine requirements), npm ci, npm audit, Vite production build |
 
 Both PHP jobs set testing environment variables before Composer hooks execute,
