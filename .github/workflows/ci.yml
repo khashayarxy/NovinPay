@@ -59,6 +59,12 @@ jobs:
         run: composer audit --locked --no-interaction
       - name: Pint
         run: php vendor/bin/pint --test
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Build assets required by rendered PHP responses
+        run: npm ci && npm run build
       - name: Full SQLite regression suite
         run: php artisan test --compact
 
@@ -114,6 +120,12 @@ jobs:
           key: composer-${{ runner.os }}-php84-${{ hashFiles('composer.lock') }}
       - name: Install locked PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Build assets required by rendered PHP responses
+        run: npm ci && npm run build
       - name: Full MySQL regression suite
         run: php artisan test --compact
       - name: Actual competing-connection scenarios
