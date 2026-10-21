@@ -166,7 +166,7 @@ deployment authorization. Review-only CI/PR publication must not enable automati
 merge or deployment. No gateway, bank API, online refund, SMS, tax filing or Phase 7
 work is included.
 
-## Local preservation exception discovered at final audit
+## Historical local preservation exception discovered at final audit
 
 The original SQLite file's final checksum differed from the Phase 6D starting
 checksum. A strictly read-only SQLite investigation found integrity `ok`, no foreign
@@ -183,9 +183,10 @@ configuration. Both host configurations were regenerated when Herd started at
 be identified and an exclusive cause cannot be proven from available evidence.
 There is no row-level snapshot at the exact Phase 6D start, only its file checksum.
 
-The original database was not repaired, restored, migrated or seeded. This is a
-local runtime preservation issue to review before further browser/database work;
-it does not show a source-code or business-data regression. Avoid opening the
-legacy host until its database targeting is separately reviewed. Source review
-can proceed independently; real database operations and deployment remain blocked
-pending the owner's explicit approval and the deployment prerequisites above.
+The original database was not repaired, restored, migrated or seeded. The owner
+subsequently approved host-specific guards and removed obsolete Herd mappings;
+the separate local safety gate passed before final polish resumed. The final
+polish audit retained the current checksum and all table row hashes throughout
+canonical browser testing. See PHASE6D-POLISH.md for the new validation results
+and remaining unscoped CLI risks. Production database operations and deployment
+still require separate owner authorization and the prerequisites above.

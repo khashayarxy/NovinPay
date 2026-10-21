@@ -107,7 +107,7 @@ class FinancialOperationsTest extends TestCase
         $this->assertSame(10, FinanceMoney::minor('0.10'));
         $this->assertSame(123, FinanceMoney::minor('۱٫۲۳'));
         $this->assertSame(999999999999999, FinanceMoney::minor('9999999999999.99'));
-        $this->assertSame('9999999999999.99', FinanceMoney::display(999999999999999));
+        $this->assertSame('9,999,999,999,999.99', FinanceMoney::display(999999999999999));
         $this->assertSame('−0.01', FinanceMoney::display(-1));
         $this->conflict(fn () => FinanceMoney::minor('1.001'), 422);
         $this->conflict(fn () => FinanceMoney::minor('1e3'), 422);
@@ -408,6 +408,8 @@ class FinancialOperationsTest extends TestCase
 
     public function test_finance_forms_and_transaction_screens_render_and_escape_private_notes(): void
     {
+        $unissued = $this->order();
+        $this->get('/admin/finance/sources/order/'.$unissued->public_id)->assertOk()->assertSee('autocomplete="current-password"', false);
         $document = $this->issue();
         $entry = $this->receipt($document, '1.00', ['reason' => '<script>PRIVATE-XSS</script>']);
         foreach (['issue', 'receipt', 'expense', 'credit', 'debit'] as $action) {
@@ -416,5 +418,16 @@ class FinancialOperationsTest extends TestCase
         $this->get('/admin/finance/new/reverse?entry='.$entry->public_id)->assertOk()->assertSee('name="version"', false);
         $this->get('/admin/finance/entries/'.$entry->public_id)->assertOk()->assertSee('&lt;script&gt;PRIVATE-XSS&lt;/script&gt;', false)->assertDontSee('<script>PRIVATE-XSS</script>', false);
         $this->from('/admin/finance')->post('/admin/finance/receipt', $this->payload(['reference' => 'PRIVATE-INVALID']))->assertSessionHasErrors()->assertSessionMissing('_old_input');
+    }
+
+    public function test_failed_financial_form_associates_errors_without_replaying_private_values(): void
+    {
+        $form = '/admin/finance/new/expense';
+        $this->from($form)->post('/admin/finance/expense', $this->payload(['amount' => 'invalid', 'method' => 'cash', 'category' => 'parts', 'reference' => 'PRIVATE-INVALID']))
+            ->assertRedirect($form)->assertSessionHasErrors('amount')->assertSessionMissing('_old_input');
+        // Carry the browser's session cookie across the validation redirect.
+        $this->withCookie(config('session.cookie'), session()->getId())->get($form)->assertOk()->assertSee('aria-describedby="finance-amount-error"', false)
+            ->assertSee('aria-invalid="true"', false)->assertSee('inputmode="decimal"', false)
+            ->assertSee('autocomplete="current-password"', false)->assertDontSee('PRIVATE-INVALID')->assertDontSee('PRIVATE-FINANCIAL-EVIDENCE');
     }
 }

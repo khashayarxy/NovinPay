@@ -24,6 +24,9 @@ final class FinanceMoney
         $negative = str_starts_with($value, '-');
         $digits = str_pad(ltrim($value, '-'), 3, '0', STR_PAD_LEFT);
 
-        return ($negative ? '−' : '').substr($digits, 0, -2).'.'.substr($digits, -2);
+        // Group the decimal string without converting exact ledger sums to floats.
+        $whole = preg_replace('/\B(?=(\d{3})+(?!\d))/', ',', substr($digits, 0, -2));
+
+        return ($negative ? '−' : '').$whole.'.'.substr($digits, -2);
     }
 }
