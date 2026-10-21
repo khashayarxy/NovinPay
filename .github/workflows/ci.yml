@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
@@ -49,7 +49,7 @@ jobs:
           echo "::add-mask::$key"
           echo "APP_KEY=$key" >> "$GITHUB_ENV"
           echo "APP_CONFIG_CACHE=$RUNNER_TEMP/novinpay-config.php" >> "$GITHUB_ENV"
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ~/.cache/composer/files
           key: composer-${{ runner.os }}-php84-${{ hashFiles('composer.lock') }}
@@ -92,7 +92,7 @@ jobs:
       DB_URL: mysql://novinpay_ci:disposable-ci@127.0.0.1:3307/novinpay_phase6c_ci
       NOVINPAY_DISPOSABLE_COMMERCE: '1'
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
@@ -108,7 +108,7 @@ jobs:
           echo "APP_KEY=$key" >> "$GITHUB_ENV"
           echo "APP_CONFIG_CACHE=$RUNNER_TEMP/novinpay-config.php" >> "$GITHUB_ENV"
           echo "NOVINPAY_COMMERCE_ARTIFACTS=$RUNNER_TEMP/novinpay-commerce" >> "$GITHUB_ENV"
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ~/.cache/composer/files
           key: composer-${{ runner.os }}-php84-${{ hashFiles('composer.lock') }}
@@ -131,10 +131,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           # Vite's locked engine range is ^20.19.0 || >=22.12.0.
           node-version: '24'
