@@ -16,6 +16,9 @@ concurrency:
 env:
   APP_ENV: testing
   APP_DEBUG: 'false'
+  APP_LOCALE: fa
+  APP_FALLBACK_LOCALE: en
+  APP_FAKER_LOCALE: en_US
   APP_MAINTENANCE_DRIVER: file
   BCRYPT_ROUNDS: '4'
   CACHE_STORE: array
@@ -66,7 +69,7 @@ jobs:
       - name: Build assets required by rendered PHP responses
         run: npm ci && npm run build
       - name: Full SQLite regression suite
-        run: php artisan test --compact
+        run: php artisan test --compact --display-warnings
 
   php-mysql:
     name: PHP MySQL 8
@@ -127,7 +130,7 @@ jobs:
       - name: Build assets required by rendered PHP responses
         run: npm ci && npm run build
       - name: Full MySQL regression suite
-        run: php artisan test --compact
+        run: php artisan test --compact --display-warnings
       - name: Actual competing-connection scenarios
         run: |
           mkdir -p "$NOVINPAY_COMMERCE_ARTIFACTS"
