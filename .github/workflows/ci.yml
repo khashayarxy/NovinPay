@@ -1,0 +1,148 @@
+name: NovinPay CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_ENV: testing
+  APP_DEBUG: 'false'
+  APP_MAINTENANCE_DRIVER: file
+  BCRYPT_ROUNDS: '4'
+  CACHE_STORE: array
+  SESSION_DRIVER: array
+  QUEUE_CONNECTION: sync
+  MAIL_MAILER: array
+  BROADCAST_CONNECTION: 'null'
+  LOG_CHANNEL: stderr
+  DB_CONNECTION: sqlite
+  DB_DATABASE: ':memory:'
+  DB_URL: sqlite:///:memory:
+
+jobs:
+  php-sqlite:
+    name: PHP SQLite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      APP_CONFIG_CACHE: ${{ runner.temp }}/novinpay-config.php
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sqlite3, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+      - name: Generate disposable application key
+        run: |
+          key="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+          echo "::add-mask::$key"
+          echo "APP_KEY=$key" >> "$GITHUB_ENV"
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-php84-${{ hashFiles('composer.lock') }}
+      - name: Install locked PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Audit locked PHP dependencies
+        run: composer audit --locked --no-interaction
+      - name: Pint
+        run: php vendor/bin/pint --test
+      - name: Full SQLite regression suite
+        run: php artisan test --compact
+
+  php-mysql:
+    name: PHP MySQL 8
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # These credentials exist only in this job's disposable service container.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: disposable-root
+          MYSQL_DATABASE: novinpay_phase6c_ci
+          MYSQL_USER: novinpay_ci
+          MYSQL_PASSWORD: disposable-ci
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      APP_CONFIG_CACHE: ${{ runner.temp }}/novinpay-config.php
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3307'
+      DB_DATABASE: novinpay_phase6c_ci
+      DB_USERNAME: novinpay_ci
+      DB_PASSWORD: disposable-ci
+      DB_URL: mysql://novinpay_ci:disposable-ci@127.0.0.1:3307/novinpay_phase6c_ci
+      NOVINPAY_DISPOSABLE_COMMERCE: '1'
+      NOVINPAY_COMMERCE_ARTIFACTS: ${{ runner.temp }}/novinpay-commerce
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sqlite3, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+      - name: Generate disposable application key
+        run: |
+          key="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+          echo "::add-mask::$key"
+          echo "APP_KEY=$key" >> "$GITHUB_ENV"
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-php84-${{ hashFiles('composer.lock') }}
+      - name: Install locked PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Full MySQL regression suite
+        run: php artisan test --compact
+      - name: Actual competing-connection scenarios
+        run: |
+          mkdir -p "$NOVINPAY_COMMERCE_ARTIFACTS"
+          php tests/Concurrency/run.php
+      - name: Disposable migration rollback and reapply
+        run: |
+          php artisan migrate:rollback --force --no-interaction
+          php artisan migrate --force --no-interaction
+          php artisan migrate:status --no-interaction
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          # Vite's locked engine range is ^20.19.0 || >=22.12.0.
+          node-version: '24'
+          cache: npm
+      - name: Install locked frontend dependencies
+        run: npm ci
+      - name: Audit frontend dependencies
+        run: npm audit
+      - name: Vite production build
+        run: npm run build
