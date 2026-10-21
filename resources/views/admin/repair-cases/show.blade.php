@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'پروندهٔ تعمیر')
 @section('content')
+@can('finance.view')<div class="admin-notice"><a class="admin-text-link" href="{{ route('admin.finance.sources.show',['type'=>'repair','reference'=>$case->public_id]) }}">سند مالی و هزینه‌های این تعمیر ←</a><p>برآورد هزینه، دریافت وجه یا درآمد قطعی نیست.</p></div>@endcan
 @php($stage = $case->status->value)
 <header class="admin-page-heading"><div><p class="admin-eyebrow">دستگاه دارای پذیرش فیزیکی</p><h1>پروندهٔ تعمیر {{ $case->device_brand->value }}</h1><p class="repair-id" dir="ltr">{{ $case->public_id }}</p></div><a class="admin-text-link" href="{{ route('admin.repair-cases.index') }}">بازگشت به فهرست ←</a></header>
 <x-admin.errors />

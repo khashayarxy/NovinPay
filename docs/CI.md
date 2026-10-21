@@ -6,7 +6,7 @@ push to `main`. Keep these job names stable: they are the required GitHub checks
 | Check | Validation |
 | --- | --- |
 | PHP SQLite | PHP 8.4, locked Composer install/audit, Pint, full PHPUnit suite with in-memory SQLite |
-| PHP MySQL 8 | Full PHPUnit suite on a disposable MySQL 8 service, eight actual competing-connection scenarios, complete migration rollback and reapply |
+| PHP MySQL 8 | Full PHPUnit suite on a disposable MySQL 8 service, eight inventory and six financial competing-connection scenarios, complete migration rollback and reapply |
 | Frontend | Node 24 (within locked Vite engine requirements), npm ci, npm audit, Vite production build |
 
 Both PHP jobs set testing environment variables before Composer hooks execute,
@@ -19,6 +19,8 @@ No hosting credentials or GitHub repository secrets are required. MySQL credenti
 in the workflow are public disposable service credentials, not deployment values.
 The concurrency harness independently rejects non-disposable database targets.
 Migration rollback is destructive only to that job's synthetic service data.
+The job enables trigger creation on its own disposable MySQL service; deployment
+still requires a separate provider/privilege preflight. No production setting changes.
 
 Actions are pinned to full commit SHAs. Checkout does not retain credentials;
 the workflow token has only `contents: read`. Composer download archives and npm's

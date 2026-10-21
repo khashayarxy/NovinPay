@@ -39,6 +39,13 @@ enum AdminPermission: string
     case OrdersConfirm = 'orders.confirm';
     case OrdersFulfill = 'orders.fulfill';
     case OrdersCustomerData = 'orders.customer_data';
+    case FinanceView = 'finance.view';
+    case FinanceDetails = 'finance.details';
+    case FinanceCharge = 'finance.charge';
+    case FinanceReceive = 'finance.receive';
+    case FinanceExpenses = 'finance.expenses';
+    case FinanceCorrect = 'finance.correct';
+    case FinanceBalances = 'finance.balances';
 
     public function label(): string
     {
@@ -78,6 +85,13 @@ enum AdminPermission: string
             self::OrdersConfirm => 'تأیید سفارش رزروشده',
             self::OrdersFulfill => 'ثبت تحویل کامل سفارش',
             self::OrdersCustomerData => 'مشاهدهٔ مشتری و اطلاعات خصوصی تحویل سفارش',
+            self::FinanceView => 'مشاهدهٔ خلاصه و گزارش مالی',
+            self::FinanceDetails => 'مشاهدهٔ مدارک و توضیحات خصوصی مالی',
+            self::FinanceCharge => 'صدور صریح سند مطالبه از منبع تکمیل‌شده',
+            self::FinanceReceive => 'ثبت دستی دریافت تخصیص‌یافته',
+            self::FinanceExpenses => 'ثبت هزینهٔ واقعی با مدرک',
+            self::FinanceCorrect => 'اصلاح مانده و برگشت جبرانی با گذرواژه',
+            self::FinanceBalances => 'مشاهدهٔ ماندهٔ پروفایل تاریخی مشتری',
         };
     }
 }

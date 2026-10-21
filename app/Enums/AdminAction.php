@@ -43,6 +43,7 @@ enum AdminAction: string
     case InventoryAdjusted = 'inventory.adjusted';
     case OrderChanged = 'order.changed';
     case OrderCustomerViewed = 'order.customer_viewed';
+    case FinancePosted = 'finance.posted';
 
     public function label(): string
     {
@@ -77,6 +78,7 @@ enum AdminAction: string
             self::InventoryAdjusted => 'ثبت اصلاح موجودی با دلیل',
             self::OrderChanged => 'عملیات داخلی سفارش',
             self::OrderCustomerViewed => 'مشاهدهٔ اطلاعات خصوصی مشتری سفارش',
+            self::FinancePosted => 'ثبت مستند عملیات مالی',
         };
     }
 }

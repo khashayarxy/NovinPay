@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'پروفایل مشتری')
 @section('content')
+@can('finance.view') @can('finance.balances')<div class="admin-notice"><a class="admin-text-link" href="{{ route('admin.finance.customers.show',$customer) }}">مانده و گردش مالی همین هویت تاریخی ←</a></div>@endcan @endcan
 @php($canOperate = $contact && $customer->is_active && !$customer->merged_into_id && (auth()->user()->can('customers.link') || ($notes && auth()->user()->can('customers.manage'))))
 @php($hasSideContent = $canOperate || ($contact && $duplicates->isNotEmpty()))
 <header class="admin-page-heading"><div><p class="admin-eyebrow">پروفایل مشتری · نسخهٔ {{ \App\Support\FaNumber::digits($customer->version) }}</p><h1>{{ $contact ? $customer->name : 'پروفایل با اطلاعات محدود' }}</h1><p class="crm-code">{{ $customer->public_id }}</p></div><div class="admin-actions"><a class="admin-text-link" href="{{ route('admin.customers.index') }}">دفتر مشتریان ←</a>@if(!$customer->merged_into_id) @can('customers.manage') @can('customers.contact')<a class="btn btn-secondary" href="{{ route('admin.customers.edit', $customer) }}">ویرایش / بایگانی</a>@endcan @endcan @endif</div></header>

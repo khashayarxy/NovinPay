@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\OrderController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\RepairRequestController;
 use App\Http\Middleware\EnsureAdminSession;
 use App\Http\Middleware\PrivateAdminResponse;
 use App\Http\Middleware\PrivateRepairResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -70,6 +72,19 @@ Route::middleware([PrivateAdminResponse::class, 'auth'])->prefix('admin')->name(
         Route::post('staff', [StaffController::class, 'store'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.store');
         Route::match(['put', 'patch'], 'staff/{staff}', [StaffController::class, 'update'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.update');
         Route::get('activities', [ActivityController::class, 'index'])->middleware('can:activity.view')->name('activities.index');
+        Route::middleware('can:finance.view')->prefix('finance')->name('finance.')->group(function (): void {
+            $controller = FinanceController::class;
+            Route::get('/', [$controller, 'index'])->name('index');
+            Route::get('reports', [$controller, 'index'])->name('reports');
+            Route::get('documents/{document}', [$controller, 'document'])->name('documents.show');
+            Route::get('entries/{entry}', [$controller, 'entry'])->middleware('can:finance.details')->name('entries.show');
+            Route::get('customers/{customer}', [$controller, 'customer'])->middleware(['can:finance.balances', 'can:customers.view'])->name('customers.show');
+            Route::get('sources/{type}/{reference}', [$controller, 'source'])->name('sources.show');
+            foreach (['issue', 'receipt', 'expense', 'credit', 'debit', 'reverse'] as $action) {
+                Route::get('new/'.$action, fn (Request $request, FinanceController $controller) => $controller->create($request, $action))->name($action.'.create');
+                Route::post($action, [$controller, 'store'])->defaults('operation', $action)->middleware('throttle:15,1')->name($action.'.store');
+            }
+        });
         Route::middleware('can:inventory.view')->group(function (): void {
             $controller = InventoryController::class;
             Route::get('inventory', [$controller, 'index'])->name('inventory.index');
