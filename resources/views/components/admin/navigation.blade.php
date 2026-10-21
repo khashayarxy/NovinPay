@@ -6,6 +6,7 @@
         $navigationAllows = fn ($ability) => $navigationAccount && ($navigationAccount->isSuperAdmin() || ($ability !== 'staff.manage' && \App\Enums\AdminPermission::tryFrom($ability) !== null && in_array($ability, $navigationAccount->permissions ?? [], true)));
     @endphp
     @if(!$pendingPasswordChange)
+        @if($navigationAllows('finance.view'))<a href="{{ route('admin.finance.index') }}" @if(request()->routeIs('admin.finance.*')) aria-current="page" @endif><x-home.icon name="building-bank"/><span>عملیات و گزارش مالی</span></a>@endif
         @if($navigationAllows('orders.view'))<a href="{{ route('admin.orders.index') }}" @if(request()->routeIs('admin.orders.*')) aria-current="page" @endif><x-home.icon name="shopping-bag"/><span>سفارش‌های داخلی</span></a>@endif
         @if($navigationAllows('inventory.view'))<a href="{{ route('admin.inventory.index') }}" @if(request()->routeIs('admin.inventory.*')) aria-current="page" @endif><x-home.icon name="settings"/><span>موجودی و گردش کالا</span></a>@endif
         @if($navigationAllows('customers.view'))<a href="{{ route('admin.customers.index') }}" @if(request()->routeIs('admin.customers.*')) aria-current="page" @endif><x-home.icon name="user"/><span>دفتر مشتریان</span></a>@endif
