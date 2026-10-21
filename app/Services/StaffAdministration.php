@@ -44,6 +44,7 @@ final class StaffAdministration
             $creating = $target === null;
             foreach ($permissions as $permission) {
                 $dependencies = match ($permission) {
+                    'articles.manage', 'articles.publish' => ['articles.view'],
                     'finance.details', 'finance.charge' => ['finance.view'],
                     'finance.receive', 'finance.expenses', 'finance.correct' => ['finance.view', 'finance.details'],
                     'finance.balances' => ['finance.view', 'customers.view'],
@@ -60,7 +61,7 @@ final class StaffAdministration
                     default => [],
                 };
                 if (array_diff($dependencies, $permissions)) {
-                    throw ValidationException::withMessages(['permissions' => 'مجوز مشتری یا مشاوره به مجوزهای پایهٔ مشاهده و اطلاعات خصوصی نیاز دارد.']);
+                    throw ValidationException::withMessages(['permissions' => 'مجوز انتخاب‌شده به مجوزهای پایهٔ مشاهده یا اطلاعات خصوصی نیاز دارد.']);
                 }
             }
             $account = $creating ? new AdminAccount : AdminAccount::query()->lockForUpdate()->findOrFail($target->id);

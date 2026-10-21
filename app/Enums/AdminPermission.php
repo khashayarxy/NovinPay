@@ -4,6 +4,10 @@ namespace App\Enums;
 
 enum AdminPermission: string
 {
+    case ArticlesView = 'articles.view';
+    case ArticlesManage = 'articles.manage';
+    case ArticlesPublish = 'articles.publish';
+    case ArticleCategoriesManage = 'article_categories.manage';
     case Dashboard = 'dashboard.view';
     case ProductsView = 'products.view';
     case ProductsManage = 'products.manage';
@@ -50,6 +54,10 @@ enum AdminPermission: string
     public function label(): string
     {
         return match ($this) {
+            self::ArticlesView => 'مشاهده و بازبینی خصوصی مقاله‌ها',
+            self::ArticlesManage => 'ایجاد و ویرایش پیش‌نویس مقاله',
+            self::ArticlesPublish => 'انتشار و لغو انتشار مقاله',
+            self::ArticleCategoriesManage => 'مدیریت دسته‌های مقاله',
             self::Dashboard => 'مشاهدهٔ پیشخوان',
             self::ProductsView => 'مشاهدهٔ محصولات',
             self::ProductsManage => 'ایجاد، ویرایش و حذف محصول',

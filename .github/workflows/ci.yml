@@ -71,6 +71,8 @@ jobs:
         run: npm ci && npm run build
       - name: Full SQLite regression suite
         run: php artisan test --compact --display-warnings --fail-on-warning
+      - name: Article upgrade rollback and reapply preservation
+        run: php tests/ArticleMigration/run.php
 
   php-mysql:
     name: PHP MySQL 8
@@ -135,12 +137,16 @@ jobs:
         run: php -r '$db = new PDO("mysql:host=127.0.0.1;port=3307", "root", "disposable-root"); $db->exec("SET GLOBAL log_bin_trust_function_creators = 1");'
       - name: Full MySQL regression suite
         run: php artisan test --compact --display-warnings --fail-on-warning
+      - name: Article upgrade rollback and reapply preservation
+        run: php tests/ArticleMigration/run.php
       - name: Actual competing-connection scenarios
         run: |
           mkdir -p "$NOVINPAY_COMMERCE_ARTIFACTS"
           php tests/Concurrency/run.php
       - name: Actual competing financial allocations and corrections
         run: php tests/FinanceConcurrency/run.php
+      - name: Actual competing article edits and publication
+        run: php tests/ArticleConcurrency/run.php
       - name: Disposable migration rollback and reapply
         run: |
           php artisan migrate:rollback --force --no-interaction

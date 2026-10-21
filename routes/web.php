@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityController;
+use App\Http\Controllers\Admin\ArticleCategoryController;
+use App\Http\Controllers\Admin\ArticleController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FinanceController;
@@ -72,6 +74,26 @@ Route::middleware([PrivateAdminResponse::class, 'auth'])->prefix('admin')->name(
         Route::post('staff', [StaffController::class, 'store'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.store');
         Route::match(['put', 'patch'], 'staff/{staff}', [StaffController::class, 'update'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.update');
         Route::get('activities', [ActivityController::class, 'index'])->middleware('can:activity.view')->name('activities.index');
+        Route::middleware('can:articles.view')->prefix('articles')->name('articles.')->group(function (): void {
+            $controller = ArticleController::class;
+            Route::get('/', [$controller, 'index'])->name('index');
+            Route::get('create', [$controller, 'create'])->middleware('can:articles.manage')->name('create');
+            Route::post('/', [$controller, 'store'])->defaults('operation', 'create')->middleware(['can:articles.manage', 'throttle:30,1'])->name('store');
+            Route::get('{article}/edit', [$controller, 'edit'])->middleware('can:articles.manage')->name('edit');
+            Route::put('{article}', [$controller, 'store'])->defaults('operation', 'save')->middleware(['can:articles.manage', 'throttle:30,1'])->name('update');
+            Route::get('{article}/preview', [$controller, 'preview'])->name('preview');
+            foreach (['publish', 'unpublish'] as $operation) {
+                Route::post('{article}/'.$operation, [$controller, 'store'])->defaults('operation', $operation)->middleware(['can:articles.publish', 'throttle:30,1'])->name($operation);
+            }
+        });
+        Route::middleware('can:article_categories.manage')->prefix('article-categories')->name('article-categories.')->group(function (): void {
+            $controller = ArticleCategoryController::class;
+            Route::get('/', [$controller, 'index'])->name('index');
+            Route::get('create', [$controller, 'create'])->name('create');
+            Route::get('{category}/edit', [$controller, 'edit'])->name('edit');
+            Route::post('/', [$controller, 'store'])->defaults('operation', 'category.create')->middleware('throttle:30,1')->name('store');
+            Route::put('{category}', [$controller, 'store'])->defaults('operation', 'category.update')->middleware('throttle:30,1')->name('update');
+        });
         Route::middleware('can:finance.view')->prefix('finance')->name('finance.')->group(function (): void {
             $controller = FinanceController::class;
             Route::get('/', [$controller, 'index'])->name('index');
