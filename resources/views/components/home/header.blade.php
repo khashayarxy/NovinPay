@@ -1,6 +1,6 @@
 <header class="np-header">
     <div class="np-container np-header__inner">
-        <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-brand-logo /></a>
+        <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
         <nav aria-label="ناوبری اصلی" class="np-nav">
             @foreach ([['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'محصولات'], ['repair', 'repair*', 'تعمیرات'], ['services', 'services', 'خدمات'], ['about', 'about', 'درباره ما'], ['contact', 'contact', 'تماس با ما']] as [$route, $active, $label])
                 <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>

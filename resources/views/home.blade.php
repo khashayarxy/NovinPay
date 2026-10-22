@@ -14,7 +14,7 @@
                     <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />خدمات تعمیرات<x-home.icon name="arrow-left" /></a>
                 </div>
             </div>
-            <x-home.artwork name="hero" label="ماسکات آبی نوین‌پی" class="np-hero__art" />
+            <x-home.artwork name="hero" label="مدل‌های قابل ارائه؛ PAX D230، Newland ME31 و NewPOS 7210" class="np-hero__art" />
         </div>
     </section>
 
@@ -68,14 +68,14 @@
                     @endforeach
                 </ul>
             </div>
-            <x-home.artwork name="support" label="تصویر مشاورهٔ نوین‌پی" />
+            <x-home.artwork name="support" label="راهنمایی و پیگیری تخصصی" />
         </section>
         <section class="np-brands" aria-labelledby="brands-title">
             <h2 id="brands-title">برندهای تحت پوشش</h2>
             <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
             <div class="np-brands__grid">
                 @foreach (['Newland', 'NewPOS', 'PAX'] as $brand)
-                    <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand"><span lang="en" dir="ltr">{{ $brand }}</span><span>مشاهده دستگاه‌ها<x-home.icon name="arrow-left" /></span></a>
+                    <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand"><x-home.manufacturer :name="$brand" /><span>مشاهده دستگاه‌ها<x-home.icon name="arrow-left" /></span></a>
                 @endforeach
             </div>
         </section>
@@ -83,11 +83,15 @@
 
     <section class="np-location" aria-labelledby="location-title">
         <div class="np-container np-location__grid">
-            <x-home.artwork name="store" label="تصویر تأییدشدهٔ فروشگاه" />
             <div class="np-location__copy">
                 <h2 id="location-title"><x-home.icon name="map-pin" />مراجعهٔ حضوری</h2>
                 <address>{{ config('business.address') }}</address>
                 <p class="np-location__hours">{{ config('business.hours.open') }}<span> · {{ config('business.hours.closed') }}</span></p>
+            </div>
+            <div class="np-location__directions">
+                <span class="np-location__pin"><x-home.icon name="map-pin" /></span>
+                <p>مسیر شما به نوین‌پی</p>
+                <span>موقعیت فروشگاه را در نقشهٔ دلخواه خود باز کنید.</span>
                 <div class="np-location__maps">
                     @foreach (config('business.maps') as $label => $url)
                         <a href="{{ $url }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" />{{ $label }}<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>

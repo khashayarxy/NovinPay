@@ -34,7 +34,7 @@
                 <a href="{{ route('contact') }}">تماس با ما</a>
             </nav>
             <div class="np-footer__brand">
-                <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-brand-logo variant="white" /></a>
+                <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark :dark="true" /></a>
                 <p>فروش و تعمیر دستگاه‌های کارتخوان<br>در شهریار</p>
                 <a href="{{ config('business.phone_uri') }}" class="np-footer__consult">مشاورهٔ خرید و تعمیر <x-home.icon name="arrow-left" /></a>
             </div>

@@ -1,3 +1,34 @@
+# Option 2 homepage QA
+
+final result: passed
+
+This is an implementation QA result within the owner's explicit CSS/address-card fallback policy. **Owner visual approval is pending.** Technical checks do not constitute approval of the design.
+
+Source: new `NovinPay-Option2-References.zip`, full-page Option 2 image and five section crops. References are conceptual AI composites, not real photographs. Implementation starts from stable main; rejected PR #4 is excluded.
+
+## Comparison checklist
+
+- Kept the existing hero headline, two hero actions, four trust items, two promotion cards, seven services, Why/brands, location and footer sequence.
+- Matched the light-blue hero, white surfaces, mint sales/peach repair cards, blue accents, restrained borders/shadows and dark footer. Retained licensed Vazirmatn and existing Tabler icons.
+- Hero uses three neutral model cards with a dominant PAX D230 card, Newland ME31 and NewPOS 7210. These are explicitly a CSS fallback; the reference's product photography was not reproduced with unverified or AI hardware images.
+- Sales uses NewPOS 7210 identity; repairs uses PAX S915 identity and tool icon. Reoriented the repair card to put its visual left and copy right, matching the new reference. Preserved both original CTAs.
+- Why uses a quiet technical mark. Genuine supplied manufacturer SVGs replace text approximations; source artwork is fingerprint-tested.
+- The location is an address/directions card with all three providers; no map preview is claimed. Complete configured business information remains available.
+- New owner-approved black/blue and white/blue lockups are visibly readable at their actual desktop/mobile sizes. Canvas trimming does not alter artwork. Admin logos and favicon are unchanged.
+- Narrow 320px header initially wrapped its price action and left a single navigation item on another row. Removed only its decorative action arrow at that width and arranged the same six links in a deliberate three-column/two-row layout. Re-captured and inspected the result.
+
+## Actual verification
+
+Screenshots at 1440, 390 and 320px use the canonical isolated site, same homepage state and full-page CSS scale. Header and footer-logo closeups are also saved. Reference/current side-by-side comparison is normalized to the same displayed width without distorting image proportions. Evidence is outside Git under the task's `homepage-option2/` and `environment-setup/option2-*` paths.
+
+All three widths: HTTP 200, one H1, zero horizontal overflow, zero broken images, zero empty placeholders, zero mascots and all three exact directions URLs. Scoped axe checks across header/main/footer returned zero WCAG 2 A/AA and 2.1 AA violations. Catalogue, product detail, about, repair, tracking, consultation and contact smoke checks returned 200 without broken images or overflow. Primary catalogue CTA, PAX filtering, required-field validation, form tokens and keyboard skip-link focus were exercised without submitting personal data.
+
+Remaining visual differences: photographs are replaced with the authorized neutral CSS treatment; map imagery with an honest address card; real application labels/information replace inaccurate AI reference copy. Screenshot heights adapt to actual Persian text, the three mobile widths and preserved operational behavior. No percentage similarity claim or owner approval is inferred. See `docs/HOMEPAGE-OPTION2.md` for sources and unresolved imagery permissions.
+
+---
+
+# Historical Phase 3 QA record (superseded scope; retained for traceability)
+
 # NovinPay Phase 3 — visual verification
 
 final result: passed

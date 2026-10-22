@@ -246,3 +246,131 @@
     .np-footer__bottom { flex-direction: column; gap: 10px; padding-block: 15px; font-size: 9px; }
 }
 @media (prefers-reduced-motion: reduce) { .homepage * { scroll-behavior: auto; transition: none; } }
+
+/* Option 2: supplied lockups and homepage-only, photograph-free fallback compositions. */
+.np-header .np-logo-link .np-wordmark { display: block; width: 168px; height: auto; }
+.np-footer__brand .np-logo-link .np-wordmark { display: block; width: 174px; max-width: 100%; height: auto; }
+.np-manufacturer { display: block; object-fit: contain; width: 100%; height: 52px; }
+.homepage .np-hero { background: linear-gradient(115deg, #dceeff, #f2f9ff 58%, #f9fcff); }
+.homepage .np-hero__grid { min-height: 380px; gap: 40px; padding-block: 32px; }
+.homepage .np-hero__art { position: relative; inset: auto; top: auto; width: 100%; height: 330px; min-height: 0; }
+.homepage .np-artwork--composition { display: flex; align-items: center; justify-content: center; border: 0; background: transparent; overflow: visible; }
+.np-model-selection { width: 100%; padding: 18px 8px; text-align: center; }
+.np-model-selection > p { color: #435a7a; font-size: 12px; margin-bottom: 20px; }
+.np-model-selection__cards { display: grid; grid-template-columns: .85fr 1fr .85fr; align-items: center; gap: 12px; }
+.np-model-selection__card { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 23px; padding: 24px 12px; min-height: 190px; background: #ffffffed; border: 1px solid #d5e6f7; border-radius: 18px; box-shadow: 0 16px 34px #1f518c12; }
+.np-model-selection__card:nth-child(2) { min-height: 245px; box-shadow: 0 22px 42px #1f518c1c; }
+.np-model-selection__card .np-manufacturer { height: 42px; max-width: 115px; }
+.np-model-selection__card strong { font-family: Arial, sans-serif; font-size: 29px; font-weight: 700; color: #132348; letter-spacing: -.8px; }
+.np-model-selection__card:nth-child(2) strong { font-size: 40px; }
+.np-model-selection__card > span { font-size: 10px; color: #52678b; line-height: 1.8; }
+.homepage .np-trust { width: min(100% - 64px, 1200px); margin-inline: auto; padding-block: 28px; }
+.homepage .np-trust__item { padding-block: 8px; }
+.homepage .np-trust .np-icon { width: 34px; height: 34px; margin-bottom: 10px; }
+.homepage .np-promotions { gap: 20px; }
+.homepage .np-promo { min-height: 260px; padding: 24px; gap: 20px; border: 1px solid #e4eeeeb3; box-shadow: 0 6px 22px #173b6510; }
+.homepage .np-promo h2 { font-size: 27px; line-height: 1.5; }
+.homepage .np-promo__copy > p:not(.np-pill) { font-size: 12px; line-height: 2; }
+.homepage .np-promo .np-artwork { min-height: 0; align-self: center; }
+.np-model-focus { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; width: 100%; min-height: 205px; padding: 22px 15px; border: 1px solid #ffffff; border-radius: 16px; background: #ffffffc9; box-shadow: 0 14px 25px #123e5512; text-align: center; }
+.np-model-focus .np-manufacturer { height: 40px; max-width: 130px; }
+.np-model-focus strong { font: 700 34px/1.2 Arial, sans-serif; color: #17334c; }
+.np-model-focus > span { font-size: 11px; color: #435a7a; line-height: 1.8; }
+.np-model-focus > .np-icon { width: 25px; height: 25px; color: #426c7d; }
+.homepage .np-services { padding-block: 30px; }
+.homepage .np-section-heading { margin-bottom: 20px; }
+.homepage .np-service { min-height: 130px; background: #fff; }
+.homepage .np-about-grid { gap: 22px; padding-bottom: 30px; }
+.homepage .np-why { grid-template-columns: 1.6fr .65fr; padding: 24px; gap: 18px; min-height: 238px; background: #eff7ff; }
+.homepage .np-why__copy > p { margin-block: 8px 14px; }
+.homepage .np-why ul { gap: 9px; }
+.np-support-mark { text-align: center; }
+.np-support-mark > .np-icon { width: 48px; height: 48px; color: #0674cf; margin-bottom: 16px; }
+.homepage .np-support-mark p { font-size: 14px; font-weight: 700; color: #173b65; line-height: 2; }
+.homepage .np-support-mark p span { font-size: 11px; font-weight: 400; color: #52678b; }
+.homepage .np-brand { min-height: 116px; padding: 18px 12px; }
+.homepage .np-brand .np-manufacturer { height: 48px; max-width: 170px; }
+.homepage .np-location { padding-block: 20px; background: #edf6fe; }
+.homepage .np-location__grid { border: 1px solid #dce9f7; border-radius: 18px; background: #fff; gap: 0; overflow: hidden; min-height: 200px; box-shadow: 0 5px 22px #173b6508; }
+.homepage .np-location__copy { background: transparent; border: 0; border-radius: 0; padding: 26px; }
+.homepage .np-location address { max-width: 480px; font-size: 13px; line-height: 2.1; margin-block: 12px; }
+.np-location__directions { display: flex; align-items: center; justify-content: center; flex-direction: column; background: #f5faff; padding: 24px; text-align: center; }
+.np-location__pin { display: grid; place-items: center; width: 45px; height: 45px; color: var(--color-brand-600); margin-bottom: 8px; }
+.np-location__pin .np-icon { width: 38px; height: 38px; }
+.np-location__directions > p { font-size: 17px; font-weight: 700; }
+.np-location__directions > span:not(.np-location__pin) { font-size: 11px; line-height: 2; color: #52678b; margin-top: 4px; }
+.homepage .np-location__maps a { min-height: 44px; background: #fff; }
+@media (max-width: 1100px) and (min-width: 851px) {
+    .np-nav { gap: 18px; }
+    .np-header .np-logo-link .np-wordmark { width: 150px; }
+    .homepage .np-hero h1 { font-size: 38px; }
+    .homepage .np-hero__grid { min-height: 340px; gap: 25px; }
+    .np-model-selection__cards { gap: 8px; }
+    .np-model-selection__card { padding-inline: 8px; }
+    .np-model-selection__card strong { font-size: 25px; }
+    .np-model-selection__card:nth-child(2) strong { font-size: 34px; }
+    .homepage .np-promo { padding: 20px; gap: 16px; }
+    .homepage .np-promo h2 { font-size: 24px; }
+}
+@media (max-width: 850px) {
+    .homepage .np-hero__grid { grid-template-columns: 1fr; gap: 24px; padding-block: 30px; }
+    .homepage .np-hero__copy { max-width: 630px; text-align: center; margin-inline: auto; }
+    .homepage .np-hero__description { max-width: 600px; }
+    .homepage .np-hero__actions { justify-content: center; }
+    .homepage .np-hero__art { height: 300px; max-width: 520px; margin-inline: auto; }
+    .homepage .np-trust { width: calc(100% - 40px); padding-block: 22px; }
+    .homepage .np-promo { grid-template-columns: 1fr; }
+    .homepage .np-promo .np-artwork { width: 100%; }
+    .np-model-focus { min-height: 170px; }
+    .homepage .np-why { grid-template-columns: 1.6fr .65fr; }
+    .homepage .np-location__grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+    .np-header__inner { gap: 5px 12px; }
+    .np-header .np-logo-link .np-wordmark { width: 144px; }
+    .np-footer__brand .np-logo-link .np-wordmark { width: 150px; }
+    .homepage .np-hero__grid { gap: 12px; padding-block: 26px 16px; }
+    .homepage .np-hero__art { height: 265px; min-height: 0; }
+    .np-model-selection { padding: 10px 0; }
+    .np-model-selection > p { font-size: 11px; margin-bottom: 15px; }
+    .np-model-selection__cards { gap: 8px; }
+    .np-model-selection__card { gap: 17px; min-height: 155px; padding: 18px 6px; border-radius: 12px; }
+    .np-model-selection__card:nth-child(2) { min-height: 195px; }
+    .np-model-selection__card .np-manufacturer { height: 30px; }
+    .np-model-selection__card strong { font-size: 21px; }
+    .np-model-selection__card:nth-child(2) strong { font-size: 28px; }
+    .np-model-selection__card > span { font-size: 9px; }
+    .homepage .np-trust { width: calc(100% - 32px); }
+    .homepage .np-promo { grid-template-columns: 1.25fr .75fr; padding: 20px 16px; gap: 14px; }
+    .homepage .np-promo h2 { font-size: 22px; }
+    .np-model-focus { min-height: 180px; padding: 18px 8px; gap: 15px; }
+    .np-model-focus .np-manufacturer { height: 30px; }
+    .np-model-focus strong { font-size: 28px; }
+    .np-model-focus > span { font-size: 10px; }
+    .homepage .np-why { padding: 20px 16px; gap: 12px; }
+    .homepage .np-support-mark p { font-size: 11px; }
+    .homepage .np-support-mark p span { font-size: 10px; }
+    .homepage .np-brand { padding: 14px 8px; min-height: 100px; }
+    .homepage .np-brand .np-manufacturer { height: 35px; }
+    .homepage .np-location__copy { padding: 24px 18px; }
+    .np-location__directions { padding: 22px 12px; }
+    .homepage .np-location__maps { gap: 6px; }
+    .homepage .np-location__maps a { padding-inline: 9px; }
+}
+@media (max-width: 360px) {
+    .np-header .np-logo-link .np-wordmark { width: 125px; }
+    .np-header__actions { gap: 6px; }
+    .np-inquiry { padding-inline: 10px; }
+    .homepage .np-promo { grid-template-columns: 1fr; }
+    .homepage .np-promo .np-artwork { max-width: 230px; margin-inline: auto; }
+    .np-model-selection__card > span { font-size: 8px; }
+    .np-model-selection__card strong { font-size: 19px; }
+    .np-model-selection__card:nth-child(2) strong { font-size: 26px; }
+}
+
+.homepage .np-promo--repairs { direction: rtl; }
+@media (max-width: 360px) {
+    .np-header__actions .np-inquiry .np-icon { display: none; }
+    .public-site .np-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 8px; }
+    .public-site .np-nav a { justify-content: center; }
+}

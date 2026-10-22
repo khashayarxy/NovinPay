@@ -39,13 +39,21 @@ class HomePageTest extends TestCase
         $response->assertDontSee('Verifone')->assertDontSee('Ingenico');
     }
 
-    public function test_missing_original_artwork_has_five_labelled_slots_without_fake_images(): void
+    public function test_homepage_has_finished_fallback_compositions_without_unlicensed_or_fake_photographs(): void
     {
         $response = $this->get('/')->assertOk();
-        foreach (['hero', 'sales', 'repairs', 'support', 'store'] as $slot) {
+        foreach (['hero', 'sales', 'repairs', 'support'] as $slot) {
             $response->assertSee('data-artwork-slot="'.$slot.'"', false);
         }
-        $response->assertSee('تصویر در حال آماده‌سازی');
+        $response->assertDontSee('تصویر در حال آماده‌سازی')->assertDontSee('ماسکات');
+        foreach (['D230', 'ME31', '7210', 'S915'] as $model) {
+            $response->assertSee($model);
+        }
+        $response->assertSee('np-location__directions')->assertSee('np-model-selection');
+        $response->assertDontSee('<iframe', false);
+        foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
+            $response->assertSee(asset('brand/manufacturers/'.$brand.'.svg'));
+        }
         $response->assertDontSee('mascot-newpos.png');
         $response->assertDontSee('file_00000000');
         $response->assertDontSee('تضمین اصالت')->assertDontSee('تحویل سریع');
@@ -58,7 +66,7 @@ class HomePageTest extends TestCase
 
         config(['homepage.artwork.hero' => 'images/not-supplied.png']);
         $this->get('/')->assertOk()->assertDontSee('fetchpriority="high"', false)
-            ->assertSee('ماسکات آبی نوین‌پی');
+            ->assertSee('np-model-selection');
     }
 
     public function test_public_pages_share_homepage_chrome_while_admin_remains_separate(): void
