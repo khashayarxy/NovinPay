@@ -14,7 +14,7 @@
                     <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />خدمات تعمیرات<x-home.icon name="arrow-left" /></a>
                 </div>
             </div>
-            <x-home.artwork name="hero" label="مدل‌های قابل ارائه؛ PAX D230، Newland ME31 و NewPOS 7210" class="np-hero__art" />
+            <x-home.artwork name="hero" label="از انتخاب و راه‌اندازی تا تعمیر کارتخوان" class="np-hero__art" />
         </div>
     </section>
 
@@ -22,27 +22,6 @@
         @foreach ([['tag', 'مشاورهٔ خرید', 'متناسب با نیاز شما'], ['shield-check', 'شفافیت وضعیت', 'نو یا کارکرده'], ['truck', 'هماهنگی تحویل', 'جزئیات هنگام استعلام'], ['headphones', 'راهنمایی تخصصی', 'برای خرید و تعمیر']] as [$icon, $title, $text])
             <div class="np-trust__item"><x-home.icon :name="$icon" /><h2>{{ $title }}</h2><p>{{ $text }}</p></div>
         @endforeach
-    </section>
-
-    <section class="np-container np-promotions" aria-label="فروش و تعمیر کارتخوان">
-        <article class="np-promo np-promo--sales">
-            <div class="np-promo__copy">
-                <p class="np-pill"><x-home.icon name="shopping-bag" />فروش دستگاه کارتخوان</p>
-                <h2>کارتخوان مناسب<br>برای کسب‌وکار شما</h2>
-                <p>انتخاب از میان دستگاه‌های نو و کارکرده، با مشخصات و وضعیت روشن.</p>
-                <a href="{{ route('products.index') }}" class="np-button np-button--sales">مشاهده محصولات<x-home.icon name="arrow-left" /></a>
-            </div>
-            <x-home.artwork name="sales" label="دستگاه‌های کارتخوان" />
-        </article>
-        <article class="np-promo np-promo--repairs">
-            <div class="np-promo__copy">
-                <p class="np-pill"><x-home.icon name="tool" />خدمات تخصصی تعمیر</p>
-                <h2>دستگاه کارتخوان شما<br>دوباره آمادهٔ کار</h2>
-                <p>برای بررسی مشکلات سخت‌افزاری و نرم‌افزاری دستگاه، با ما هماهنگ کنید.</p>
-                <a href="{{ route('repair') }}" class="np-button np-button--repairs">مشاهده خدمات تعمیرات<x-home.icon name="arrow-left" /></a>
-            </div>
-            <x-home.artwork name="repairs" label="تعمیر دستگاه کارتخوان" />
-        </article>
     </section>
 
     <section class="np-container np-services" aria-labelledby="popular-services-title">
@@ -57,29 +36,16 @@
         </div>
     </section>
 
-    <div class="np-container np-about-grid">
-        <section class="np-why" aria-labelledby="why-title">
-            <div class="np-why__copy">
-                <h2 id="why-title"><x-home.icon name="diamond" />چرا نوین‌پی؟</h2>
-                <p>از انتخاب کارتخوان تا بررسی مشکل دستگاه، پاسخ پرسش‌هایتان را از ما بخواهید.</p>
-                <ul>
-                    @foreach (['راهنمای انتخاب متناسب با کسب‌وکار', 'اعلام وضعیت نو یا کارکردهٔ دستگاه', 'هماهنگی پیش از انجام تعمیر', 'امکان مراجعهٔ حضوری در شهریار'] as $advantage)
-                        <li><x-home.icon name="check" />{{ $advantage }}</li>
-                    @endforeach
-                </ul>
-            </div>
-            <x-home.artwork name="support" label="راهنمایی و پیگیری تخصصی" />
-        </section>
-        <section class="np-brands" aria-labelledby="brands-title">
-            <h2 id="brands-title">برندهای تحت پوشش</h2>
-            <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
-            <div class="np-brands__grid">
-                @foreach (['Newland', 'NewPOS', 'PAX'] as $brand)
-                    <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand"><x-home.manufacturer :name="$brand" /><span>مشاهده دستگاه‌ها<x-home.icon name="arrow-left" /></span></a>
-                @endforeach
-            </div>
-        </section>
-    </div>
+    <section class="np-container np-brands" aria-labelledby="brands-title">
+        <h2 id="brands-title">برندهای تحت پوشش</h2>
+        <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
+        <div class="np-brands__grid">
+            @foreach (['Newland', 'NewPOS', 'PAX'] as $brand)
+                <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand"><x-home.manufacturer :name="$brand" /><span>مشاهده دستگاه‌ها<x-home.icon name="arrow-left" /></span></a>
+            @endforeach
+        </div>
+    </section>
+
 
     <section class="np-location" aria-labelledby="location-title">
         <div class="np-container np-location__grid">

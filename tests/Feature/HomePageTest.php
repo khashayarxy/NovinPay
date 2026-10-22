@@ -14,7 +14,7 @@ class HomePageTest extends TestCase
     public function test_homepage_presents_all_approved_sections_and_seven_service_links(): void
     {
         $response = $this->get('/')->assertOk();
-        foreach (['hero-title', 'popular-services-title', 'brands-title', 'why-title', 'location-title'] as $section) {
+        foreach (['hero-title', 'popular-services-title', 'brands-title', 'location-title'] as $section) {
             $response->assertSee('id="'.$section.'"', false);
         }
         $document = new DOMDocument;
@@ -42,14 +42,11 @@ class HomePageTest extends TestCase
     public function test_homepage_has_finished_fallback_compositions_without_unlicensed_or_fake_photographs(): void
     {
         $response = $this->get('/')->assertOk();
-        foreach (['hero', 'sales', 'repairs', 'support'] as $slot) {
-            $response->assertSee('data-artwork-slot="'.$slot.'"', false);
-        }
+        $response->assertSee('data-artwork-slot="hero"', false);
         $response->assertDontSee('تصویر در حال آماده‌سازی')->assertDontSee('ماسکات');
-        foreach (['D230', 'ME31', '7210', 'S915'] as $model) {
-            $response->assertSee($model);
-        }
-        $response->assertSee('np-location__directions')->assertSee('np-model-selection');
+        $response->assertDontSee('np-promotions')->assertDontSee('np-why');
+        $response->assertDontSee('np-model-selection')->assertDontSee('np-model-focus');
+        $response->assertSee('np-location__directions')->assertSee('np-hero-signature');
         $response->assertDontSee('<iframe', false);
         foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
             $response->assertSee(asset('brand/manufacturers/'.$brand.'.svg'));
@@ -66,7 +63,20 @@ class HomePageTest extends TestCase
 
         config(['homepage.artwork.hero' => 'images/not-supplied.png']);
         $this->get('/')->assertOk()->assertDontSee('fetchpriority="high"', false)
-            ->assertSee('np-model-selection');
+            ->assertSee('np-hero-signature');
+    }
+
+    public function test_minimal_header_retains_navigation_without_search_or_price_controls(): void
+    {
+        $response = $this->get('/')->assertOk();
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+        $xpath = new DOMXPath($document);
+        $this->assertSame(6, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
+        $this->assertSame(6, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
+        $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
+        $this->assertSame(5, $xpath->query('//main/section')->length);
+        $response->assertSeeInOrder(['id="hero-title"', 'np-trust np-container', 'id="popular-services-title"', 'id="brands-title"', 'id="location-title"'], false);
     }
 
     public function test_public_pages_share_homepage_chrome_while_admin_remains_separate(): void

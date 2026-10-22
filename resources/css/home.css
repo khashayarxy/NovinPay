@@ -17,18 +17,12 @@
 .np-nav { display: flex; gap: clamp(18px, 2.5vw, 36px); align-items: center; }
 .np-nav a { display: inline-flex; align-items: center; min-height: 44px; position: relative; font-size: 13px; white-space: nowrap; }
 .np-nav a:hover, .np-nav [aria-current] { color: var(--color-brand-700); }
-.np-nav [aria-current]::after { content: ''; position: absolute; inset-inline: 0; bottom: 0; height: 2px; background: var(--color-brand-500); }
-.np-header__actions { display: flex; align-items: center; gap: 10px; }
-.np-search { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 44px; border: 1px solid #d8e4f4; border-radius: 10px; }
-.np-search .np-icon { width: 20px; height: 20px; }
 .np-button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 48px; border: 1px solid transparent; border-radius: 999px; padding: 11px 22px; font-size: 13px; font-weight: 700; line-height: 1.6; text-align: center; transition: background-color .15s, border-color .15s; }
 .np-button .np-icon { width: 21px; height: 21px; }
 .np-button--primary { color: #fff; background: var(--color-brand-600); }
 .np-button--primary:hover { background: var(--color-brand-700); }
 .np-button--outline { color: var(--color-brand-700); background: #fff; border-color: var(--color-brand-500); }
 .np-button--outline:hover { background: var(--color-brand-50); }
-.np-inquiry { border-radius: 9px; min-height: 42px; padding: 9px 14px; font-size: 12px; gap: 8px; }
-.np-inquiry .np-icon { width: 17px; height: 17px; }
 .np-hero { background: #f1f8ff; }
 .np-hero__grid { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 38px; align-items: center; min-height: 292px; padding-block: 16px; }
 .np-eyebrow { display: inline-flex; border: 1px solid #cfe4ff; border-radius: 99px; padding: 5px 13px; background: #fff; color: var(--color-brand-700); font-size: 11px; margin-bottom: 8px; }
@@ -37,10 +31,6 @@
 .np-hero__description { max-width: 530px; margin-block: 8px 16px; font-size: 14px; line-height: 2; }
 .np-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .np-artwork { min-width: 0; display: grid; place-items: center; border: 1px dashed #bed5ed; border-radius: 18px; background: #eaf3fc; color: #44698e; overflow: hidden; }
-.np-artwork__placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 22px 12px; text-align: center; }
-.np-artwork__placeholder > .np-icon { width: 38px; height: 38px; opacity: .65; }
-.np-artwork figcaption { font-size: 13px; font-weight: 500; line-height: 1.8; }
-.np-artwork figcaption span { display: block; font-size: 10px; font-weight: 400; margin-top: 3px; }
 .np-artwork--ready { background: transparent; border: 0; }
 .np-artwork img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .np-hero__art { position: absolute; inset-inline-end: 0; top: 16px; width: calc(46% - 19px); height: 350px; background: #e5f1fd; z-index: 1; }
@@ -50,30 +40,10 @@
 .np-trust .np-icon { width: 30px; height: 30px; color: var(--color-brand-500); margin-bottom: 4px; }
 .np-trust h2 { font-size: 13px; font-weight: 700; }
 .np-trust p { margin-top: 3px; font-size: 11px; color: #52678b; }
-.np-promotions { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.np-promo { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; border-radius: 17px; padding: 18px; min-height: 234px; align-items: center; overflow: hidden; }
-.np-promo--sales { background: #e8faf6; }
-.np-promo--repairs { background: #fff1e5; direction: ltr; }
-.np-promo--repairs > * { direction: rtl; }
-.np-promo__copy { min-width: 0; }
-.np-pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border: 1px solid currentColor; border-radius: 99px; font-size: 10px; background: #ffffffc9; }
-.np-pill .np-icon { width: 16px; height: 16px; }
-.np-promo--sales .np-pill { color: #007b68; border-color: #a3dbcf; }
-.np-promo--repairs .np-pill { color: #b7430b; border-color: #efc6aa; }
-.np-promo h2 { font-size: clamp(20px, 2.2vw, 27px); font-weight: 800; line-height: 1.35; margin-block: 10px 6px; letter-spacing: -.65px; }
-.np-promo__copy > p:not(.np-pill) { font-size: 11px; line-height: 1.9; color: #415475; }
-.np-promo .np-button { margin-top: 15px; min-height: 40px; padding: 8px 16px; font-size: 12px; }
-.np-button--sales { background: #007f6a; color: #fff; }
-.np-button--sales:hover { background: #006451; }
-.np-button--repairs { background: #c7440b; color: #fff; }
-.np-button--repairs:hover { background: #a93605; }
-.np-promo .np-artwork { align-self: stretch; min-height: 190px; border-radius: 12px; }
-.np-promo--sales .np-artwork { background: #d8f1ee; border-color: #9ccfc6; color: #38786f; }
-.np-promo--repairs .np-artwork { background: #fbe4d2; border-color: #ddb99e; color: #93613e; }
 .np-services { padding-block: 16px 10px; }
 .np-section-heading { display: flex; justify-content: center; position: relative; align-items: center; gap: 15px; margin-bottom: 12px; }
 .np-section-heading > div { max-width: 68%; text-align: center; }
-.np-section-heading h2, .np-brands h2, .np-why h2, .np-location h2 { font-size: 22px; font-weight: 800; line-height: 1.4; }
+.np-section-heading h2, .np-brands h2, .np-location h2 { font-size: 22px; font-weight: 800; line-height: 1.4; }
 .np-section-heading p, .np-brands > p { color: #52678b; font-size: 11px; line-height: 1.9; margin-top: 3px; }
 .np-small-link { position: absolute; inset-inline-start: 0; top: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #d7e5f6; border-radius: 99px; min-height: 36px; padding: 7px 14px; font-size: 11px; color: var(--color-brand-700); white-space: nowrap; }
 .np-small-link .np-icon { width: 16px; height: 16px; }
@@ -83,18 +53,6 @@
 .np-service > .np-icon { width: 33px; height: 33px; color: var(--color-brand-500); margin-bottom: 9px; }
 .np-service h3 { font-size: 12px; font-weight: 700; line-height: 1.7; }
 .np-service p { color: #52678b; font-size: 10px; line-height: 1.8; margin-top: 3px; }
-.np-about-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 18px; padding-bottom: 16px; }
-.np-why { display: grid; grid-template-columns: 1.5fr .65fr; gap: 10px; padding: 17px; border-radius: 16px; background: #eff7ff; min-height: 204px; }
-.np-why h2 { display: flex; align-items: center; gap: 9px; }
-.np-why h2 .np-icon { color: #ba6b00; width: 27px; height: 27px; }
-.np-why__copy > p { color: #52678b; font-size: 11px; line-height: 1.9; margin-block: 4px 10px; }
-.np-why ul { display: grid; gap: 6px; font-size: 11px; line-height: 1.7; }
-.np-why li { display: flex; gap: 7px; align-items: start; }
-.np-why li .np-icon { color: #fff; background: var(--color-brand-600); width: 17px; height: 17px; border-radius: 50%; mask-size: 13px; }
-.np-why .np-artwork { background: #e2effb; border-color: #b9d2ed; border-radius: 11px; }
-.np-why .np-artwork__placeholder { padding-inline: 8px; }
-.np-why .np-artwork figcaption { font-size: 10px; }
-.np-why .np-artwork figcaption span { font-size: 9px; }
 .np-brands { align-self: center; text-align: center; }
 .np-brands__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
 .np-brand { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 1px solid #e3ecf8; border-radius: 13px; min-height: 104px; padding: 12px 6px; }
@@ -104,7 +62,6 @@
 .np-brand .np-icon { width: 13px; height: 13px; }
 .np-location { background: #eaf2fa; padding-block: 8px; }
 .np-location__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; min-height: 176px; }
-.np-location .np-artwork { border-radius: 13px; background: #dfebf6; border-color: #adc8e4; }
 .np-location__copy { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; border: 1px solid #dfe9f4; border-radius: 16px; padding: 14px 22px; text-align: center; }
 .np-location h2 { display: flex; gap: 8px; align-items: center; font-size: 19px; }
 .np-location h2 .np-icon { color: var(--color-brand-600); }
@@ -138,32 +95,19 @@
     .np-hero__grid { gap: 24px; }
     .np-hero__actions { gap: 9px; }
     .np-hero__actions .np-button { padding-inline: 17px; gap: 9px; font-size: 12px; }
-    .np-promo { gap: 12px; padding: 16px; }
-    .np-promo h2 { font-size: 22px; }
-    .np-about-grid { grid-template-columns: 1fr 1.1fr; }
-    .np-why { grid-template-columns: 1.45fr .6fr; padding: 14px; }
-    .np-why h2 { font-size: 21px; }
     .np-footer__grid { gap: 20px; }
 }
 @media (max-width: 850px) {
     .np-container { width: calc(100% - 40px); }
     .np-header__inner { flex-wrap: wrap; gap: 4px 20px; padding-block: 6px 9px; }
     .np-nav { order: 3; width: 100%; justify-content: space-between; gap: 12px; }
-    .np-header__actions { margin-inline-start: auto; }
     .np-hero__grid { gap: 20px; padding-block: 24px; }
     .np-hero h1 { font-size: 33px; }
     .np-hero__description { font-size: 12px; }
     .np-hero__actions .np-button { padding-inline: 14px; }
     .np-hero__art { position: static; width: auto; height: auto; min-height: 275px; align-self: stretch; }
     .np-trust { width: calc(100% - 40px); margin-inline: auto; }
-    .np-promo { grid-template-columns: 1fr; gap: 15px; }
-    .np-promo .np-artwork { min-height: 105px; }
-    .np-promo .np-artwork__placeholder { flex-direction: row; padding: 16px; }
-    .np-promo h2 { font-size: 23px; }
     .np-services__grid { grid-template-columns: repeat(4, minmax(0,1fr)); }
-    .np-about-grid { grid-template-columns: 1fr; gap: 22px; }
-    .np-why { grid-template-columns: 1fr .65fr; min-height: 200px; padding: 20px; }
-    .np-why .np-artwork figcaption { font-size: 12px; }
     .np-brands { grid-row: 1; }
     .np-section-heading { justify-content: space-between; }
     .np-section-heading > div { max-width: 75%; text-align: start; }
@@ -178,8 +122,6 @@
     .np-header .np-logo-link img { width: 46px; height: 46px; }
     .np-nav { gap: 8px; }
     .np-nav a { font-size: 11px; min-height: 40px; }
-    .np-search { width: 38px; height: 40px; }
-    .np-inquiry { min-height: 40px; font-size: 11px; }
     .np-hero__grid { grid-template-columns: 1fr; gap: 20px; padding-block: 25px 20px; }
     .np-eyebrow { font-size: 10px; margin-bottom: 10px; }
     .np-hero h1 { font-size: 33px; line-height: 1.55; }
@@ -193,16 +135,6 @@
     .np-trust h2 { font-size: 12px; }
     .np-trust p { font-size: 11px; }
     .np-trust .np-icon { width: 27px; height: 27px; }
-    .np-promotions { grid-template-columns: 1fr; gap: 14px; }
-    .np-promo { grid-template-columns: 1.25fr .75fr; min-height: 232px; padding: 17px 14px; gap: 12px; }
-    .np-promo h2 { font-size: 22px; }
-    .np-promo .np-artwork { min-height: 180px; }
-    .np-promo .np-artwork__placeholder { flex-direction: column; padding: 12px 6px; }
-    .np-promo .np-artwork figcaption { font-size: 10px; }
-    .np-promo .np-artwork figcaption span { font-size: 9px; }
-    .np-pill { font-size: 9px; padding: 4px 7px; gap: 5px; }
-    .np-promo__copy > p:not(.np-pill) { font-size: 11px; }
-    .np-promo .np-button { font-size: 11px; padding-inline: 12px; gap: 8px; }
     .np-services { padding-block: 23px; }
     .np-section-heading h2 { font-size: 20px; }
     .np-section-heading p { font-size: 10px; max-width: 225px; }
@@ -212,22 +144,14 @@
     .np-service:last-child { grid-column: 1 / -1; min-height: 100px; }
     .np-service h3 { font-size: 12px; }
     .np-service p { font-size: 11px; }
-    .np-about-grid { gap: 20px; padding-bottom: 22px; }
     .np-brands h2 { font-size: 21px; }
     .np-brands > p { font-size: 10px; }
     .np-brands__grid { gap: 8px; margin-top: 12px; }
     .np-brand { min-height: 95px; gap: 8px; }
     .np-brand > span:first-child { font-size: 21px; }
     .np-brand > span:last-child { font-size: 9px; gap: 3px; }
-    .np-why { grid-template-columns: 1.6fr .65fr; gap: 10px; min-height: 230px; padding: 16px 13px; }
-    .np-why h2 { font-size: 21px; }
-    .np-why__copy > p { font-size: 11px; }
-    .np-why ul { font-size: 11px; gap: 7px; }
-    .np-why .np-artwork figcaption { font-size: 9px; }
-    .np-why .np-artwork__placeholder > .np-icon { width: 30px; height: 30px; }
     .np-location { padding-block: 16px; }
     .np-location__grid { grid-template-columns: 1fr; gap: 12px; }
-    .np-location .np-artwork { min-height: 150px; }
     .np-location__copy { grid-row: 1; padding: 19px 15px; }
     .np-location address { font-size: 12px; }
     .np-location__maps { gap: 6px; }
@@ -255,39 +179,12 @@
 .homepage .np-hero__grid { min-height: 380px; gap: 40px; padding-block: 32px; }
 .homepage .np-hero__art { position: relative; inset: auto; top: auto; width: 100%; height: 330px; min-height: 0; }
 .homepage .np-artwork--composition { display: flex; align-items: center; justify-content: center; border: 0; background: transparent; overflow: visible; }
-.np-model-selection { width: 100%; padding: 18px 8px; text-align: center; }
-.np-model-selection > p { color: #435a7a; font-size: 12px; margin-bottom: 20px; }
-.np-model-selection__cards { display: grid; grid-template-columns: .85fr 1fr .85fr; align-items: center; gap: 12px; }
-.np-model-selection__card { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 23px; padding: 24px 12px; min-height: 190px; background: #ffffffed; border: 1px solid #d5e6f7; border-radius: 18px; box-shadow: 0 16px 34px #1f518c12; }
-.np-model-selection__card:nth-child(2) { min-height: 245px; box-shadow: 0 22px 42px #1f518c1c; }
-.np-model-selection__card .np-manufacturer { height: 42px; max-width: 115px; }
-.np-model-selection__card strong { font-family: Arial, sans-serif; font-size: 29px; font-weight: 700; color: #132348; letter-spacing: -.8px; }
-.np-model-selection__card:nth-child(2) strong { font-size: 40px; }
-.np-model-selection__card > span { font-size: 10px; color: #52678b; line-height: 1.8; }
 .homepage .np-trust { width: min(100% - 64px, 1200px); margin-inline: auto; padding-block: 28px; }
 .homepage .np-trust__item { padding-block: 8px; }
 .homepage .np-trust .np-icon { width: 34px; height: 34px; margin-bottom: 10px; }
-.homepage .np-promotions { gap: 20px; }
-.homepage .np-promo { min-height: 260px; padding: 24px; gap: 20px; border: 1px solid #e4eeeeb3; box-shadow: 0 6px 22px #173b6510; }
-.homepage .np-promo h2 { font-size: 27px; line-height: 1.5; }
-.homepage .np-promo__copy > p:not(.np-pill) { font-size: 12px; line-height: 2; }
-.homepage .np-promo .np-artwork { min-height: 0; align-self: center; }
-.np-model-focus { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; width: 100%; min-height: 205px; padding: 22px 15px; border: 1px solid #ffffff; border-radius: 16px; background: #ffffffc9; box-shadow: 0 14px 25px #123e5512; text-align: center; }
-.np-model-focus .np-manufacturer { height: 40px; max-width: 130px; }
-.np-model-focus strong { font: 700 34px/1.2 Arial, sans-serif; color: #17334c; }
-.np-model-focus > span { font-size: 11px; color: #435a7a; line-height: 1.8; }
-.np-model-focus > .np-icon { width: 25px; height: 25px; color: #426c7d; }
 .homepage .np-services { padding-block: 30px; }
 .homepage .np-section-heading { margin-bottom: 20px; }
 .homepage .np-service { min-height: 130px; background: #fff; }
-.homepage .np-about-grid { gap: 22px; padding-bottom: 30px; }
-.homepage .np-why { grid-template-columns: 1.6fr .65fr; padding: 24px; gap: 18px; min-height: 238px; background: #eff7ff; }
-.homepage .np-why__copy > p { margin-block: 8px 14px; }
-.homepage .np-why ul { gap: 9px; }
-.np-support-mark { text-align: center; }
-.np-support-mark > .np-icon { width: 48px; height: 48px; color: #0674cf; margin-bottom: 16px; }
-.homepage .np-support-mark p { font-size: 14px; font-weight: 700; color: #173b65; line-height: 2; }
-.homepage .np-support-mark p span { font-size: 11px; font-weight: 400; color: #52678b; }
 .homepage .np-brand { min-height: 116px; padding: 18px 12px; }
 .homepage .np-brand .np-manufacturer { height: 48px; max-width: 170px; }
 .homepage .np-location { padding-block: 20px; background: #edf6fe; }
@@ -305,12 +202,6 @@
     .np-header .np-logo-link .np-wordmark { width: 150px; }
     .homepage .np-hero h1 { font-size: 38px; }
     .homepage .np-hero__grid { min-height: 340px; gap: 25px; }
-    .np-model-selection__cards { gap: 8px; }
-    .np-model-selection__card { padding-inline: 8px; }
-    .np-model-selection__card strong { font-size: 25px; }
-    .np-model-selection__card:nth-child(2) strong { font-size: 34px; }
-    .homepage .np-promo { padding: 20px; gap: 16px; }
-    .homepage .np-promo h2 { font-size: 24px; }
 }
 @media (max-width: 850px) {
     .homepage .np-hero__grid { grid-template-columns: 1fr; gap: 24px; padding-block: 30px; }
@@ -319,10 +210,6 @@
     .homepage .np-hero__actions { justify-content: center; }
     .homepage .np-hero__art { height: 300px; max-width: 520px; margin-inline: auto; }
     .homepage .np-trust { width: calc(100% - 40px); padding-block: 22px; }
-    .homepage .np-promo { grid-template-columns: 1fr; }
-    .homepage .np-promo .np-artwork { width: 100%; }
-    .np-model-focus { min-height: 170px; }
-    .homepage .np-why { grid-template-columns: 1.6fr .65fr; }
     .homepage .np-location__grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
@@ -331,25 +218,7 @@
     .np-footer__brand .np-logo-link .np-wordmark { width: 150px; }
     .homepage .np-hero__grid { gap: 12px; padding-block: 26px 16px; }
     .homepage .np-hero__art { height: 265px; min-height: 0; }
-    .np-model-selection { padding: 10px 0; }
-    .np-model-selection > p { font-size: 11px; margin-bottom: 15px; }
-    .np-model-selection__cards { gap: 8px; }
-    .np-model-selection__card { gap: 17px; min-height: 155px; padding: 18px 6px; border-radius: 12px; }
-    .np-model-selection__card:nth-child(2) { min-height: 195px; }
-    .np-model-selection__card .np-manufacturer { height: 30px; }
-    .np-model-selection__card strong { font-size: 21px; }
-    .np-model-selection__card:nth-child(2) strong { font-size: 28px; }
-    .np-model-selection__card > span { font-size: 9px; }
     .homepage .np-trust { width: calc(100% - 32px); }
-    .homepage .np-promo { grid-template-columns: 1.25fr .75fr; padding: 20px 16px; gap: 14px; }
-    .homepage .np-promo h2 { font-size: 22px; }
-    .np-model-focus { min-height: 180px; padding: 18px 8px; gap: 15px; }
-    .np-model-focus .np-manufacturer { height: 30px; }
-    .np-model-focus strong { font-size: 28px; }
-    .np-model-focus > span { font-size: 10px; }
-    .homepage .np-why { padding: 20px 16px; gap: 12px; }
-    .homepage .np-support-mark p { font-size: 11px; }
-    .homepage .np-support-mark p span { font-size: 10px; }
     .homepage .np-brand { padding: 14px 8px; min-height: 100px; }
     .homepage .np-brand .np-manufacturer { height: 35px; }
     .homepage .np-location__copy { padding: 24px 18px; }
@@ -359,18 +228,52 @@
 }
 @media (max-width: 360px) {
     .np-header .np-logo-link .np-wordmark { width: 125px; }
-    .np-header__actions { gap: 6px; }
-    .np-inquiry { padding-inline: 10px; }
-    .homepage .np-promo { grid-template-columns: 1fr; }
-    .homepage .np-promo .np-artwork { max-width: 230px; margin-inline: auto; }
-    .np-model-selection__card > span { font-size: 8px; }
-    .np-model-selection__card strong { font-size: 19px; }
-    .np-model-selection__card:nth-child(2) strong { font-size: 26px; }
 }
 
-.homepage .np-promo--repairs { direction: rtl; }
 @media (max-width: 360px) {
-    .np-header__actions .np-inquiry .np-icon { display: none; }
     .public-site .np-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 8px; }
     .public-site .np-nav a { justify-content: center; }
+}
+
+/* Minimal revision: quiet navigation and a light typographic hero. */
+.np-header__inner { position: relative; min-height: 68px; padding-block: 10px; }
+.np-nav a { padding-inline: 10px; border-radius: 7px; }
+.np-nav a:hover, .np-nav [aria-current] { background: #f2f7fc; text-decoration: none; }
+.np-mobile-menu { display: none; }
+.homepage .np-hero__grid { min-height: 320px; grid-template-columns: 1.35fr .65fr; gap: 50px; padding-block: 40px; }
+.homepage .np-hero__art { height: 220px; }
+.np-hero-signature { display: flex; flex-direction: column; border-inline-start: 2px solid #b8d9f5; padding-inline-start: 30px; width: min(100%, 280px); }
+.np-hero-signature span { color: #31577b; font-size: 31px; line-height: 2.1; font-weight: 500; }
+.np-hero-signature span:last-child { color: var(--color-brand-700); font-weight: 700; }
+.homepage .np-trust { padding-block: 18px; }
+.homepage .np-trust .np-icon { width: 26px; height: 26px; margin-bottom: 5px; }
+.homepage .np-services { padding-block: 30px 36px; }
+.homepage .np-brands { padding-bottom: 36px; }
+.homepage .np-brands__grid { max-width: 780px; margin-inline: auto; margin-top: 20px; gap: 20px; }
+.homepage .np-brand { min-height: 104px; box-shadow: none; }
+@media (max-width: 850px) {
+    .np-header__inner { flex-wrap: nowrap; min-height: 64px; padding-block: 12px; }
+    .np-header .np-nav { display: none; }
+    .np-mobile-menu { display: block; margin-inline-start: auto; }
+    .np-mobile-menu summary { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .np-mobile-menu summary .np-icon { width: 16px; height: 16px; transform: rotate(-90deg); }
+    .np-mobile-menu[open] summary .np-icon { transform: rotate(90deg); }
+    .np-mobile-menu nav { position: absolute; top: 100%; inset-inline: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px; gap: 6px; border: 1px solid #e0eaf5; border-radius: 12px; background: #fff; box-shadow: 0 12px 24px #18395e0d; z-index: 10; }
+    .np-mobile-menu nav a { display: flex; justify-content: center; align-items: center; min-height: 44px; border-radius: 6px; font-size: 13px; }
+    .np-mobile-menu nav a:hover, .np-mobile-menu nav [aria-current] { background: #eff7ff; color: var(--color-brand-700); }
+    .homepage .np-hero__grid { grid-template-columns: 1fr; padding-block: 32px 24px; gap: 22px; }
+    .homepage .np-hero__art { height: auto; max-width: 480px; }
+    .np-hero-signature { width: 100%; flex-direction: row; justify-content: center; gap: 25px; border-inline-start: 0; border-top: 1px solid #d4e6f7; padding-inline-start: 0; padding-top: 18px; }
+    .np-hero-signature span { font-size: 20px; line-height: 1.8; }
+}
+@media (max-width: 560px) {
+    .homepage .np-hero h1 { font-size: 32px; line-height: 1.55; }
+    .homepage .np-trust { padding-block: 18px; gap: 14px 0; }
+    .homepage .np-trust__item { padding-block: 4px; }
+    .homepage .np-services { padding-block: 26px 30px; }
+    .homepage .np-brands { padding-bottom: 28px; }
+    .homepage .np-brands__grid { gap: 9px; }
+    .homepage .np-brand { min-height: 90px; padding: 12px 8px; }
+    .np-hero-signature { gap: 20px; }
+    .np-hero-signature span { font-size: 18px; }
 }

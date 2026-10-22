@@ -1,3 +1,22 @@
+# Minimal homepage revision — PR #5
+
+final result: passed
+
+Owner visual approval is pending. This latest direction supersedes the initial Option 2 composition below.
+
+- Removed public-header search/price controls, both promotion banners, the complete Why section and the three oversized hero model cards. Removed their genuinely unused CSS and artwork branches; shared routes and operational pages remain.
+- Preserved the approved lockups, all six navigation links, both hero CTAs, four compact benefits, seven service links, three genuine manufacturer SVGs, accurate address/hours and all three map links. Manufacturer logos now appear only in their own homepage section.
+- Replaced heavy hero cards with restrained service typography on light blue; no unverified product photos, mock devices, mascots, map tiles or new sections. Mobile navigation uses native details/summary with keyboard support and no JavaScript dependency.
+- Actual 1440/390/320 captures reviewed. Full-page image heights decreased respectively from 1954/3767/4319 to 1584/2651/2739 pixels. These are measured screenshot heights, not a similarity score.
+- All three widths: HTTP 200, one H1, no overflow/broken images/empty placeholders/mascots; zero scoped header/main/footer WCAG A/AA axe violations. The removed sections/controls are absent and exactly three manufacturer images remain.
+- Seven public-route smoke checks returned 200. Enter opens the mobile menu; all six links and catalogue/PAX search work. Repair/consultation required-field validation and CSRF/submission tokens remain intact. No browser form submission occurred.
+- 83 focused guarded in-memory SQLite tests / 518 assertions, Pint and Vite pass. No dependency, business logic, original database, environment or Herd configuration changes.
+- Evidence: task visualization folder `homepage-minimal/gallery.html`, `homepage-minimal/compare-{1440,390,320}.png` and `environment-setup/minimal-*` captures. Prior screenshots remain unchanged. No merge/deployment authorized.
+
+---
+
+## Initial Option 2 implementation record (superseded by owner feedback)
+
 # Option 2 homepage QA
 
 final result: passed

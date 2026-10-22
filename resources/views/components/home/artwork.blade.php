@@ -9,23 +9,7 @@
     @if ($hasImage)
         <img src="{{ asset($source) }}" alt="{{ $label }}" width="640" height="520"
             @if ($name === 'hero') fetchpriority="high" @else loading="lazy" @endif decoding="async">
-    @elseif ($name === 'hero')
-        <div class="np-model-selection">
-            <p>مدل‌های قابل ارائه</p>
-            <ul class="np-model-selection__cards">
-                @foreach ([['Newland', 'ME31'], ['PAX', 'D230'], ['NewPOS', '7210']] as [$brand, $model])
-                    <li class="np-model-selection__card"><x-home.manufacturer :name="$brand" /><strong dir="ltr">{{ $model }}</strong><span>کارتخوان {{ $brand }}</span></li>
-                @endforeach
-            </ul>
-        </div>
-    @elseif (in_array($name, ['sales', 'repairs'], true))
-        <div class="np-model-focus">
-            <x-home.manufacturer :name="$name === 'sales' ? 'NewPOS' : 'PAX'" />
-            <strong dir="ltr">{{ $name === 'sales' ? '7210' : 'S915' }}</strong>
-            <span>{{ $name === 'sales' ? 'انتخاب و راه‌اندازی' : 'بررسی و تعمیر' }}</span>
-            <x-home.icon :name="$name === 'sales' ? 'shopping-bag' : 'tool'" />
-        </div>
     @else
-        <div class="np-support-mark"><x-home.icon name="shield-check" /><p>انتخاب روشن<br><span>پیگیری انسانی</span></p></div>
+        <div class="np-hero-signature" aria-hidden="true"><span>انتخاب</span><span>راه‌اندازی</span><span>تعمیر</span></div>
     @endif
 </figure>
