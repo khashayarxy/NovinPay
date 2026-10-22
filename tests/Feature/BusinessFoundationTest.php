@@ -21,7 +21,7 @@ class BusinessFoundationTest extends TestCase
         $response = $this->get($uri)->assertOk();
         $response->assertSee('شهریار، بلوار رسول اکرم، خیابان مفتح، پاساژ الماس شهر، طبقه زیر همکف، واحد ۸۷');
         $response->assertSee('href="tel:09362896373"', false);
-        $response->assertSee('شنبه تا پنجشنبه ۹ تا ۱۸')->assertSee('جمعه تعطیل');
+        $response->assertSee('شنبه تا پنجشنبه، ۹ تا ۱۸')->assertSee('جمعه تعطیل');
         $response->assertSee(asset('brand/lockups/logo-wordmark-black-on-white.svg'));
         $response->assertSee(asset('brand/lockups/logo-wordmark-white-on-black.svg'));
         $response->assertSee(asset('favicon.svg'));
@@ -30,10 +30,12 @@ class BusinessFoundationTest extends TestCase
         $response->assertSee('aria-label="ناوبری اصلی"', false);
         $response->assertSee('href="#main-content"', false);
 
-        foreach (['https://balad.ir/p/PtbHeIpomT37HO', 'https://nshn.ir/c4_bvYA0OxCadU', 'https://maps.app.goo.gl/RSY3QKrJAMNiqPEB8'] as $url) {
-            $response->assertSee('href="'.$url.'"', false);
+        if (in_array($uri, ['/', '/contact'], true)) {
+            foreach (['https://balad.ir/p/PtbHeIpomT37HO', 'https://nshn.ir/c4_bvYA0OxCadU', 'https://maps.app.goo.gl/RSY3QKrJAMNiqPEB8'] as $url) {
+                $response->assertSee('href="'.$url.'"', false);
+            }
+            $response->assertSee('rel="noopener noreferrer"', false);
         }
-        $response->assertSee('rel="noopener noreferrer"', false);
         $response->assertDontSee('اطلاعات تماس رسمی هنوز اعلام نشده است');
     }
 

@@ -134,6 +134,21 @@ class HomePageTest extends TestCase
         $response->assertSeeInOrder(['id="hero-title"', 'np-trust np-container', 'id="popular-services-title"', 'id="brands-title"', 'id="location-title"'], false);
     }
 
+    public function test_footer_has_only_three_sections_and_no_unapproved_legal_or_brand_navigation(): void
+    {
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get('/')->assertOk()->getContent());
+        $xpath = new DOMXPath($document);
+        $this->assertSame(3, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
+        $this->assertSame(4, $xpath->query('//footer//nav/a')->length);
+        foreach (['terms', 'privacy', 'about', 'services'] as $path) {
+            $this->assertSame(0, $xpath->query('//footer//a[@href="'.url('/'.$path).'"]')->length);
+        }
+        $this->assertSame(0, $xpath->query('//footer//a[contains(@href,"?q=")]')->length);
+        $this->assertSame(1, $xpath->query('//footer//img[contains(@src,"white-on-black.svg")]')->length);
+        $this->assertSame(1, $xpath->query('//footer//a[@href="tel:09362896373"]')->length);
+    }
+
     public function test_public_pages_share_homepage_chrome_while_admin_remains_separate(): void
     {
         $this->get('/contact')->assertOk()->assertSee('np-header__inner')

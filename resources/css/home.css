@@ -71,23 +71,6 @@
 .np-location__maps a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; border: 1px solid #d5e4f7; border-radius: 9px; padding: 6px 12px; font-size: 12px; color: var(--color-brand-700); }
 .np-location__maps a:hover { background: #eff7ff; }
 .np-location__maps .np-icon { width: 17px; height: 17px; }
-.np-footer { background: #0b2032; color: #f0f5fa; padding-top: 18px; }
-.np-footer__grid { display: grid; grid-template-columns: 1.3fr .9fr 1fr 1.2fr; gap: 28px; padding-bottom: 14px; }
-.np-footer h2 { font-size: 13px; color: #fff; font-weight: 700; margin-block: 0 10px; }
-.np-footer nav { display: flex; flex-direction: column; align-items: start; }
-.np-footer nav a { font-size: 11px; line-height: 1.8; padding-block: 4px; }
-.np-footer a:hover { text-decoration: underline; text-underline-offset: 4px; }
-.np-footer__information p { font-size: 10px; line-height: 1.9; }
-.np-footer__hours { display: flex; align-items: center; gap: 9px; }
-.np-footer__hours .np-icon { width: 20px; height: 20px; }
-.np-footer__phone { display: inline-flex; padding-block: 5px; font-size: 13px; }
-.np-footer__brand { text-align: center; }
-.np-footer__brand .np-logo-link img { width: 52px; height: 52px; }
-.np-footer__brand p { font-size: 10px; line-height: 1.9; margin-top: 5px; }
-.np-footer__consult { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 32px; margin-top: 7px; font-size: 10px; color: #a3d7ff; }
-.np-footer__consult .np-icon { width: 15px; height: 15px; }
-.np-footer__bottom { border-top: 1px solid #365063; display: flex; justify-content: space-between; gap: 15px; padding-block: 13px; font-size: 10px; line-height: 1.9; }
-.np-footer__bottom > div { display: flex; gap: 16px; }
 
 @media (max-width: 1100px) {
     .np-header__inner { gap: 18px; }
@@ -95,7 +78,6 @@
     .np-hero__grid { gap: 24px; }
     .np-hero__actions { gap: 9px; }
     .np-hero__actions .np-button { padding-inline: 17px; gap: 9px; font-size: 12px; }
-    .np-footer__grid { gap: 20px; }
 }
 @media (max-width: 850px) {
     .np-container { width: calc(100% - 40px); }
@@ -112,9 +94,6 @@
     .np-section-heading { justify-content: space-between; }
     .np-section-heading > div { max-width: 75%; text-align: start; }
     .np-small-link { position: static; }
-    .np-footer__grid { grid-template-columns: 1fr 1fr; gap: 20px 25px; }
-    .np-footer__brand { grid-column: auto; grid-row: auto; }
-    .np-footer__bottom { flex-wrap: wrap; }
 }
 @media (max-width: 560px) {
     .np-container { width: calc(100% - 32px); }
@@ -156,24 +135,11 @@
     .np-location address { font-size: 12px; }
     .np-location__maps { gap: 6px; }
     .np-location__maps a { min-height: 40px; padding-inline: 11px; font-size: 11px; }
-    .np-footer { padding-top: 24px; }
-    .np-footer__grid { grid-template-columns: 1fr 1fr; gap: 23px 20px; padding-bottom: 22px; }
-    .np-footer__information { grid-column: 1 / -1; }
-    .np-footer__information > p:last-child { max-width: 290px; }
-    .np-footer__information p { font-size: 11px; }
-    .np-footer h2 { font-size: 13px; margin-bottom: 8px; }
-    .np-footer nav a { font-size: 11px; min-height: 32px; }
-    .np-footer__brand { grid-column: 1 / -1; grid-row: 3; text-align: start; }
-    .np-footer__brand .np-logo-link img { width: 46px; height: 46px; }
-    .np-footer__brand p { font-size: 10px; }
-    .np-footer__consult { font-size: 9px; }
-    .np-footer__bottom { flex-direction: column; gap: 10px; padding-block: 15px; font-size: 9px; }
 }
 @media (prefers-reduced-motion: reduce) { .homepage * { scroll-behavior: auto; transition: none; } }
 
 /* Option 2: supplied lockups and homepage-only, photograph-free fallback compositions. */
 .np-header .np-logo-link .np-wordmark { display: block; width: 168px; height: auto; }
-.np-footer__brand .np-logo-link .np-wordmark { display: block; width: 174px; max-width: 100%; height: auto; }
 .np-manufacturer { display: block; object-fit: contain; width: 100%; height: 52px; }
 .homepage .np-hero { background: linear-gradient(90deg, #E0F0FF 0%, #F8FBFF 100%); }
 .homepage .np-hero__grid { min-height: 380px; gap: 40px; padding-block: 32px; }
@@ -213,7 +179,6 @@
 @media (max-width: 560px) {
     .np-header__inner { gap: 5px 12px; }
     .np-header .np-logo-link .np-wordmark { width: 144px; }
-    .np-footer__brand .np-logo-link .np-wordmark { width: 150px; }
     .homepage .np-hero__grid { gap: 12px; padding-block: 26px 16px; }
     .homepage .np-hero__art { height: 265px; min-height: 0; }
     .homepage .np-trust { width: calc(100% - 32px); }
@@ -282,9 +247,31 @@
     .np-header .np-nav a { padding-inline: 7px; font-size: 12px; }
 }
 .homepage .np-hero__art::before { content: ""; position: absolute; z-index: -1; width: 88%; height: 76%; inset-inline: 6%; bottom: 5%; border: 18px solid #7ac4ff38; border-bottom: 0; border-radius: 55% 55% 0 0; }
-.np-footer__bottom { display: grid; grid-template-columns: minmax(0, 1fr); text-align: center; justify-items: center; }
-.np-footer__bottom > p { width: 100%; text-align: center; }
 @media (max-width: 850px) { .homepage .np-hero__art { max-width: 250px; } }
 @media (max-width: 360px) { .homepage .np-hero__art { max-width: 215px; } }
 
 .homepage .np-hero__art::after { content: ""; position: absolute; z-index: -1; width: 65%; height: 6%; bottom: 0; left: 18%; background: radial-gradient(ellipse, #173b6530, transparent 70%); filter: blur(3px); }
+
+/* Minimal three-column RTL footer; the public page composition is unchanged. */
+.np-footer { background: #102B45; color: #f6faff; padding-top: 32px; }
+.np-footer__grid { display: grid; grid-template-columns: 1.1fr .7fr 1.2fr; gap: 48px; padding-bottom: 28px; }
+.np-footer__brand .np-wordmark { display: block; width: 174px; height: auto; max-width: 100%; }
+.np-footer__brand p { max-width: 280px; margin-top: 14px; }
+.np-footer h2 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.np-footer p, .np-footer address { color: #c5d5e4; font-size: 13px; line-height: 2; }
+.np-footer address { font-style: normal; margin-block: 10px; }
+.np-footer nav { display: flex; flex-direction: column; align-items: start; }
+.np-footer nav a { font-size: 13px; min-height: 36px; padding-block: 6px; }
+.np-footer a:hover { color: #75c4ff; }
+.np-footer a:focus-visible { outline: 2px solid #098CF7; outline-offset: 4px; border-radius: 3px; }
+.np-footer__phone { display: inline-block; font-size: 16px; line-height: 2; }
+.np-footer__hours { margin-top: 10px; }
+.np-footer__bottom { border-top: 1px solid #36516a; padding-block: 16px; text-align: center; }
+.np-footer__bottom p { font-size: 11px; }
+@media (max-width: 1100px) { .np-footer__grid { gap: 28px; } }
+@media (max-width: 850px) {
+    .np-footer { padding-top: 28px; }
+    .np-footer__grid { grid-template-columns: 1fr; gap: 24px; padding-bottom: 24px; }
+    .np-footer__brand p { max-width: none; }
+    .np-footer nav a { min-height: 44px; }
+}

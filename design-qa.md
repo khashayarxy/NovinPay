@@ -1,3 +1,17 @@
+# Final footer — PR #5
+
+final result: passed
+
+Three RTL desktop columns (brand, four useful links, contact), stacked mobile layout, #102B45 background and original supplied white horizontal SVG. Redundant product/brand/tracking/directions links removed from footer only. Unapproved legal draft links omitted; the actual legal routes remain drafts/noindex. Dynamic Persian copyright stays centered. Header/hero/services/trust/brands/map/contact-panel files unchanged.
+
+Actual footer/full-page screenshots reviewed at 1440/1024/390/320: no overflow, zero scoped axe WCAG A/AA violations; keyboard mobile menu unchanged. Evidence under task artifacts footer-final/gallery.html and environment-setup/footer-final-*. Full guarded SQLite 425 passed / 2923 assertions; Pint/Vite pass. Production-readiness report is a local review artifact (footer-final/PRODUCTION-READINESS.fa.md), not permission to deploy. Hosting capabilities/trigger policy/legal text/Neshan place identity remain NO-GO gates.
+
+Existing unrelated deletion of public/images/home/novinpay-hero-terminal.webp was present on entry, untouched and excluded from this footer commit. Original DB/environment/keys/lockfiles/Herd preserved. No server writes, production migrations, merge or deploy.
+
+---
+
+## Previous records
+
 # Final visual polish — PR #5
 
 final result: passed
