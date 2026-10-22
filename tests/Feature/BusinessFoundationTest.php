@@ -30,7 +30,7 @@ class BusinessFoundationTest extends TestCase
         $response->assertSee('aria-label="ناوبری اصلی"', false);
         $response->assertSee('href="#main-content"', false);
 
-        foreach (['https://balad.ir/p/PtbHeIpomT37HO', 'https://nshn.ir/c4rbvYA0OxCadU', 'https://maps.app.goo.gl/URGQuZyfFAB46zZWA'] as $url) {
+        foreach (['https://balad.ir/p/PtbHeIpomT37HO', 'https://nshn.ir/c4_bvYA0OxCadU', 'https://maps.app.goo.gl/RSY3QKrJAMNiqPEB8'] as $url) {
             $response->assertSee('href="'.$url.'"', false);
         }
         $response->assertSee('rel="noopener noreferrer"', false);

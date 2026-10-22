@@ -21,7 +21,7 @@ class PublicWebsiteTest extends TestCase
     public function test_public_navigation_has_correct_active_state_and_links(string $uri): void
     {
         $response = $this->get($uri)->assertOk()->assertSee('np-header__inner')->assertSee('np-footer__grid');
-        foreach (['about', 'repair.track', 'contact', 'terms', 'privacy'] as $route) {
+        foreach (['repair.track', 'contact', 'terms', 'privacy'] as $route) {
             $response->assertSee('href="'.route($route).'"', false);
         }
         $document = new DOMDocument;
@@ -32,10 +32,20 @@ class PublicWebsiteTest extends TestCase
         $this->assertSame($expected, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a[@aria-current="page"]')->length);
     }
 
-    public function test_about_uses_configured_business_data_without_invented_history(): void
+    public function test_retired_general_pages_are_not_redirected_or_linked(): void
+    {
+        foreach (['/about', '/services'] as $uri) {
+            $this->get($uri)->assertNotFound()->assertHeaderMissing('Location');
+            foreach (array_column(self::pages(), 0) as $page) {
+                $this->get($page)->assertOk()->assertDontSee('href="'.url($uri).'"', false);
+            }
+        }
+    }
+
+    public function test_contact_uses_configured_business_data_without_invented_history(): void
     {
         config(['business.phone' => 'TEST-PHONE', 'business.phone_uri' => 'tel:TEST-PHONE', 'business.address' => 'TEST-ADDRESS']);
-        $this->get('/about')->assertOk()->assertSee('TEST-ADDRESS')->assertSee('tel:TEST-PHONE', false)
+        $this->get('/contact')->assertOk()->assertSee('TEST-ADDRESS')->assertSee('tel:TEST-PHONE', false)
             ->assertDontSee('09362896373')->assertSee('PAX')->assertSee('NewPOS')->assertSee('Newland');
     }
 

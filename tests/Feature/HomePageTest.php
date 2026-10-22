@@ -29,6 +29,32 @@ class HomePageTest extends TestCase
         }
     }
 
+    public function test_service_cards_preserve_copy_icons_and_reach_existing_destinations(): void
+    {
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get('/')->assertOk()->getContent());
+        $xpath = new DOMXPath($document);
+        $cards = $xpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " np-service ")]');
+        $expected = [
+            ['انتقال مالکیت', 'راهنمایی و انجام مراحل', 'contact'],
+            ['تغییر حساب', 'بررسی و راه‌اندازی مجدد', 'contact'],
+            ['رفع مشکل پرینتر', 'بررسی چاپ و قطعات', 'repair'],
+            ['رفع مشکل خاموشی', 'عیب‌یابی دستگاه', 'repair'],
+            ['رفع مشکل آنتن‌دهی', 'بررسی ارتباط و آنتن', 'repair'],
+            ['رفع مشکل شارژ', 'بررسی باتری و تغذیه', 'repair'],
+            ['سایر خدمات', 'راه‌اندازی و پشتیبانی', 'contact'],
+        ];
+        $this->assertCount(count($expected), $cards);
+        foreach ($expected as $index => [$title, $description, $route]) {
+            $card = $cards->item($index);
+            $this->assertSame($title, $xpath->query('./h3', $card)->item(0)->textContent);
+            $this->assertSame($description, $xpath->query('./p', $card)->item(0)->textContent);
+            $this->assertSame(1, $xpath->query('./span[contains(@class,"np-icon")]', $card)->length);
+            $this->assertSame(route($route), $card->getAttribute('href'));
+            $this->get($card->getAttribute('href'))->assertOk();
+        }
+    }
+
     public function test_homepage_only_names_supported_brands_and_links_to_existing_catalogue_filters(): void
     {
         $response = $this->get('/')->assertOk();
@@ -47,7 +73,8 @@ class HomePageTest extends TestCase
         $response->assertDontSee('np-promotions')->assertDontSee('np-why');
         $response->assertDontSee('np-model-selection')->assertDontSee('np-model-focus');
         $response->assertSee('np-location__directions')->assertSee('np-hero-signature');
-        $response->assertDontSee('<iframe', false);
+        $response->assertSee('src="'.config('business.map_embed').'"', false);
+        $response->assertSee('loading="lazy"', false);
         foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
             $response->assertSee(asset('brand/manufacturers/'.$brand.'.svg'));
         }
@@ -72,8 +99,8 @@ class HomePageTest extends TestCase
         $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
-        $this->assertSame(6, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
-        $this->assertSame(6, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
+        $this->assertSame(4, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
+        $this->assertSame(4, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
         $this->assertSame(5, $xpath->query('//main/section')->length);
         $response->assertSeeInOrder(['id="hero-title"', 'np-trust np-container', 'id="popular-services-title"', 'id="brands-title"', 'id="location-title"'], false);

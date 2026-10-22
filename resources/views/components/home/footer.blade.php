@@ -10,13 +10,6 @@
                     <x-map-links class="np-footer__maps" />
                 @endunless
             </div>
-            <nav aria-label="خدمات نوین‌پی">
-                <h2>خدمات</h2>
-                <a href="{{ route('services') }}">انتقال مالکیت</a>
-                <a href="{{ route('services') }}">تغییر حساب</a>
-                <a href="{{ route('repair') }}">تعمیرات کارتخوان</a>
-                <a href="{{ route('services') }}">سایر خدمات</a>
-            </nav>
             <nav aria-label="محصولات نوین‌پی">
                 <h2>محصولات</h2>
                 <a href="{{ route('products.index') }}">دستگاه‌های نو و کارکرده</a>
@@ -30,7 +23,6 @@
                 <a href="{{ route('products.index') }}">محصولات</a>
                 <a href="{{ route('repair') }}">ثبت درخواست تعمیر</a>
                 <a href="{{ route('repair.track') }}">پیگیری درخواست</a>
-                <a href="{{ route('about') }}">درباره ما</a>
                 <a href="{{ route('contact') }}">تماس با ما</a>
             </nav>
             <div class="np-footer__brand">

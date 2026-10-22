@@ -30,7 +30,6 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
 
-Route::get('/services', [PageController::class, 'services'])->name('services');
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/repair', [RepairRequestController::class, 'create'])->name('repair');
     Route::post('/repair', [RepairRequestController::class, 'store'])->middleware('throttle:repair-submit')->name('repair.store');
@@ -38,7 +37,6 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/repair/track', [RepairRequestController::class, 'tracking'])->name('repair.track');
     Route::post('/repair/track', [RepairRequestController::class, 'track'])->middleware('throttle:repair-track')->name('repair.track.store');
 });
-Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/consultation', [ConsultationController::class, 'create'])->name('consultation');

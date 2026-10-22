@@ -72,7 +72,7 @@
 .np-location__maps a:hover { background: #eff7ff; }
 .np-location__maps .np-icon { width: 17px; height: 17px; }
 .np-footer { background: #0b2032; color: #f0f5fa; padding-top: 18px; }
-.np-footer__grid { display: grid; grid-template-columns: 1.25fr .8fr .9fr .9fr 1.2fr; gap: 28px; padding-bottom: 14px; }
+.np-footer__grid { display: grid; grid-template-columns: 1.3fr .9fr 1fr 1.2fr; gap: 28px; padding-bottom: 14px; }
 .np-footer h2 { font-size: 13px; color: #fff; font-weight: 700; margin-block: 0 10px; }
 .np-footer nav { display: flex; flex-direction: column; align-items: start; }
 .np-footer nav a { font-size: 11px; line-height: 1.8; padding-block: 4px; }
@@ -112,8 +112,8 @@
     .np-section-heading { justify-content: space-between; }
     .np-section-heading > div { max-width: 75%; text-align: start; }
     .np-small-link { position: static; }
-    .np-footer__grid { grid-template-columns: 1.3fr 1fr 1fr; gap: 20px 25px; }
-    .np-footer__brand { grid-column: 3; grid-row: 2; }
+    .np-footer__grid { grid-template-columns: 1fr 1fr; gap: 20px 25px; }
+    .np-footer__brand { grid-column: auto; grid-row: auto; }
     .np-footer__bottom { flex-wrap: wrap; }
 }
 @media (max-width: 560px) {
@@ -163,7 +163,7 @@
     .np-footer__information p { font-size: 11px; }
     .np-footer h2 { font-size: 13px; margin-bottom: 8px; }
     .np-footer nav a { font-size: 11px; min-height: 32px; }
-    .np-footer__brand { grid-column: 2; grid-row: 3; text-align: start; }
+    .np-footer__brand { grid-column: 1 / -1; grid-row: 3; text-align: start; }
     .np-footer__brand .np-logo-link img { width: 46px; height: 46px; }
     .np-footer__brand p { font-size: 10px; }
     .np-footer__consult { font-size: 9px; }
@@ -191,11 +191,9 @@
 .homepage .np-location__grid { border: 1px solid #dce9f7; border-radius: 18px; background: #fff; gap: 0; overflow: hidden; min-height: 200px; box-shadow: 0 5px 22px #173b6508; }
 .homepage .np-location__copy { background: transparent; border: 0; border-radius: 0; padding: 26px; }
 .homepage .np-location address { max-width: 480px; font-size: 13px; line-height: 2.1; margin-block: 12px; }
-.np-location__directions { display: flex; align-items: center; justify-content: center; flex-direction: column; background: #f5faff; padding: 24px; text-align: center; }
-.np-location__pin { display: grid; place-items: center; width: 45px; height: 45px; color: var(--color-brand-600); margin-bottom: 8px; }
-.np-location__pin .np-icon { width: 38px; height: 38px; }
-.np-location__directions > p { font-size: 17px; font-weight: 700; }
-.np-location__directions > span:not(.np-location__pin) { font-size: 11px; line-height: 2; color: #52678b; margin-top: 4px; }
+.np-location__directions { display: flex; align-items: center; justify-content: center; flex-direction: column; background: #f5faff; padding: 0; text-align: center; }
+.np-location__map { display: block; width: 100%; height: 260px; border: 0; }
+.homepage .np-location__maps { width: 100%; margin: 0; padding: 12px; }
 .homepage .np-location__maps a { min-height: 44px; background: #fff; }
 @media (max-width: 1100px) and (min-width: 851px) {
     .np-nav { gap: 18px; }
@@ -222,7 +220,7 @@
     .homepage .np-brand { padding: 14px 8px; min-height: 100px; }
     .homepage .np-brand .np-manufacturer { height: 35px; }
     .homepage .np-location__copy { padding: 24px 18px; }
-    .np-location__directions { padding: 22px 12px; }
+    .np-location__map { height: 240px; }
     .homepage .np-location__maps { gap: 6px; }
     .homepage .np-location__maps a { padding-inline: 9px; }
 }

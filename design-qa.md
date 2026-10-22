@@ -1,3 +1,20 @@
+# Navigation and redundant-page cleanup — PR #5
+
+Local technical/visual verification: passed; owner visual approval and Neshan place identity confirmation remain pending.
+
+- Homepage service cards preserve their seven titles, descriptions, icons, markup and layout; four trust items and minimal hero unchanged. Only three retired Services destinations change to existing Contact; no individual service-detail routes exist. Four repair destinations unchanged.
+- Header desktop/mobile retain Home, Products, Repairs, Contact in order. Enter opens the native mobile menu and Products navigation works.
+- General About and Services routes/controller methods/dedicated views and metadata removed; proper 404 without unrelated redirects. Footer redundant services column/About link removed; all ten unique homepage internal destinations return 200. Catalogue empty-state guidance corrected.
+- Exact owner-supplied responsive official Neshan iframe visibly renders; all three exact directions URLs preserved. **Release decision:** the supplied iframe marker is labelled `شهربازی ماکوان / خانه بازی`; owner must verify its identity/location. No coordinates were guessed or substituted. External-map loading disclosed in privacy draft.
+- Reviewed actual 1440/390/320 captures: seven service cards, four trust items, three authentic manufacturer images; no horizontal overflow, missing images or scoped WCAG A/AA axe violations. Six operational public route smoke checks return 200. Two console 404s correspond to deliberate retired-URL tests. Cross-origin frame internals are outside the scoped axe audit.
+- 86 focused guarded in-memory SQLite tests / 606 assertions; Pint and Vite pass. No migrations, seeds, submissions, dependency changes or environment changes.
+- Original SQLite SHA-256: `466981e70c0fcce755ab4399d40e0c54609c1a995e3ad9a48e33608953ad0eab`. Seven preservation fingerprints (including environment, original database, lockfiles and Herd configuration) unchanged.
+- Evidence: `navigation-cleanup/gallery.html` and `environment-setup/navigation-*` in the task visualization directory. Full-page captures expand the viewport to include Chromium's cross-origin map frame; responsive/keyboard checks use height 900. Herd's local developer toolbar remains visible; no tool UI was modified.
+
+---
+
+## Earlier revision record (superseded for navigation and maps)
+
 # Minimal homepage revision — PR #5
 
 final result: passed

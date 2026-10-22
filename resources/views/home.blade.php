@@ -27,10 +27,10 @@
     <section class="np-container np-services" aria-labelledby="popular-services-title">
         <div class="np-section-heading">
             <div><h2 id="popular-services-title">خدمات پرکاربرد ما</h2><p>برای هر مرحله از کار با کارتخوان، راهی برای راهنمایی شما داریم.</p></div>
-            <a href="{{ route('services') }}" class="np-small-link">همه خدمات<x-home.icon name="arrow-left" /></a>
+            <a href="{{ route('contact') }}" class="np-small-link">راهنمایی خدمات<x-home.icon name="arrow-left" /></a>
         </div>
         <div class="np-services__grid">
-            @foreach ([['user', 'انتقال مالکیت', 'راهنمایی و انجام مراحل', 'services'], ['building-bank', 'تغییر حساب', 'بررسی و راه‌اندازی مجدد', 'services'], ['printer', 'رفع مشکل پرینتر', 'بررسی چاپ و قطعات', 'repair'], ['power', 'رفع مشکل خاموشی', 'عیب‌یابی دستگاه', 'repair'], ['antenna-bars-5', 'رفع مشکل آنتن‌دهی', 'بررسی ارتباط و آنتن', 'repair'], ['battery-charging', 'رفع مشکل شارژ', 'بررسی باتری و تغذیه', 'repair'], ['settings', 'سایر خدمات', 'راه‌اندازی و پشتیبانی', 'services']] as [$icon, $title, $text, $destination])
+            @foreach ([['user', 'انتقال مالکیت', 'راهنمایی و انجام مراحل', 'contact'], ['building-bank', 'تغییر حساب', 'بررسی و راه‌اندازی مجدد', 'contact'], ['printer', 'رفع مشکل پرینتر', 'بررسی چاپ و قطعات', 'repair'], ['power', 'رفع مشکل خاموشی', 'عیب‌یابی دستگاه', 'repair'], ['antenna-bars-5', 'رفع مشکل آنتن‌دهی', 'بررسی ارتباط و آنتن', 'repair'], ['battery-charging', 'رفع مشکل شارژ', 'بررسی باتری و تغذیه', 'repair'], ['settings', 'سایر خدمات', 'راه‌اندازی و پشتیبانی', 'contact']] as [$icon, $title, $text, $destination])
                 <a href="{{ route($destination) }}" class="np-service"><x-home.icon :name="$icon" /><h3>{{ $title }}</h3><p>{{ $text }}</p></a>
             @endforeach
         </div>
@@ -55,9 +55,7 @@
                 <p class="np-location__hours">{{ config('business.hours.open') }}<span> · {{ config('business.hours.closed') }}</span></p>
             </div>
             <div class="np-location__directions">
-                <span class="np-location__pin"><x-home.icon name="map-pin" /></span>
-                <p>مسیر شما به نوین‌پی</p>
-                <span>موقعیت فروشگاه را در نقشهٔ دلخواه خود باز کنید.</span>
+                <iframe class="np-location__map" src="{{ config('business.map_embed') }}" title="موقعیت نوین‌پی در نقشهٔ نشان" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
                 <div class="np-location__maps">
                     @foreach (config('business.maps') as $label => $url)
                         <a href="{{ $url }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" />{{ $label }}<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>

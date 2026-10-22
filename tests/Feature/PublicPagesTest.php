@@ -15,12 +15,10 @@ class PublicPagesTest extends TestCase
         return [
             'home' => ['/'],
             'products' => ['/products'],
-            'services' => ['/services'],
             'repair' => ['/repair'],
             'contact' => ['/contact'],
             'terms' => ['/terms'],
             'privacy' => ['/privacy'],
-            'about' => ['/about'],
             'tracking' => ['/repair/track'],
         ];
     }
