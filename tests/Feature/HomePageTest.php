@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProductCondition;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -89,12 +90,12 @@ class HomePageTest extends TestCase
         $response->assertSee('فروش و تعمیر<br><span>کارتخوان</span>', false)
             ->assertDontSee('فروش و تعمیر تخصصی')
             ->assertSee('انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.')
-            ->assertSee('تصویرسازی هوش مصنوعی، نه عکس تأییدشدهٔ محصول')
-            ->assertSee('width="1360" height="941"', false)
+            ->assertSee('نه عکس تأییدشدهٔ محصول')
+            ->assertSee('width="853" height="933"', false)
             ->assertSee('fetchpriority="high"', false)
-            ->assertSee(asset('images/home/novinpay-hero-terminal.webp'))
+            ->assertSee(asset('images/home/novinpay-terminal-clean.webp'))
             ->assertSeeInOrder(['data-artwork-slot="hero"', 'class="np-eyebrow"', 'id="hero-title"', 'class="np-hero__description"', 'مشاهده محصولات', 'خدمات تعمیرات'], false);
-        $this->assertSame([1360, 941], array_slice(getimagesize(public_path('images/home/novinpay-hero-terminal.webp')), 0, 2));
+        $this->assertSame([853, 933], array_slice(getimagesize(public_path('images/home/novinpay-terminal-clean.webp')), 0, 2));
     }
 
     public function test_artwork_slot_can_load_a_local_asset_and_falls_back_for_a_missing_file(): void
@@ -105,6 +106,19 @@ class HomePageTest extends TestCase
         config(['homepage.artwork.hero' => 'images/not-supplied.png']);
         $this->get('/')->assertOk()->assertDontSee('fetchpriority="high"', false)
             ->assertDontSee('data-artwork-slot="hero"', false);
+    }
+
+    public function test_condition_labels_change_without_changing_stored_values(): void
+    {
+        $this->assertSame('new', ProductCondition::New->value);
+        $this->assertSame('used', ProductCondition::Used->value);
+        $this->assertSame('آکبند', ProductCondition::New->label());
+        $this->assertSame('استوک', ProductCondition::Used->label());
+        $this->travelTo(now()->setYear(2026));
+        $response = $this->get('/')->assertOk();
+        $response->assertSee('تمامی حقوق برای نوین‌پی محفوظ است. © ۲۰۲۶');
+        $response->assertSee('آکبند و استوک')->assertDontSee('نو و کارکرده');
+        $this->travelBack();
     }
 
     public function test_minimal_header_retains_navigation_without_search_or_price_controls(): void

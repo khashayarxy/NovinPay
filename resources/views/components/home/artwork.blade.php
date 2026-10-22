@@ -7,7 +7,7 @@
 
 @if ($hasImage)
     <figure {{ $attributes->class(['np-artwork', 'np-artwork--ready']) }} data-artwork-slot="{{ $name }}">
-        <img src="{{ asset($source) }}" alt="{{ $label }}" width="1360" height="941"
+        <img src="{{ asset($source) }}" alt="{{ $label }}" width="853" height="933"
             @if ($name === 'hero') fetchpriority="high" @else loading="lazy" @endif decoding="async">
     </figure>
 @endif

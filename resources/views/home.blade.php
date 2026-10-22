@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('meta_description', 'فروش دستگاه‌های کارتخوان نو و کارکرده و خدمات تعمیر PAX، NewPOS و Newland در شهریار. مشاوره و استعلام قیمت از نوین‌پی.')
+@section('meta_description', 'فروش دستگاه‌های کارتخوان آکبند و استوک و خدمات تعمیر PAX، NewPOS و Newland در شهریار. مشاوره و استعلام قیمت از نوین‌پی.')
 
 @section('content')
     <section class="np-hero" aria-labelledby="hero-title">
         <div class="np-container np-hero__grid">
-            <x-home.artwork name="hero" label="رندر نمایشی کارتخوان با رسید کاغذی و قوس‌های آبی؛ تصویرسازی هوش مصنوعی، نه عکس تأییدشدهٔ محصول" class="np-hero__art" />
+            <x-home.artwork name="hero" label="تصویرسازی نمایشی کارتخوان و کارت بانکی؛ نه عکس تأییدشدهٔ محصول" class="np-hero__art" />
             <div class="np-hero__copy">
                 <p class="np-eyebrow">به {{ config('business.name') }} خوش آمدید</p>
                 <h1 id="hero-title">فروش و تعمیر<br><span>کارتخوان</span></h1>
@@ -19,7 +19,7 @@
     </section>
 
     <section class="np-trust np-container" aria-label="همراه شما در خرید و تعمیر">
-        @foreach ([['tag', 'مشاورهٔ خرید', 'متناسب با نیاز شما'], ['shield-check', 'شفافیت وضعیت', 'نو یا کارکرده'], ['truck', 'هماهنگی تحویل', 'جزئیات هنگام استعلام'], ['headphones', 'راهنمایی تخصصی', 'برای خرید و تعمیر']] as [$icon, $title, $text])
+        @foreach ([['tag', 'مشاورهٔ خرید', 'متناسب با نیاز شما'], ['shield-check', 'شفافیت وضعیت', 'آکبند یا استوک'], ['truck', 'هماهنگی تحویل', 'جزئیات هنگام استعلام'], ['headphones', 'راهنمایی تخصصی', 'برای خرید و تعمیر']] as [$icon, $title, $text])
             <div class="np-trust__item"><x-home.icon :name="$icon" /><h2>{{ $title }}</h2><p>{{ $text }}</p></div>
         @endforeach
     </section>

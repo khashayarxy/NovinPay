@@ -301,7 +301,7 @@ class ProductCatalogTest extends TestCase
         $response = $this->get(route('products.show', $product));
 
         $response->assertOk();
-        $response->assertSee('کارکرده');
+        $response->assertSee('استوک');
         $response->assertSee('ناموجود');
         $response->assertSee('تماس بگیرید');
     }

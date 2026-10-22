@@ -12,7 +12,7 @@
             </div>
             <nav aria-label="محصولات نوین‌پی">
                 <h2>محصولات</h2>
-                <a href="{{ route('products.index') }}">دستگاه‌های نو و کارکرده</a>
+                <a href="{{ route('products.index') }}">دستگاه‌های آکبند و استوک</a>
                 @foreach (['PAX', 'NewPOS', 'Newland'] as $brand)
                     <a href="{{ route('products.index', ['q' => $brand]) }}" lang="en" dir="ltr">{{ $brand }}</a>
                 @endforeach

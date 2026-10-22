@@ -11,8 +11,8 @@ enum ProductCondition: string
     public function label(): string
     {
         return match ($this) {
-            self::New => 'نو',
-            self::Used => 'کارکرده',
+            self::New => 'آکبند',
+            self::Used => 'استوک',
         };
     }
 }

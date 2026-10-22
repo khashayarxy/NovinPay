@@ -1,3 +1,21 @@
+# Final visual polish — PR #5
+
+final result: passed
+
+- Old WebP had baked-in partially opaque gray/blue edge pixels, not CSS smoke/filter. Replaced by supplied Object.png (853×933), lossless WebP at public/images/home/novinpay-terminal-clean.webp. Four corners alpha zero; alpha identical and visible composite pixels identical to source. WebP normalizes irrelevant RGB in fully transparent pixels. No device/logo generation, image cropping or masks.
+- Exact section gradient 90deg #E0F0FF → #F8FBFF; transparent figure, restrained CSS blue arch and soft elliptical ground shadow. Supplied wave background not overlaid because the brief explicitly requires this gradient. Complete supplied device/card retained (new source has no receipt); illustrative alt, no authenticated-photo claim.
+- True header-centered desktop navigation with one light-blue rounded outline; compact 1024px layout without logo collision. Existing keyboard mobile menu intact. Copyright spans its own centered full-width row with dynamic Persian year and exact approved wording.
+- Central enum labels آکبند / استوک, internal new/used unchanged. Cards/details/product forms reuse mapping; inventory/order labels/options centralized too. Static homepage/meta/footer/future sample fixture copy updated. Trust item condition wording changes only; seven service cards unchanged. No new filter/features.
+- Exceptions: existing persisted free-text product names/descriptions, historical documents and snapshots are not rewritten. Owner must review any old free-text wording and verify unopened condition before calling physical stock آکبند; relabel does not certify stock grade/warranty/refurbishment. No database records changed.
+- Browser: 1440/1024/390/320, no overlap/horizontal overflow/broken hero image, zero scoped header/main/footer WCAG A/AA axe violations. Nav and copyright midpoints match half page width; mobile Enter/menu works. Catalogue/PAX search/product detail return 200 with updated labels.
+- Full guarded SQLite: 424 tests / 2952 assertions. Pint and Vite pass. CI/MySQL outcome is checked independently on the pushed head.
+- Seven protected fingerprints unchanged; original SQLite SHA-256 466981e70c0fcce755ab4399d40e0c54609c1a995e3ad9a48e33608953ad0eab. No migration/seed/dependency/environment/Herd/production operations.
+- Evidence: environment-setup/final-polish-home-{1440,1024,390,320}.png and final-polish-viewport-{1440,1024,390,320}.png. Compared with supplied preview: existing seven service cards, actual logo/menu retained instead of preview's three cards/device chrome. Neshan place identity remains pending owner confirmation. Draft, no merge/deploy.
+
+---
+
+## Prior records (hero superseded above)
+
 # Owner-approved illustrative hero upgrade — PR #5
 
 The latest hero direction replaces the typographic side visual with the supplied AI-generated POS illustration. This explicitly supersedes earlier hero-art decisions documented below; it does not authorize product-photograph claims or changes elsewhere.

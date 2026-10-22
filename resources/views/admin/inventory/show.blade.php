@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'جزئیات موجودی')
 @section('content')
-<header class="admin-page-heading"><div><p class="admin-eyebrow">{{ $item->condition === 'new' ? 'کالای نو' : 'کالای کارکرده' }} · {{ $item->serialized ? 'کنترل سریالی' : 'کنترل تعدادی' }}</p><h1>{{ $item->name }}</h1><p dir="ltr">{{ $item->sku }}</p><small class="crm-code">{{ $item->public_id }}</small></div><a class="admin-text-link" href="{{ route('admin.inventory.index') }}">فهرست انبار ←</a></header>
+<header class="admin-page-heading"><div><p class="admin-eyebrow">{{ 'کالای '.\App\Enums\ProductCondition::from($item->condition)->label() }} · {{ $item->serialized ? 'کنترل سریالی' : 'کنترل تعدادی' }}</p><h1>{{ $item->name }}</h1><p dir="ltr">{{ $item->sku }}</p><small class="crm-code">{{ $item->public_id }}</small></div><a class="admin-text-link" href="{{ route('admin.inventory.index') }}">فهرست انبار ←</a></header>
 <x-admin.errors/>
 <div class="commerce-stock-grid">@foreach([['موجود فیزیکی', $item->on_hand], ['رزروشده', $item->reserved], ['آزاد برای فروش', $item->available], ['تحویل‌شده', $item->dispatched]] as [$label,$count])<div class="admin-panel"><span>{{ $label }}</span><strong>{{ \App\Support\FaNumber::digits($count) }}</strong></div>@endforeach</div>
 <div class="repair-layout mt-4"><div class="repair-main-stack">
