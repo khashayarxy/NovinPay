@@ -5,7 +5,7 @@
                 <h2>اطلاعات تماس</h2>
                 <p class="np-footer__hours"><x-home.icon name="clock" /><span>{{ config('business.hours.open') }}<br>{{ config('business.hours.closed') }}</span></p>
                 <a href="{{ config('business.phone_uri') }}" class="np-footer__phone" dir="ltr">{{ config('business.phone') }}</a>
-                <p>{{ config('business.address') }}</p>
+                @unless(request()->routeIs('home'))<p>{{ config('business.address') }}</p>@endunless
                 @unless (request()->routeIs('home'))
                     <x-map-links class="np-footer__maps" />
                 @endunless
@@ -34,7 +34,7 @@
                 <a href="{{ route('contact') }}">تماس با ما</a>
             </nav>
             <div class="np-footer__brand">
-                <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-brand-logo variant="white" /></a>
+                <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-site.logo variant="white" /></a>
                 <p>فروش و تعمیر دستگاه‌های کارتخوان<br>در شهریار</p>
                 <a href="{{ config('business.phone_uri') }}" class="np-footer__consult">مشاورهٔ خرید و تعمیر <x-home.icon name="arrow-left" /></a>
             </div>

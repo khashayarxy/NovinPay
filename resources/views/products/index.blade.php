@@ -4,13 +4,8 @@
 
 @section('content')
     <div class="np-container public-section public-catalogue">
-        <x-page-heading title="کارتخوان مناسب کسب‌وکار شما" eyebrow="محصولات نوین‌پی" icon="shopping-bag" lead="محصولات ثبت‌شده را بررسی و مقایسه کنید. برای استعلام قیمت و انتخاب دستگاه با نوین‌پی تماس بگیرید.">
-            <div class="public-brand-filters" aria-label="جستجوی برند">
-                @foreach (['PAX', 'NewPOS', 'Newland'] as $brand)
-                    <a href="{{ route('products.index', ['q' => $brand]) }}" lang="en" @if ($term === $brand) aria-current="true" @endif>{{ $brand }}</a>
-                @endforeach
-            </div>
-        </x-page-heading>
+        <section class="design-service-hero design-service-hero--catalogue"><div><p class="design-eyebrow">محصولات نوین‌پی</p><h1>انواع کارتخوان‌های<br>نو و کارکرده</h1><p>از میان دستگاه‌های PAX، NewPOS و Newland، مشخصات و وضعیت ثبت‌شده را بررسی کنید و برای انتخاب مناسب کسب‌وکار خود مشورت بگیرید.</p><div class="design-hero-facts"><span><x-home.icon name="shield-check"/>وضعیت روشن دستگاه</span><span><x-home.icon name="headphones"/>مشاورهٔ تخصصی</span><span><x-home.icon name="truck"/>هماهنگی تحویل</span></div></div><figure><img src="{{ asset('images/mascots/turquoise-sell2.webp') }}" width="1254" height="1254" alt="ماسکات فروش نوین‌پی" fetchpriority="high" decoding="async"></figure></section>
+        <div class="design-catalogue-categories"><a href="{{ route('products.index') }}" @unless($hasFilters) aria-current="page" @endunless><x-home.icon name="shopping-bag"/><strong>همه محصولات</strong><span>مشاهدهٔ کاتالوگ</span></a>@foreach(['Newland','NewPOS','PAX'] as $brand)<a href="{{ route('products.index',['q'=>$brand]) }}" @if($term===$brand) aria-current="page" @endif><x-site.manufacturer :name="$brand"/><strong dir="ltr">{{ $brand }}</strong><span>دستگاه‌های {{ $brand }}</span></a>@endforeach</div>
 
         <form method="get" action="{{ route('products.index') }}" class="card public-filter p-4 sm:p-5" aria-label="جستجو و فیلتر محصولات">
             @if ($errors->any())
@@ -88,4 +83,6 @@
             @endif
         </div>
     </div>
+    <x-site.consultation-banner/>
+    <x-site.location/>
 @endsection

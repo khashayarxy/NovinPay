@@ -20,14 +20,10 @@
                 <div class="aspect-square bg-slate-100">
                     <x-product-image :product="$product" />
                 </div>
-                @unless ($product->image_path)
-                    <p class="border-t border-slate-100 px-4 py-3 text-center text-xs text-slate-500">
-                        تصویر واقعی کالا هنوز ثبت نشده است.
-                    </p>
-                @endunless
             </div>
 
             <div>
+                <div class="design-detail-brand"><x-site.manufacturer :name="$product->name"/></div>
                 <div class="flex flex-wrap gap-2">
                     <span class="badge {{ $product->condition->value === 'new' ? 'badge-success' : 'badge-warning' }}">
                         وضعیت: {{ $product->condition->label() }}
@@ -71,13 +67,13 @@
 
                 <div class="mt-6 flex flex-wrap gap-3 public-actions">
                     <a href="{{ config('business.phone_uri') }}" class="btn btn-primary"><x-home.icon name="phone" /> تماس برای استعلام</a>
-                    <a href="{{ route('contact') }}" class="btn btn-secondary">استعلام و خرید</a>
-                    <a href="{{ route('repair') }}" class="btn btn-secondary">درخواست تعمیر دستگاه</a>
+                    <a href="{{ route('consultation') }}" class="btn btn-secondary">مشاورهٔ انتخاب دستگاه</a>
                 </div>
             </div>
         </div>
 
-        <div class="mt-12 grid gap-8 lg:grid-cols-2">
+        <nav class="design-detail-tabs" aria-label="بخش‌های اطلاعات محصول"><a href="#description-heading">معرفی محصول</a><a href="#specs-heading">مشخصات فنی</a></nav>
+        <div class="design-detail-content grid gap-8 lg:grid-cols-2">
             <section class="card p-6" aria-labelledby="description-heading">
                 <h2 id="description-heading" class="text-lg font-semibold">توضیحات</h2>
                 <div class="prose-persian mt-4 text-sm">
@@ -102,4 +98,5 @@
             </section>
         </div>
     </div>
+    <x-site.consultation-banner/>
 @endsection

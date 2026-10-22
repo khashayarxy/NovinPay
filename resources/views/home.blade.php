@@ -73,27 +73,9 @@
         <section class="np-brands" aria-labelledby="brands-title">
             <h2 id="brands-title">برندهای تحت پوشش</h2>
             <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
-            <div class="np-brands__grid">
-                @foreach (['Newland', 'NewPOS', 'PAX'] as $brand)
-                    <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand"><span lang="en" dir="ltr">{{ $brand }}</span><span>مشاهده دستگاه‌ها<x-home.icon name="arrow-left" /></span></a>
-                @endforeach
-            </div>
+            <x-site.brands />
         </section>
     </div>
 
-    <section class="np-location" aria-labelledby="location-title">
-        <div class="np-container np-location__grid">
-            <x-home.artwork name="store" label="تصویر تأییدشدهٔ فروشگاه" />
-            <div class="np-location__copy">
-                <h2 id="location-title"><x-home.icon name="map-pin" />مراجعهٔ حضوری</h2>
-                <address>{{ config('business.address') }}</address>
-                <p class="np-location__hours">{{ config('business.hours.open') }}<span> · {{ config('business.hours.closed') }}</span></p>
-                <div class="np-location__maps">
-                    @foreach (config('business.maps') as $label => $url)
-                        <a href="{{ $url }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" />{{ $label }}<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </section>
+    <x-site.location />
 @endsection

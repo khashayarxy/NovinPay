@@ -39,13 +39,16 @@ class HomePageTest extends TestCase
         $response->assertDontSee('Verifone')->assertDontSee('Ingenico');
     }
 
-    public function test_missing_original_artwork_has_five_labelled_slots_without_fake_images(): void
+    public function test_approved_artwork_replaces_placeholders_without_invented_facility_images(): void
     {
         $response = $this->get('/')->assertOk();
-        foreach (['hero', 'sales', 'repairs', 'support', 'store'] as $slot) {
+        foreach (['hero', 'sales', 'repairs', 'support'] as $slot) {
             $response->assertSee('data-artwork-slot="'.$slot.'"', false);
         }
-        $response->assertSee('تصویر در حال آماده‌سازی');
+        $response->assertDontSee('تصویر در حال آماده‌سازی');
+        $response->assertSee('images/mascots/blue-main.webp');
+        $response->assertSee('location-title');
+        $response->assertSee('brand/manufacturers/PAX.svg');
         $response->assertDontSee('mascot-newpos.png');
         $response->assertDontSee('file_00000000');
         $response->assertDontSee('تضمین اصالت')->assertDontSee('تحویل سریع');

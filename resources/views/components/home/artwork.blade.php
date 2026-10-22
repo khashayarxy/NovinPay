@@ -7,12 +7,9 @@
 
 <figure {{ $attributes->class(['np-artwork', 'np-artwork--ready' => $hasImage]) }} data-artwork-slot="{{ $name }}">
     @if ($hasImage)
-        <img src="{{ asset($source) }}" alt="{{ $label }}" width="640" height="520"
+        <img src="{{ asset($source) }}" alt="{{ $label }}" width="1254" height="1254"
             @if ($name === 'hero') fetchpriority="high" @else loading="lazy" @endif decoding="async">
     @else
-        <div class="np-artwork__placeholder">
-            <x-home.icon name="photo" />
-            <figcaption>{{ $label }}<span>تصویر در حال آماده‌سازی</span></figcaption>
-        </div>
+        <div class="np-artwork__brand"><x-brand-logo /><figcaption>{{ $label }}</figcaption></div>
     @endif
 </figure>

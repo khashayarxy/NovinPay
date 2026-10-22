@@ -22,8 +22,8 @@ class BusinessFoundationTest extends TestCase
         $response->assertSee('شهریار، بلوار رسول اکرم، خیابان مفتح، پاساژ الماس شهر، طبقه زیر همکف، واحد ۸۷');
         $response->assertSee('href="tel:09362896373"', false);
         $response->assertSee('شنبه تا پنجشنبه ۹ تا ۱۸')->assertSee('جمعه تعطیل');
-        $response->assertSee(asset('brand/novinpay-np-blue.svg'));
-        $response->assertSee(asset('brand/novinpay-np-white.svg'));
+        $response->assertSee(asset('brand/novinpay-logo-horizontal-duotone.svg'));
+        $response->assertSee(asset('brand/novinpay-logo-horizontal-white.svg'));
         $response->assertSee(asset('favicon.svg'));
         $response->assertSee('content="#098CF7"', false);
         $response->assertSee('alt="نوین‌پی"', false);
