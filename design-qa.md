@@ -1,3 +1,19 @@
+# Final hero upgrade — PR #5
+
+final result: passed
+
+- Visual check against the supplied standalone artwork and explicit owner layout: image left/content right at 1440px; image first above welcome badge/content at 390/320px. Exact headline/paragraph and two unchanged CTAs; mobile buttons stack full-width. No new visual cards, overlays or navigation.
+- Original supplied WebP is unchanged, RGBA 1360×941, 314,798 bytes; CSS object-fit contain, transparent container and intrinsic dimensions/aspect ratio preserve complete receipt/arcs/terminal and reserve image space. It is labelled as an AI illustration, not authenticated product photography.
+- At height 900, hero heights: about 443/580/531px at 1440/390/320. Image decoded successfully at all widths; no overlap/overflow or scoped header/main/footer WCAG A/AA axe violations. Native mobile keyboard navigation and catalogue destination verified.
+- Full-page screenshots and viewport captures reviewed: `environment-setup/hero-upgrade-home-{1440,390,320}.png` and `hero-upgrade-viewport-{1440,390,320}.png`; gallery in `hero-upgrade/gallery.html` under task artifacts. Third-party map tiles can load independently; iframe/source/directions unchanged. Herd's development toolbar remains visible.
+- 87 focused guarded SQLite tests / 616 assertions, Pint and Vite pass. Post-hero markup confirmed identical to prior HEAD; no route, form, map, footer, data, environment, key, lockfile or Herd changes.
+- Seven protected fingerprints unchanged; original SQLite SHA-256 `466981e70c0fcce755ab4399d40e0c54609c1a995e3ad9a48e33608953ad0eab`.
+- Pending owner visual review; previous Neshan place-label confirmation remains outstanding. No merge or deployment.
+
+---
+
+## Prior iteration records
+
 # Navigation and redundant-page cleanup — PR #5
 
 Local technical/visual verification: passed; owner visual approval and Neshan place identity confirmation remain pending.

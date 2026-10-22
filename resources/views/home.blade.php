@@ -5,16 +5,16 @@
 @section('content')
     <section class="np-hero" aria-labelledby="hero-title">
         <div class="np-container np-hero__grid">
+            <x-home.artwork name="hero" label="رندر نمایشی کارتخوان با رسید کاغذی و قوس‌های آبی؛ تصویرسازی هوش مصنوعی، نه عکس تأییدشدهٔ محصول" class="np-hero__art" />
             <div class="np-hero__copy">
                 <p class="np-eyebrow">به {{ config('business.name') }} خوش آمدید</p>
-                <h1 id="hero-title">فروش و تعمیر تخصصی<br><span>کارتخوان</span></h1>
-                <p class="np-hero__description">دستگاه‌های کارتخوان نو و کارکرده از برندهای <bdi lang="en">PAX</bdi>، <bdi lang="en">NewPOS</bdi> و <bdi lang="en">Newland</bdi>؛ همراه شما در انتخاب، راه‌اندازی و تعمیر دستگاه.</p>
+                <h1 id="hero-title">فروش و تعمیر<br><span>کارتخوان</span></h1>
+                <p class="np-hero__description">انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.</p>
                 <div class="np-hero__actions">
                     <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده محصولات<x-home.icon name="arrow-left" /></a>
                     <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />خدمات تعمیرات<x-home.icon name="arrow-left" /></a>
                 </div>
             </div>
-            <x-home.artwork name="hero" label="از انتخاب و راه‌اندازی تا تعمیر کارتخوان" class="np-hero__art" />
         </div>
     </section>
 

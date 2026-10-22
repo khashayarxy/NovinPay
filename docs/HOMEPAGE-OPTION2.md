@@ -1,3 +1,19 @@
+# Owner-approved illustrative hero upgrade — PR #5
+
+The latest hero direction replaces the typographic side visual with the supplied AI-generated POS illustration. This explicitly supersedes earlier hero-art decisions documented below; it does not authorize product-photograph claims or changes elsewhere.
+
+- Source: owner-supplied `novinpay-hero-assets.zip`; shipped WebP copied byte-for-byte to `public/images/home/novinpay-hero-terminal.webp` (1360 × 941, 314,798 bytes, RGBA). SHA-256: `f2f7d4855389f161ac2af46f3607a698c7897e66411551eee0277841cefadda1`. PNG and archive are not shipped.
+- Image is an AI illustrative render, not an authenticated photograph/model listing. Alt text explicitly identifies that distinction. Embedded device lettering, receipt, arcs and alpha channel remain untouched; no artificial logos, cropping, masks, cards or overlays added.
+- Desktop: image left, text right, existing pale-blue background. Headline exactly “فروش و تعمیر کارتخوان” with a break before blue “کارتخوان”; supporting paragraph matches owner text exactly. Existing two CTA routes unchanged.
+- Mobile: artwork, welcome badge, headline, paragraph, products CTA, repair CTA. Single-column full-width CTAs at 390/320px; native navigation unchanged. Intrinsic dimensions/aspect ratio reserve image space; eager high-priority image uses object-contain.
+- Markup after the hero is byte-equivalent (ignoring line endings) to the previous approved head, including four trust benefits, seven service cards, brands, Neshan iframe, three directions and footer. Routes and all other pages untouched.
+- Guarded focused SQLite: 87 tests / 616 assertions; Pint and Vite pass. Actual desktop/mobile browser captures reviewed with no overlap, horizontal overflow, broken hero image or scoped WCAG A/AA violations. Missing configured artwork omits the image rather than showing a broken URL or returning the removed text visual.
+- Existing Neshan place identity decision remains pending; the iframe URL was not changed in this task. Original database/environment/Herd/dependency-lock fingerprints unchanged. No migration, seed, merge or deployment.
+
+---
+
+## Prior iteration record (hero direction superseded above)
+
 # Minimal homepage polish — PR #5
 
 Built independently from main `e05c42769e4c368f77545ad6e7e2624de69e869c`. No rejected PR #4 files, commits or assets were restored. Scope is the existing homepage and its shared public header/footer lockups. Operational application logic, product data, administration, forms and dependency locks remain unchanged. The latest owner request retires only the general About and Services routes and updates the central map configuration.

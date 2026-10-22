@@ -65,14 +65,14 @@ class HomePageTest extends TestCase
         $response->assertDontSee('Verifone')->assertDontSee('Ingenico');
     }
 
-    public function test_homepage_has_finished_fallback_compositions_without_unlicensed_or_fake_photographs(): void
+    public function test_homepage_uses_owner_supplied_illustration_without_verified_photograph_claims(): void
     {
         $response = $this->get('/')->assertOk();
         $response->assertSee('data-artwork-slot="hero"', false);
         $response->assertDontSee('تصویر در حال آماده‌سازی')->assertDontSee('ماسکات');
         $response->assertDontSee('np-promotions')->assertDontSee('np-why');
         $response->assertDontSee('np-model-selection')->assertDontSee('np-model-focus');
-        $response->assertSee('np-location__directions')->assertSee('np-hero-signature');
+        $response->assertSee('np-location__directions')->assertDontSee('np-hero-signature');
         $response->assertSee('src="'.config('business.map_embed').'"', false);
         $response->assertSee('loading="lazy"', false);
         foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
@@ -83,6 +83,20 @@ class HomePageTest extends TestCase
         $response->assertDontSee('تضمین اصالت')->assertDontSee('تحویل سریع');
     }
 
+    public function test_hero_uses_exact_owner_copy_and_an_uncropped_eager_local_illustration(): void
+    {
+        $response = $this->get('/')->assertOk();
+        $response->assertSee('فروش و تعمیر<br><span>کارتخوان</span>', false)
+            ->assertDontSee('فروش و تعمیر تخصصی')
+            ->assertSee('انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.')
+            ->assertSee('تصویرسازی هوش مصنوعی، نه عکس تأییدشدهٔ محصول')
+            ->assertSee('width="1360" height="941"', false)
+            ->assertSee('fetchpriority="high"', false)
+            ->assertSee(asset('images/home/novinpay-hero-terminal.webp'))
+            ->assertSeeInOrder(['data-artwork-slot="hero"', 'class="np-eyebrow"', 'id="hero-title"', 'class="np-hero__description"', 'مشاهده محصولات', 'خدمات تعمیرات'], false);
+        $this->assertSame([1360, 941], array_slice(getimagesize(public_path('images/home/novinpay-hero-terminal.webp')), 0, 2));
+    }
+
     public function test_artwork_slot_can_load_a_local_asset_and_falls_back_for_a_missing_file(): void
     {
         config(['homepage.artwork.hero' => 'brand/novinpay-np-blue.svg']);
@@ -90,7 +104,7 @@ class HomePageTest extends TestCase
 
         config(['homepage.artwork.hero' => 'images/not-supplied.png']);
         $this->get('/')->assertOk()->assertDontSee('fetchpriority="high"', false)
-            ->assertSee('np-hero-signature');
+            ->assertDontSee('data-artwork-slot="hero"', false);
     }
 
     public function test_minimal_header_retains_navigation_without_search_or_price_controls(): void

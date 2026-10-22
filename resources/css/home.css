@@ -233,16 +233,14 @@
     .public-site .np-nav a { justify-content: center; }
 }
 
-/* Minimal revision: quiet navigation and a light typographic hero. */
+/* Compact public navigation and the owner-supplied illustrative hero. */
 .np-header__inner { position: relative; min-height: 68px; padding-block: 10px; }
 .np-nav a { padding-inline: 10px; border-radius: 7px; }
 .np-nav a:hover, .np-nav [aria-current] { background: #f2f7fc; text-decoration: none; }
 .np-mobile-menu { display: none; }
-.homepage .np-hero__grid { min-height: 320px; grid-template-columns: 1.35fr .65fr; gap: 50px; padding-block: 40px; }
-.homepage .np-hero__art { height: 220px; }
-.np-hero-signature { display: flex; flex-direction: column; border-inline-start: 2px solid #b8d9f5; padding-inline-start: 30px; width: min(100%, 280px); }
-.np-hero-signature span { color: #31577b; font-size: 31px; line-height: 2.1; font-weight: 500; }
-.np-hero-signature span:last-child { color: var(--color-brand-700); font-weight: 700; }
+.homepage .np-hero__grid { min-height: 380px; grid-template-columns: 1fr 1fr; gap: 36px; padding-block: 20px; }
+.homepage .np-hero__copy { grid-column: 1; grid-row: 1; }
+.homepage .np-hero__art { grid-column: 2; grid-row: 1; width: 100%; height: auto; aspect-ratio: 1360 / 941; background: transparent; border: 0; border-radius: 0; overflow: visible; }
 .homepage .np-trust { padding-block: 18px; }
 .homepage .np-trust .np-icon { width: 26px; height: 26px; margin-bottom: 5px; }
 .homepage .np-services { padding-block: 30px 36px; }
@@ -259,19 +257,18 @@
     .np-mobile-menu nav { position: absolute; top: 100%; inset-inline: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px; gap: 6px; border: 1px solid #e0eaf5; border-radius: 12px; background: #fff; box-shadow: 0 12px 24px #18395e0d; z-index: 10; }
     .np-mobile-menu nav a { display: flex; justify-content: center; align-items: center; min-height: 44px; border-radius: 6px; font-size: 13px; }
     .np-mobile-menu nav a:hover, .np-mobile-menu nav [aria-current] { background: #eff7ff; color: var(--color-brand-700); }
-    .homepage .np-hero__grid { grid-template-columns: 1fr; padding-block: 32px 24px; gap: 22px; }
-    .homepage .np-hero__art { height: auto; max-width: 480px; }
-    .np-hero-signature { width: 100%; flex-direction: row; justify-content: center; gap: 25px; border-inline-start: 0; border-top: 1px solid #d4e6f7; padding-inline-start: 0; padding-top: 18px; }
-    .np-hero-signature span { font-size: 20px; line-height: 1.8; }
+    .homepage .np-hero__grid { grid-template-columns: 1fr; padding-block: 12px 28px; gap: 8px; }
+    .homepage .np-hero__copy { grid-column: 1; grid-row: 2; }
+    .homepage .np-hero__art { grid-column: 1; grid-row: 1; height: auto; max-width: 370px; }
 }
 @media (max-width: 560px) {
-    .homepage .np-hero h1 { font-size: 32px; line-height: 1.55; }
+    .homepage .np-hero h1 { font-size: 32px; line-height: 1.3; }
+    .homepage .np-hero__actions { grid-template-columns: 1fr; gap: 10px; }
+    .homepage .np-hero__actions .np-button { min-height: 46px; font-size: 13px; }
     .homepage .np-trust { padding-block: 18px; gap: 14px 0; }
     .homepage .np-trust__item { padding-block: 4px; }
     .homepage .np-services { padding-block: 26px 30px; }
     .homepage .np-brands { padding-bottom: 28px; }
     .homepage .np-brands__grid { gap: 9px; }
     .homepage .np-brand { min-height: 90px; padding: 12px 8px; }
-    .np-hero-signature { gap: 20px; }
-    .np-hero-signature span { font-size: 18px; }
 }
