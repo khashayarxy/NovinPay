@@ -3,7 +3,7 @@
 @section('meta_description', 'ثبت آنلاین درخواست تعمیر کارتخوان و دریافت کد پیگیری نوین‌پی')
 @section('content')
 <div class="np-container public-section">
-    <x-page-heading title="تعمیرگاه تخصصی کارتخوان" eyebrow="تعمیرات نوین‌پی" icon="tool" lead="مشکل دستگاه را برای ما بنویسید و کد پیگیری دریافت کنید. ثبت این فرم فقط یک درخواست آنلاین است و به معنی دریافت دستگاه نیست.">
+    <x-page-heading title="تعمیرات تخصصی کارتخوان" eyebrow="تعمیرات نوین‌پی" icon="tool" lead="مشکل دستگاه را برای ما بنویسید و کد پیگیری دریافت کنید. ثبت این فرم فقط یک درخواست آنلاین است و به معنی دریافت دستگاه نیست.">
         <a href="{{ route('repair.track') }}" class="public-inline-link">قبلاً درخواست داده‌اید؟ پیگیری درخواست <x-home.icon name="arrow-left" /></a>
     </x-page-heading>
     <div class="public-split public-split--form">

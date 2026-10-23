@@ -26,10 +26,10 @@ class MobileNavigationTest extends TestCase
             'confirmation' => ['/repair/confirmation', ['home', 'products.index'], 'repair'],
             'tracking' => ['/repair/track', ['home', 'products.index'], 'repair.track'],
             'tracking query' => ['/repair/track?from=menu', ['home', 'products.index'], 'repair.track'],
-            'contact' => ['/contact', ['home', 'products.index', 'repair'], 'contact'],
-            'consultation has repair CTA but is unrelated' => ['/consultation', ['home', 'products.index', 'repair'], null],
-            'privacy' => ['/privacy', ['home', 'products.index', 'repair'], null],
-            'terms' => ['/terms', ['home', 'products.index', 'repair'], null],
+            'contact' => ['/contact', ['products.index', 'repair'], 'contact'],
+            'consultation has repair CTA but is unrelated' => ['/consultation', ['products.index', 'repair'], null],
+            'privacy' => ['/privacy', ['products.index', 'repair'], null],
+            'terms' => ['/terms', ['products.index', 'repair'], null],
         ];
     }
 
@@ -61,14 +61,16 @@ class MobileNavigationTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
         $xpath = new DOMXPath($document);
         $quick = $xpath->query('//header/nav[@aria-label="دسترسی سریع"]/a');
+        $this->assertCount(2, $quick);
         $this->assertSame(array_map(fn ($name) => route($name), $quickRoutes), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($quick)));
-        $labels = ['home' => 'صفحه اصلی', 'products.index' => 'خرید کارتخوان', 'repair' => 'خدمات و تعمیرات'];
+        $labels = ['home' => 'صفحه اصلی', 'products.index' => 'خرید کارتخوان', 'repair' => 'تعمیرات'];
         $this->assertSame(array_map(fn ($name) => $labels[$name], $quickRoutes), array_map(fn ($link) => trim($link->textContent), iterator_to_array($quick)));
         $this->assertSame(0, $xpath->query('//header/nav[@aria-label="دسترسی سریع"]/a[@aria-current]')->length);
 
         $menu = $xpath->query('//nav[@id="mobile-navigation"]')->item(0);
         $links = $xpath->query('./a', $menu);
-        $this->assertSame(['صفحه اصلی', 'خرید کارتخوان', 'خدمات و تعمیرات', 'پیگیری تعمیرات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(['صفحه اصلی', 'خرید کارتخوان', 'تعمیرات', 'پیگیری تعمیرات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(0, $xpath->query('//a[normalize-space(.)="تعمیرگاه" or normalize-space(.)="خدمات و تعمیرات"]')->length);
         $this->assertSame(array_map(fn ($name) => route($name), ['home', 'products.index', 'repair', 'repair.track', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
         $active = $xpath->query('./a[@aria-current="page"]', $menu);
         $this->assertSame($current ? 1 : 0, $active->length);

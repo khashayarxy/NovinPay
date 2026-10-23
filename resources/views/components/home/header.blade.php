@@ -1,6 +1,10 @@
 @php
-    $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'خرید کارتخوان'], ['repair', 'repair*', 'خدمات و تعمیرات'], ['contact', 'contact', 'تماس با ما']];
-    $mobileNavigation = [...array_slice($navigation, 0, 3), ['repair.track', 'repair.track*', 'پیگیری تعمیرات'], $navigation[3]];
+    $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما']];
+    $primaryNavigation = [$navigation[0], ['products.index', 'products.*', 'خرید کارتخوان'], $navigation[2]];
+    $mobileNavigation = [...$primaryNavigation, ['repair.track', 'repair.track*', 'پیگیری تعمیرات'], $navigation[3]];
+    $quickNavigation = request()->routeIs('products.*')
+        ? [$primaryNavigation[0], $primaryNavigation[2]]
+        : (request()->routeIs('repair*') ? array_slice($primaryNavigation, 0, 2) : array_slice($primaryNavigation, 1, 2));
 @endphp
 
 <header class="np-header" data-mobile-header>
@@ -30,10 +34,8 @@
         </div>
     </div>
     <nav class="np-quick-nav np-container" aria-label="دسترسی سریع">
-        @foreach (array_slice($navigation, 0, 3) as [$route, $active, $label])
-            @unless (request()->routeIs($active))
-                <a href="{{ route($route) }}">{{ $label }}</a>
-            @endunless
+        @foreach ($quickNavigation as [$route, $active, $label])
+            <a href="{{ route($route) }}">{{ $label }}</a>
         @endforeach
     </nav>
 </header>

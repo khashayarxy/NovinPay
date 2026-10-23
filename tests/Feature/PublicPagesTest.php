@@ -62,7 +62,7 @@ class PublicPagesTest extends TestCase
         $response->assertSee('به معنی دریافت دستگاه نیست');
         $response->assertSee('کد پیگیری');
         $response->assertSee('method="post"', false)->assertDontSee('fieldset disabled');
-        $response->assertSee('تعمیرگاه تخصصی کارتخوان')->assertSee('ثبت درخواست تعمیر');
+        $response->assertSee('تعمیرات تخصصی کارتخوان')->assertSee('ثبت درخواست تعمیر');
     }
 
     public function test_contact_page_displays_official_business_details(): void

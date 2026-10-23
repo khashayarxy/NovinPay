@@ -210,6 +210,9 @@
 .homepage .np-hero__art { grid-column: 2; grid-row: 1; width: 100%; height: auto; aspect-ratio: 853 / 933; max-width: 400px; justify-self: center; isolation: isolate; background: transparent; border: 0; border-radius: 0; overflow: visible; }
 .homepage .np-trust { padding-block: 18px; }
 .homepage .np-trust .np-icon { width: 26px; height: 26px; margin-bottom: 5px; }
+.homepage .np-trust__icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: #E9F7F0; margin-bottom: 8px; }
+.homepage .np-trust__icon .np-icon { color: #13865B; margin: 0; }
+.homepage .np-trust__item :is(h2, p) { text-wrap: balance; }
 .homepage .np-services { padding-block: 30px 36px; }
 .homepage .np-brands { padding-bottom: 36px; }
 .homepage .np-brands__grid { max-width: 780px; margin-inline: auto; margin-top: 20px; gap: 20px; }

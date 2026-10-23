@@ -37,13 +37,13 @@ class HomePageTest extends TestCase
         $xpath = new DOMXPath($document);
         $cards = $xpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " np-service ")]');
         $expected = [
-            ['انتقال مالکیت', 'راهنمایی و انجام مراحل', 'contact'],
-            ['تغییر حساب', 'بررسی و راه‌اندازی مجدد', 'contact'],
-            ['رفع مشکل پرینتر', 'بررسی چاپ و قطعات', 'repair'],
-            ['رفع مشکل خاموشی', 'عیب‌یابی دستگاه', 'repair'],
-            ['رفع مشکل آنتن‌دهی', 'بررسی ارتباط و آنتن', 'repair'],
-            ['رفع مشکل شارژ', 'بررسی باتری و تغذیه', 'repair'],
-            ['سایر خدمات', 'راه‌اندازی و پشتیبانی', 'contact'],
+            ['انتقال مالکیت کارتخوان', 'راهنمایی و انجام مراحل', 'contact'],
+            ['تغییر حساب بانکی', 'بررسی و راه‌اندازی مجدد', 'contact'],
+            ['رفع مشکل چاپ رسید', 'بررسی چاپ و قطعات', 'repair'],
+            ['رفع مشکل روشن‌نشدن', 'عیب‌یابی دستگاه', 'repair'],
+            ['رفع مشکل آنتن کارتخوان', 'بررسی ارتباط و آنتن', 'repair'],
+            ['رفع مشکل شارژ دستگاه', 'بررسی باتری و تغذیه', 'repair'],
+            ['سایر خدمات کارتخوان', 'راه‌اندازی و پشتیبانی', 'contact'],
         ];
         $this->assertCount(count($expected), $cards);
         foreach ($expected as $index => [$title, $description, $route]) {
@@ -54,6 +54,30 @@ class HomePageTest extends TestCase
             $this->assertSame(route($route), $card->getAttribute('href'));
             $this->get($card->getAttribute('href'))->assertOk();
         }
+    }
+
+    public function test_trust_features_use_separate_icon_containers_and_accurate_customer_benefits(): void
+    {
+        $response = $this->get('/')->assertOk()->assertSee('خدمات کارتخوان نوین‌پی')
+            ->assertDontSee('اطلاع از وضعیت رسیدگی')->assertDontSee('خدمات پرکاربرد ما');
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+        $xpath = new DOMXPath($document);
+        $features = $xpath->query('//div[@class="np-trust__item"]');
+        $expected = [
+            ['انتخاب کارتخوان مناسب', 'متناسب با نیاز و بودجه شما'],
+            ['پیگیری شفاف درخواست', 'بررسی ثبت با کد پیگیری'],
+            ['هماهنگی ارسال و تحویل', 'با هماهنگی قبلی'],
+            ['پشتیبانی خرید و تعمیر', 'راهنمایی در مراحل کار'],
+        ];
+        $this->assertCount(4, $features);
+        foreach ($expected as $index => [$title, $description]) {
+            $feature = $features->item($index);
+            $this->assertSame($title, $xpath->query('./h2', $feature)->item(0)->textContent);
+            $this->assertSame($description, $xpath->query('./p', $feature)->item(0)->textContent);
+            $this->assertSame(1, $xpath->query('./span[@class="np-trust__icon"]/span[contains(@class,"np-icon")]', $feature)->length);
+        }
+        $this->assertSame(0, $xpath->query('//a[contains(@class,"np-service")]//span[@class="np-trust__icon"]')->length);
     }
 
     public function test_homepage_only_names_supported_brands_and_links_to_existing_catalogue_filters(): void
@@ -94,7 +118,7 @@ class HomePageTest extends TestCase
             ->assertSee('width="853" height="933"', false)
             ->assertSee('fetchpriority="high"', false)
             ->assertSee(asset('images/home/novinpay-terminal-clean.webp'))
-            ->assertSeeInOrder(['data-artwork-slot="hero"', 'class="np-eyebrow"', 'id="hero-title"', 'class="np-hero__description"', 'مشاهده فروشگاه', 'ثبت درخواست تعمیر'], false);
+            ->assertSeeInOrder(['data-artwork-slot="hero"', 'class="np-eyebrow"', 'id="hero-title"', 'class="np-hero__description"', 'مشاهده محصولات', 'ثبت درخواست تعمیر'], false);
         $this->assertSame([853, 933], array_slice(getimagesize(public_path('images/home/novinpay-terminal-clean.webp')), 0, 2));
     }
 
@@ -130,7 +154,7 @@ class HomePageTest extends TestCase
         $this->assertSame(4, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
         $this->assertSame(5, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
         $desktop = $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]')->item(0);
-        $this->assertSame(['صفحه اصلی', 'خرید کارتخوان', 'خدمات و تعمیرات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
+        $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
         $this->assertSame(5, $xpath->query('//main/section')->length);
         $response->assertSeeInOrder(['id="hero-title"', 'np-trust np-container', 'id="popular-services-title"', 'id="brands-title"', 'id="location-title"'], false);
@@ -143,7 +167,7 @@ class HomePageTest extends TestCase
         $xpath = new DOMXPath($document);
         $this->assertSame(3, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
         $links = $xpath->query('//footer//nav/a');
-        $this->assertSame(['فروشگاه', 'تعمیرگاه', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(['فروشگاه', 'تعمیرات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
         $this->assertSame(array_map(fn ($name) => route($name), ['products.index', 'repair', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
         $this->assertSame(0, $xpath->query('//footer//address')->length);
         $this->assertStringNotContainsString(config('business.address'), $xpath->query('//footer')->item(0)->textContent);

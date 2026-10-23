@@ -11,7 +11,7 @@
                 <h1 id="hero-title">فروش و تعمیر<br><span>کارتخوان</span></h1>
                 <p class="np-hero__description">انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.</p>
                 <div class="np-hero__actions">
-                    <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده فروشگاه<x-home.icon name="arrow-left" /></a>
+                    <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده محصولات<x-home.icon name="arrow-left" /></a>
                     <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />ثبت درخواست تعمیر<x-home.icon name="arrow-left" /></a>
                 </div>
             </div>
@@ -19,18 +19,18 @@
     </section>
 
     <section class="np-trust np-container" aria-label="همراه شما در خرید و تعمیر">
-        @foreach ([['tag', 'مشاورهٔ خرید', 'متناسب با نیاز شما'], ['shield-check', 'شفافیت وضعیت', 'آکبند یا استوک'], ['truck', 'هماهنگی تحویل', 'جزئیات هنگام استعلام'], ['headphones', 'راهنمایی تخصصی', 'برای خرید و تعمیر']] as [$icon, $title, $text])
-            <div class="np-trust__item"><x-home.icon :name="$icon" /><h2>{{ $title }}</h2><p>{{ $text }}</p></div>
+        @foreach ([['tag', 'انتخاب کارتخوان مناسب', 'متناسب با نیاز و بودجه شما'], ['shield-check', 'پیگیری شفاف درخواست', 'بررسی ثبت با کد پیگیری'], ['truck', 'هماهنگی ارسال و تحویل', 'با هماهنگی قبلی'], ['headphones', 'پشتیبانی خرید و تعمیر', 'راهنمایی در مراحل کار']] as [$icon, $title, $text])
+            <div class="np-trust__item"><span class="np-trust__icon"><x-home.icon :name="$icon" /></span><h2>{{ $title }}</h2><p>{{ $text }}</p></div>
         @endforeach
     </section>
 
     <section class="np-container np-services" aria-labelledby="popular-services-title">
         <div class="np-section-heading">
-            <div><h2 id="popular-services-title">خدمات پرکاربرد ما</h2><p>برای هر مرحله از کار با کارتخوان، راهی برای راهنمایی شما داریم.</p></div>
+            <div><h2 id="popular-services-title">خدمات کارتخوان نوین‌پی</h2><p>برای هر مرحله از کار با کارتخوان، راهی برای راهنمایی شما داریم.</p></div>
             <a href="{{ route('contact') }}" class="np-small-link">راهنمایی خدمات<x-home.icon name="arrow-left" /></a>
         </div>
         <div class="np-services__grid">
-            @foreach ([['user', 'انتقال مالکیت', 'راهنمایی و انجام مراحل', 'contact'], ['building-bank', 'تغییر حساب', 'بررسی و راه‌اندازی مجدد', 'contact'], ['printer', 'رفع مشکل پرینتر', 'بررسی چاپ و قطعات', 'repair'], ['power', 'رفع مشکل خاموشی', 'عیب‌یابی دستگاه', 'repair'], ['antenna-bars-5', 'رفع مشکل آنتن‌دهی', 'بررسی ارتباط و آنتن', 'repair'], ['battery-charging', 'رفع مشکل شارژ', 'بررسی باتری و تغذیه', 'repair'], ['settings', 'سایر خدمات', 'راه‌اندازی و پشتیبانی', 'contact']] as [$icon, $title, $text, $destination])
+            @foreach ([['user', 'انتقال مالکیت کارتخوان', 'راهنمایی و انجام مراحل', 'contact'], ['building-bank', 'تغییر حساب بانکی', 'بررسی و راه‌اندازی مجدد', 'contact'], ['printer', 'رفع مشکل چاپ رسید', 'بررسی چاپ و قطعات', 'repair'], ['power', 'رفع مشکل روشن‌نشدن', 'عیب‌یابی دستگاه', 'repair'], ['antenna-bars-5', 'رفع مشکل آنتن کارتخوان', 'بررسی ارتباط و آنتن', 'repair'], ['battery-charging', 'رفع مشکل شارژ دستگاه', 'بررسی باتری و تغذیه', 'repair'], ['settings', 'سایر خدمات کارتخوان', 'راه‌اندازی و پشتیبانی', 'contact']] as [$icon, $title, $text, $destination])
                 <a href="{{ route($destination) }}" class="np-service"><x-home.icon :name="$icon" /><h3>{{ $title }}</h3><p>{{ $text }}</p></a>
             @endforeach
         </div>
