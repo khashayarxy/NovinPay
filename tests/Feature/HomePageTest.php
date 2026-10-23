@@ -94,7 +94,7 @@ class HomePageTest extends TestCase
             ->assertSee('width="853" height="933"', false)
             ->assertSee('fetchpriority="high"', false)
             ->assertSee(asset('images/home/novinpay-terminal-clean.webp'))
-            ->assertSeeInOrder(['data-artwork-slot="hero"', 'class="np-eyebrow"', 'id="hero-title"', 'class="np-hero__description"', 'مشاهده محصولات', 'خدمات تعمیرات'], false);
+            ->assertSeeInOrder(['data-artwork-slot="hero"', 'class="np-eyebrow"', 'id="hero-title"', 'class="np-hero__description"', 'مشاهده فروشگاه', 'ثبت درخواست تعمیر'], false);
         $this->assertSame([853, 933], array_slice(getimagesize(public_path('images/home/novinpay-terminal-clean.webp')), 0, 2));
     }
 
@@ -129,6 +129,9 @@ class HomePageTest extends TestCase
         $xpath = new DOMXPath($document);
         $this->assertSame(4, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
         $this->assertSame(4, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
+        foreach ($xpath->query('//header//nav') as $nav) {
+            $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرگاه', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $nav))));
+        }
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
         $this->assertSame(5, $xpath->query('//main/section')->length);
         $response->assertSeeInOrder(['id="hero-title"', 'np-trust np-container', 'id="popular-services-title"', 'id="brands-title"', 'id="location-title"'], false);
@@ -140,13 +143,42 @@ class HomePageTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get('/')->assertOk()->getContent());
         $xpath = new DOMXPath($document);
         $this->assertSame(3, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
-        $this->assertSame(4, $xpath->query('//footer//nav/a')->length);
+        $links = $xpath->query('//footer//nav/a');
+        $this->assertSame(['فروشگاه', 'تعمیرگاه', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(array_map(fn ($name) => route($name), ['products.index', 'repair', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
+        $this->assertSame(0, $xpath->query('//footer//address')->length);
+        $this->assertStringNotContainsString(config('business.address'), $xpath->query('//footer')->item(0)->textContent);
+        $this->assertStringNotContainsString(config('business.hours.open'), $xpath->query('//footer')->item(0)->textContent);
         foreach (['terms', 'privacy', 'about', 'services'] as $path) {
             $this->assertSame(0, $xpath->query('//footer//a[@href="'.url('/'.$path).'"]')->length);
         }
         $this->assertSame(0, $xpath->query('//footer//a[contains(@href,"?q=")]')->length);
         $this->assertSame(1, $xpath->query('//footer//img[contains(@src,"white-on-black.svg")]')->length);
         $this->assertSame(1, $xpath->query('//footer//a[@href="tel:09362896373"]')->length);
+    }
+
+    public function test_visit_information_owns_the_address_hours_and_exact_navigation_destinations(): void
+    {
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get('/')->assertOk()->getContent());
+        $xpath = new DOMXPath($document);
+        $this->assertSame(1, $xpath->query('//address')->length);
+        $this->assertSame(config('business.address'), $xpath->query('//address[@id="visit-address"]')->item(0)->textContent);
+        $copy = $xpath->query('//div[contains(@class,"np-location__copy")]')->item(0);
+        $this->assertStringContainsString(config('business.hours.open'), $copy->textContent);
+        $this->assertStringContainsString(config('business.hours.closed'), $copy->textContent);
+        $links = $xpath->query('./nav/a', $copy);
+        foreach (['Google Maps', 'نشان', 'بلد'] as $index => $label) {
+            $link = $links->item($index);
+            $this->assertSame(config('business.maps')[$label], $link->getAttribute('href'));
+            $this->assertSame('_blank', $link->getAttribute('target'));
+            $this->assertSame('noopener noreferrer', $link->getAttribute('rel'));
+        }
+        $this->assertSame(3, $links->length);
+        $this->assertSame(0, $xpath->query('//div[contains(@class,"np-location__directions")]//a')->length);
+        $this->assertSame(config('business.map_embed'), $xpath->query('//iframe')->item(0)->getAttribute('src'));
+        $this->assertSame(1, $xpath->query('//button[@type="button" and @data-copy-address="visit-address" and @hidden]')->length);
+        $this->assertSame(1, $xpath->query('//*[@id="address-copy-status" and @role="status" and @aria-live="polite"]')->length);
     }
 
     public function test_public_pages_share_homepage_chrome_while_admin_remains_separate(): void

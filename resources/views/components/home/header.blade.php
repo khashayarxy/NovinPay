@@ -1,5 +1,5 @@
 @php
-    $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'محصولات'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما']];
+    $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرگاه'], ['contact', 'contact', 'تماس با ما']];
 @endphp
 
 <header class="np-header">

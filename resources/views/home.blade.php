@@ -11,8 +11,8 @@
                 <h1 id="hero-title">فروش و تعمیر<br><span>کارتخوان</span></h1>
                 <p class="np-hero__description">انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.</p>
                 <div class="np-hero__actions">
-                    <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده محصولات<x-home.icon name="arrow-left" /></a>
-                    <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />خدمات تعمیرات<x-home.icon name="arrow-left" /></a>
+                    <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده فروشگاه<x-home.icon name="arrow-left" /></a>
+                    <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />ثبت درخواست تعمیر<x-home.icon name="arrow-left" /></a>
                 </div>
             </div>
         </div>
@@ -50,17 +50,21 @@
     <section class="np-location" aria-labelledby="location-title">
         <div class="np-container np-location__grid">
             <div class="np-location__copy">
-                <h2 id="location-title"><x-home.icon name="map-pin" />مراجعهٔ حضوری</h2>
-                <address>{{ config('business.address') }}</address>
+                <div class="np-location__heading">
+                    <h2 id="location-title"><x-home.icon name="map-pin" />مراجعهٔ حضوری</h2>
+                    <button type="button" class="np-copy-address" data-copy-address="visit-address" aria-describedby="address-copy-status" hidden>کپی نشانی</button>
+                </div>
+                <address id="visit-address">{{ config('business.address') }}</address>
                 <p class="np-location__hours">{{ config('business.hours.open') }}<span> · {{ config('business.hours.closed') }}</span></p>
+                <nav class="np-location__maps" aria-label="مسیریابی فروشگاه">
+                    @foreach (['Google Maps', 'نشان', 'بلد'] as $label)
+                        <a href="{{ config('business.maps')[$label] }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" /><bdi>{{ $label }}</bdi><span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
+                    @endforeach
+                </nav>
+                <p id="address-copy-status" class="np-copy-status" role="status" aria-live="polite"></p>
             </div>
             <div class="np-location__directions">
                 <iframe class="np-location__map" src="{{ config('business.map_embed') }}" title="موقعیت نوین‌پی در نقشهٔ نشان" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
-                <div class="np-location__maps">
-                    @foreach (config('business.maps') as $label => $url)
-                        <a href="{{ $url }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" />{{ $label }}<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
-                    @endforeach
-                </div>
             </div>
         </div>
     </section>

@@ -7,16 +7,13 @@
             </div>
             <nav aria-label="پیوندهای کاربردی">
                 <h2>دسترسی سریع</h2>
-                <a href="{{ route('home') }}">صفحه اصلی</a>
-                <a href="{{ route('products.index') }}">محصولات</a>
-                <a href="{{ route('repair') }}">خدمات تعمیرات</a>
+                <a href="{{ route('products.index') }}">فروشگاه</a>
+                <a href="{{ route('repair') }}">تعمیرگاه</a>
                 <a href="{{ route('contact') }}">تماس با ما</a>
             </nav>
             <div class="np-footer__information">
                 <h2>تماس با نوین‌پی</h2>
-                <a href="{{ config('business.phone_uri') }}" class="np-footer__phone" dir="ltr">{{ config('business.phone') }}</a>
-                <address>{{ config('business.address') }}</address>
-                <p class="np-footer__hours">{{ str_replace('پنجشنبه', 'پنجشنبه،', config('business.hours.open')) }} | {{ config('business.hours.closed') }}</p>
+                <x-business-phone class="np-footer__phone" />
             </div>
         </div>
         <div class="np-footer__bottom">
