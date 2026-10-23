@@ -218,8 +218,7 @@
 .homepage .np-brands__grid { max-width: 780px; margin-inline: auto; margin-top: 20px; gap: 20px; }
 .homepage .np-brand { min-height: 104px; box-shadow: none; }
 @media (max-width: 850px) {
-    .np-header { position: sticky; top: 0; z-index: 30; padding-top: env(safe-area-inset-top, 0px); transition: transform .2s ease; }
-    .np-header--hidden { transform: translateY(-100%); }
+    .np-header { position: sticky; top: 0; z-index: 30; padding-top: env(safe-area-inset-top, 0px); }
     .np-header__inner { position: static; flex-wrap: nowrap; min-height: 64px; padding-block: 8px; }
     .np-header .np-logo-link { min-height: 44px; align-items: center; }
     .np-header .np-nav { display: none; }
@@ -262,7 +261,6 @@
     .np-header .np-nav { gap: 4px; padding-inline: 8px; }
     .np-header .np-nav a { padding-inline: 7px; font-size: 12px; }
 }
-@media (prefers-reduced-motion: reduce) { .np-header { transition: none; } }
 .homepage .np-hero__art::before { content: ""; position: absolute; z-index: -1; width: 88%; height: 76%; inset-inline: 6%; bottom: 5%; border: 18px solid #7ac4ff38; border-bottom: 0; border-radius: 55% 55% 0 0; }
 @media (max-width: 850px) { .homepage .np-hero__art { max-width: 250px; } }
 @media (max-width: 360px) { .homepage .np-hero__art { max-width: 215px; } }
