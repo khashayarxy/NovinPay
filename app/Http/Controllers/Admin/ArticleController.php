@@ -80,6 +80,6 @@ final class ArticleController extends Controller
             return redirect()->back()->withErrors($exception->errors());
         }
 
-        return redirect()->route('admin.articles.preview', Article::findOrFail($id))->with('success', 'عملیات محتوا ثبت شد؛ نسخهٔ منتشرشده تنها با اقدام صریح تغییر می‌کند. مسیر عمومی مقاله در فاز ۷A فعال نیست.');
+        return redirect()->route('admin.articles.preview', Article::findOrFail($id))->with('success', 'عملیات محتوا ثبت شد؛ فقط نسخهٔ منتشرشده در وب‌سایت عمومی نمایش داده می‌شود.');
     }
 }

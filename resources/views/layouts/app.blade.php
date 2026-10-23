@@ -3,6 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @isset($contentSeo)
+        <title>{{ $contentSeo['title'] }} | {{ config('app.name') }}</title>
+        <meta name="description" content="{{ $contentSeo['description'] }}">
+        <link rel="canonical" href="{{ $contentSeo['canonical'] }}">
+        <meta name="robots" content="{{ $contentSeo['robots'] }}">
+    @else
     @hasSection('title')
         <title>@yield('title') | {{ config('app.name') }}</title>
     @else
@@ -12,6 +18,7 @@
     @if (request()->routeIs('repair*', 'consultation*', 'terms', 'privacy'))
         <meta name="robots" content="noindex, nofollow">
     @endif
+    @endisset
     <x-brand-head />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

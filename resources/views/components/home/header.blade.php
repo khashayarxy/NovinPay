@@ -1,7 +1,7 @@
 @php
-    $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما']];
+    $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما'], ['articles.index', 'articles.*', 'مقاله‌ها']];
     $primaryNavigation = [$navigation[0], ['products.index', 'products.*', 'خرید کارتخوان'], $navigation[2]];
-    $mobileNavigation = [...$primaryNavigation, ['repair.track', 'repair.track*', 'پیگیری تعمیرات'], $navigation[3]];
+    $mobileNavigation = [...$primaryNavigation, ['repair.track', 'repair.track*', 'پیگیری تعمیرات'], $navigation[3], $navigation[4]];
     $quickNavigation = [$navigation[1], $navigation[2]];
 @endphp
 
