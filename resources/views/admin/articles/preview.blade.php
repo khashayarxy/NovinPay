@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title','بازبینی خصوصی مقاله')
 @section('content')
-<header class="admin-page-heading"><div><p class="admin-eyebrow">فقط کارکنان مجاز · بدون مسیر عمومی در فاز ۷A</p><h1>بازبینی خصوصی مقاله</h1><p>{{ $mode==='published'?'تصویر ثابت محتوای منتشرشده':'پیش‌نویس فعلی؛ ذخیره به معنی انتشار نیست' }}</p></div><a class="btn btn-secondary" href="{{ route('admin.articles.index') }}">فهرست مقاله‌ها</a></header>
+<header class="admin-page-heading"><div><p class="admin-eyebrow">بازبینی خصوصی · فقط کارکنان مجاز</p><h1>بازبینی خصوصی مقاله</h1><p>{{ $mode==='published'?'تصویر ثابت محتوای منتشرشده':'پیش‌نویس فعلی؛ ذخیره به معنی انتشار نیست' }}</p></div><a class="btn btn-secondary" href="{{ route('admin.articles.index') }}">فهرست مقاله‌ها</a></header>
 <x-admin.errors/>
 <div class="repair-layout"><article class="admin-panel"><h2>{{ $version->title }}</h2><p class="admin-hint">{{ $version->category->name }} · نسخهٔ {{ \App\Support\FaNumber::digits($version->revision) }} · <x-finance-time :value="$version->created_at"/></p><p class="article-summary">{{ $version->summary }}</p><x-article-content :blocks="$version->blocks"/></article>
 <aside class="admin-panel"><h2>کنترل انتشار</h2><p class="crm-code">{{ $article->slug }}</p><p>نسخهٔ کنترلی مقاله: {{ \App\Support\FaNumber::digits($article->version) }}</p><p class="admin-hint">هر اقدام فقط روی نسخهٔ همین صفحه انجام می‌شود؛ تغییر هم‌زمان نیازمند بازبینی دوباره است.</p>

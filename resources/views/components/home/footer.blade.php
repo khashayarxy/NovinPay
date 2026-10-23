@@ -10,6 +10,7 @@
                 <a href="{{ route('products.index') }}">فروشگاه</a>
                 <a href="{{ route('repair') }}">تعمیرات</a>
                 <a href="{{ route('contact') }}">تماس با ما</a>
+                <a href="{{ route('articles.index') }}">مقاله‌ها</a>
             </nav>
             <div class="np-footer__information">
                 <h2>تماس با نوین‌پی</h2>

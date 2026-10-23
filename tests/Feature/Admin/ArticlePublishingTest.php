@@ -162,14 +162,16 @@ final class ArticlePublishingTest extends TestCase
         $this->assertSame(0, ArticleVersion::count());
     }
 
-    public function test_safe_rendering_private_headers_and_public_routes_absent(): void
+    public function test_safe_rendering_private_headers_and_only_published_public_content(): void
     {
         $article = $this->article(['title' => '<script>PRIVATE-TITLE</script>', 'content' => "## عنوان\n\nمتن **قوی** و *تأکید* [پیوند](https://example.com/a?x=1&y=2) &lt;script&gt;\n\n1. نخست\n2. بعد"]);
         $this->get('/admin/articles/'.$article->public_id.'/preview')->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertHeader('X-Robots-Tag', 'noindex, nofollow')
             ->assertSee('&lt;script&gt;PRIVATE-TITLE&lt;/script&gt;', false)->assertDontSee('<script>PRIVATE', false)->assertSee('<strong>قوی</strong>', false)->assertSee('<em>تأکید</em>', false)->assertSee('<ol>', false)->assertSee('rel="noopener noreferrer"', false)->assertSee('&amp;lt;script&amp;gt;', false);
         $this->get('/admin/articles/'.$article->public_id.'/preview?mode=published')->assertNotFound();
         $this->publish($article);
-        foreach (['/articles', '/articles/terminal-guide', '/blog', '/sitemap.xml'] as $url) {
+        $this->get('/articles')->assertOk()->assertSee('&lt;script&gt;PRIVATE-TITLE&lt;/script&gt;', false)->assertDontSee('<script>PRIVATE', false);
+        $this->get('/articles/terminal-guide')->assertOk()->assertSee('<strong>قوی</strong>', false)->assertDontSee('<script>PRIVATE', false);
+        foreach (['/blog', '/sitemap.xml', '/articles/terminal-guide/preview', '/articles/terminal-guide/versions/1'] as $url) {
             $this->get($url)->assertNotFound()->assertDontSee('PRIVATE-TITLE');
         }
         $this->get('/admin/articles/'.$article->public_id.'/preview?mode=other')->assertSessionHasErrors('mode');

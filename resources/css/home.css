@@ -219,10 +219,10 @@
 .homepage .np-brand { min-height: 104px; box-shadow: none; }
 @media (max-width: 850px) {
     .np-header { position: sticky; top: 0; z-index: 30; padding-top: env(safe-area-inset-top, 0px); }
-    .np-header__inner { position: static; flex-wrap: nowrap; min-height: 64px; padding-block: 8px; }
+    .np-header__inner { position: static; flex-wrap: nowrap; justify-content: flex-start; gap: 12px; min-height: 64px; padding-block: 8px; }
     .np-header .np-logo-link { min-height: 44px; align-items: center; }
     .np-header .np-nav { display: none; }
-    .np-header__actions { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+    .np-header__actions { display: flex; order: -1; align-items: center; gap: 8px; margin-inline-start: 0; }
     .np-mobile-menu { display: block; }
     .np-mobile-menu summary { display: flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; border: 1px solid #e0eaf5; border-radius: 10px; cursor: pointer; color: #163a61; list-style: none; }
     .np-mobile-menu summary::-webkit-details-marker { display: none; }
