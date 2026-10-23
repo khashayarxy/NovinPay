@@ -19,9 +19,7 @@ class BusinessFoundationTest extends TestCase
     public function test_public_layout_shares_official_contacts_and_brand_assets(string $uri): void
     {
         $response = $this->get($uri)->assertOk();
-        $response->assertSee('شهریار، بلوار رسول اکرم، خیابان مفتح، پاساژ الماس شهر، طبقه زیر همکف، واحد ۸۷');
-        $response->assertSee('href="tel:09362896373"', false);
-        $response->assertSee('شنبه تا پنجشنبه، ۹ تا ۱۸')->assertSee('جمعه تعطیل');
+        $response->assertSee('href="tel:09362896373"', false)->assertSee('۰۹۳۶۲۸۹۶۳۷۳');
         $response->assertSee(asset('brand/lockups/logo-wordmark-black-on-white.svg'));
         $response->assertSee(asset('brand/lockups/logo-wordmark-white-on-black.svg'));
         $response->assertSee(asset('favicon.svg'));
@@ -31,10 +29,15 @@ class BusinessFoundationTest extends TestCase
         $response->assertSee('href="#main-content"', false);
 
         if (in_array($uri, ['/', '/contact'], true)) {
+            $response->assertSee(config('business.address'));
+            $response->assertSee(config('business.hours.open'))->assertSee(config('business.hours.closed'));
             foreach (['https://balad.ir/p/PtbHeIpomT37HO', 'https://nshn.ir/c4_bvYA0OxCadU', 'https://maps.app.goo.gl/RSY3QKrJAMNiqPEB8'] as $url) {
                 $response->assertSee('href="'.$url.'"', false);
             }
             $response->assertSee('rel="noopener noreferrer"', false);
+        } else {
+            $response->assertDontSee(config('business.address'));
+            $response->assertDontSee(config('business.hours.open'));
         }
         $response->assertDontSee('اطلاعات تماس رسمی هنوز اعلام نشده است');
     }
@@ -45,7 +48,12 @@ class BusinessFoundationTest extends TestCase
 
         foreach (['/', '/contact', '/repair'] as $uri) {
             $response = $this->get($uri)->assertOk();
-            $response->assertSee('href="tel:TEST-PHONE"', false)->assertSee('TEST-ADDRESS');
+            $response->assertSee('href="tel:TEST-PHONE"', false);
+            if ($uri === '/repair') {
+                $response->assertDontSee('TEST-ADDRESS');
+            } else {
+                $response->assertSee('TEST-ADDRESS');
+            }
             $response->assertDontSee('09362896373');
         }
     }
