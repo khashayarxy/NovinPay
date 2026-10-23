@@ -5,10 +5,10 @@
     </div>
     <div>
         <dt class="font-semibold">تلفن</dt>
-        <dd><x-business-phone class="contact-link" /></dd>
+        <dd><x-business-phones link-class="contact-link" /></dd>
     </div>
     <div>
         <dt class="font-semibold">ساعات کاری</dt>
-        <dd>{{ config('business.hours.open') }}<br>{{ config('business.hours.closed') }}</dd>
+        <dd><x-business-hours /></dd>
     </div>
 </dl>

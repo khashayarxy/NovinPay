@@ -18,14 +18,14 @@ class MobileNavigationTest extends TestCase
         return [
             'home' => ['/', ['products.index', 'repair'], 'home'],
             'home query' => ['/?from=menu', ['products.index', 'repair'], 'home'],
-            'catalogue' => ['/products', ['home', 'repair'], 'products.index'],
-            'filtered paginated catalogue' => ['/products?q=PAX&page=2', ['home', 'repair'], 'products.index'],
-            'catalogue trailing slash' => ['/products/', ['home', 'repair'], 'products.index'],
-            'repair' => ['/repair', ['home', 'products.index'], 'repair'],
-            'repair query and trailing slash' => ['/repair/?from=menu', ['home', 'products.index'], 'repair'],
-            'confirmation' => ['/repair/confirmation', ['home', 'products.index'], 'repair'],
-            'tracking' => ['/repair/track', ['home', 'products.index'], 'repair.track'],
-            'tracking query' => ['/repair/track?from=menu', ['home', 'products.index'], 'repair.track'],
+            'catalogue' => ['/products', ['products.index', 'repair'], 'products.index'],
+            'filtered paginated catalogue' => ['/products?q=PAX&page=2', ['products.index', 'repair'], 'products.index'],
+            'catalogue trailing slash' => ['/products/', ['products.index', 'repair'], 'products.index'],
+            'repair' => ['/repair', ['products.index', 'repair'], 'repair'],
+            'repair query and trailing slash' => ['/repair/?from=menu', ['products.index', 'repair'], 'repair'],
+            'confirmation' => ['/repair/confirmation', ['products.index', 'repair'], 'repair'],
+            'tracking' => ['/repair/track', ['products.index', 'repair'], 'repair.track'],
+            'tracking query' => ['/repair/track?from=menu', ['products.index', 'repair'], 'repair.track'],
             'contact' => ['/contact', ['products.index', 'repair'], 'contact'],
             'consultation has repair CTA but is unrelated' => ['/consultation', ['products.index', 'repair'], null],
             'privacy' => ['/privacy', ['products.index', 'repair'], null],
@@ -51,7 +51,7 @@ class MobileNavigationTest extends TestCase
         ]);
         foreach (['', '?from=menu', '/'] as $suffix) {
             $html = $this->get(route('products.show', $product).$suffix)->assertOk()->getContent();
-            $this->assertNavigation($html, ['home', 'repair'], 'products.index');
+            $this->assertNavigation($html, ['products.index', 'repair'], 'products.index');
         }
     }
 
@@ -63,7 +63,7 @@ class MobileNavigationTest extends TestCase
         $quick = $xpath->query('//header/nav[@aria-label="دسترسی سریع"]/a');
         $this->assertCount(2, $quick);
         $this->assertSame(array_map(fn ($name) => route($name), $quickRoutes), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($quick)));
-        $labels = ['home' => 'صفحه اصلی', 'products.index' => 'خرید کارتخوان', 'repair' => 'تعمیرات'];
+        $labels = ['products.index' => 'فروشگاه', 'repair' => 'تعمیرات'];
         $this->assertSame(array_map(fn ($name) => $labels[$name], $quickRoutes), array_map(fn ($link) => trim($link->textContent), iterator_to_array($quick)));
         $this->assertSame(0, $xpath->query('//header/nav[@aria-label="دسترسی سریع"]/a[@aria-current]')->length);
 

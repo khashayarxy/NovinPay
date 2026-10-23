@@ -13,7 +13,7 @@
             </nav>
             <div class="np-footer__information">
                 <h2>تماس با نوین‌پی</h2>
-                <x-business-phone class="np-footer__phone" />
+                <x-business-phones link-class="np-footer__phone" />
             </div>
         </div>
         <div class="np-footer__bottom">

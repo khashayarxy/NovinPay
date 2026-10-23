@@ -55,7 +55,7 @@
                     <button type="button" class="np-copy-address" data-copy-address="visit-address" aria-describedby="address-copy-status" hidden>کپی نشانی</button>
                 </div>
                 <address id="visit-address">{{ config('business.address') }}</address>
-                <p class="np-location__hours">{{ config('business.hours.open') }}<span> · {{ config('business.hours.closed') }}</span></p>
+                <p class="np-location__hours"><x-business-hours /></p>
                 <nav class="np-location__maps" aria-label="مسیریابی فروشگاه">
                     @foreach (['Google Maps', 'نشان', 'بلد'] as $label)
                         <a href="{{ config('business.maps')[$label] }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" /><bdi>{{ $label }}</bdi><span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
