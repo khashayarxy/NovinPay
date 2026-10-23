@@ -1,4 +1,7 @@
+import { initMobileNavigation } from './mobile-navigation';
+
 document.addEventListener('DOMContentLoaded', () => {
+    initMobileNavigation();
     document.getElementById('error-summary')?.focus();
 
     if (window.isSecureContext && navigator.clipboard?.writeText) {

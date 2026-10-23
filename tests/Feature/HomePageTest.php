@@ -128,10 +128,9 @@ class HomePageTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
         $this->assertSame(4, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
-        $this->assertSame(4, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
-        foreach ($xpath->query('//header//nav') as $nav) {
-            $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرگاه', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $nav))));
-        }
+        $this->assertSame(5, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
+        $desktop = $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]')->item(0);
+        $this->assertSame(['صفحه اصلی', 'خرید کارتخوان', 'خدمات و تعمیرات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
         $this->assertSame(5, $xpath->query('//main/section')->length);
         $response->assertSeeInOrder(['id="hero-title"', 'np-trust np-container', 'id="popular-services-title"', 'id="brands-title"', 'id="location-title"'], false);
