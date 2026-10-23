@@ -137,6 +137,91 @@ jobs:
         run: php -r '$db = new PDO("mysql:host=127.0.0.1;port=3307", "root", "disposable-root"); $db->exec("SET GLOBAL log_bin_trust_function_creators = 1");'
       - name: Full MySQL regression suite
         run: php artisan test --compact --display-warnings --fail-on-warning
+      - name: Upgrade from reported seven-migration production baseline
+        run: |
+          mkdir -p "$NOVINPAY_COMMERCE_ARTIFACTS"
+          php tests/ProductionBaseline/run.php
+      - name: Article upgrade rollback and reapply preservation
+        run: php tests/ArticleMigration/run.php
+      - name: Actual competing-connection scenarios
+        run: |
+          mkdir -p "$NOVINPAY_COMMERCE_ARTIFACTS"
+          php tests/Concurrency/run.php
+      - name: Actual competing financial allocations and corrections
+        run: php tests/FinanceConcurrency/run.php
+      - name: Actual competing article edits and publication
+        run: php tests/ArticleConcurrency/run.php
+      - name: Disposable migration rollback and reapply
+        run: |
+          php artisan migrate:rollback --force --no-interaction
+          php artisan migrate --force --no-interaction
+          php artisan migrate:status --no-interaction
+
+  php-mariadb:
+    name: PHP MariaDB 10.6.28
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # These credentials exist only in this job's disposable service container.
+    services:
+      mysql:
+        image: mariadb:10.6.28
+        env:
+          MARIADB_ROOT_PASSWORD: disposable-root
+          MARIADB_DATABASE: novinpay_phase6c_ci
+          MARIADB_USER: novinpay_ci
+          MARIADB_PASSWORD: disposable-ci
+        ports:
+          - 3308:3306
+        options: >-
+          --health-cmd="mariadb-admin ping -h 127.0.0.1 --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_CONNECTION: mariadb
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3308'
+      DB_DATABASE: novinpay_phase6c_ci
+      DB_USERNAME: novinpay_ci
+      DB_PASSWORD: disposable-ci
+      DB_URL: mariadb://novinpay_ci:disposable-ci@127.0.0.1:3308/novinpay_phase6c_ci
+      NOVINPAY_DISPOSABLE_COMMERCE: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sqlite3, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+      - name: Generate disposable application key
+        run: |
+          touch .env
+          key="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+          echo "::add-mask::$key"
+          echo "APP_KEY=$key" >> "$GITHUB_ENV"
+          echo "APP_CONFIG_CACHE=$RUNNER_TEMP/novinpay-config.php" >> "$GITHUB_ENV"
+          echo "NOVINPAY_COMMERCE_ARTIFACTS=$RUNNER_TEMP/novinpay-commerce" >> "$GITHUB_ENV"
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-php84-${{ hashFiles('composer.lock') }}
+      - name: Install locked PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Build assets required by rendered PHP responses
+        run: npm ci && npm run build
+      - name: Full MariaDB regression suite
+        run: php artisan test --compact --display-warnings --fail-on-warning
+      - name: Upgrade from reported seven-migration production baseline
+        run: |
+          mkdir -p "$NOVINPAY_COMMERCE_ARTIFACTS"
+          php tests/ProductionBaseline/run.php
       - name: Article upgrade rollback and reapply preservation
         run: php tests/ArticleMigration/run.php
       - name: Actual competing-connection scenarios

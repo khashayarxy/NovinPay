@@ -22,7 +22,7 @@ set_exception_handler(function (Throwable $exception): never {
 $driver = DB::getDriverName();
 $database = str_replace('\\', '/', DB::connection()->getDatabaseName());
 $artifacts = str_replace('\\', '/', getenv('NOVINPAY_COMMERCE_ARTIFACTS') ?: '');
-$disposable = $driver === 'sqlite' ? ($database === ':memory:' || ($artifacts !== '' && str_starts_with($database, $artifacts.'/disposable-'))) : ($driver === 'mysql' && preg_match('/\Anovinpay_phase6c(?:_[a-z0-9_]+)?\z/', $database) && config('database.connections.mysql.host') === '127.0.0.1' && (int) config('database.connections.mysql.port') > 1024 && (int) config('database.connections.mysql.port') !== 3306);
+$disposable = $driver === 'sqlite' ? ($database === ':memory:' || ($artifacts !== '' && str_starts_with($database, $artifacts.'/disposable-'))) : (in_array($driver, ['mysql', 'mariadb'], true) && preg_match('/\Anovinpay_phase6c(?:_[a-z0-9_]+)?\z/', $database) && config('database.connections.'.$driver.'.host') === '127.0.0.1' && (int) config('database.connections.'.$driver.'.port') > 1024 && (int) config('database.connections.'.$driver.'.port') !== 3306);
 if (! $app->environment('testing') || $app->configurationIsCached() || ! $disposable) {
     throw new RuntimeException('Refusing non-disposable migration target');
 }

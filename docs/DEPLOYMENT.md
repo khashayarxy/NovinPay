@@ -1,5 +1,7 @@
 # راهنمای استقرار NovinPay (هاست اشتراکی / cPanel)
 
+> **سایت موجود: توقف قبل از اجرای دستورات عمومی این سند.** راهنمای فعلی و شرایط سازگاری در [MARIADB-COMPATIBILITY.md](MARIADB-COMPATIBILITY.md) است. baseline اعلام‌شدهٔ تولید هفت migration دارد؛ کلید/دادهٔ آن باید حفظ شود. مراحل قدیمی نصب تازه، bootstrap مدیر را کامل پوشش نمی‌دهند. MySQL 5.7 و MariaDB قدیمی پشتیبانی نمی‌شوند. هیچ انتشار یا migration تولید در این بررسی اجرا نشده است.
+
 این سند چک‌لیست عملیاتی برای استقرار وب‌سایت روی هاست اشتراکی لینوکس/cPanel است.
 دستورات را دقیقاً به همین ترتیب اجرا کنید. مقادیر واقعی رمز و `.env` را **هرگز** در
 این فایل یا هیچ فایل دیگری که متعهد (commit) می‌کنید وارد نکنید.
@@ -14,7 +16,7 @@
 | افزونه‌های PHP | `mbstring`, `openssl`, `pdo_mysql` (یا `pdo_mariadb`), `tokenizer`, `xml`, `ctype`, `json`, `fileinfo`, `dom`, `bcmath` | `php -m` |
 | Composer | نصب و در دسترس CLI | `composer -V` |
 | دسترسی CLI/SSH | برای `artisan` (migrate, cache, storage:link) | تماس با پشتیبانی |
-| دیتابیس | MySQL 5.7+ یا MariaDB 10.2+ با `utf8mb4` (روی MySQL 8.0 با `utf8mb4_unicode_ci` آزموده شده) | پنل cPanel → MySQL Databases |
+| دیتابیس | MySQL 8.0.16+ یا MariaDB 10.6.28 در شاخهٔ 10.6 با اتصال بومی `mariadb`؛ InnoDB، CHECK/FK/trigger و `utf8mb4_unicode_ci`؛ پیش‌شرط‌های سند سازگاری الزامی‌اند | پنل cPanel → MySQL Databases |
 | `symlink` | برای `php artisan storage:link` (اختیاری — بخش ۶ را ببینید) | `php artisan storage:link` |
 | `exec`/`shell_exec` | برای اجرای artisan (معمولاً در هاست اشتراکی فعال است) | `php -m` / تماس با پشتیبانی |
 | SSL | گواهی رایگان Let's Encrypt یا SSL هاست | پنل cPanel → SSL/TLS |

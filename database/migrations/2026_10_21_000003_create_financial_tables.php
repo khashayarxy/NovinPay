@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\DatabaseTriggerAccess;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,19 +10,27 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! in_array(DB::getDriverName(), ['sqlite', 'mysql'], true)) {
-            throw new RuntimeException('Financial migration supports SQLite and MySQL 8 only.');
+        if (! in_array(DB::getDriverName(), ['sqlite', 'mysql', 'mariadb'], true)) {
+            throw new RuntimeException('Financial migration supports SQLite, MySQL 8 and verified MariaDB 10.6.28+.');
         }
-        if (DB::getDriverName() === 'mysql') {
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
             $version = DB::selectOne('SELECT VERSION() AS version')->version;
-            if (str_contains($version, 'MariaDB') || version_compare($version, '8.0.16', '<')) {
+            $maria = str_contains($version, 'MariaDB');
+            preg_match('/(?:5\.5\.5-)?(\d+\.\d+\.\d+)/', $version, $match);
+            $number = $match[1] ?? '0.0.0';
+            if ($maria && (version_compare($number, '10.6.28', '<') || version_compare($number, '10.7.0', '>='))) {
+                throw new RuntimeException('Only verified MariaDB 10.6.28+ in the 10.6 series is supported.');
+            }
+            if ($maria) {
+                $settings = DB::selectOne('SELECT @@session.explicit_defaults_for_timestamp AS explicit_dates, @@session.check_constraint_checks AS checks_enabled, @@session.foreign_key_checks AS foreign_keys, @@default_storage_engine AS engine');
+                if (! $settings->explicit_dates || ! $settings->checks_enabled || ! $settings->foreign_keys || strtoupper($settings->engine) !== 'INNODB') {
+                    throw new RuntimeException('MariaDB requires explicit timestamps, CHECK/FK enforcement and InnoDB. Use the mariadb connection; never disable invariants.');
+                }
+            }
+            if (! $maria && version_compare($number, '8.0.16', '<')) {
                 throw new RuntimeException('Financial migration requires MySQL 8.0.16+ with enforced CHECK constraints.');
             }
-            $policy = DB::selectOne('SELECT @@global.log_bin AS logging, @@global.log_bin_trust_function_creators AS trusted');
-            $grants = implode(' ', array_map(fn ($row) => implode(' ', (array) $row), DB::select('SHOW GRANTS FOR CURRENT_USER')));
-            if ($policy->logging && ! $policy->trusted && ! str_contains($grants, 'SUPER') && ! preg_match('/ALL PRIVILEGES ON \*\.\*/', $grants)) {
-                throw new RuntimeException('Trigger creation is restricted by server logging policy; obtain an authorized deployment account/provider review before migration. No financial tables were created.');
-            }
+            DatabaseTriggerAccess::verify(['financial_entries', 'financial_documents']);
         }
         Schema::create('financial_operations', function (Blueprint $table): void {
             $table->id();
