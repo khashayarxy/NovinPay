@@ -4,7 +4,7 @@
 
 Native Laravel `mariadb` connection through PDO MySQL, InnoDB, strict mode, utf8mb4/utf8mb4_unicode_ci. Verified server: **10.6.28**; the preflight permits patched 10.6 versions from 10.6.28, not untested 10.7/10.11/11.x. MySQL 8.0.16+ and SQLite remain supported. No Composer/package lock change or new dependency.
 
-The owner reports production MariaDB 10.6.28, PHP CLI 8.4.26 at `/opt/cpanel/ea-php84/root/usr/bin/php`, Laravel 13.35.0, and seven migrations in batch 1 through `2026_10_14_000002_renormalize_search_text`. These are owner-provided facts, not an imported schema audit. Read-only cPanel API independently confirms the domain's `ea-php84` assignment and configured document root `/home/novinpay/public_html`; the owner reports that it symlinks to `/home/novinpay/novinpay/public`. A mapping does not independently establish the effective PHP patch/extensions, resolved symlink, SQL grants or schema shape. No production file, database or setting was changed.
+The owner reports PHP CLI 8.4.26 at `/opt/cpanel/ea-php84/root/usr/bin/php`, Laravel 13.35.0, and seven migrations in batch 1 through `2026_10_14_000002_renormalize_search_text`. These remain owner-provided facts, not an imported schema audit. Read-only cPanel API independently confirms MariaDB **10.6.28-MariaDB**, the domain's `ea-php84` assignment, `suphp` handler, configured document root `/home/novinpay/public_html`, and that `public_html` is a symlink. Its resolved target remains owner-reported as `/home/novinpay/novinpay/public`. One database-mapped account has schema-level `ALL PRIVILEGES`; this does not prove the effective application account, global SUPER or binary-log policy. See [PRODUCTION-READINESS.md](PRODUCTION-READINESS.md) for the current evidence and remaining gate. No production file, database or setting was changed.
 
 ## Incompatibility inventory and changes
 
@@ -37,6 +37,8 @@ CI results must be read from the exact PR head; local passes do not imply a queu
 ## Read-only hosting/schema audit limitations
 
 The verified cPanel API token is DPAPI-encrypted outside the repository; only allowlisted read-only metadata calls are used, TLS verified, redirects disabled, no raw responses/credentials/cookies printed. No .env/private-file contents, customer data or SQL password grants are downloaded. API responses may have host-specific shape; missing values are reported as unknown rather than inferred. The API's DB account-management/backup endpoints are not arbitrary read-only SQL clients. A full backup export can include customer rows and is not a substitute for a schema-only export; no full-backup job or web shell is created here.
+
+The supported read-only `Mysql/dump_database_schema` endpoint was tested on 2026-10-23. It returned 1,383 characters of database-level DDL with **zero CREATE TABLE definitions**. Its encrypted private snapshot is not a usable table/constraint/trigger snapshot. No actual-production-schema upgrade rehearsal has been performed. Use the complete owner-run export in [PRODUCTION-READINESS.md](PRODUCTION-READINESS.md), which includes trigger definitions; the narrower command below remains a baseline-table-only alternative and deliberately omits triggers.
 
 The owner can run the following read-only schema export manually in cPanel Terminal. It creates only a private local output file, outside the webroot; no SQL changes or table locks are requested. Enter the database account name at the first prompt and its password at the dump tool's hidden password prompt. Do not put passwords in arguments, shell history or chat.
 
