@@ -1,5 +1,26 @@
+import { initMobileNavigation } from './mobile-navigation';
+
 document.addEventListener('DOMContentLoaded', () => {
+    initMobileNavigation();
     document.getElementById('error-summary')?.focus();
+
+    if (window.isSecureContext && navigator.clipboard?.writeText) {
+        document.querySelectorAll('[data-copy-address]').forEach((button) => {
+            button.hidden = false;
+            button.addEventListener('click', async () => {
+                const address = document.getElementById(button.dataset.copyAddress);
+                const status = document.getElementById(button.getAttribute('aria-describedby'));
+                if (!address || !status) return;
+                status.textContent = '';
+                try {
+                    await navigator.clipboard.writeText(address.textContent.trim());
+                    status.textContent = 'نشانی کپی شد.';
+                } catch {
+                    status.textContent = 'کپی خودکار انجام نشد؛ نشانی را انتخاب و کپی کنید.';
+                }
+            });
+        });
+    }
 
     document.addEventListener('submit', (event) => {
         const form = event.target;

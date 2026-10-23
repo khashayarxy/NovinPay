@@ -1,98 +1,70 @@
 @extends('layouts.app')
 
-@section('meta_description', 'فروش دستگاه‌های کارتخوان نو و کارکرده و خدمات تعمیر PAX، NewPOS و Newland در شهریار. مشاوره و استعلام قیمت از نوین‌پی.')
+@section('meta_description', 'فروش دستگاه‌های کارتخوان آکبند و استوک و خدمات تعمیر PAX، NewPOS و Newland در شهریار. مشاوره و استعلام قیمت از نوین‌پی.')
 
 @section('content')
     <section class="np-hero" aria-labelledby="hero-title">
         <div class="np-container np-hero__grid">
+            <x-home.artwork name="hero" label="تصویرسازی نمایشی کارتخوان و کارت بانکی؛ نه عکس تأییدشدهٔ محصول" class="np-hero__art" />
             <div class="np-hero__copy">
                 <p class="np-eyebrow">به {{ config('business.name') }} خوش آمدید</p>
-                <h1 id="hero-title">فروش و تعمیر تخصصی<br><span>کارتخوان</span></h1>
-                <p class="np-hero__description">دستگاه‌های کارتخوان نو و کارکرده از برندهای <bdi lang="en">PAX</bdi>، <bdi lang="en">NewPOS</bdi> و <bdi lang="en">Newland</bdi>؛ همراه شما در انتخاب، راه‌اندازی و تعمیر دستگاه.</p>
+                <h1 id="hero-title">فروش و تعمیر<br><span>کارتخوان</span></h1>
+                <p class="np-hero__description">انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.</p>
                 <div class="np-hero__actions">
                     <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده محصولات<x-home.icon name="arrow-left" /></a>
-                    <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />خدمات تعمیرات<x-home.icon name="arrow-left" /></a>
+                    <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />ثبت درخواست تعمیر<x-home.icon name="arrow-left" /></a>
                 </div>
             </div>
-            <x-home.artwork name="hero" label="ماسکات آبی نوین‌پی" class="np-hero__art" />
         </div>
     </section>
 
     <section class="np-trust np-container" aria-label="همراه شما در خرید و تعمیر">
-        @foreach ([['tag', 'مشاورهٔ خرید', 'متناسب با نیاز شما'], ['shield-check', 'شفافیت وضعیت', 'نو یا کارکرده'], ['truck', 'هماهنگی تحویل', 'جزئیات هنگام استعلام'], ['headphones', 'راهنمایی تخصصی', 'برای خرید و تعمیر']] as [$icon, $title, $text])
-            <div class="np-trust__item"><x-home.icon :name="$icon" /><h2>{{ $title }}</h2><p>{{ $text }}</p></div>
+        @foreach ([['tag', 'مشاوره تخصصی خرید', 'انتخاب کارتخوان متناسب با نیاز و بودجه شما'], ['shield-check', 'استعلام آنلاین وضعیت تعمیرات', 'با استفاده از کد پیگیری'], ['truck', 'ارسال و تحویل به تمام نقاط', 'در سریع‌ترین زمان ممکن'], ['headphones', 'تعمیرات تخصصی کارتخوان', 'رسیدگی به مشکلات فنی دستگاه']] as [$icon, $title, $text])
+            <div class="np-trust__item"><span class="np-trust__icon"><x-home.icon :name="$icon" /></span><h2>{{ $title }}</h2><p>{{ $text }}</p></div>
         @endforeach
-    </section>
-
-    <section class="np-container np-promotions" aria-label="فروش و تعمیر کارتخوان">
-        <article class="np-promo np-promo--sales">
-            <div class="np-promo__copy">
-                <p class="np-pill"><x-home.icon name="shopping-bag" />فروش دستگاه کارتخوان</p>
-                <h2>کارتخوان مناسب<br>برای کسب‌وکار شما</h2>
-                <p>انتخاب از میان دستگاه‌های نو و کارکرده، با مشخصات و وضعیت روشن.</p>
-                <a href="{{ route('products.index') }}" class="np-button np-button--sales">مشاهده محصولات<x-home.icon name="arrow-left" /></a>
-            </div>
-            <x-home.artwork name="sales" label="دستگاه‌های کارتخوان" />
-        </article>
-        <article class="np-promo np-promo--repairs">
-            <div class="np-promo__copy">
-                <p class="np-pill"><x-home.icon name="tool" />خدمات تخصصی تعمیر</p>
-                <h2>دستگاه کارتخوان شما<br>دوباره آمادهٔ کار</h2>
-                <p>برای بررسی مشکلات سخت‌افزاری و نرم‌افزاری دستگاه، با ما هماهنگ کنید.</p>
-                <a href="{{ route('repair') }}" class="np-button np-button--repairs">مشاهده خدمات تعمیرات<x-home.icon name="arrow-left" /></a>
-            </div>
-            <x-home.artwork name="repairs" label="تعمیر دستگاه کارتخوان" />
-        </article>
     </section>
 
     <section class="np-container np-services" aria-labelledby="popular-services-title">
         <div class="np-section-heading">
-            <div><h2 id="popular-services-title">خدمات پرکاربرد ما</h2><p>برای هر مرحله از کار با کارتخوان، راهی برای راهنمایی شما داریم.</p></div>
-            <a href="{{ route('services') }}" class="np-small-link">همه خدمات<x-home.icon name="arrow-left" /></a>
+            <div><h2 id="popular-services-title">خدمات کارتخوان نوین‌پی</h2><p>برای هر مرحله از کار با کارتخوان، راهی برای راهنمایی شما داریم.</p></div>
+            <a href="{{ route('contact') }}" class="np-small-link">راهنمایی خدمات<x-home.icon name="arrow-left" /></a>
         </div>
         <div class="np-services__grid">
-            @foreach ([['user', 'انتقال مالکیت', 'راهنمایی و انجام مراحل', 'services'], ['building-bank', 'تغییر حساب', 'بررسی و راه‌اندازی مجدد', 'services'], ['printer', 'رفع مشکل پرینتر', 'بررسی چاپ و قطعات', 'repair'], ['power', 'رفع مشکل خاموشی', 'عیب‌یابی دستگاه', 'repair'], ['antenna-bars-5', 'رفع مشکل آنتن‌دهی', 'بررسی ارتباط و آنتن', 'repair'], ['battery-charging', 'رفع مشکل شارژ', 'بررسی باتری و تغذیه', 'repair'], ['settings', 'سایر خدمات', 'راه‌اندازی و پشتیبانی', 'services']] as [$icon, $title, $text, $destination])
+            @foreach ([['user', 'انتقال مالکیت کارتخوان', 'راهنمایی و انجام مراحل', 'contact'], ['building-bank', 'تغییر حساب بانکی', 'بررسی و راه‌اندازی مجدد', 'contact'], ['printer', 'رفع مشکل چاپ رسید', 'بررسی چاپ و قطعات', 'repair'], ['power', 'رفع مشکل روشن‌نشدن', 'عیب‌یابی دستگاه', 'repair'], ['antenna-bars-5', 'رفع مشکل آنتن کارتخوان', 'بررسی ارتباط و آنتن', 'repair'], ['battery-charging', 'رفع مشکل شارژ دستگاه', 'بررسی باتری و تغذیه', 'repair'], ['settings', 'سایر خدمات کارتخوان', 'راه‌اندازی و پشتیبانی', 'contact']] as [$icon, $title, $text, $destination])
                 <a href="{{ route($destination) }}" class="np-service"><x-home.icon :name="$icon" /><h3>{{ $title }}</h3><p>{{ $text }}</p></a>
             @endforeach
         </div>
     </section>
 
-    <div class="np-container np-about-grid">
-        <section class="np-why" aria-labelledby="why-title">
-            <div class="np-why__copy">
-                <h2 id="why-title"><x-home.icon name="diamond" />چرا نوین‌پی؟</h2>
-                <p>از انتخاب کارتخوان تا بررسی مشکل دستگاه، پاسخ پرسش‌هایتان را از ما بخواهید.</p>
-                <ul>
-                    @foreach (['راهنمای انتخاب متناسب با کسب‌وکار', 'اعلام وضعیت نو یا کارکردهٔ دستگاه', 'هماهنگی پیش از انجام تعمیر', 'امکان مراجعهٔ حضوری در شهریار'] as $advantage)
-                        <li><x-home.icon name="check" />{{ $advantage }}</li>
-                    @endforeach
-                </ul>
-            </div>
-            <x-home.artwork name="support" label="تصویر مشاورهٔ نوین‌پی" />
-        </section>
-        <section class="np-brands" aria-labelledby="brands-title">
-            <h2 id="brands-title">برندهای تحت پوشش</h2>
-            <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
-            <div class="np-brands__grid">
-                @foreach (['Newland', 'NewPOS', 'PAX'] as $brand)
-                    <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand"><span lang="en" dir="ltr">{{ $brand }}</span><span>مشاهده دستگاه‌ها<x-home.icon name="arrow-left" /></span></a>
-                @endforeach
-            </div>
-        </section>
-    </div>
+    <section class="np-container np-brands" aria-labelledby="brands-title">
+        <h2 id="brands-title">برندهای تحت پوشش</h2>
+        <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
+        <div class="np-brands__grid">
+            @foreach (['Newland', 'NewPOS', 'PAX'] as $brand)
+                <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand"><x-home.manufacturer :name="$brand" /><span>مشاهده دستگاه‌ها<x-home.icon name="arrow-left" /></span></a>
+            @endforeach
+        </div>
+    </section>
+
 
     <section class="np-location" aria-labelledby="location-title">
         <div class="np-container np-location__grid">
-            <x-home.artwork name="store" label="تصویر تأییدشدهٔ فروشگاه" />
             <div class="np-location__copy">
-                <h2 id="location-title"><x-home.icon name="map-pin" />مراجعهٔ حضوری</h2>
-                <address>{{ config('business.address') }}</address>
-                <p class="np-location__hours">{{ config('business.hours.open') }}<span> · {{ config('business.hours.closed') }}</span></p>
-                <div class="np-location__maps">
-                    @foreach (config('business.maps') as $label => $url)
-                        <a href="{{ $url }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" />{{ $label }}<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
-                    @endforeach
+                <div class="np-location__heading">
+                    <h2 id="location-title"><x-home.icon name="map-pin" />مراجعهٔ حضوری</h2>
+                    <button type="button" class="np-copy-address" data-copy-address="visit-address" aria-describedby="address-copy-status" hidden>کپی نشانی</button>
                 </div>
+                <address id="visit-address">{{ config('business.address') }}</address>
+                <p class="np-location__hours">{{ config('business.hours.open') }}<span> · {{ config('business.hours.closed') }}</span></p>
+                <nav class="np-location__maps" aria-label="مسیریابی فروشگاه">
+                    @foreach (['Google Maps', 'نشان', 'بلد'] as $label)
+                        <a href="{{ config('business.maps')[$label] }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" /><bdi>{{ $label }}</bdi><span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
+                    @endforeach
+                </nav>
+                <p id="address-copy-status" class="np-copy-status" role="status" aria-live="polite"></p>
+            </div>
+            <div class="np-location__directions">
+                <iframe class="np-location__map" src="{{ config('business.map_embed') }}" title="موقعیت نوین‌پی در نقشهٔ نشان" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
             </div>
         </div>
     </section>

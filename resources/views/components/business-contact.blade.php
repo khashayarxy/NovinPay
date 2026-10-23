@@ -5,7 +5,7 @@
     </div>
     <div>
         <dt class="font-semibold">تلفن</dt>
-        <dd><a href="{{ config('business.phone_uri') }}" class="contact-link" dir="ltr">{{ config('business.phone') }}</a></dd>
+        <dd><x-business-phone class="contact-link" /></dd>
     </div>
     <div>
         <dt class="font-semibold">ساعات کاری</dt>

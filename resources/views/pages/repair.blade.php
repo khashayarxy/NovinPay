@@ -3,7 +3,7 @@
 @section('meta_description', 'ثبت آنلاین درخواست تعمیر کارتخوان و دریافت کد پیگیری نوین‌پی')
 @section('content')
 <div class="np-container public-section">
-    <x-page-heading title="درخواست تعمیر کارتخوان" eyebrow="تعمیرات نوین‌پی" icon="tool" lead="مشکل دستگاه را برای ما بنویسید و کد پیگیری دریافت کنید. ثبت این فرم فقط یک درخواست آنلاین است و به معنی دریافت دستگاه نیست.">
+    <x-page-heading title="تعمیرات تخصصی کارتخوان" eyebrow="تعمیرات نوین‌پی" icon="tool" lead="مشکل دستگاه را برای ما بنویسید و کد پیگیری دریافت کنید. ثبت این فرم فقط یک درخواست آنلاین است و به معنی دریافت دستگاه نیست.">
         <a href="{{ route('repair.track') }}" class="public-inline-link">قبلاً درخواست داده‌اید؟ پیگیری درخواست <x-home.icon name="arrow-left" /></a>
     </x-page-heading>
     <div class="public-split public-split--form">
@@ -21,12 +21,12 @@
                 </div>
                 <x-repair-field name="issue" label="شرح مشکل" hint="۱۰ تا ۲۰۰۰ نویسه؛ اطلاعات کارت بانکی، رمز یا اطلاعات حساب را وارد نکنید."><textarea id="issue" name="issue" class="input" rows="5" required minlength="10" maxlength="2000" aria-invalid="{{ $errors->has('issue') ? 'true' : 'false' }}" aria-describedby="issue-feedback"></textarea></x-repair-field>
                 <p class="public-hint">نام، شماره تماس، مدل و شرح مشکل برای ثبت این درخواست ذخیره می‌شوند. <a class="public-inline-link" href="{{ route('privacy') }}">اطلاعات حریم خصوصی</a></p>
-                <button class="np-button np-button--primary" type="submit">ثبت درخواست و دریافت کد <x-home.icon name="arrow-left" /></button>
+                <button class="np-button np-button--primary" type="submit">ثبت درخواست تعمیر <x-home.icon name="arrow-left" /></button>
             </form>
         </section>
         <aside class="public-sidebar">
             <div class="public-notice"><x-home.icon name="shield-check" /><h2>درخواست آنلاین، پیش از پذیرش دستگاه</h2><p>در این مرحله فقط اطلاعات درخواست ثبت می‌شود. دریافت فیزیکی، هزینه و زمان تعمیر با ارسال فرم تأیید نمی‌شوند.</p></div>
-            <div class="public-panel"><h2>پس از ثبت چه می‌بینید؟</h2><ol class="public-steps"><li><span>۱</span><div><h3>کد پیگیری اختصاصی</h3><p>کد نمایش‌داده‌شده را در جای امن نگه دارید.</p></div></li><li><span>۲</span><div><h3>پیگیری با شمارهٔ همراه</h3><p>فقط با کد کامل و شمارهٔ ثبت‌شده، وضعیت اولیه را ببینید.</p></div></li><li><span>۳</span><div><h3>هماهنگی مراجعه</h3><p>برای هماهنگی مراجعه یا پرسش دربارهٔ دستگاه با ما تماس بگیرید.</p></div></li></ol><a class="public-inline-link" href="{{ config('business.phone_uri') }}" dir="ltr">{{ config('business.phone') }} <x-home.icon name="phone" /></a></div>
+            <div class="public-panel"><h2>پس از ثبت چه می‌بینید؟</h2><ol class="public-steps"><li><span>۱</span><div><h3>کد پیگیری اختصاصی</h3><p>کد نمایش‌داده‌شده را در جای امن نگه دارید.</p></div></li><li><span>۲</span><div><h3>پیگیری با شمارهٔ همراه</h3><p>فقط با کد کامل و شمارهٔ ثبت‌شده، وضعیت اولیه را ببینید.</p></div></li><li><span>۳</span><div><h3>هماهنگی مراجعه</h3><p>برای هماهنگی مراجعه یا پرسش دربارهٔ دستگاه با ما تماس بگیرید.</p></div></li></ol><x-business-phone class="public-inline-link"><x-home.icon name="phone" /></x-business-phone></div>
         </aside>
     </div>
 </div>

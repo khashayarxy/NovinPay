@@ -70,7 +70,7 @@
                 @else
                     <x-empty-state title="هنوز محصولی ثبت نشده است"
                         message="کاتالوگ محصولات خالی است. اطلاعات کالاها پس از تأیید نهایی در این بخش قرار می‌گیرد.">
-                        <a href="{{ route('services') }}" class="btn btn-secondary">آشنایی با خدمات</a>
+                        <a href="{{ route('contact') }}" class="btn btn-secondary">راهنمایی خرید</a>
                     </x-empty-state>
                 @endif
             @else

@@ -1,3 +1,118 @@
+# Final footer — PR #5
+
+final result: passed
+
+Three RTL desktop columns (brand, four useful links, contact), stacked mobile layout, #102B45 background and original supplied white horizontal SVG. Redundant product/brand/tracking/directions links removed from footer only. Unapproved legal draft links omitted; the actual legal routes remain drafts/noindex. Dynamic Persian copyright stays centered. Header/hero/services/trust/brands/map/contact-panel files unchanged.
+
+Actual footer/full-page screenshots reviewed at 1440/1024/390/320: no overflow, zero scoped axe WCAG A/AA violations; keyboard mobile menu unchanged. Evidence under task artifacts footer-final/gallery.html and environment-setup/footer-final-*. Full guarded SQLite 425 passed / 2923 assertions; Pint/Vite pass. Production-readiness report is a local review artifact (footer-final/PRODUCTION-READINESS.fa.md), not permission to deploy. Hosting capabilities/trigger policy/legal text/Neshan place identity remain NO-GO gates.
+
+Existing unrelated deletion of public/images/home/novinpay-hero-terminal.webp was present on entry, untouched and excluded from this footer commit. Original DB/environment/keys/lockfiles/Herd preserved. No server writes, production migrations, merge or deploy.
+
+---
+
+## Previous records
+
+# Final visual polish — PR #5
+
+final result: passed
+
+- Old WebP had baked-in partially opaque gray/blue edge pixels, not CSS smoke/filter. Replaced by supplied Object.png (853×933), lossless WebP at public/images/home/novinpay-terminal-clean.webp. Four corners alpha zero; alpha identical and visible composite pixels identical to source. WebP normalizes irrelevant RGB in fully transparent pixels. No device/logo generation, image cropping or masks.
+- Exact section gradient 90deg #E0F0FF → #F8FBFF; transparent figure, restrained CSS blue arch and soft elliptical ground shadow. Supplied wave background not overlaid because the brief explicitly requires this gradient. Complete supplied device/card retained (new source has no receipt); illustrative alt, no authenticated-photo claim.
+- True header-centered desktop navigation with one light-blue rounded outline; compact 1024px layout without logo collision. Existing keyboard mobile menu intact. Copyright spans its own centered full-width row with dynamic Persian year and exact approved wording.
+- Central enum labels آکبند / استوک, internal new/used unchanged. Cards/details/product forms reuse mapping; inventory/order labels/options centralized too. Static homepage/meta/footer/future sample fixture copy updated. Trust item condition wording changes only; seven service cards unchanged. No new filter/features.
+- Exceptions: existing persisted free-text product names/descriptions, historical documents and snapshots are not rewritten. Owner must review any old free-text wording and verify unopened condition before calling physical stock آکبند; relabel does not certify stock grade/warranty/refurbishment. No database records changed.
+- Browser: 1440/1024/390/320, no overlap/horizontal overflow/broken hero image, zero scoped header/main/footer WCAG A/AA axe violations. Nav and copyright midpoints match half page width; mobile Enter/menu works. Catalogue/PAX search/product detail return 200 with updated labels.
+- Full guarded SQLite: 424 tests / 2952 assertions. Pint and Vite pass. CI/MySQL outcome is checked independently on the pushed head.
+- Seven protected fingerprints unchanged; original SQLite SHA-256 466981e70c0fcce755ab4399d40e0c54609c1a995e3ad9a48e33608953ad0eab. No migration/seed/dependency/environment/Herd/production operations.
+- Evidence: environment-setup/final-polish-home-{1440,1024,390,320}.png and final-polish-viewport-{1440,1024,390,320}.png. Compared with supplied preview: existing seven service cards, actual logo/menu retained instead of preview's three cards/device chrome. Neshan place identity remains pending owner confirmation. Draft, no merge/deploy.
+
+---
+
+## Prior records (hero superseded above)
+
+# Final hero upgrade — PR #5
+
+final result: passed
+
+- Visual check against the supplied standalone artwork and explicit owner layout: image left/content right at 1440px; image first above welcome badge/content at 390/320px. Exact headline/paragraph and two unchanged CTAs; mobile buttons stack full-width. No new visual cards, overlays or navigation.
+- Original supplied WebP is unchanged, RGBA 1360×941, 314,798 bytes; CSS object-fit contain, transparent container and intrinsic dimensions/aspect ratio preserve complete receipt/arcs/terminal and reserve image space. It is labelled as an AI illustration, not authenticated product photography.
+- At height 900, hero heights: about 443/580/531px at 1440/390/320. Image decoded successfully at all widths; no overlap/overflow or scoped header/main/footer WCAG A/AA axe violations. Native mobile keyboard navigation and catalogue destination verified.
+- Full-page screenshots and viewport captures reviewed: `environment-setup/hero-upgrade-home-{1440,390,320}.png` and `hero-upgrade-viewport-{1440,390,320}.png`; gallery in `hero-upgrade/gallery.html` under task artifacts. Third-party map tiles can load independently; iframe/source/directions unchanged. Herd's development toolbar remains visible.
+- 87 focused guarded SQLite tests / 616 assertions, Pint and Vite pass. Post-hero markup confirmed identical to prior HEAD; no route, form, map, footer, data, environment, key, lockfile or Herd changes.
+- Seven protected fingerprints unchanged; original SQLite SHA-256 `466981e70c0fcce755ab4399d40e0c54609c1a995e3ad9a48e33608953ad0eab`.
+- Pending owner visual review; previous Neshan place-label confirmation remains outstanding. No merge or deployment.
+
+---
+
+## Prior iteration records
+
+# Navigation and redundant-page cleanup — PR #5
+
+Local technical/visual verification: passed; owner visual approval and Neshan place identity confirmation remain pending.
+
+- Homepage service cards preserve their seven titles, descriptions, icons, markup and layout; four trust items and minimal hero unchanged. Only three retired Services destinations change to existing Contact; no individual service-detail routes exist. Four repair destinations unchanged.
+- Header desktop/mobile retain Home, Products, Repairs, Contact in order. Enter opens the native mobile menu and Products navigation works.
+- General About and Services routes/controller methods/dedicated views and metadata removed; proper 404 without unrelated redirects. Footer redundant services column/About link removed; all ten unique homepage internal destinations return 200. Catalogue empty-state guidance corrected.
+- Exact owner-supplied responsive official Neshan iframe visibly renders; all three exact directions URLs preserved. **Release decision:** the supplied iframe marker is labelled `شهربازی ماکوان / خانه بازی`; owner must verify its identity/location. No coordinates were guessed or substituted. External-map loading disclosed in privacy draft.
+- Reviewed actual 1440/390/320 captures: seven service cards, four trust items, three authentic manufacturer images; no horizontal overflow, missing images or scoped WCAG A/AA axe violations. Six operational public route smoke checks return 200. Two console 404s correspond to deliberate retired-URL tests. Cross-origin frame internals are outside the scoped axe audit.
+- 86 focused guarded in-memory SQLite tests / 606 assertions; Pint and Vite pass. No migrations, seeds, submissions, dependency changes or environment changes.
+- Original SQLite SHA-256: `466981e70c0fcce755ab4399d40e0c54609c1a995e3ad9a48e33608953ad0eab`. Seven preservation fingerprints (including environment, original database, lockfiles and Herd configuration) unchanged.
+- Evidence: `navigation-cleanup/gallery.html` and `environment-setup/navigation-*` in the task visualization directory. Full-page captures expand the viewport to include Chromium's cross-origin map frame; responsive/keyboard checks use height 900. Herd's local developer toolbar remains visible; no tool UI was modified.
+
+---
+
+## Earlier revision record (superseded for navigation and maps)
+
+# Minimal homepage revision — PR #5
+
+final result: passed
+
+Owner visual approval is pending. This latest direction supersedes the initial Option 2 composition below.
+
+- Removed public-header search/price controls, both promotion banners, the complete Why section and the three oversized hero model cards. Removed their genuinely unused CSS and artwork branches; shared routes and operational pages remain.
+- Preserved the approved lockups, all six navigation links, both hero CTAs, four compact benefits, seven service links, three genuine manufacturer SVGs, accurate address/hours and all three map links. Manufacturer logos now appear only in their own homepage section.
+- Replaced heavy hero cards with restrained service typography on light blue; no unverified product photos, mock devices, mascots, map tiles or new sections. Mobile navigation uses native details/summary with keyboard support and no JavaScript dependency.
+- Actual 1440/390/320 captures reviewed. Full-page image heights decreased respectively from 1954/3767/4319 to 1584/2651/2739 pixels. These are measured screenshot heights, not a similarity score.
+- All three widths: HTTP 200, one H1, no overflow/broken images/empty placeholders/mascots; zero scoped header/main/footer WCAG A/AA axe violations. The removed sections/controls are absent and exactly three manufacturer images remain.
+- Seven public-route smoke checks returned 200. Enter opens the mobile menu; all six links and catalogue/PAX search work. Repair/consultation required-field validation and CSRF/submission tokens remain intact. No browser form submission occurred.
+- 83 focused guarded in-memory SQLite tests / 518 assertions, Pint and Vite pass. No dependency, business logic, original database, environment or Herd configuration changes.
+- Evidence: task visualization folder `homepage-minimal/gallery.html`, `homepage-minimal/compare-{1440,390,320}.png` and `environment-setup/minimal-*` captures. Prior screenshots remain unchanged. No merge/deployment authorized.
+
+---
+
+## Initial Option 2 implementation record (superseded by owner feedback)
+
+# Option 2 homepage QA
+
+final result: passed
+
+This is an implementation QA result within the owner's explicit CSS/address-card fallback policy. **Owner visual approval is pending.** Technical checks do not constitute approval of the design.
+
+Source: new `NovinPay-Option2-References.zip`, full-page Option 2 image and five section crops. References are conceptual AI composites, not real photographs. Implementation starts from stable main; rejected PR #4 is excluded.
+
+## Comparison checklist
+
+- Kept the existing hero headline, two hero actions, four trust items, two promotion cards, seven services, Why/brands, location and footer sequence.
+- Matched the light-blue hero, white surfaces, mint sales/peach repair cards, blue accents, restrained borders/shadows and dark footer. Retained licensed Vazirmatn and existing Tabler icons.
+- Hero uses three neutral model cards with a dominant PAX D230 card, Newland ME31 and NewPOS 7210. These are explicitly a CSS fallback; the reference's product photography was not reproduced with unverified or AI hardware images.
+- Sales uses NewPOS 7210 identity; repairs uses PAX S915 identity and tool icon. Reoriented the repair card to put its visual left and copy right, matching the new reference. Preserved both original CTAs.
+- Why uses a quiet technical mark. Genuine supplied manufacturer SVGs replace text approximations; source artwork is fingerprint-tested.
+- The location is an address/directions card with all three providers; no map preview is claimed. Complete configured business information remains available.
+- New owner-approved black/blue and white/blue lockups are visibly readable at their actual desktop/mobile sizes. Canvas trimming does not alter artwork. Admin logos and favicon are unchanged.
+- Narrow 320px header initially wrapped its price action and left a single navigation item on another row. Removed only its decorative action arrow at that width and arranged the same six links in a deliberate three-column/two-row layout. Re-captured and inspected the result.
+
+## Actual verification
+
+Screenshots at 1440, 390 and 320px use the canonical isolated site, same homepage state and full-page CSS scale. Header and footer-logo closeups are also saved. Reference/current side-by-side comparison is normalized to the same displayed width without distorting image proportions. Evidence is outside Git under the task's `homepage-option2/` and `environment-setup/option2-*` paths.
+
+All three widths: HTTP 200, one H1, zero horizontal overflow, zero broken images, zero empty placeholders, zero mascots and all three exact directions URLs. Scoped axe checks across header/main/footer returned zero WCAG 2 A/AA and 2.1 AA violations. Catalogue, product detail, about, repair, tracking, consultation and contact smoke checks returned 200 without broken images or overflow. Primary catalogue CTA, PAX filtering, required-field validation, form tokens and keyboard skip-link focus were exercised without submitting personal data.
+
+Remaining visual differences: photographs are replaced with the authorized neutral CSS treatment; map imagery with an honest address card; real application labels/information replace inaccurate AI reference copy. Screenshot heights adapt to actual Persian text, the three mobile widths and preserved operational behavior. No percentage similarity claim or owner approval is inferred. See `docs/HOMEPAGE-OPTION2.md` for sources and unresolved imagery permissions.
+
+---
+
+# Historical Phase 3 QA record (superseded scope; retained for traceability)
+
 # NovinPay Phase 3 — visual verification
 
 final result: passed

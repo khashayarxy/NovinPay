@@ -1,14 +1,41 @@
-<header class="np-header">
+@php
+    $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما']];
+    $primaryNavigation = [$navigation[0], ['products.index', 'products.*', 'خرید کارتخوان'], $navigation[2]];
+    $mobileNavigation = [...$primaryNavigation, ['repair.track', 'repair.track*', 'پیگیری تعمیرات'], $navigation[3]];
+    $quickNavigation = request()->routeIs('products.*')
+        ? [$primaryNavigation[0], $primaryNavigation[2]]
+        : (request()->routeIs('repair*') ? array_slice($primaryNavigation, 0, 2) : array_slice($primaryNavigation, 1, 2));
+@endphp
+
+<header class="np-header" data-mobile-header>
     <div class="np-container np-header__inner">
-        <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-brand-logo /></a>
+        <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
         <nav aria-label="ناوبری اصلی" class="np-nav">
-            @foreach ([['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'محصولات'], ['repair', 'repair*', 'تعمیرات'], ['services', 'services', 'خدمات'], ['about', 'about', 'درباره ما'], ['contact', 'contact', 'تماس با ما']] as [$route, $active, $label])
+            @foreach ($navigation as [$route, $active, $label])
                 <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
             @endforeach
         </nav>
         <div class="np-header__actions">
-            <a href="{{ route('products.index') }}" class="np-search" aria-label="جستجوی محصولات"><x-home.icon name="search" /></a>
-            <a href="{{ config('business.phone_uri') }}" class="np-button np-button--primary np-inquiry"><span>استعلام قیمت</span><x-home.icon name="arrow-left" /></a>
+            <details class="np-mobile-menu">
+                <summary aria-label="فهرست ناوبری" aria-controls="mobile-navigation">
+                    <svg class="np-menu-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    <svg class="np-menu-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
+                </summary>
+                <nav id="mobile-navigation" aria-label="ناوبری موبایل">
+                    @foreach ($mobileNavigation as [$route, $active, $label])
+                        @php
+                            $current = request()->routeIs($active);
+                            $parentSection = $route === 'repair' && request()->routeIs('repair.track*');
+                        @endphp
+                        <a href="{{ route($route) }}" @if ($current) aria-current="{{ $parentSection ? 'location' : 'page' }}" @endif>{{ $label }}</a>
+                    @endforeach
+                </nav>
+            </details>
         </div>
     </div>
+    <nav class="np-quick-nav np-container" aria-label="دسترسی سریع">
+        @foreach ($quickNavigation as [$route, $active, $label])
+            <a href="{{ route($route) }}">{{ $label }}</a>
+        @endforeach
+    </nav>
 </header>

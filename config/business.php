@@ -9,9 +9,10 @@ return [
         'open' => 'شنبه تا پنجشنبه ۹ تا ۱۸',
         'closed' => 'جمعه تعطیل',
     ],
+    'map_embed' => 'https://neshan.org/maps/iframe/places/c4121d0189d69a60cb29b34069fc9eae#c35.653-51.061-18z-10p/35.65433065775275/51.060140708396446',
     'maps' => [
         'بلد' => 'https://balad.ir/p/PtbHeIpomT37HO',
-        'نشان' => 'https://nshn.ir/c4rbvYA0OxCadU',
-        'Google Maps' => 'https://maps.app.goo.gl/URGQuZyfFAB46zZWA',
+        'نشان' => 'https://nshn.ir/c4_bvYA0OxCadU',
+        'Google Maps' => 'https://maps.app.goo.gl/RSY3QKrJAMNiqPEB8',
     ],
 ];

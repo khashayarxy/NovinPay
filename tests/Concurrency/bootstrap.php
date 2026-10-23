@@ -16,7 +16,7 @@ $app->make(Kernel::class)->bootstrap();
 $db = DB::connection();
 $driver = $db->getDriverName();
 $database = $db->getDatabaseName();
-if (! $app->environment('testing') || $app->configurationIsCached() || getenv('NOVINPAY_DISPOSABLE_COMMERCE') !== '1' || $driver !== 'mysql' || ! preg_match('/\Anovinpay_phase6c(?:_[a-z0-9_]+)?\z/', $database) || config('database.connections.mysql.host') !== '127.0.0.1' || (int) config('database.connections.mysql.port') <= 1024 || (int) config('database.connections.mysql.port') === 3306) {
+if (! $app->environment('testing') || $app->configurationIsCached() || getenv('NOVINPAY_DISPOSABLE_COMMERCE') !== '1' || ! in_array($driver, ['mysql', 'mariadb'], true) || ! preg_match('/\Anovinpay_phase6c(?:_[a-z0-9_]+)?\z/', $database) || config('database.connections.'.$driver.'.host') !== '127.0.0.1' || (int) config('database.connections.'.$driver.'.port') <= 1024 || (int) config('database.connections.'.$driver.'.port') === 3306) {
     throw new RuntimeException('Refusing non-disposable concurrency database.');
 }
 $auditDirectory = realpath(getenv('NOVINPAY_COMMERCE_ARTIFACTS') ?: '');

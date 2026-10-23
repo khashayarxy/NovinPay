@@ -15,12 +15,10 @@ class PublicPagesTest extends TestCase
         return [
             'home' => ['/'],
             'products' => ['/products'],
-            'services' => ['/services'],
             'repair' => ['/repair'],
             'contact' => ['/contact'],
             'terms' => ['/terms'],
             'privacy' => ['/privacy'],
-            'about' => ['/about'],
             'tracking' => ['/repair/track'],
         ];
     }
@@ -64,6 +62,7 @@ class PublicPagesTest extends TestCase
         $response->assertSee('به معنی دریافت دستگاه نیست');
         $response->assertSee('کد پیگیری');
         $response->assertSee('method="post"', false)->assertDontSee('fieldset disabled');
+        $response->assertSee('تعمیرات تخصصی کارتخوان')->assertSee('ثبت درخواست تعمیر');
     }
 
     public function test_contact_page_displays_official_business_details(): void
@@ -71,7 +70,7 @@ class PublicPagesTest extends TestCase
         $response = $this->get('/contact');
 
         $response->assertOk();
-        $response->assertSee('09362896373');
+        $response->assertSee('۰۹۳۶۲۸۹۶۳۷۳')->assertSee('href="tel:09362896373"', false);
         $response->assertSee('پاساژ الماس شهر');
         $response->assertDontSee('[در حال تکمیل]');
     }

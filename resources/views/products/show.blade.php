@@ -9,7 +9,7 @@
             <ol class="flex flex-wrap items-center gap-2">
                 <li><a href="{{ route('home') }}" class="hover:text-brand-700">خانه</a></li>
                 <li aria-hidden="true">/</li>
-                <li><a href="{{ route('products.index') }}" class="hover:text-brand-700">محصولات</a></li>
+                <li><a href="{{ route('products.index') }}" class="hover:text-brand-700">فروشگاه</a></li>
                 <li aria-hidden="true">/</li>
                 <li class="text-slate-700">{{ $product->name }}</li>
             </ol>
@@ -72,7 +72,7 @@
                 <div class="mt-6 flex flex-wrap gap-3 public-actions">
                     <a href="{{ config('business.phone_uri') }}" class="btn btn-primary"><x-home.icon name="phone" /> تماس برای استعلام</a>
                     <a href="{{ route('contact') }}" class="btn btn-secondary">استعلام و خرید</a>
-                    <a href="{{ route('repair') }}" class="btn btn-secondary">درخواست تعمیر دستگاه</a>
+                    <a href="{{ route('repair') }}" class="btn btn-secondary">ثبت درخواست تعمیر</a>
                 </div>
             </div>
         </div>

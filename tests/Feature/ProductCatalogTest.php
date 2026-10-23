@@ -42,7 +42,7 @@ class ProductCatalogTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('خدمات پرکاربرد ما')
+            ->assertSee('خدمات کارتخوان نوین‌پی')
             ->assertSee(route('products.index'))
             ->assertDontSee('هنوز محصولی ثبت نشده است');
     }
@@ -301,7 +301,7 @@ class ProductCatalogTest extends TestCase
         $response = $this->get(route('products.show', $product));
 
         $response->assertOk();
-        $response->assertSee('کارکرده');
+        $response->assertSee('استوک');
         $response->assertSee('ناموجود');
         $response->assertSee('تماس بگیرید');
     }
@@ -344,7 +344,7 @@ class ProductCatalogTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertDontSee('محصول پیش‌نویس در خانه')
-            ->assertSee('خدمات پرکاربرد ما');
+            ->assertSee('خدمات کارتخوان نوین‌پی');
     }
 
     public function test_unpublished_product_detail_returns_404(): void

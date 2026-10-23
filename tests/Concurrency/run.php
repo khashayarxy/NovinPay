@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-auditCheck($driver === 'mysql', 'Actual MySQL required');
+auditCheck(in_array($driver, ['mysql', 'mariadb'], true), 'Actual MySQL required');
 Artisan::call('migrate:fresh', ['--force' => true]);
 $actor = User::factory()->superAdmin()->create();
 $customer = auditCustomer();

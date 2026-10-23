@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\DatabaseTriggerAccess;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,42 +10,27 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! in_array(DB::getDriverName(), ['sqlite', 'mysql'], true)) {
-            throw new RuntimeException('Article migrations support SQLite and MySQL 8 only.');
+        if (! in_array(DB::getDriverName(), ['sqlite', 'mysql', 'mariadb'], true)) {
+            throw new RuntimeException('Article migrations support SQLite, MySQL 8 and verified MariaDB 10.6.28+.');
         }
-        if (DB::getDriverName() === 'mysql') {
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
             $version = DB::selectOne('SELECT VERSION() AS version')->version;
-            if (str_contains($version, 'MariaDB') || version_compare($version, '8.0.16', '<')) {
+            $maria = str_contains($version, 'MariaDB');
+            preg_match('/(?:5\.5\.5-)?(\d+\.\d+\.\d+)/', $version, $match);
+            $number = $match[1] ?? '0.0.0';
+            if ($maria && (version_compare($number, '10.6.28', '<') || version_compare($number, '10.7.0', '>='))) {
+                throw new RuntimeException('Only verified MariaDB 10.6.28+ in the 10.6 series is supported.');
+            }
+            if ($maria) {
+                $settings = DB::selectOne('SELECT @@session.explicit_defaults_for_timestamp AS explicit_dates, @@session.check_constraint_checks AS checks_enabled, @@session.foreign_key_checks AS foreign_keys, @@default_storage_engine AS engine');
+                if (! $settings->explicit_dates || ! $settings->checks_enabled || ! $settings->foreign_keys || strtoupper($settings->engine) !== 'INNODB') {
+                    throw new RuntimeException('MariaDB requires explicit timestamps, CHECK/FK enforcement and InnoDB. Use the mariadb connection; never disable invariants.');
+                }
+            }
+            if (! $maria && version_compare($number, '8.0.16', '<')) {
                 throw new RuntimeException('Article migrations require MySQL 8.0.16+.');
             }
-            $policy = DB::selectOne('SELECT @@global.log_bin AS logging, @@global.log_bin_trust_function_creators AS trusted');
-            $grants = DB::select('SHOW GRANTS FOR CURRENT_USER');
-            $database = DB::connection()->getDatabaseName();
-            $trigger = false;
-            $super = false;
-            foreach ($grants as $row) {
-                $grant = array_values((array) $row)[0];
-                if (! preg_match('/\AGRANT (.+?) ON (.+?) TO /', $grant, $match)) {
-                    continue;
-                }
-                $privileges = array_map('trim', explode(',', $match[1]));
-                // SHOW GRANTS may escape schema wildcard characters. Role-only or
-                // wildcard schema grants are deliberately not inferred as authority.
-                $scope = str_replace(['\\_', '\\%'], ['_', '%'], $match[2]);
-                $schema = '`'.str_replace('`', '``', $database).'`';
-                $global = $scope === '*.*';
-                $all = in_array('ALL PRIVILEGES', $privileges, true);
-                $super = $super || ($global && ($all || in_array('SUPER', $privileges, true)));
-                if ($global || in_array($scope, [$schema.'.*', $schema.'.`article_versions`'], true)) {
-                    $trigger = $trigger || $all || in_array('TRIGGER', $privileges, true);
-                }
-            }
-            if (! $trigger) {
-                throw new RuntimeException('Article history requires a verifiable direct TRIGGER grant on the target schema/table; request a deployment-account/provider preflight.');
-            }
-            if ($policy->logging && ! $policy->trusted && ! $super) {
-                throw new RuntimeException('Article history triggers are restricted by server logging policy; request a deployment-account/provider preflight.');
-            }
+            DatabaseTriggerAccess::verify(['article_versions']);
         }
         Schema::create('article_categories', function (Blueprint $table): void {
             $table->id();

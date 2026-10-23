@@ -1,0 +1,68 @@
+# Final visual polish — PR #5
+
+final result: passed
+
+- Old WebP had baked-in partially opaque gray/blue edge pixels, not CSS smoke/filter. Replaced by supplied Object.png (853×933), lossless WebP at public/images/home/novinpay-terminal-clean.webp. Four corners alpha zero; alpha identical and visible composite pixels identical to source. WebP normalizes irrelevant RGB in fully transparent pixels. No device/logo generation, image cropping or masks.
+- Exact section gradient 90deg #E0F0FF → #F8FBFF; transparent figure, restrained CSS blue arch and soft elliptical ground shadow. Supplied wave background not overlaid because the brief explicitly requires this gradient. Complete supplied device/card retained (new source has no receipt); illustrative alt, no authenticated-photo claim.
+- True header-centered desktop navigation with one light-blue rounded outline; compact 1024px layout without logo collision. Existing keyboard mobile menu intact. Copyright spans its own centered full-width row with dynamic Persian year and exact approved wording.
+- Central enum labels آکبند / استوک, internal new/used unchanged. Cards/details/product forms reuse mapping; inventory/order labels/options centralized too. Static homepage/meta/footer/future sample fixture copy updated. Trust item condition wording changes only; seven service cards unchanged. No new filter/features.
+- Exceptions: existing persisted free-text product names/descriptions, historical documents and snapshots are not rewritten. Owner must review any old free-text wording and verify unopened condition before calling physical stock آکبند; relabel does not certify stock grade/warranty/refurbishment. No database records changed.
+- Browser: 1440/1024/390/320, no overlap/horizontal overflow/broken hero image, zero scoped header/main/footer WCAG A/AA axe violations. Nav and copyright midpoints match half page width; mobile Enter/menu works. Catalogue/PAX search/product detail return 200 with updated labels.
+- Full guarded SQLite: 424 tests / 2952 assertions. Pint and Vite pass. CI/MySQL outcome is checked independently on the pushed head.
+- Seven protected fingerprints unchanged; original SQLite SHA-256 466981e70c0fcce755ab4399d40e0c54609c1a995e3ad9a48e33608953ad0eab. No migration/seed/dependency/environment/Herd/production operations.
+- Evidence: environment-setup/final-polish-home-{1440,1024,390,320}.png and final-polish-viewport-{1440,1024,390,320}.png. Compared with supplied preview: existing seven service cards, actual logo/menu retained instead of preview's three cards/device chrome. Neshan place identity remains pending owner confirmation. Draft, no merge/deploy.
+
+---
+
+## Prior records (hero superseded above)
+
+# Owner-approved illustrative hero upgrade — PR #5
+
+The latest hero direction replaces the typographic side visual with the supplied AI-generated POS illustration. This explicitly supersedes earlier hero-art decisions documented below; it does not authorize product-photograph claims or changes elsewhere.
+
+- Source: owner-supplied `novinpay-hero-assets.zip`; shipped WebP copied byte-for-byte to `public/images/home/novinpay-hero-terminal.webp` (1360 × 941, 314,798 bytes, RGBA). SHA-256: `f2f7d4855389f161ac2af46f3607a698c7897e66411551eee0277841cefadda1`. PNG and archive are not shipped.
+- Image is an AI illustrative render, not an authenticated photograph/model listing. Alt text explicitly identifies that distinction. Embedded device lettering, receipt, arcs and alpha channel remain untouched; no artificial logos, cropping, masks, cards or overlays added.
+- Desktop: image left, text right, existing pale-blue background. Headline exactly “فروش و تعمیر کارتخوان” with a break before blue “کارتخوان”; supporting paragraph matches owner text exactly. Existing two CTA routes unchanged.
+- Mobile: artwork, welcome badge, headline, paragraph, products CTA, repair CTA. Single-column full-width CTAs at 390/320px; native navigation unchanged. Intrinsic dimensions/aspect ratio reserve image space; eager high-priority image uses object-contain.
+- Markup after the hero is byte-equivalent (ignoring line endings) to the previous approved head, including four trust benefits, seven service cards, brands, Neshan iframe, three directions and footer. Routes and all other pages untouched.
+- Guarded focused SQLite: 87 tests / 616 assertions; Pint and Vite pass. Actual desktop/mobile browser captures reviewed with no overlap, horizontal overflow, broken hero image or scoped WCAG A/AA violations. Missing configured artwork omits the image rather than showing a broken URL or returning the removed text visual.
+- Existing Neshan place identity decision remains pending; the iframe URL was not changed in this task. Original database/environment/Herd/dependency-lock fingerprints unchanged. No migration, seed, merge or deployment.
+
+---
+
+## Prior iteration record (hero direction superseded above)
+
+# Minimal homepage polish — PR #5
+
+Built independently from main `e05c42769e4c368f77545ad6e7e2624de69e869c`. No rejected PR #4 files, commits or assets were restored. Scope is the existing homepage and its shared public header/footer lockups. Operational application logic, product data, administration, forms and dependency locks remain unchanged. The latest owner request retires only the general About and Services routes and updates the central map configuration.
+
+## Owner-supplied assets
+
+Sources: `NovinPay-Final-Handoff/NovinPayLogo.zip`, `BrandLogos.zip` and `NovinPay-Option2-References.zip`. The last archive contains conceptual AI reference images, used only for layout comparison and never shipped as photography or map tiles.
+
+Two approved horizontal lockups are under `public/brand/lockups/`. PAX, NewPOS and Newland originals are under `public/brand/manufacturers/`. SVGs were inspected for scripts, event handlers, embedded images and external references; none are present. Only outer width, height and viewBox were changed, using browser-measured bounds with padding. All descendant paths, glyphs, fills, transforms, styles and proportions remain intact. Regression tests fingerprint canonical source XML excluding only those three approved outer attributes. Existing symbol logos and favicon retain their original bytes and continue to serve the admin interface.
+
+## Photography and map limitations
+
+**No product photographs were published.** Exact model identity and publication permission are separate checks. The focused source review did not establish a reusable commercial image license for the required models. No permission was inferred from a manufacturer download link, and no external images are hotlinked. References inspected:
+
+| Model | Primary evidence inspected | Decision |
+| --- | --- | --- |
+| PAX D230 | [Official product page](https://www.paxtechnology.com/d230) | Model identified; publication permission not established. |
+| Newland ME31 | [Official manufacturer brochure](https://download.newlandpayment.com/root/website-en/ME31.pdf) | Model identified; no reusable image license established. |
+| NewPOS 7210 | [Manufacturer-authored PCI security guidance](https://listings.pcisecuritystandards.org/ptsdocs/4-90031Security_Policy_v5.1-1537562614.18447.pdf) and [current manufacturer site](https://www.newpostech.com/) | No exact-model photograph with verified publication rights found. NEW7220 was not substituted. |
+| PAX S915 | [Manufacturer-authored PCI security policy](https://listings.pcisecuritystandards.org/ptsdocs/4-40308%20S915_Security_Policy-1706902857.98444.pdf) | Model identified; no publication permission for a photograph established. |
+
+The revised homepage uses the owner's definitive minimal direction: a low-weight typographic hero, compact benefits, common services, manufacturer logos, location and footer. Both middle promotional banners and the entire Why section are removed. Public-header search and price controls are removed while the four retained navigation links remain (Home, Products, Repairs, Contact), including a native keyboard-accessible mobile menu. All existing product, repair, tracking and consultation routes remain. Only the three genuine manufacturer SVGs are displayed in the dedicated brand section; the hero no longer repeats them. No stock/model claim, device mockup or unlicensed photograph fills the removed regions.
+
+The homepage now embeds the exact official Neshan iframe URL supplied by the owner, with a titled, lazy-loaded responsive frame and all three explicit Balad/Neshan/Google directions links. No fake map tiles, screenshots or reconstructed map are shipped. Browser verification confirms actual map rendering. **Owner decision remains:** the supplied place identifier labels its marker `شهربازی ماکوان / خانه بازی`, not NovinPay. The exact URL was preserved; geographic/business identity is not certified. Confirm or replace the supplied place URL before release. Loading the embed contacts Neshan; the privacy draft discloses this external provider.
+
+`/about` and `/services` are retired with normal Persian 404 responses, without misleading redirects. Their controller methods, dedicated views/metadata and live navigation references are removed. No individual service-detail routes exist in this codebase: the ownership/account/other-service cards now reach the existing Contact page; the four repair cards retain `/repair`. Only destinations changed inside those seven cards; icons, descriptions, markup and service/trust CSS remain unchanged. The auxiliary “all services” control is now “service guidance” linking to Contact. Footer removes the redundant services column and About link; catalogue empty-state guidance also reaches Contact.
+
+## Verification and production decisions
+
+Focused guarded in-memory SQLite checks: 86 tests, 606 assertions. Pint and Vite pass. No dependencies added. Browser review: homepage at 1440, 390 and 320px; no broken images, overflow, empty image placeholders or mascots. Scoped axe checks include public header, main and footer; zero WCAG A/AA violations. Six operational public routes returned 200; all ten unique homepage internal destinations returned 200, and both retired routes returned 404 with both lockups. Catalogue/search navigation, native required-field validation, retained CSRF/submission tokens and keyboard skip-link focus were checked; no browser form was submitted.
+
+Original SQLite SHA-256 remains `466981e70c0fcce755ab4399d40e0c54609c1a995e3ad9a48e33608953ad0eab`. Environment, keys, Herd guards, dependency lockfiles and recovery material are preserved. No migration, seed, production operation or deployment occurred.
+
+Owner visual approval is pending. Genuine owner-owned product photos or explicit manufacturer permission would allow a separately approved photographic treatment later. The supplied Neshan place identity must be confirmed before release. Neither missing input is silently represented as completed photography/map work. No numeric visual similarity score is claimed. Merge and deployment require separate approval.
