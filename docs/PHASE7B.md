@@ -28,6 +28,8 @@ Article metadata is escaped independently of legacy layout sections. Canonical o
 
 Breadcrumbs, semantic headings, Persian pagination, visible keyboard focus, responsive cards and a readable article column are included. Publication dates are explicitly labelled Gregorian rather than incorrectly claiming a Jalali conversion. The category navigation shows up to thirty active categories with published content; every public article also links to its own category. The header disclosure, desktop navigation and footer gain one articles link. The pinned mobile header and the two shop/repair shortcuts remain unchanged.
 
+Final owner adjustment: within the mobile breakpoint only, the existing hamburger actions use flex order -1 and a 12px gap so the 44x44px control sits immediately to the right of the logo in RTL. Desktop rules and JavaScript are unchanged. Browser checks at 320/390px confirm the original 116.8px header height, stable scrolling, open/closed menu, keyboard activation, Escape/focus return and unchanged shop/repair shortcuts.
+
 ## Validation and local safety
 
 `scripts/test.ps1 --compact --display-warnings --fail-on-warning` runs the full suite on isolated in-memory SQLite. MySQL 8 and MariaDB 10.6.28 run the same full suite and existing migration/concurrency checks in GitHub CI; no local Docker commands are used. Repository-wide Pint and the production Vite build are required. Focused tests cover draft/history isolation, publication/category replacement, unpublication and republication after a 404, conditional requests, stable slugs, private HTTP boundaries, unsafe source, escaped title/summary, canonical origin/query handling, deterministic pagination, bounded queries and navigation regressions.
