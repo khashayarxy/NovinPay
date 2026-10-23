@@ -56,7 +56,7 @@ class HomePageTest extends TestCase
         }
     }
 
-    public function test_trust_features_use_separate_icon_containers_and_accurate_customer_benefits(): void
+    public function test_trust_features_preserve_icon_containers_and_owner_approved_interim_copy(): void
     {
         $response = $this->get('/')->assertOk()->assertSee('خدمات کارتخوان نوین‌پی')
             ->assertDontSee('اطلاع از وضعیت رسیدگی')->assertDontSee('خدمات پرکاربرد ما');
@@ -65,10 +65,10 @@ class HomePageTest extends TestCase
         $xpath = new DOMXPath($document);
         $features = $xpath->query('//div[@class="np-trust__item"]');
         $expected = [
-            ['انتخاب کارتخوان مناسب', 'متناسب با نیاز و بودجه شما'],
-            ['پیگیری شفاف درخواست', 'بررسی ثبت با کد پیگیری'],
-            ['هماهنگی ارسال و تحویل', 'با هماهنگی قبلی'],
-            ['پشتیبانی خرید و تعمیر', 'راهنمایی در مراحل کار'],
+            ['مشاوره تخصصی خرید', 'انتخاب کارتخوان متناسب با نیاز و بودجه شما'],
+            ['استعلام آنلاین وضعیت تعمیرات', 'با استفاده از کد پیگیری'],
+            ['ارسال و تحویل به تمام نقاط', 'در سریع‌ترین زمان ممکن'],
+            ['تعمیرات تخصصی کارتخوان', 'رسیدگی به مشکلات فنی دستگاه'],
         ];
         $this->assertCount(4, $features);
         foreach ($expected as $index => [$title, $description]) {
