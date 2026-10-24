@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Article;
+use App\Models\ArticleCategory;
 use App\Models\Product;
+use App\Models\User;
+use App\Services\ArticlePublishing;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,14 +22,18 @@ class MobileNavigationTest extends TestCase
         return [
             'home' => ['/', ['products.index', 'repair'], 'home'],
             'home query' => ['/?from=menu', ['products.index', 'repair'], 'home'],
-            'catalogue' => ['/products', ['products.index', 'repair'], 'products.index'],
-            'filtered paginated catalogue' => ['/products?q=PAX&page=2', ['products.index', 'repair'], 'products.index'],
-            'catalogue trailing slash' => ['/products/', ['products.index', 'repair'], 'products.index'],
-            'repair' => ['/repair', ['products.index', 'repair'], 'repair'],
-            'repair query and trailing slash' => ['/repair/?from=menu', ['products.index', 'repair'], 'repair'],
-            'confirmation' => ['/repair/confirmation', ['products.index', 'repair'], 'repair'],
+            'catalogue' => ['/products', ['home', 'repair'], 'products.index'],
+            'filtered paginated catalogue' => ['/products?q=PAX&page=2', ['home', 'repair'], 'products.index'],
+            'NewPOS filter' => ['/products?q=NewPOS', ['home', 'repair'], 'products.index'],
+            'Newland filter' => ['/products?q=Newland', ['home', 'repair'], 'products.index'],
+            'catalogue trailing slash' => ['/products/', ['home', 'repair'], 'products.index'],
+            'repair' => ['/repair', ['home', 'products.index'], 'repair'],
+            'repair query and trailing slash' => ['/repair/?from=menu', ['home', 'products.index'], 'repair'],
+            'confirmation' => ['/repair/confirmation', ['home', 'products.index'], 'repair'],
+            'confirmation query' => ['/repair/confirmation/?from=menu', ['home', 'products.index'], 'repair'],
             'tracking' => ['/repair/track', ['products.index', 'repair'], 'repair.track'],
             'tracking query' => ['/repair/track?from=menu', ['products.index', 'repair'], 'repair.track'],
+            'tracking trailing slash' => ['/repair/track/', ['products.index', 'repair'], 'repair.track'],
             'contact' => ['/contact', ['products.index', 'repair'], 'contact'],
             'consultation has repair CTA but is unrelated' => ['/consultation', ['products.index', 'repair'], null],
             'privacy' => ['/privacy', ['products.index', 'repair'], null],
@@ -52,7 +60,26 @@ class MobileNavigationTest extends TestCase
         ]);
         foreach (['', '?from=menu', '/'] as $suffix) {
             $html = $this->get(route('products.show', $product).$suffix)->assertOk()->getContent();
-            $this->assertNavigation($html, ['products.index', 'repair'], 'products.index');
+            $this->assertNavigation($html, ['home', 'repair'], 'products.index');
+        }
+    }
+
+    public function test_published_article_and_category_routes_keep_default_shortcuts_and_article_highlight(): void
+    {
+        $owner = User::factory()->superAdmin()->create();
+        $publishing = app(ArticlePublishing::class);
+        $categoryId = $publishing->execute($owner, 'category.create', ['name' => 'راهنما', 'slug' => 'navigation-guides', 'is_active' => true]);
+        $articleId = $publishing->execute($owner, 'create', [
+            'slug' => 'navigation-guide', 'category_id' => $categoryId,
+            'title' => 'راهنمای کارتخوان', 'summary' => 'خلاصهٔ عمومی', 'content' => 'راهنمای نگهداری دستگاه.',
+        ]);
+        $article = Article::findOrFail($articleId);
+        $publishing->execute($owner, 'publish', ['version' => $article->version, 'reviewed_version_id' => $article->draft_version_id, 'confirmed' => true], $articleId);
+
+        foreach ([route('articles.show', $article->slug), route('articles.category', ArticleCategory::findOrFail($categoryId)->slug)] as $url) {
+            foreach (['', '?from=menu', '/'] as $suffix) {
+                $this->assertNavigation($this->get($url.$suffix)->assertOk()->getContent(), ['products.index', 'repair'], 'articles.index');
+            }
         }
     }
 
@@ -64,21 +91,23 @@ class MobileNavigationTest extends TestCase
         $quick = $xpath->query('//header/nav[@aria-label="دسترسی سریع"]/a');
         $this->assertCount(2, $quick);
         $this->assertSame(array_map(fn ($name) => route($name), $quickRoutes), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($quick)));
-        $labels = ['products.index' => 'فروشگاه', 'repair' => 'تعمیرات'];
+        $labels = ['home' => 'صفحه اصلی', 'products.index' => 'فروشگاه', 'repair' => 'تعمیرات'];
         $this->assertSame(array_map(fn ($name) => $labels[$name], $quickRoutes), array_map(fn ($link) => trim($link->textContent), iterator_to_array($quick)));
         $this->assertSame(0, $xpath->query('//header/nav[@aria-label="دسترسی سریع"]/a[@aria-current]')->length);
 
         $menu = $xpath->query('//nav[@id="mobile-navigation"]')->item(0);
         $links = $xpath->query('./a', $menu);
-        $this->assertSame(['صفحه اصلی', 'خرید کارتخوان', 'تعمیرات', 'پیگیری تعمیرات', 'تماس با ما', 'مقاله‌ها'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(['پیگیری تعمیرات', 'مقالات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
         $this->assertSame(0, $xpath->query('//a[normalize-space(.)="تعمیرگاه" or normalize-space(.)="خدمات و تعمیرات"]')->length);
-        $this->assertSame(array_map(fn ($name) => route($name), ['home', 'products.index', 'repair', 'repair.track', 'contact', 'articles.index']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
+        $this->assertSame(array_map(fn ($name) => route($name), ['repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
+        $this->assertSame(0, $xpath->query('./a[normalize-space(.)="صفحه اصلی" or normalize-space(.)="خرید کارتخوان" or normalize-space(.)="تعمیرات"]', $menu)->length);
         $active = $xpath->query('./a[@aria-current="page"]', $menu);
-        $this->assertSame($current ? 1 : 0, $active->length);
-        if ($current) {
-            $this->assertSame(route($current), $active->item(0)->getAttribute('href'));
+        $verticalCurrent = in_array($current, ['repair.track', 'articles.index', 'contact'], true) ? $current : null;
+        $this->assertSame($verticalCurrent ? 1 : 0, $active->length);
+        if ($verticalCurrent) {
+            $this->assertSame(route($verticalCurrent), $active->item(0)->getAttribute('href'));
         }
-        $this->assertSame($current === 'repair.track' ? 1 : 0, $xpath->query('./a[@aria-current="location"]', $menu)->length);
+        $this->assertSame(0, $xpath->query('./a[@aria-current="location"]', $menu)->length);
         // Without JS, summary exposes its native expanded state. The enhancement
         // adds aria-expanded at runtime rather than leaving a stale false value.
         $this->assertSame(1, $xpath->query('//summary[@aria-controls="mobile-navigation" and not(@aria-expanded)]')->length);

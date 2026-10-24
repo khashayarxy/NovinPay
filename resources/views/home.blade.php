@@ -41,7 +41,7 @@
         <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
         <div class="np-brands__grid">
             @foreach (['Newland', 'NewPOS', 'PAX'] as $brand)
-                <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand"><x-home.manufacturer :name="$brand" /><span>مشاهده دستگاه‌ها<x-home.icon name="arrow-left" /></span></a>
+                <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand" aria-label="کارتخوان‌های {{ $brand }}"><x-home.manufacturer :name="$brand" /></a>
             @endforeach
         </div>
     </section>

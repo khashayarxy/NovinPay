@@ -218,7 +218,7 @@
 .homepage .np-brands__grid { max-width: 780px; margin-inline: auto; margin-top: 20px; gap: 20px; }
 .homepage .np-brand { min-height: 104px; box-shadow: none; }
 @media (max-width: 850px) {
-    .np-header { position: sticky; top: 0; z-index: 30; padding-top: env(safe-area-inset-top, 0px); }
+    .np-header { position: relative; z-index: 30; padding-top: env(safe-area-inset-top, 0px); }
     .np-header__inner { position: static; flex-wrap: nowrap; justify-content: flex-start; gap: 12px; min-height: 64px; padding-block: 8px; }
     .np-header .np-logo-link { min-height: 44px; align-items: center; }
     .np-header .np-nav { display: none; }
