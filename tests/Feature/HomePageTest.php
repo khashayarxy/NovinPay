@@ -83,11 +83,23 @@ class HomePageTest extends TestCase
     public function test_homepage_only_names_supported_brands_and_links_to_existing_catalogue_filters(): void
     {
         $response = $this->get('/')->assertOk();
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+        $xpath = new DOMXPath($document);
+        $cards = $xpath->query('//a[@class="np-brand"]');
+        $this->assertCount(3, $cards);
+        $this->assertSame(['Newland', 'NewPOS', 'PAX'], array_map(fn ($card) => $xpath->query('./img', $card)->item(0)->getAttribute('alt'), iterator_to_array($cards)));
+        foreach ($cards as $card) {
+            $brand = $xpath->query('./img', $card)->item(0)->getAttribute('alt');
+            $this->assertSame('کارتخوان‌های '.$brand, $card->getAttribute('aria-label'));
+            $this->assertSame(route('products.index', ['q' => $brand]), $card->getAttribute('href'));
+            $this->assertSame('', trim($card->textContent));
+        }
         foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
             $response->assertSee(route('products.index', ['q' => $brand]), false);
             $this->get(route('products.index', ['q' => $brand]))->assertOk();
         }
-        $response->assertDontSee('Verifone')->assertDontSee('Ingenico');
+        $response->assertDontSee('Verifone')->assertDontSee('Ingenico')->assertDontSee('مشاهده دستگاه‌ها');
     }
 
     public function test_homepage_uses_owner_supplied_illustration_without_verified_photograph_claims(): void
@@ -152,7 +164,7 @@ class HomePageTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
         $this->assertSame(5, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
-        $this->assertSame(6, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
+        $this->assertSame(3, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
         $desktop = $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]')->item(0);
         $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);

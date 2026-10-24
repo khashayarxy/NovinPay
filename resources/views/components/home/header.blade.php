@@ -1,8 +1,11 @@
 @php
     $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما'], ['articles.index', 'articles.*', 'مقاله‌ها']];
-    $primaryNavigation = [$navigation[0], ['products.index', 'products.*', 'خرید کارتخوان'], $navigation[2]];
-    $mobileNavigation = [...$primaryNavigation, ['repair.track', 'repair.track*', 'پیگیری تعمیرات'], $navigation[3], $navigation[4]];
-    $quickNavigation = [$navigation[1], $navigation[2]];
+    $mobileNavigation = [['repair.track', 'repair.track*', 'پیگیری تعمیرات'], ['articles.index', 'articles.*', 'مقالات'], $navigation[3]];
+    $quickNavigation = match (true) {
+        request()->routeIs('products.*') => [$navigation[0], $navigation[2]],
+        request()->routeIs('repair', 'repair.*') && ! request()->routeIs('repair.track*') => [$navigation[0], $navigation[1]],
+        default => [$navigation[1], $navigation[2]],
+    };
 @endphp
 
 <header class="np-header" data-mobile-header>
@@ -21,11 +24,7 @@
                 </summary>
                 <nav id="mobile-navigation" aria-label="ناوبری موبایل">
                     @foreach ($mobileNavigation as [$route, $active, $label])
-                        @php
-                            $current = request()->routeIs($active);
-                            $parentSection = $route === 'repair' && request()->routeIs('repair.track*');
-                        @endphp
-                        <a href="{{ route($route) }}" @if ($current) aria-current="{{ $parentSection ? 'location' : 'page' }}" @endif>{{ $label }}</a>
+                        <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
                     @endforeach
                 </nav>
             </details>
