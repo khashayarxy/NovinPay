@@ -4,6 +4,8 @@ namespace App\Enums;
 
 enum AdminAction: string
 {
+    case MaintenanceEnabled = 'maintenance.enabled';
+    case MaintenanceDisabled = 'maintenance.disabled';
     case ArticleDraftSaved = 'article.draft_saved';
     case ArticlePublished = 'article.published';
     case ArticleUnpublished = 'article.unpublished';
@@ -52,6 +54,8 @@ enum AdminAction: string
     public function label(): string
     {
         return match ($this) {
+            self::MaintenanceEnabled => 'فعال‌سازی نگهداری عمومی سایت',
+            self::MaintenanceDisabled => 'غیرفعال‌سازی نگهداری عمومی سایت',
             self::ArticleDraftSaved => 'ذخیرهٔ نسخهٔ پیش‌نویس مقاله',
             self::ArticlePublished => 'انتشار صریح مقاله',
             self::ArticleUnpublished => 'لغو انتشار مقاله',

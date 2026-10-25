@@ -1,12 +1,16 @@
 <?php
 
 use App\Http\Middleware\AddSecurityHeaders;
+use App\Http\Middleware\PreviewAwareSession;
+use App\Http\Middleware\PublicSiteMaintenance;
 use App\Support\SafeDatabaseErrors;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -16,12 +20,25 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(PublicSiteMaintenance::class);
+        $middleware->web(replace: [StartSession::class => PreviewAwareSession::class]);
         $middleware->append(AddSecurityHeaders::class);
 
         $middleware->redirectGuestsTo('/admin/login');
         $middleware->redirectUsersTo('/admin');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->respond(function (Response $response): Response {
+            if ($response->getStatusCode() === 503) {
+                $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+                $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+                if (! $response->headers->has('Retry-After')) {
+                    $response->headers->set('Retry-After', '60');
+                }
+            }
+
+            return $response;
+        });
         $exceptions->report(function (Throwable $exception) {
             $query = SafeDatabaseErrors::query($exception);
             if (! $query) {

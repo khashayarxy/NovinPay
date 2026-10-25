@@ -1,3 +1,61 @@
+# NovinPay standalone maintenance — design QA
+
+final result: passed
+
+## Source, captures and comparison
+
+- Source visual truth: `C:/Users/Khashayar/Downloads/NovinPay Under Maintenance Illustration.png`, 1536 × 1024 pixels, owner-approved.
+- Evidence directory: `C:/Users/Khashayar/.codex/visualizations/2026/10/20/01a15969-8b3c-7783-9b3b-bade84862fc0/maintenance-page/`.
+- Implementation: `maintenance-1536-final.png`, captured at the same 1536 × 1024 CSS viewport; full-page captures at 320, 390, 430, 768 and 1440 CSS px are also retained.
+- Full-view comparison: `comparison-desktop.png`, source on left, implementation on right. Both are downsampled equally from 1536 × 1024 to 768 × 512 for the comparison board, without changing their aspect ratios.
+- Focused comparison: `comparison-details.png`, actual 1:1 typography/features regions from both source and implementation. Both the full board and detail board were opened and inspected.
+- State: public standalone maintenance message, no authenticated user, no navigation or normal site footer. The actual 503 response is tested separately from the visual HTML preview.
+- Browser: Codex in-app Chromium. Explicit responsive viewport overrides, no intentional density multiplier. Native screenshot output is normalized to PNG encoding, not creatively edited.
+
+## Iteration history
+
+1. Initial desktop capture was too tall (1071 px at the 1440 × 960 viewport). [P2] Section spacing and image scale were reduced while preserving the reference order and central illustration. Updated capture fits approximately one desktop viewport (963 px content at 960 px height), with no clipped content.
+2. Initial mobile feature icons had inconsistent vertical positions because descriptions differed in height. [P2] Mobile feature columns now align at their start. Browser measurement confirms equal icon Y positions in all three columns at every tested width.
+3. The desktop supporting paragraph wrapped differently from the source. [P2] A desktop-only line grouping, matching type size and illustration proportions now follow the reference. Mobile text remains fluid and naturally wrapped. The updated same-size comparison was inspected after the correction.
+4. Small subtitle text had borderline contrast in a sampled desktop region. [P2] Its blue-white color was raised while retaining the reference palette. Body text, contact links and visible focus treatment were checked; this is a targeted manual accessibility review, not a claim of an exhaustive WCAG certification.
+
+## Required fidelity surfaces
+
+- Fonts/typography: local licensed Vazirmatn Regular/Bold, embedded WOFF2; real Persian text, diacritics, semantic H1/H2 hierarchy, RTL and isolated LTR phone digits. No rasterized body copy. The headline, labels and paragraph match the approved copy; both business phone values come from the actual config rather than the reference raster.
+- Spacing/layout rhythm: centered logo/subtitle, large POS/tools illustration, white headline, supporting paragraph, three horizontal desktop feature highlights and separated contact block. Tablet/mobile preserve the hierarchy with scaled illustration, wrapped heading and icons above labels. No horizontal scrolling at 320/390/430/768/1440 or comparison width 1536.
+- Colors/tokens: deep-blue full-viewport gradient, blue-white supporting text, white headings, blue icons and subtle divider. Background lighting is recreated in CSS as explicitly requested, not a substitute for the source illustration.
+- Image quality: actual approved central artwork and feature icons, lossily optimized as WebP at quality 92 (phone crop 95), fully visible subject and responsive aspect ratio. No generated replacement artwork, fabricated photographs, custom SVG illustrations or new brand mark. Existing official white/blue SVG lockup is embedded intact.
+- Copy/content: exact requested H1 and feature labels, approved supporting message and thank-you line; verified configured telephone numbers 09362896373 and 09384144021 in Persian display digits with matching tel URLs. No unrelated CTA, product shortcut, normal header, menu or footer.
+
+## Browser and interaction checks
+
+- All images load, and the embedded bold font is available at every viewport.
+- Both contact links can receive keyboard focus, with a visible light outline; touch targets are at least 44 CSS px high. No phone call was initiated during QA.
+- One H1 and a labelled main landmark; illustration has descriptive alt text, redundant decorative feature icons have empty alt attributes.
+- No console warning/error was observed in the final preview.
+- No JavaScript, external font, remote API, Vite reference or additional image request is present in the production page source. The earlier Herd toolbar is local developer injection; it was hidden only for the browser session before final captures.
+- The temporary public visual-preview file was removed after captures. A self-contained HTML preview and gallery remain outside the repository for owner review; they are explicitly not evidence of HTTP availability.
+
+## Remaining P3 differences and limits
+
+- Small differences in gradient lighting, font rasterization and the official lockup's proportions remain compared with the raster mockup. The background and copy are responsive HTML/CSS, not a flattened screenshot. No material visual direction change was introduced.
+- The supplied reference has no mobile frame. Mobile adapts the same desktop hierarchy; there is no invented bottom bar, navigation or additional content.
+- Production LiteSpeed, provider cache behavior and server-level static emergency routing have not been activated or tested in this task. Those are deployment gates, not reasons to claim the local HTTP fixture is production proof.
+- No unresolved P0/P1/P2 visual finding remains in the inspected states. Owner visual approval and separate authorization are still required before push or deployment.
+
+## Implementation checklist
+
+- [x] Same-reference and focused visual comparison completed after corrections.
+- [x] Desktop/tablet/mobile captures and browser metrics retained.
+- [x] Real HTTP 503 / cache / Retry-After / missing-Composer fixture tested.
+- [x] Relevant tests, full SQLite regressions, Pint and frontend build passed.
+- [x] Original database and environment preserved; no push, PR, merge or deployment.
+
+
+---
+
+## Preserved previous project QA record (unchanged content)
+
 # Final footer — PR #5
 
 final result: passed

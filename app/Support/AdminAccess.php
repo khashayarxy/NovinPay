@@ -27,6 +27,9 @@ final class AdminAccess
 
     public static function landingUrl(User $user): string
     {
+        if (self::allows($user, AdminPermission::MaintenanceView) && ! self::allows($user, AdminPermission::Dashboard)) {
+            return route('admin.maintenance.index');
+        }
         foreach ([AdminPermission::Dashboard->value => 'admin.dashboard', AdminPermission::ArticlesView->value => 'admin.articles.index', AdminPermission::ArticleCategoriesManage->value => 'admin.article-categories.index', AdminPermission::FinanceView->value => 'admin.finance.index', AdminPermission::OrdersView->value => 'admin.orders.index', AdminPermission::InventoryView->value => 'admin.inventory.index', AdminPermission::CustomersView->value => 'admin.customers.index', AdminPermission::ConsultationsView->value => 'admin.consultations.index', AdminPermission::ProductsView->value => 'admin.products.index', AdminPermission::RepairsView->value => 'admin.repairs.index', AdminPermission::ActivityView->value => 'admin.activities.index'] as $permission => $route) {
             if (self::allows($user, AdminPermission::from($permission))) {
                 return route($route);
