@@ -58,6 +58,6 @@ class SecurityHeadersTest extends TestCase
         $this->assertStringContainsString('دسترسی به این بخش مجاز نیست', view('errors.403')->render());
         $this->assertStringContainsString('نشست شما منقضی شده است', view('errors.419')->render());
         $this->assertStringContainsString('خطایی در سرور رخ داد', view('errors.500')->render());
-        $this->assertStringContainsString('سایت موقتاً در دسترس نیست', view('errors.503')->render());
+        $this->assertStringContainsString('در حال تعمیرات و به‌روزرسانی سایت نوین پی هستیم', view('errors.503')->render());
     }
 }

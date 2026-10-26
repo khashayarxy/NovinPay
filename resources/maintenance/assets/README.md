@@ -13,7 +13,8 @@ All coordinates below are exact source pixels; no new artwork was generated.
 
 Crops use the supplied illustration itself, never rasterized Persian body copy.
 The complete reference and original download remain untouched. The design uses
-the existing approved white/blue logo lockup, read directly from public/brand.
+the existing black/blue logo lockup, read directly from public/brand. The feature
+and phone crops remain available but are not displayed in the current design.
 
 Vazirmatn Regular and Bold WOFF2 files are copied from the project's existing
 locked vazirmatn package. The upstream OFL license is included as OFL.txt.

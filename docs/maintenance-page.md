@@ -6,11 +6,11 @@ The old `resources/views/errors/503.blade.php` extended `layouts.app`, which
 unconditionally includes the public header, footer, route-generated shortcuts,
 and Vite manifest. This was the direct source of the unwanted site chrome.
 
-The approved visual reference is the owner's 1536 × 1024
-`NovinPay Under Maintenance Illustration.png`. The illustration and feature
-icons are exact crops of that supplied artwork, optimized as WebP; no replacement
-illustration, generated photograph, mascot or reconstructed logo was introduced.
-The official existing white/blue lockup is reused without modifying it.
+The standalone page follows the main site's light slate background, Vazirmatn
+typography and blue link colors. It retains the original POS repair illustration,
+using the existing optimized WebP, and the existing black/blue official logo
+lockup on the light background. Only the requested maintenance message and
+configured contact numbers are displayed.
 Persian contact digits and `tel:` destinations come from `config/business.php`:
 09362896373 and 09384144021. Raster phone text in the reference is not a source
 of business contact data.
@@ -19,7 +19,7 @@ of business contact data.
 CSS. It embeds local fonts, the existing SVG logo and WebP assets as data URLs.
 It uses no application helpers, autoloader, database, environment file, session,
 authentication, Vite manifest, JavaScript, remote font or API. The complete
-rendered page is approximately 205 KB, including both embedded WOFF2 weights.
+rendered page is approximately 196 KB, including both embedded WOFF2 weights.
 The WebP central illustration is 38,606 bytes. Vazirmatn's OFL license is retained.
 
 ## Three rendering paths
