@@ -7,9 +7,9 @@ unconditionally includes the public header, footer, route-generated shortcuts,
 and Vite manifest. This was the direct source of the unwanted site chrome.
 
 The standalone page follows the main site's light slate background, Vazirmatn
-typography and blue link colors. It retains the original POS repair illustration,
-using the existing optimized WebP, and the existing black/blue official logo
-lockup on the light background. Only the requested maintenance message and
+typography, pale-blue accents and an official black/blue logo lockup. The
+owner-supplied POS repair illustration is displayed without a rectangular
+background as a locally optimized transparent WebP. Only the requested maintenance message and
 configured contact numbers are displayed.
 Persian contact digits and `tel:` destinations come from `config/business.php`:
 09362896373 and 09384144021. Raster phone text in the reference is not a source
@@ -19,8 +19,8 @@ of business contact data.
 CSS. It embeds local fonts, the existing SVG logo and WebP assets as data URLs.
 It uses no application helpers, autoloader, database, environment file, session,
 authentication, Vite manifest, JavaScript, remote font or API. The complete
-rendered page is approximately 196 KB, including both embedded WOFF2 weights.
-The WebP central illustration is 38,606 bytes. Vazirmatn's OFL license is retained.
+rendered page is approximately 300 KB, including both embedded WOFF2 weights.
+The transparent central illustration is 114,966 bytes. Vazirmatn's OFL license is retained.
 
 ## Three rendering paths
 
