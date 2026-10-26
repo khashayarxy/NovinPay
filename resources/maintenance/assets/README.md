@@ -19,3 +19,10 @@ and phone crops remain available but are not displayed in the current design.
 Vazirmatn Regular and Bold WOFF2 files are copied from the project's existing
 locked vazirmatn package. The upstream OFL license is included as OFL.txt.
 No new editor, icon, font or image-generation dependency was installed.
+
+## Final transparent artwork
+
+The owner-supplied 3D Payment Terminal Repair Kit.png includes an alpha
+channel. pos-repair-transparent.webp is a proportional 1100×733 WebP
+encoding of that same artwork; its transparency is retained. It replaces the
+previous blue-backed crop for the final page design.
