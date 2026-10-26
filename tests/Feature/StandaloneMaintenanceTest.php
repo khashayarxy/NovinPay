@@ -67,7 +67,7 @@ class StandaloneMaintenanceTest extends TestCase
                 $this->assertStringContainsString('no-store', $headers);
                 $this->assertMatchesRegularExpression('/Retry-After: (60|120)/i', $headers);
                 $this->assertStringNotContainsString('Set-Cookie:', $headers);
-                $this->assertStringContainsString('سایت موقتاً در دسترس نیست', $body);
+                $this->assertStringContainsString('در حال تعمیرات و به‌روزرسانی سایت نوین پی هستیم', $body);
                 $this->assertStringNotContainsString('Fatal error', $body);
                 $this->assertStringNotContainsString($fixture, $body);
                 $this->assertStringNotContainsString('<script', $body);
@@ -85,7 +85,7 @@ class StandaloneMaintenanceTest extends TestCase
             unlink($fixture.'/storage/framework/down');
             $body = file_get_contents('http://'.$address.'/maintenance.php', false, $context);
             $this->assertStringContainsString('503 Service Unavailable', implode("\n", $http_response_header));
-            $this->assertStringContainsString('سایت موقتاً در دسترس نیست', $body);
+            $this->assertStringContainsString('در حال تعمیرات و به‌روزرسانی سایت نوین پی هستیم', $body);
             $this->assertFileDoesNotExist($fixture.'/storage/framework/sessions');
 
             // Admin-controlled mode is also enforced before Composer, including
@@ -103,7 +103,7 @@ class StandaloneMaintenanceTest extends TestCase
                 if ($accept === 'application/json') {
                     $this->assertSame(['message' => 'Service Unavailable'], json_decode($body, true));
                 } else {
-                    $this->assertStringContainsString('سایت موقتاً در دسترس نیست', $body);
+                    $this->assertStringContainsString('در حال تعمیرات و به‌روزرسانی سایت نوین پی هستیم', $body);
                 }
             }
 
@@ -144,7 +144,7 @@ class StandaloneMaintenanceTest extends TestCase
                     } elseif ($accept === 'application/json') {
                         $this->assertSame(['message' => 'Service Unavailable'], json_decode($body, true));
                     } else {
-                        $this->assertStringContainsString('سایت موقتاً در دسترس نیست', $body);
+                        $this->assertStringContainsString('در حال تعمیرات و به‌روزرسانی سایت نوین پی هستیم', $body);
                     }
                     $this->assertStringNotContainsString('Fatal error', $body);
                     $this->assertStringNotContainsString($fixture, $body);

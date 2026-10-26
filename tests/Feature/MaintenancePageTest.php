@@ -21,7 +21,7 @@ class MaintenancePageTest extends TestCase
         $response->assertStatus(503)->assertHeader('Retry-After', '120');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
         $response->assertHeader('X-Robots-Tag', 'noindex, nofollow');
-        $response->assertSee('سایت موقتاً در دسترس نیست');
+        $response->assertSee('در حال تعمیرات و به‌روزرسانی سایت نوین پی هستیم');
         $response->assertSee('tel:09362896373', false)->assertSee('tel:09384144021', false);
         $response->assertSee('۰۹۳۸۴۱۴۴۰۲۱')->assertSee('۰۹۳۶۲۸۹۶۳۷۳');
         foreach (['np-header', 'mobile-navigation', '<footer', '<script', '/build/', 'مشاهده محصولات'] as $forbidden) {
@@ -50,9 +50,14 @@ class MaintenancePageTest extends TestCase
         foreach ($matches[1] as $url) {
             $this->assertTrue(str_starts_with($url, 'data:') || in_array($url, ['tel:'.config('business.phone'), 'tel:'.config('business.secondary_phone')], true));
         }
-        foreach (['بهبود عملکرد', 'افزایش امنیت', 'خدمات بهتر'] as $title) {
-            $this->assertStringContainsString($title, $html);
+        foreach (['از صبر و شکیبایی شما صمیمانه سپاسگزاریم.', 'برای ارتباط با ما با شماره‌های زیر تماس بگیرید.'] as $copy) {
+            $this->assertStringContainsString($copy, $html);
         }
+        foreach (['بهبود عملکرد', 'افزایش امنیت', 'خدمات بهتر'] as $removed) {
+            $this->assertStringNotContainsString($removed, $html);
+        }
+        $this->assertStringContainsString(base64_encode(file_get_contents(public_path('brand/lockups/logo-wordmark-black-on-white.svg'))), $html);
+        $this->assertStringContainsString(base64_encode(file_get_contents(resource_path('maintenance/assets/pos-repair.webp'))), $html);
         $this->assertLessThan(230000, strlen($html));
     }
 }

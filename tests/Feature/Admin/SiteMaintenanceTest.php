@@ -64,7 +64,7 @@ class SiteMaintenanceTest extends TestCase
             $corrupt['updated_at'] = $timestamp;
             $bytes = json_encode($corrupt, JSON_THROW_ON_ERROR);
             file_put_contents($this->directory.'/state.json', $bytes);
-            $this->get('/products')->assertStatus(503)->assertSee('سایت موقتاً در دسترس نیست')
+            $this->get('/products')->assertStatus(503)->assertSee('در حال تعمیرات و به‌روزرسانی سایت نوین پی هستیم')
                 ->assertHeader('Retry-After', '60')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
             $json = $this->getJson('/products')->assertStatus(503)->assertExactJson(['message' => 'Service Unavailable']);
             $this->assertStringContainsString('no-store', $json->headers->get('Cache-Control'));
@@ -157,7 +157,7 @@ class SiteMaintenanceTest extends TestCase
         }
         $before = file_get_contents($this->directory.'/state.json');
         $this->get('/products')->assertStatus(503)->assertHeader('Retry-After', '60')
-            ->assertSee('سایت موقتاً در دسترس نیست')->assertDontSee('np-header', false);
+            ->assertSee('در حال تعمیرات و به‌روزرسانی سایت نوین پی هستیم')->assertDontSee('np-header', false);
         $this->getJson('/products')->assertStatus(503)->assertExactJson(['message' => 'Service Unavailable']);
         $this->post('/repair', ['contact_phone' => '09000000000'])->assertStatus(503);
         $this->postJson('/consultation', [])->assertStatus(503);
@@ -240,7 +240,7 @@ class SiteMaintenanceTest extends TestCase
         $this->get('/admin/maintenance')->assertOk()->assertSee('خطای خواندن وضعیت');
         $this->get('/admin/maintenance/preview/page')->assertOk();
         file_put_contents($this->directory.'/state.json', json_encode(['format' => 1, 'enabled' => true, 'version' => str_repeat('a', 64), 'updated_at' => 'synthetic', 'html' => 'invalid snapshot', 'html_sha256' => 123]));
-        $this->get('/products')->assertStatus(503)->assertSee('سایت موقتاً در دسترس نیست');
+        $this->get('/products')->assertStatus(503)->assertSee('در حال تعمیرات و به‌روزرسانی سایت نوین پی هستیم');
     }
 
     public function test_permission_revocation_is_effective_in_the_existing_session(): void
