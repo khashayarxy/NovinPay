@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\LoginController;
+use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PasswordController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
@@ -64,6 +65,14 @@ Route::middleware([PrivateAdminResponse::class, 'auth'])->prefix('admin')->name(
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::middleware([EnsureAdminSession::class, 'can:access-admin'])->group(function (): void {
+        Route::middleware('can:maintenance.view')->prefix('maintenance')->name('maintenance.')->group(function (): void {
+            Route::get('/', [MaintenanceController::class, 'index'])->name('index');
+            Route::get('preview', [MaintenanceController::class, 'preview'])->name('preview');
+            Route::get('preview/page', [MaintenanceController::class, 'previewPage'])->name('preview.page');
+            foreach (['enable', 'disable'] as $action) {
+                Route::post($action, [MaintenanceController::class, 'update'])->middleware(['can:maintenance.manage', 'throttle:10,1'])->name($action);
+            }
+        });
         Route::get('/', DashboardController::class)->middleware('can:dashboard.view')->name('dashboard');
         Route::get('account/password', [PasswordController::class, 'edit'])->name('password.edit');
         Route::put('account/password', [PasswordController::class, 'update'])->middleware('throttle:10,1')->name('password.update');

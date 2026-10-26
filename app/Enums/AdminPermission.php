@@ -4,6 +4,8 @@ namespace App\Enums;
 
 enum AdminPermission: string
 {
+    case MaintenanceView = 'maintenance.view';
+    case MaintenanceManage = 'maintenance.manage';
     case ArticlesView = 'articles.view';
     case ArticlesManage = 'articles.manage';
     case ArticlesPublish = 'articles.publish';
@@ -54,6 +56,8 @@ enum AdminPermission: string
     public function label(): string
     {
         return match ($this) {
+            self::MaintenanceView => 'مشاهدهٔ وضعیت و پیش‌نمایش نگهداری سایت',
+            self::MaintenanceManage => 'فعال‌سازی و غیرفعال‌سازی نگهداری سایت',
             self::ArticlesView => 'مشاهده و بازبینی خصوصی مقاله‌ها',
             self::ArticlesManage => 'ایجاد و ویرایش پیش‌نویس مقاله',
             self::ArticlesPublish => 'انتشار و لغو انتشار مقاله',

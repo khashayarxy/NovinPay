@@ -3,8 +3,12 @@
 namespace App\Providers;
 
 use App\Enums\AdminPermission;
+use App\Http\Middleware\PreviewAwareSession;
 use App\Models\User;
 use App\Support\AdminAccess;
+use App\Support\SiteMaintenanceState;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -16,7 +20,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(SiteMaintenanceState::class, fn () => new SiteMaintenanceState(storage_path('framework/site-maintenance')));
+        $this->app->singleton(PreviewAwareSession::class, fn ($app) => new PreviewAwareSession(
+            $app->make(SessionManager::class), fn () => $app->make(CacheFactory::class)
+        ));
     }
 
     /**
