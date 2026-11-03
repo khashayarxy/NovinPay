@@ -7,7 +7,6 @@ use App\Support\RepairIdentity;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -15,7 +14,9 @@ class CustomerLogin
 {
     public function issue(string $phone): string
     {
-        abort_unless(config('customer.sms_enabled') && config('customer.sms_api_key') && config('customer.otp_template'), 503, 'ورود پیامکی هنوز فعال نشده است.');
+        $sms = app(SmsIr::class);
+        abort_unless(config('customer.sms_enabled') && $sms->ready(config('customer.otp_template'), config('customer.otp_parameter')), 503, 'ورود پیامکی هنوز فعال نشده است.');
+        abort_unless(preg_match('/\A09[0-9]{9}\z/D', $phone), 422);
         $digest = RepairIdentity::digest('customer-account-phone', $phone);
         $code = (string) random_int(100000, 999999);
         $challenge = (string) Str::uuid();
@@ -26,12 +27,7 @@ class CustomerLogin
             DB::table('customer_login_challenges')->where('id', $row->id)->update(['challenge_id' => $challenge, 'code_hash' => Hash::make($code), 'attempts' => 0, 'expires_at' => now()->addMinutes(3), 'resend_at' => now()->addMinute()]);
         }, 3);
         // Never log the request, OTP, mobile, API response or transport exception.
-        try {
-            $response = Http::withoutRedirecting()->connectTimeout(4)->timeout(10)->withHeaders(['X-API-KEY' => config('customer.sms_api_key')])->post('https://api.sms.ir/v1/send/verify', ['mobile' => $phone, 'templateId' => (int) config('customer.otp_template'), 'parameters' => [['name' => config('customer.otp_parameter'), 'value' => $code]]]);
-            $ok = $response->successful() && $response->json('status') === 1;
-        } catch (\Throwable) {
-            $ok = false;
-        }
+        $ok = $sms->send($phone, config('customer.otp_template'), config('customer.otp_parameter'), $code, 'otp');
         if (! $ok) {
             DB::table('customer_login_challenges')->where('challenge_id', $challenge)->update(['code_hash' => null]);
             abort(503, 'کد ارسال نشد؛ پس از یک دقیقه دوباره تلاش کنید.');

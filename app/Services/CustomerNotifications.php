@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\CustomerAccount;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 
 class CustomerNotifications
 {
@@ -22,10 +21,14 @@ class CustomerNotifications
         if (! config('customer.notifications_enabled') || ! config('customer.sms_api_key')) {
             return 0;
         }
+        $sms = app(SmsIr::class);
+        $events = array_keys(array_filter(config('customer.notification_templates', []), fn ($id) => $sms->ready($id, config('customer.notification_parameter'))));
+        if ($events === []) {
+            return 0;
+        }
         // A worker may have died after the provider accepted its request. Retain
         // that uncertainty for review; never automatically send the message again.
         DB::table('customer_notifications')->where('state', 'sending')->where('claimed_at', '<=', now()->subMinutes(10))->update(['state' => 'review']);
-        $events = array_keys(array_filter(config('customer.notification_templates', []), fn ($id) => is_scalar($id) && ctype_digit((string) $id) && (int) $id > 0));
         $sent = 0;
         foreach (DB::table('customer_notifications')->where('state', 'pending')->whereIn('event', $events)->orderBy('id')->limit(20)->get() as $item) {
             $template = config('customer.notification_templates.'.$item->event);
@@ -42,12 +45,7 @@ class CustomerNotifications
 
                 continue;
             }
-            try {
-                $response = Http::withoutRedirecting()->connectTimeout(4)->timeout(10)->withHeaders(['X-API-KEY' => config('customer.sms_api_key')])->post('https://api.sms.ir/v1/send/verify', ['mobile' => $account->phone, 'templateId' => (int) $template, 'parameters' => [['name' => config('customer.notification_parameter'), 'value' => rtrim(config('app.url'), '/').$item->path]]]);
-                $ok = $response->successful() && $response->json('status') === 1;
-            } catch (\Throwable) {
-                $ok = false;
-            }
+            $ok = $sms->send($account->phone, $template, config('customer.notification_parameter'), rtrim(config('app.url'), '/').$item->path, 'notification');
             DB::table('customer_notifications')->where('id', $item->id)->update(['state' => $ok ? 'sent' : 'review', 'sent_at' => $ok ? now() : null]);
             $sent += $ok ? 1 : 0;
         }

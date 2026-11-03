@@ -367,8 +367,8 @@ class SharedPaymentsTest extends TestCase
 
     public function test_missing_notification_templates_do_not_starve_configured_events(): void
     {
-        config(['customer.notifications_enabled' => true, 'customer.sms_api_key' => 'synthetic-key', 'customer.notification_templates.payment_confirmed' => 12]);
-        Http::fake(['api.sms.ir/*' => Http::response(['status' => 1])]);
+        config(['customer.notifications_enabled' => true, 'customer.sms_api_key' => 'synthetic-key', 'customer.notification_templates.payment_confirmed' => 12, 'customer.notification_parameter' => 'URL', 'customer.approved_template_ids' => [12]]);
+        Http::fake(['api.sms.ir/*' => Http::response(['status' => 1, 'data' => ['messageId' => 123]])]);
         $service = app(CustomerNotifications::class);
         for ($i = 0; $i < 21; $i++) {
             $service->record($this->account->id, 'repair_registered', 'unconfigured-'.$i);
@@ -383,7 +383,7 @@ class SharedPaymentsTest extends TestCase
 
     public function test_interrupted_notification_is_reviewed_without_resending(): void
     {
-        config(['customer.notifications_enabled' => true, 'customer.sms_api_key' => 'synthetic-key', 'customer.notification_templates.payment_confirmed' => 12]);
+        config(['customer.notifications_enabled' => true, 'customer.sms_api_key' => 'synthetic-key', 'customer.notification_templates.payment_confirmed' => 12, 'customer.notification_parameter' => 'URL', 'customer.approved_template_ids' => [12]]);
         Http::fake();
         app(CustomerNotifications::class)->record($this->account->id, 'payment_confirmed', 'interrupted');
         DB::table('customer_notifications')->update(['state' => 'sending', 'claimed_at' => now()->subMinutes(11)]);

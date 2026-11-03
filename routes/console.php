@@ -2,6 +2,7 @@
 
 use App\Models\PaymentAttempt;
 use App\Services\CustomerNotifications;
+use App\Services\SmsIr;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
 use Illuminate\Foundation\Inspiring;
@@ -36,8 +37,24 @@ Artisan::command('payments:reconcile', function (ZibalPayments $payments, ZibalG
 Schedule::command('payments:reconcile')->everyMinute()->withoutOverlapping(10);
 
 Artisan::command('customers:notify', function (CustomerNotifications $notifications): int {
-    $this->info('Sent notifications: '.$notifications->sendPending());
+    $this->info('Provider-accepted notifications: '.$notifications->sendPending());
 
     return 0;
 })->purpose('Send configured customer notifications without exposing customer data');
 Schedule::command('customers:notify')->everyMinute()->withoutOverlapping(10);
+
+Artisan::command('customers:sms-status {--provider : Inspect configured OTP template via read-only GET; never send}', function (SmsIr $sms): int {
+    $status = [
+        'otp_enabled' => (bool) config('customer.sms_enabled'),
+        'otp_approved_configuration' => $sms->ready(config('customer.otp_template'), config('customer.otp_parameter')),
+        'notifications_enabled' => (bool) config('customer.notifications_enabled'),
+        'ready_notification_templates' => count(array_filter(config('customer.notification_templates', []), fn ($id) => $sms->ready($id, config('customer.notification_parameter')))),
+        'sending_executed' => false,
+    ];
+    if ($this->option('provider')) {
+        $status['otp_provider_metadata'] = $sms->inspect(config('customer.otp_template'), config('customer.otp_parameter'));
+    }
+    $this->line(json_encode($status, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+
+    return isset($status['otp_provider_metadata']) && (! $status['otp_provider_metadata']['accessible'] || ! ($status['otp_provider_metadata']['exact_parameter_match'] ?? false)) ? 1 : 0;
+})->purpose('Report non-secret SMS configuration and optional read-only template metadata');

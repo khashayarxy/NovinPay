@@ -24,9 +24,9 @@ class CustomerAccountTest extends TestCase
 
     private function otp(string $phone = '09000000000'): array
     {
-        config(['customer.sms_enabled' => true, 'customer.sms_api_key' => 'test-placeholder', 'customer.otp_template' => 1]);
+        config(['customer.sms_enabled' => true, 'customer.sms_api_key' => 'test-placeholder', 'customer.otp_template' => 1, 'customer.otp_parameter' => 'CODE', 'customer.approved_template_ids' => [1]]);
         Http::preventStrayRequests();
-        Http::fake(['api.sms.ir/*' => Http::response(['status' => 1])]);
+        Http::fake(['api.sms.ir/*' => Http::response(['status' => 1, 'data' => ['messageId' => 123]])]);
         $challenge = app(CustomerLogin::class)->issue($phone);
         $code = Http::recorded()[0][0]['parameters'][0]['value'];
 
