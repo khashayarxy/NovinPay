@@ -137,8 +137,15 @@ return new class extends Migration
         }
         $triggers = DB::getDriverName() === 'sqlite' ? DB::select("SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND tbl_name IN ('financial_entries','financial_operations')") : [];
         Schema::table('financial_entries', function (Blueprint $table): void {
+            if (DB::getDriverName() !== 'sqlite') {
+                $table->dropForeign(['payment_transaction_id']);
+            }
             $table->dropUnique(['payment_transaction_id']);
-            $table->dropConstrainedForeignId('payment_transaction_id');
+            if (DB::getDriverName() === 'sqlite') {
+                $table->dropConstrainedForeignId('payment_transaction_id');
+            } else {
+                $table->dropColumn('payment_transaction_id');
+            }
             $table->foreignId('actor_id')->nullable(false)->change();
         });
         Schema::table('financial_operations', fn (Blueprint $table) => $table->foreignId('actor_id')->nullable(false)->change());

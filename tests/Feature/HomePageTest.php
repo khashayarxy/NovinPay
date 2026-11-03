@@ -179,8 +179,8 @@ class HomePageTest extends TestCase
         $xpath = new DOMXPath($document);
         $this->assertSame(3, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
         $links = $xpath->query('//footer//nav/a');
-        $this->assertSame(['فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
-        $this->assertSame(array_map(fn ($name) => route($name), ['products.index', 'repair', 'contact', 'articles.index']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
+        $this->assertSame(['حساب کاربری', 'سبد خرید', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(array_map(fn ($name) => route($name), ['account.index', 'cart.index', 'products.index', 'repair', 'contact', 'articles.index']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
         $this->assertSame(0, $xpath->query('//footer//address')->length);
         $this->assertStringNotContainsString(config('business.address'), $xpath->query('//footer')->item(0)->textContent);
         $this->assertStringNotContainsString(config('business.hours.open'), $xpath->query('//footer')->item(0)->textContent);
