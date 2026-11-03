@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preload" href="assets/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="assets/pay.css?v=5">
+    <title>در حال بررسی پرداخت | نوین‌پی</title>
+</head>
+<body class="t-indigo">
+    <div class="container">
+        <div class="icon-wrap">
+            <div class="icon live">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path class="hand" d="M12 12V7"/></svg>
+            </div>
+        </div>
+        <h2>در حال بررسی پرداخت</h2>
+        <p class="lead">لطفاً چند لحظه صبر کنید.</p>
+
+        <div class="steps">
+            <div class="step active" id="step1"><span class="dot"></span><span>تأیید پرداخت با درگاه</span></div>
+            <div class="step" id="step2"><span class="dot"></span><span>ثبت نتیجه پرداخت</span></div>
+        </div>
+        <p class="hint" id="statusText" role="status" aria-live="polite">در حال تأیید پرداخت شما...</p>
+        <p class="hint late" id="netNote" hidden>اتصال اینترنت ضعیف است؛ دوباره تلاش می‌کنیم.</p>
+
+        <div class="rows">
+            <div class="row plain"><span>زمان انتظار</span><b id="elapsed">۰۰:۰۰</b></div>
+            <div class="row"><span>شماره سفارش</span><b id="orderRow">---</b></div>
+            <div class="row"><span>کد پیگیری</span><b id="refRow">---</b></div>
+        </div>
+
+        <div class="info-box" id="infoBox">
+            <p><span class="ph">می‌تونید این صفحه را ببندید؛</span> <span class="ph">نتیجه‌ی پرداخت به‌صورت خودکار</span> <span class="ph">در حساب کاربری نمایش داده می‌شود.</span></p>
+        </div>
+        <div class="info-box warn late" id="slowBox" hidden>
+            <p><strong>پرداخت مجدد نکنید.</strong></p>
+            <p>تأیید پرداخت کمی طول کشیده است. اگر مبلغی از حساب شما کسر شده، به‌صورت خودکار در حساب کاربری نمایش داده می‌شود. اگر تا چند دقیقه‌ی دیگر اعمال نشد، کد پیگیری را به پشتیبانی اعلام کنید.</p>
+        </div>
+        <button class="btn late" type="button" id="retryBtn" hidden>بررسی مجدد</button>
+    </div>
+
+    <script>
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            var rawOrder = params.get('order_id') || '';
+            var rawRef = params.get('ref_id') || '';
+            var orderId = /^[a-zA-Z0-9_-]{1,64}$/.test(rawOrder) ? rawOrder : '';
+            var trackId = /^[0-9]{1,20}$/.test(rawRef) ? rawRef : '';
+
+            if (!orderId || !trackId) {
+                window.location.replace('/pay/error.html?code=missing_params');
+                return;
+            }
+
+            var enc = encodeURIComponent;
+            var MAX_MS = 300000;
+            // فاز ماشینی (از سرور) ← متن وضعیت و مرحله‌ی نمایشی
+            var PHASES = {
+                gateway:   { text: 'در حال تأیید پرداخت شما...', step: 1 },
+                bot:       { text: 'پرداخت تأیید شد، در حال ثبت نهایی...', step: 2 },
+                bot_retry: { text: 'ثبت نتیجه پرداخت هنوز کامل نشده، دوباره بررسی می‌کنیم...', step: 2 }
+            };
+            var startedAt = Date.now();
+            var timerId = null, tickId = null;
+            var inFlight = false, finished = false, timedOut = false;
+            var netFails = 0, phase = 1;
+
+            function $(id) { return document.getElementById(id); }
+            function toFa(s) { return String(s).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }); }
+
+            $('orderRow').textContent = orderId;
+            $('refRow').textContent = trackId;
+
+            function setStatus(msg) {
+                var el = $('statusText');
+                if (el.textContent === msg) return;
+                el.textContent = msg;
+                el.classList.remove('swap');
+                void el.offsetWidth;
+                el.classList.add('swap');
+            }
+
+            function tick() {
+                var s = Math.floor((Date.now() - startedAt) / 1000);
+                var m = Math.floor(s / 60);
+                $('elapsed').textContent = toFa(('0' + m).slice(-2) + ':' + ('0' + (s % 60)).slice(-2));
+            }
+
+            function setPhase(next) {
+                if (next > phase) phase = next;
+                $('step1').className = 'step ' + (phase > 1 ? 'done' : 'active');
+                $('step2').className = 'step ' + (phase > 1 ? 'active' : '');
+            }
+
+            function go(url) {
+                finished = true;
+                clearTimeout(timerId);
+                clearInterval(tickId);
+                window.location.replace(url);
+            }
+
+            function scheduleNext() {
+                var el = Date.now() - startedAt;
+                var delay = el < 40000 ? 2000 : (el < 120000 ? 4000 : 8000);
+                clearTimeout(timerId);
+                timerId = setTimeout(check, delay);
+            }
+
+            function giveUp() {
+                timedOut = true;
+                clearTimeout(timerId);
+                clearInterval(tickId);
+                tick();
+                setStatus('تأیید پرداخت هنوز کامل نشده است.');
+                $('slowBox').hidden = false;
+                $('retryBtn').hidden = false;
+            }
+
+            function check() {
+                if (finished || timedOut || inFlight) return;
+                if (Date.now() - startedAt > MAX_MS) { giveUp(); return; }
+
+                inFlight = true;
+                var ctl = new AbortController();
+                var abortTimer = setTimeout(function () { ctl.abort(); }, 25000);
+
+                fetch('/bot/check_payment_status.php?order_id=' + enc(orderId) + '&track_id=' + enc(trackId), { cache: 'no-store', signal: ctl.signal })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        clearTimeout(abortTimer);
+                        inFlight = false;
+                        netFails = 0;
+                        $('netNote').hidden = true;
+                        var st = d && d.status;
+                        if (st === 'success') {
+                            go('/pay/success.html?order_id=' + enc(orderId) + '&ref_id=' + enc(trackId));
+                        } else if (st === 'failed') {
+                            go('/pay/failed.html?code=' + enc(d.code || '') + '&zc=' + enc(d.zc || '') + '&ref_id=' + enc(trackId) + '&order_id=' + enc(orderId) + '&inc=' + enc(d.inc || ''));
+                        } else if (st === 'error') {
+                            go('/pay/error.html?code=' + enc(d.code || 'unknown') + '&ref_id=' + enc(trackId) + '&order_id=' + enc(orderId) + '&inc=' + enc(d.inc || ''));
+                        } else {
+                            var key = (d && typeof d.phase === 'string' && Object.prototype.hasOwnProperty.call(PHASES, d.phase)) ? d.phase : 'gateway';
+                            setStatus(PHASES[key].text);
+                            setPhase(PHASES[key].step);
+                            scheduleNext();
+                        }
+                    })
+                    .catch(function () {
+                        clearTimeout(abortTimer);
+                        inFlight = false;
+                        netFails++;
+                        if (netFails >= 3) $('netNote').hidden = false;
+                        scheduleNext();
+                    });
+            }
+
+            $('retryBtn').addEventListener('click', function () {
+                timedOut = false;
+                startedAt = Date.now();
+                netFails = 0;
+                $('slowBox').hidden = true;
+                $('retryBtn').hidden = true;
+                setStatus('در حال تأیید پرداخت شما...');
+                tick();
+                clearInterval(tickId);
+                tickId = setInterval(tick, 1000);
+                check();
+            });
+
+            /* وقتی کاربر به این تب برمی‌گردد، بدون انتظار تایمر، فوراً بررسی شود */
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible' && !finished && !timedOut) {
+                    clearTimeout(timerId);
+                    check();
+                }
+            });
+
+            tickId = setInterval(tick, 1000);
+            check();
+        })();
+    </script>
+</body>
+</html>

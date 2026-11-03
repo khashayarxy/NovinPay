@@ -269,11 +269,13 @@ class SiteMaintenanceTest extends TestCase
         $this->get('/admin/maintenance')->assertOk()->assertSee('وضعیت فعلی: فعال');
     }
 
-    public function test_no_payment_callback_is_invented_or_exempted_and_manual_finance_remains_idempotent(): void
+    public function test_only_reviewed_payment_callback_is_exempted_and_manual_finance_remains_idempotent(): void
     {
         $this->enable();
-        $external = array_filter(app('router')->getRoutes()->getRoutes(), fn ($route) => preg_match('~(?:^|/)(?:payment|callback|webhook|api)(?:/|$)~i', $route->uri()));
-        $this->assertSame([], array_values($external), 'New external payment/API routes need an explicit maintenance safety review.');
+        $this->assertTrue(SiteMaintenanceState::paymentCallback('/bot/payment_verify.php', 'GET'));
+        $this->get('/bot/payment_verify.php?trackId=1')->assertNotFound();
+        $this->postJson('/bot/payment_verify.php', [])->assertStatus(503);
+        $this->getJson('/bot/check_payment_status.php?order_id=unknown&track_id=1')->assertStatus(503);
         foreach (['/payment/callback', '/api/payment/verify', '/webhook/payment'] as $path) {
             $this->postJson($path, [])->assertStatus(503);
         }

@@ -15,6 +15,11 @@ final class FinanceInput
 
     public const STATES = ['unpaid' => 'بدون دریافت', 'partial' => 'دریافت جزئی', 'settled' => 'تسویهٔ ثبت‌شده', 'cleared' => 'مطالبهٔ صفرشده'];
 
+    public static function methodLabel(?string $method): string
+    {
+        return ['gateway' => 'پرداخت آنلاین تأییدشده', 'card_transfer' => 'کارت‌به‌کارت با تأیید همکار', 'in_store' => 'دریافت در فروشگاه'][$method ?? ''] ?? (self::METHODS[$method ?? ''] ?? 'رویداد غیرپرداختی');
+    }
+
     public static function rules(string $action): array
     {
         return ['operation_key' => ['required', 'uuid'], 'password' => ['required', 'string', 'max:255'], 'reason' => ['required', 'string', 'min:5', 'max:1500']] + match ($action) {

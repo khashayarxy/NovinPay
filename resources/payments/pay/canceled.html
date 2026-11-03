@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>انصراف از پرداخت | نوین‌پی</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preload" href="assets/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="assets/pay.css?v=5">
+</head>
+<body class="t-amber">
+    <div class="container">
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+            </div>
+        </div>
+        <h2>انصراف از پرداخت</h2>
+        <p class="lead">شما از ادامه‌ی فرآیند پرداخت منصرف شدید.</p>
+        <div class="rows" id="rows"></div>
+        <div class="info-box go">
+            <p><span class="ph">از بخش سفارش‌های حساب کاربری،</span> <span class="ph">می‌تونید مجدد برای پرداخت اقدام کنید.</span></p>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const rawRef = params.get('ref_id') || '';
+        if (/^[0-9]{1,20}$/.test(rawRef)) {
+            const row = document.createElement('div');
+            row.className = 'row';
+            const l = document.createElement('span');
+            l.textContent = 'کد پیگیری';
+            const b = document.createElement('b');
+            b.textContent = rawRef;
+            row.append(l, b);
+            document.getElementById('rows').appendChild(row);
+        }
+    </script>
+</body>
+</html>

@@ -79,4 +79,28 @@ class RepairCase extends Model
     {
         return $this->hasOne(RepairInspection::class)->latestOfMany();
     }
+
+    public function contactAttempts(): HasMany
+    {
+        return $this->hasMany(RepairContactAttempt::class);
+    }
+
+    /** A quote is never a charge until the work/outcome is established. */
+    public function billableToman(): ?int
+    {
+        $estimate = $this->estimates()->with('decision')->latest('revision')->first();
+        if (! $estimate || (int) $estimate->repair_inspection_id !== (int) $this->inspections()->max('id')) {
+            return ! $estimate && in_array($this->status, [RepairStage::ReturnPending, RepairStage::Returned], true) ? (int) $this->inbound_shipping_cost : null;
+        }
+        if (in_array($this->status, [RepairStage::Repaired, RepairStage::Ready, RepairStage::Delivered], true)
+            && $estimate->decisionStatus() === 'approved'
+            && $this->workEntries()->where('repair_estimate_id', $estimate->id)->where('is_completion', true)->exists()) {
+            return $estimate->total() + (int) $this->inbound_shipping_cost;
+        }
+        if (in_array($this->status, [RepairStage::ReturnPending, RepairStage::Returned], true) && $estimate->decisionStatus() === 'rejected') {
+            return (int) $estimate->diagnosis_fee + (int) $this->inbound_shipping_cost;
+        }
+
+        return null;
+    }
 }

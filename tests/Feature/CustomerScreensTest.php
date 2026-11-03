@@ -1,0 +1,73 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Customer;
+use App\Models\CustomerAccount;
+use App\Models\DeliveryPlan;
+use App\Models\FinancialDocument;
+use App\Models\FinancialEntry;
+use App\Models\SalesOrder;
+use App\Models\User;
+use App\Services\FinancialOperations;
+use App\Services\RepairOperations;
+use App\Support\RepairIdentity;
+use App\Support\RepairTime;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Tests\TestCase;
+
+class CustomerScreensTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_customer_and_staff_screens_render_using_only_synthetic_data(): void
+    {
+        Http::preventStrayRequests();
+        $owner = User::factory()->superAdmin()->create(['name' => 'همکار آزمایشی']);
+        $this->actingAs($owner, 'web');
+        $customer = new Customer;
+        foreach (['public_id' => (string) Str::uuid(), 'name' => 'مشتری آزمایشی', 'contact_phone' => '09000000000', 'phone_digest' => RepairIdentity::digest('customer-phone', '09000000000'), 'name_digest' => hash('sha256', 'test-name'), 'identity_digest' => hash('sha256', 'test-identity'), 'is_active' => true] as $key => $value) {
+            $customer->$key = $value;
+        }
+        $customer->save();
+        $account = new CustomerAccount;
+        foreach (['public_id' => (string) Str::uuid(), 'customer_id' => $customer->id, 'name' => 'مشتری آزمایشی', 'phone' => '09000000000', 'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000000'), 'verified_at' => now()] as $key => $value) {
+            $account->$key = $value;
+        }
+        $account->save();
+        $order = new SalesOrder;
+        foreach (['public_id' => (string) Str::uuid(), 'customer_id' => $customer->id, 'created_by' => $owner->id, 'status' => 'fulfilled', 'currency' => 'TOMAN', 'total' => '100000.00', 'version' => 1] as $key => $value) {
+            $order->$key = $value;
+        }
+        $order->save();
+        $entry = app(FinancialOperations::class)->execute($owner, 'issue', ['operation_key' => (string) Str::uuid(), 'password' => 'password', 'reason' => 'Synthetic UI fixture only', 'source_type' => 'order', 'source' => $order->public_id, 'source_version' => 1]);
+        $document = FinancialDocument::findOrFail(FinancialEntry::findOrFail($entry)->financial_document_id);
+        $plan = new DeliveryPlan;
+        foreach (['public_id' => (string) Str::uuid(), 'financial_document_id' => $document->id, 'customer_account_id' => $account->id, 'method' => 'tipax'] as $key => $value) {
+            $plan->$key = $value;
+        }
+        $plan->save();
+        $case = app(RepairOperations::class)->intake($owner, ['submission_token' => bin2hex(random_bytes(32)), 'customer_name' => 'مشتری آزمایشی', 'contact_phone' => '09000000000', 'device_brand' => 'PAX', 'device_model' => 'مدل آزمایشی', 'issue' => 'مشکل آزمایشی چاپ رسید دستگاه', 'physical_condition' => 'بدون آسیب ظاهری', 'accessories' => 'شارژر', 'received_at' => RepairTime::input(), 'physical_receipt_confirmed' => true]);
+        $this->capture('repair-admin', '/admin/repairs/'.$case->public_id);
+        $this->capture('payments-admin', '/admin/payments');
+        $this->capture('delivery-admin', '/admin/deliveries');
+        $this->actingAs($account->fresh(), 'customer')->withSession(['customer_session_version' => 1]);
+        $this->capture('customer-login', '/account/login');
+        $this->capture('customer-account', '/account');
+        $this->capture('customer-payment', '/account/documents/'.$document->public_id);
+        $this->capture('customer-delivery', '/account/documents/'.$document->public_id.'/delivery');
+        $this->capture('customer-repair', '/repair');
+    }
+
+    private function capture(string $name, string $url): void
+    {
+        $response = $this->get($url)->assertOk();
+        $this->assertStringContainsString('dir="rtl"', $response->getContent());
+        if ($directory = getenv('NOVINPAY_QA_DIR')) {
+            $this->assertTrue(is_dir($directory) && ! is_link($directory));
+            file_put_contents($directory.DIRECTORY_SEPARATOR.$name.'.html', $response->getContent());
+        }
+    }
+}

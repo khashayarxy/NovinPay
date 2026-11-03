@@ -33,4 +33,14 @@ enum RepairStage: string
     {
         return in_array($this, [self::Delivered, self::Returned], true);
     }
+
+    public function step(): int
+    {
+        return match ($this) {
+            self::Received, self::WaitingInspection => 2,
+            self::Inspecting, self::Inspected, self::WaitingApproval, self::Approved, self::Repairing => 3,
+            self::Repaired, self::ReturnPending => 4,
+            self::Ready, self::Delivered, self::Returned => 5,
+        };
+    }
 }

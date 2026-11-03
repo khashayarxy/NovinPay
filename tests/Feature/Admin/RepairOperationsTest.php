@@ -4,10 +4,15 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\RepairStage;
 use App\Models\AdminAccount;
+use App\Models\Customer;
+use App\Models\FinancialDocument;
+use App\Models\FinancialEntry;
 use App\Models\RepairCase;
 use App\Models\RepairEstimate;
 use App\Models\RepairRequest;
 use App\Models\User;
+use App\Services\FinancialOperations;
+use App\Support\OrderMoney;
 use App\Support\RepairIdentity;
 use App\Support\RepairTime;
 use Illuminate\Database\QueryException;
@@ -15,6 +20,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -112,6 +118,64 @@ class RepairOperationsTest extends TestCase
         return ['recipient_name' => 'PRIVATE-RECIPIENT', 'outcome_notes' => 'PUBLIC-OUTCOME-NOTES', 'delivered_at' => RepairTime::input(), 'handover_confirmed' => '1', 'amounts_confirmed' => '1'];
     }
 
+    public function test_combined_diagnosis_unreachable_contact_and_declined_billing_preserve_approval_boundary(): void
+    {
+        $owner = $this->owner();
+        $case = $this->intake(['inbound_method' => 'post', 'inbound_shipping_cost' => 20000]);
+        $this->op($case, 'assign', ['technician_id' => $owner->id])->assertRedirect();
+        $data = ['diagnosis' => 'Synthetic printer fault', 'customer_summary' => 'Synthetic printer replacement', 'service_cost' => 100000, 'parts_cost' => 50000, 'diagnosis_fee' => 30000];
+        $this->op($case, 'diagnose', $data)->assertRedirect();
+        $this->assertSame(RepairStage::WaitingApproval, $case->fresh()->status);
+        $estimate = $case->estimates()->firstOrFail();
+        $this->op($case, 'contact', ['estimate_id' => $estimate->id, 'note' => 'Synthetic unanswered telephone call'])->assertRedirect();
+        $this->assertSame('pending', $estimate->fresh()->decisionStatus());
+        $this->op($case, 'transition', ['status' => 'repairing'])->assertConflict();
+        $this->decision($case, $estimate, 'rejected');
+        $this->assertSame(50000, $case->fresh()->billableToman());
+        $this->op($case, 'delivery', $this->handover())->assertConflict();
+        $this->settle($case);
+        $this->op($case, 'diagnose', $data)->assertConflict();
+        $this->op($case, 'delivery', $this->handover())->assertRedirect();
+        $this->assertSame(RepairStage::Returned, $case->fresh()->status);
+        $this->assertDatabaseCount('repair_contact_attempts', 1);
+        $this->assertNotSame('Synthetic unanswered telephone call', DB::table('repair_contact_attempts')->value('note'));
+    }
+
+    public function test_successful_repair_excludes_diagnosis_fee_and_combined_diagnosis_needs_both_permissions(): void
+    {
+        $owner = $this->owner();
+        $case = $this->intake();
+        $staff = User::factory()->staff(['repairs.view', 'repairs.customer_data', 'repairs.inspect'])->create();
+        $this->op($case, 'assign', ['technician_id' => $staff->id])->assertRedirect();
+        $data = ['diagnosis' => 'Synthetic fault', 'customer_summary' => 'Synthetic repair', 'service_cost' => 100000, 'parts_cost' => 0, 'diagnosis_fee' => 30000];
+        $this->actingAs($staff);
+        $this->op($case, 'diagnose', $data)->assertForbidden();
+        $this->assertDatabaseCount('repair_inspections', 0);
+        $this->actingAs($owner);
+        $this->op($case, 'diagnose', $data)->assertRedirect();
+        $this->decision($case, $case->estimates()->firstOrFail());
+        $this->op($case, 'transition', ['status' => 'repairing'])->assertRedirect();
+        $this->op($case, 'work', $this->work())->assertRedirect();
+        $this->assertSame(100000, $case->fresh()->billableToman());
+        $this->get('/admin/repairs/'.$case->public_id)->assertOk()->assertSee('مراحل تعمیر')->assertSee('خلاصهٔ مالی');
+    }
+
+    private function settle(RepairCase $case): void
+    {
+        $customer = new Customer;
+        foreach (['public_id' => (string) Str::uuid(), 'name' => 'SYNTHETIC', 'contact_phone' => '09000000000', 'name_digest' => bin2hex(random_bytes(32)), 'phone_digest' => bin2hex(random_bytes(32)), 'identity_digest' => bin2hex(random_bytes(32)), 'is_active' => true] as $key => $value) {
+            $customer->$key = $value;
+        }
+        $customer->save();
+        $case->refresh();
+        $case->customer_id = $customer->id;
+        $case->save();
+        $finance = app(FinancialOperations::class);
+        $entry = $finance->execute(auth()->user(), 'issue', ['operation_key' => (string) Str::uuid(), 'password' => 'password', 'reason' => 'Synthetic repair charge', 'source_type' => 'repair', 'source' => $case->public_id, 'source_version' => $case->version]);
+        $document = FinancialDocument::findOrFail(FinancialEntry::findOrFail($entry)->financial_document_id);
+        $finance->execute(auth()->user(), 'receipt', ['operation_key' => (string) Str::uuid(), 'password' => 'password', 'reason' => 'Synthetic settlement', 'document' => $document->public_id, 'version' => $document->version, 'amount' => OrderMoney::decimal($document->charged_minor), 'method' => 'transfer', 'reference' => 'TEST-'.Str::random(16)]);
+    }
+
     public function test_online_requests_never_automatically_create_physical_intake_and_linking_preserves_original(): void
     {
         $this->owner();
@@ -148,6 +212,7 @@ class RepairOperationsTest extends TestCase
         $case = $this->repairing($owner);
         $this->op($case, 'work', $this->work())->assertRedirect();
         $this->op($case, 'transition', ['status' => 'ready'])->assertRedirect();
+        $this->settle($case);
         $this->op($case, 'delivery', $this->handover() + ['service_cost' => 1, 'parts_cost' => 1])->assertRedirect();
         $case->refresh();
         $this->assertSame(RepairStage::Delivered, $case->status);
@@ -226,7 +291,7 @@ class RepairOperationsTest extends TestCase
         $this->op($case, 'transition', ['status' => 'repairing'])->assertConflict();
         $this->op($case, 'decision', ['estimate_id' => $first->id, 'decision' => 'approved', 'channel' => 'phone', 'evidence' => 'Valid reference', 'staff_recorded_confirmation' => '1'])->assertConflict();
         $this->decision($case, $second, 'rejected');
-        $this->assertSame(RepairStage::Inspected, $case->fresh()->status);
+        $this->assertSame(RepairStage::ReturnPending, $case->fresh()->status);
         $this->op($case, 'transition', ['status' => 'repairing'])->assertConflict();
         $this->assertSame('approved', $first->fresh()->decisionStatus());
         $this->assertSame('rejected', $second->fresh()->decisionStatus());
@@ -446,6 +511,7 @@ class RepairOperationsTest extends TestCase
         $this->op($case, 'transition', ['status' => 'ready'])->assertRedirect();
         $this->op($case, 'delivery', $this->handover() + ['confirmation_reference' => 'Reference without method'])->assertSessionHasErrors('confirmation_reference');
         $this->op($case, 'delivery', $this->handover() + ['confirmation_method' => 'document'])->assertSessionHasErrors('confirmation_reference');
+        $this->settle($case);
         $this->op($case, 'delivery', $this->handover() + ['confirmation_method' => 'document', 'confirmation_reference' => 'Synthetic document reference'])->assertRedirect();
         $this->assertSame('Synthetic document reference', $case->fresh()->delivery->confirmation_reference);
         $this->assertNotSame('Synthetic document reference', DB::table('repair_deliveries')->value('confirmation_reference'));

@@ -15,7 +15,7 @@
         <title>{{ config('app.name') }} | فروش و تعمیر دستگاه کارتخوان</title>
     @endif
     <meta name="description" content="@yield('meta_description', 'فروش و تعمیر دستگاه‌های کارتخوان (POS) در شهریار')">
-    @if (request()->routeIs('repair*', 'consultation*', 'terms', 'privacy'))
+    @if (request()->routeIs('repair*', 'consultation*', 'terms', 'privacy', 'account.*', 'payments.*', 'delivery.*', 'cart.*'))
         <meta name="robots" content="noindex, nofollow">
     @endif
     @endisset

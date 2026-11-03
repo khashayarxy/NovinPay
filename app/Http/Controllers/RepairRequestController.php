@@ -8,15 +8,18 @@ use App\Http\Requests\StoreRepairRequest;
 use App\Http\Requests\TrackRepairRequest;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
+use App\Services\CustomerNotifications;
 use App\Support\RepairIdentity;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class RepairRequestController extends Controller
 {
-    public function create(Request $request): View
+    public function create(Request $request): View|RedirectResponse
     {
         if (! $request->session()->has('repair_submission_token')) {
             $request->session()->put('repair_submission_token', bin2hex(random_bytes(32)));
@@ -44,12 +47,18 @@ class RepairRequestController extends Controller
         $repair->phone_digest = RepairIdentity::digest('phone', $data['contact_phone']);
         $repair->device_brand = RepairBrand::from($data['device_brand']);
         $repair->device_model = $data['device_model'];
-        $repair->issue = $data['issue'];
+        $repair->issue = $data['issue'].(! empty($data['additional_description']) ? "\n\n".$data['additional_description'] : '');
         $repair->status = RepairRequestStatus::OnlineSubmitted;
+        $account = Auth::guard('customer')->user();
+        $repair->customer_account_id = $account->id;
+        $repair->customer_id = $account->customer_id;
 
         try {
             // The unique submission digest also prevents concurrent double submits.
-            $repair->save();
+            DB::transaction(function () use ($repair): void {
+                $repair->save();
+                app(CustomerNotifications::class)->record($repair->customer_account_id, 'repair_registered', $repair->tracking_reference);
+            });
         } catch (UniqueConstraintViolationException) {
             return $this->duplicateResponse($request);
         }

@@ -8,6 +8,7 @@ use App\Enums\RepairStage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RepairOperationRequest;
 use App\Models\AdminAccount;
+use App\Models\FinancialDocument;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\User;
@@ -124,8 +125,10 @@ class RepairCaseController extends Controller
             AdminHistory::record(AdminAction::RepairCustomerViewed, 'repair_case', $repairCase->id);
         }
         $repairCase->load(['receiver:id,name', 'technician:id,name']);
+        $document = $customer && Gate::allows('finance.view') ? FinancialDocument::query()->where('repair_case_id', $repairCase->id)->first() : null;
+        $financial = ['repairDocument' => $document, 'repairBillable' => $customer && Gate::allows('finance.view') ? $repairCase->billableToman() : null];
 
-        return view('admin.repair-cases.show', ['case' => $repairCase, 'customer' => $customer, 'technicians' => Gate::allows('operate', [$repairCase, 'assign']) ? $this->technicians() : collect(), 'events' => $repairCase->events()->with('actor:id,name')->latest('id')->paginate(20), 'inspections' => $customer ? $repairCase->inspections()->with('actor:id,name')->latest('id')->get() : collect(), 'estimates' => $customer ? $repairCase->estimates()->with(['decision', 'actor:id,name'])->latest('revision')->get() : collect(), 'work' => $customer ? $repairCase->workEntries()->with('actor:id,name')->latest('id')->get() : collect(), 'delivery' => $customer ? $repairCase->delivery : null]);
+        return view('admin.repair-cases.show', $financial + ['case' => $repairCase, 'customer' => $customer, 'technicians' => Gate::allows('operate', [$repairCase, 'assign']) ? $this->technicians() : collect(), 'events' => $repairCase->events()->with('actor:id,name')->latest('id')->paginate(20), 'inspections' => $customer ? $repairCase->inspections()->with('actor:id,name')->latest('id')->get() : collect(), 'estimates' => $customer ? $repairCase->estimates()->with(['decision', 'actor:id,name'])->latest('revision')->get() : collect(), 'work' => $customer ? $repairCase->workEntries()->with('actor:id,name')->latest('id')->get() : collect(), 'delivery' => $customer ? $repairCase->delivery : null]);
     }
 
     public function update(RepairOperationRequest $request, RepairCase $repairCase, RepairOperations $operations): RedirectResponse

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\RepairStage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FinanceRequest;
 use App\Models\Customer;
@@ -116,16 +115,14 @@ class FinanceController extends Controller
         abort_unless(in_array($type, ['order', 'repair'], true), 404);
         FinanceAccess::source($request->user(), $type);
         $class = $type === 'order' ? SalesOrder::class : RepairCase::class;
-        $source = $class::query()->where('public_id', $reference)->firstOrFail($type === 'order' ? ['id', 'public_id', 'version', 'status', 'total'] : ['id', 'public_id', 'version', 'status']);
+        $source = $class::query()->where('public_id', $reference)->firstOrFail($type === 'order' ? ['id', 'public_id', 'version', 'status', 'total', 'customer_account_id'] : ['id', 'public_id', 'version', 'status', 'inbound_shipping_cost']);
         $document = FinancialDocument::query()->where($type === 'order' ? 'sales_order_id' : 'repair_case_id', $source->id)->first();
         $amount = null;
-        if ($source instanceof SalesOrder && $source->status === 'fulfilled') {
+        if ($source instanceof SalesOrder && ($source->status === 'fulfilled' || ($source->status === 'confirmed' && $source->customer_account_id))) {
             $amount = FinanceMoney::minor($source->total);
-        } elseif ($source instanceof RepairCase && in_array($source->status, [RepairStage::Repaired, RepairStage::Ready, RepairStage::Delivered], true)) {
-            $estimate = $source->estimates()->with('decision:id,repair_estimate_id,decision')->latest('revision')->first(['id', 'repair_case_id', 'revision', 'service_cost', 'parts_cost']);
-            if ($estimate?->decisionStatus() === 'approved') {
-                $amount = $estimate->total() * 100;
-            }
+        } elseif ($source instanceof RepairCase) {
+            $billable = $source->billableToman();
+            $amount = $billable === null ? null : $billable * 100;
         }
 
         return $document ? redirect()->route('admin.finance.documents.show', $document) : $this->screen('admin.finance.source', compact('source', 'type', 'amount'));

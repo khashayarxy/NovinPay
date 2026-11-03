@@ -83,3 +83,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-copy-card]');
+    if (!button) return;
+    const status = button.parentElement.querySelector('[data-copy-result]');
+    try {
+        await navigator.clipboard.writeText(button.dataset.copyCard);
+        if (status) status.textContent = 'شمارهٔ کارت کپی شد.';
+    } catch {
+        if (status) status.textContent = 'کپی نشد؛ شماره را انتخاب و کپی کنید.';
+    }
+});

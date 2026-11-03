@@ -6,10 +6,13 @@ use App\Enums\AdminPermission;
 use App\Http\Middleware\PreviewAwareSession;
 use App\Models\User;
 use App\Support\AdminAccess;
+use App\Support\RepairIdentity;
 use App\Support\SiteMaintenanceState;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -31,6 +34,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('customer-otp', fn ($request) => [
+            Limit::perMinute(5)->by('otp-ip:'.hash('sha256', $request->ip())),
+            Limit::perDay(10)->by('otp-phone:'.RepairIdentity::digest('otp-throttle', RepairIdentity::phone($request->input('phone')))),
+        ]);
         Gate::define('access-admin', fn (User $user): bool => AdminAccess::account($user) !== null);
         Gate::define('staff.manage', fn (User $user): bool => AdminAccess::account($user)?->isSuperAdmin() ?? false);
         foreach (AdminPermission::cases() as $permission) {

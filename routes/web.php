@@ -16,22 +16,67 @@ use App\Http\Controllers\Admin\RepairCaseController;
 use App\Http\Controllers\Admin\RepairOverviewController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\ArticleController as PublicArticleController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\ConsultationController;
+use App\Http\Controllers\CustomerAccountController;
+use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\Payments\PaymentController;
+use App\Http\Controllers\Payments\ReceiptController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RepairRequestController;
 use App\Http\Middleware\EnsureAdminSession;
+use App\Http\Middleware\EnsureCustomerSession;
 use App\Http\Middleware\PrivateAdminResponse;
 use App\Http\Middleware\PrivateRepairResponse;
 use App\Http\Middleware\PublicArticleResponse;
+use App\Services\CustomerAccountLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('account.')->group(function (): void {
+    $controller = CustomerAccountController::class;
+    Route::get('login', [$controller, 'login'])->name('login');
+    Route::post('otp', [$controller, 'send'])->middleware('throttle:customer-otp')->name('otp');
+    Route::post('verify', [$controller, 'verify'])->middleware('throttle:20,1')->name('verify');
+    Route::middleware(EnsureCustomerSession::class)->group(function () use ($controller): void {
+        Route::get('/', [$controller, 'index'])->name('index');
+        Route::post('logout', [$controller, 'logout'])->name('logout');
+        Route::post('profile', [$controller, 'profile'])->middleware('throttle:20,1')->name('profile');
+        Route::post('addresses', [$controller, 'address'])->middleware('throttle:10,1')->name('address');
+        Route::post('addresses/{addressId}', [$controller, 'address'])->middleware('throttle:10,1')->name('address.update');
+        Route::post('addresses/{addressId}/remove', [$controller, 'removeAddress'])->middleware('throttle:10,1')->name('address.remove');
+    });
+});
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+Route::middleware(PrivateRepairResponse::class)->group(function (): void {
+    $payment = PaymentController::class;
+    Route::get('/pay/{page}.html', [$payment, 'page'])->whereIn('page', ['index', 'canceled', 'error', 'failed', 'paid', 'processing', 'success'])->name('payments.page');
+    Route::get('/bot/payment_verify.php', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.callback');
+    Route::get('/bot/check_payment_status.php', [$payment, 'status'])->middleware('throttle:60,1')->name('payments.status');
+    Route::get('/bot/receipt_info.php', [$payment, 'receipt'])->middleware('throttle:30,1')->name('payments.receipt');
+    Route::post('/account/documents/{document}/zibal', [$payment, 'start'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('payments.start');
+    $receipt = ReceiptController::class;
+    Route::get('/account/documents/{document}', [$receipt, 'show'])->middleware(EnsureCustomerSession::class)->name('payments.document');
+    Route::post('/account/documents/{document}/receipts', [$receipt, 'store'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('payments.upload');
+    Route::get('/payment-receipts/{receipt}', [$receipt, 'image'])->middleware('throttle:60,1')->name('payments.image');
+    Route::get('/account/documents/{document}/delivery', [DeliveryController::class, 'show'])->middleware(EnsureCustomerSession::class)->name('delivery.show');
+    Route::post('/account/documents/{document}/delivery', [DeliveryController::class, 'request'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('delivery.request');
+});
 
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+
+Route::middleware(PrivateRepairResponse::class)->group(function (): void {
+    $cart = CartController::class;
+    Route::get('/cart', [$cart, 'index'])->name('cart.index');
+    Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1')->name('cart.add');
+    Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1')->name('cart.remove');
+    Route::post('/cart/checkout', [$cart, 'checkout'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('cart.checkout');
+});
 
 Route::middleware(PublicArticleResponse::class)->prefix('articles')->name('articles.')->group(function (): void {
     Route::get('/', [PublicArticleController::class, 'index'])->name('index');
@@ -41,7 +86,7 @@ Route::middleware(PublicArticleResponse::class)->prefix('articles')->name('artic
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/repair', [RepairRequestController::class, 'create'])->name('repair');
-    Route::post('/repair', [RepairRequestController::class, 'store'])->middleware('throttle:repair-submit')->name('repair.store');
+    Route::post('/repair', [RepairRequestController::class, 'store'])->middleware([EnsureCustomerSession::class, 'throttle:repair-submit'])->name('repair.store');
     Route::get('/repair/confirmation', [RepairRequestController::class, 'confirmation'])->name('repair.confirmation');
     Route::get('/repair/track', [RepairRequestController::class, 'tracking'])->name('repair.track');
     Route::post('/repair/track', [RepairRequestController::class, 'track'])->middleware('throttle:repair-track')->name('repair.track.store');
@@ -55,16 +100,30 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
 Route::get('/terms', [PageController::class, 'terms'])->name('terms');
 Route::get('/privacy', [PageController::class, 'privacy'])->name('privacy');
 
-Route::middleware(['guest', PrivateAdminResponse::class])->group(function (): void {
+Route::middleware(['guest:web', PrivateAdminResponse::class])->group(function (): void {
     Route::get('/admin/login', [LoginController::class, 'create'])->name('admin.login');
     Route::post('/admin/login', [LoginController::class, 'store'])->name('admin.login.store');
 });
 
-Route::middleware([PrivateAdminResponse::class, 'auth'])->prefix('admin')->name('admin.')->group(function (): void {
+Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->name('admin.')->group(function (): void {
     // Keep logout available even if administrator authorization is revoked.
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::middleware([EnsureAdminSession::class, 'can:access-admin'])->group(function (): void {
+        Route::get('deliveries', [DeliveryController::class, 'admin'])->middleware(['can:finance.view', 'can:finance.details'])->name('deliveries.index');
+        Route::post('deliveries/{plan}/confirm', [DeliveryController::class, 'confirm'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:15,1'])->name('deliveries.confirm');
+        Route::post('deliveries/{plan}/dispatch', [DeliveryController::class, 'dispatch'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('deliveries.dispatch');
+        Route::get('payments', [App\Http\Controllers\Admin\PaymentController::class, 'index'])->middleware('can:finance.view')->name('payments.index');
+        Route::get('payments/receipts/{receipt}/image', [ReceiptController::class, 'image'])->middleware(['can:finance.receive', 'can:finance.details'])->name('payments.image');
+        Route::post('payments/{receipt}/review', [App\Http\Controllers\Admin\PaymentController::class, 'review'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('payments.review');
+        Route::post('payments/receive', [App\Http\Controllers\Admin\PaymentController::class, 'store'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('payments.store');
+        Route::post('payments/refund', [App\Http\Controllers\Admin\PaymentController::class, 'refund'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:15,1'])->name('payments.refund');
+        Route::post('customer-accounts/link', function (Request $request, CustomerAccountLink $service) {
+            $data = $request->validate(['account' => ['required', 'uuid'], 'customer' => ['required', 'uuid'], 'password' => ['required', 'string', 'max:255'], 'identity_confirmed' => ['accepted']]);
+            $service->link($request->user(), $data['account'], $data['customer'], $data['password']);
+
+            return back()->with('success', 'اتصال حساب تأیید شد؛ مشتری دوباره وارد شود.');
+        })->middleware(['can:customers.link', 'can:customers.contact', 'can:customers.view', 'throttle:10,1'])->name('customer-accounts.link');
         Route::middleware('can:maintenance.view')->prefix('maintenance')->name('maintenance.')->group(function (): void {
             Route::get('/', [MaintenanceController::class, 'index'])->name('index');
             Route::get('preview', [MaintenanceController::class, 'preview'])->name('preview');
@@ -176,7 +235,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth'])->prefix('admin')->name(
             Route::get('repairs/intake', [RepairCaseController::class, 'create'])->name('repair-cases.create');
             Route::post('repairs/intake', [RepairCaseController::class, 'store'])->defaults('operation', 'intake')->middleware('throttle:20,1')->name('repair-cases.store');
             Route::get('repairs/{repairCase}', [RepairCaseController::class, 'show'])->name('repair-cases.show');
-            foreach (['assign', 'transition', 'inspect', 'estimate', 'decision', 'work', 'delivery'] as $operation) {
+            foreach (['assign', 'transition', 'inspect', 'estimate', 'diagnose', 'decision', 'contact', 'work', 'delivery'] as $operation) {
                 Route::post('repairs/{repairCase}/'.$operation, [RepairCaseController::class, 'update'])->defaults('operation', $operation)->middleware('throttle:30,1')->name('repair-cases.'.$operation);
             }
             Route::get('repairs/{repairCase}/documents/{document}', [RepairCaseController::class, 'document'])->name('repair-cases.document');

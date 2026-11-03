@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خطا | نوین‌پی</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preload" href="assets/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="assets/pay.css?v=5">
+</head>
+<body class="t-rose">
+    <div class="container">
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v7"/><path d="M12 17.2v.1"/></svg>
+            </div>
+        </div>
+        <h2>خطای سیستمی</h2>
+        <p class="lead"><span class="ln">متأسفانه در اجرای درخواست شما مشکلی پیش آمد.</span><span class="ln">پوزش می‌خواهیم و حتماً پیگیری خواهد شد.</span></p>
+        <p class="reason" id="errorMessage"></p>
+        <div class="rows" id="rows"></div>
+        <p class="hint" id="hint" hidden>هنگام تماس با پشتیبانی، شناسه‌ی خطا را اعلام کنید.</p>
+        <div class="info-box go" id="retryBox">
+            <p><span class="ph">از بخش سفارش‌های حساب کاربری،</span> <span class="ph">می‌تونید مجدد برای پرداخت اقدام کنید.</span></p>
+        </div>
+        <div class="info-box warn" id="supportBox" hidden>
+            <p><strong>پرداخت مجدد نکنید.</strong></p>
+            <p>اگر مبلغی از حساب شما کسر شده، شناسه‌ی خطا را به پشتیبانی اعلام کنید تا پیگیری شود.</p>
+        </div>
+    </div>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const RETRY_SAFE_CODES = ['order_required', 'order_invalid', 'too_many_attempts', 'invoice_unavailable', 'amount_out_of_range', 'gateway_unavailable', 'start_error'];
+        const KNOWN_CODES = RETRY_SAFE_CODES.concat(['missing_params', 'order_mismatch', 'amount_mismatch', 'order_unbound', 'bad_invoice', 'unknown']);
+        // کد ماشینی (از سرور) ← متن نمایشی
+        const MESSAGES = {
+            order_required:      'شناسه سفارش الزامی است',
+            order_invalid:       'شناسه سفارش نامعتبر است',
+            amount_out_of_range: 'مبلغ سفارش خارج از محدوده مجاز است',
+            too_many_attempts:   'تعداد تلاش‌های پرداخت بیش از حد مجاز است. چند دقیقه بعد دوباره تلاش کنید.',
+            gateway_unavailable: 'خطا در ایجاد پرداخت. لطفاً دوباره تلاش کنید.',
+            invoice_unavailable: 'خطا در دریافت اطلاعات سفارش. لطفاً چند لحظه دیگر دوباره تلاش کنید.',
+            missing_params:      'اطلاعات پرداخت یافت نشد',
+            order_unbound:       'اطلاعات پرداخت قابل تطبیق با سفارش نیست. با پشتیبانی تماس بگیرید.',
+            order_mismatch:      'اطلاعات پرداخت با سفارش مطابقت ندارد. با پشتیبانی تماس بگیرید.',
+            bad_invoice:         'اطلاعات سفارش نامعتبر است. با پشتیبانی تماس بگیرید.',
+            amount_mismatch:     'مبلغ پرداختی مطابقت ندارد. با پشتیبانی تماس بگیرید.'
+        };
+        function addRow(label, value, plain) {
+            const row = document.createElement('div');
+            row.className = plain ? 'row plain' : 'row';
+            const l = document.createElement('span');
+            l.textContent = label;
+            const b = document.createElement('b');
+            b.textContent = value;
+            row.append(l, b);
+            document.getElementById('rows').appendChild(row);
+        }
+
+        const code = params.get('code') || '';
+        if (Object.prototype.hasOwnProperty.call(MESSAGES, code)) document.getElementById('errorMessage').textContent = MESSAGES[code];
+
+        const inc = params.get('inc') || '';
+        if (/^E[0-9]{6}-[A-F0-9]{6}$/.test(inc)) {
+            addRow('شناسه‌ی خطا', inc);
+            document.getElementById('hint').hidden = false;
+        }
+        if (KNOWN_CODES.indexOf(code) !== -1) addRow('کد خطا', code);
+        const order = params.get('order_id') || '';
+        if (/^[a-zA-Z0-9_-]{1,64}$/.test(order)) addRow('شماره سفارش', order);
+        const ref = params.get('ref_id') || '';
+        if (/^[0-9]{8,14}$/.test(ref)) addRow('کد پیگیری', ref);
+        try {
+            const parts = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+                timeZone: 'Asia/Tehran', year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', hour12: false
+            }).formatToParts(new Date());
+            const get = function (t) { return (parts.find(function (p) { return p.type === t; }) || {}).value || ''; };
+            addRow('تاریخ', get('year') + '/' + get('month') + '/' + get('day'), true);
+            addRow('ساعت', get('hour') + ':' + get('minute'), true);
+        } catch (e) {}
+
+        if (RETRY_SAFE_CODES.indexOf(code) === -1) {
+            document.getElementById('retryBox').hidden = true;
+            document.getElementById('supportBox').hidden = false;
+        }
+    </script>
+</body>
+</html>

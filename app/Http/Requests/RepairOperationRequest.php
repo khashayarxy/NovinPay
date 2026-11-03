@@ -39,7 +39,7 @@ class RepairOperationRequest extends FormRequest
         if ($this->operation() === 'intake') {
             $this->merge(['contact_phone' => RepairIdentity::phone($this->input('contact_phone'))]);
         }
-        foreach (['service_cost', 'parts_cost'] as $field) {
+        foreach (['service_cost', 'parts_cost', 'diagnosis_fee', 'inbound_shipping_cost'] as $field) {
             if (is_string($this->input($field))) {
                 $this->merge([$field => FaNumber::normalizeDigits(trim($this->input($field)))]);
             }
@@ -51,12 +51,14 @@ class RepairOperationRequest extends FormRequest
         $text = ['required', 'string', 'min:2', 'max:2000'];
         $money = ['required', 'integer', 'min:0', 'max:1000000000'];
         $rules = match ($this->operation()) {
-            'intake' => ['submission_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'], 'repair_request_id' => ['nullable', 'integer', 'exists:repair_requests,id'], 'customer_name' => ['required', 'string', 'min:2', 'max:100'], 'contact_phone' => ['required', 'string', 'regex:/\A09[0-9]{9}\z/'], 'device_brand' => ['required', Rule::enum(RepairBrand::class)], 'device_model' => ['required', 'string', 'max:100'], 'device_serial' => ['nullable', 'string', 'max:120'], 'issue' => $text, 'physical_condition' => $text, 'accessories' => $text, 'received_at' => ['required', 'date_format:Y-m-d\TH:i'], 'physical_receipt_confirmed' => ['accepted']],
+            'intake' => ['submission_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'], 'repair_request_id' => ['nullable', 'integer', 'exists:repair_requests,id'], 'customer_name' => ['required', 'string', 'min:2', 'max:100'], 'contact_phone' => ['required', 'string', 'regex:/\A09[0-9]{9}\z/'], 'device_brand' => ['required', Rule::enum(RepairBrand::class)], 'device_model' => ['required', 'string', 'max:100'], 'device_serial' => ['nullable', 'string', 'max:120'], 'issue' => $text, 'physical_condition' => $text, 'accessories' => $text, 'received_at' => ['required', 'date_format:Y-m-d\TH:i'], 'physical_receipt_confirmed' => ['accepted'], 'inbound_method' => ['sometimes', Rule::in(['in_person', 'post', 'tipax', 'courier', 'other'])], 'inbound_shipping_cost' => ['sometimes', 'integer', 'min:0', 'max:1000000000']],
             'search' => ['q' => ['nullable', 'string', 'max:120'], 'status' => ['nullable', Rule::enum(RepairStage::class)], 'brand' => ['nullable', Rule::enum(RepairBrand::class)], 'technician' => ['nullable', 'integer', 'exists:users,id'], 'from' => ['nullable', 'date_format:Y-m-d'], 'to' => ['nullable', 'date_format:Y-m-d', Rule::when($this->filled('from'), ['after_or_equal:from'])]],
             'assign' => ['technician_id' => ['required', 'integer', 'exists:users,id']],
             'transition' => ['status' => ['required', Rule::enum(RepairStage::class)]],
             'inspect' => ['findings' => $text, 'diagnosis' => $text, 'proposed_actions' => $text, 'internal_notes' => ['nullable', 'string', 'max:2000'], 'complete' => ['required', 'boolean']],
-            'estimate' => ['customer_summary' => $text, 'service_cost' => $money, 'parts_cost' => $money],
+            'estimate' => ['customer_summary' => $text, 'service_cost' => $money, 'parts_cost' => $money, 'diagnosis_fee' => ['sometimes', 'integer', 'min:0', 'max:1000000000']],
+            'diagnose' => ['diagnosis' => $text, 'customer_summary' => $text, 'service_cost' => $money, 'parts_cost' => $money, 'diagnosis_fee' => $money],
+            'contact' => ['estimate_id' => ['required', 'integer', 'min:1'], 'note' => ['required', 'string', 'min:5', 'max:1000']],
             'decision' => ['estimate_id' => ['required', 'integer', 'min:1'], 'decision' => ['required', Rule::in(['approved', 'rejected'])], 'channel' => ['required', Rule::in(['phone', 'in_person', 'message', 'document'])], 'evidence' => ['required', 'string', 'min:5', 'max:1000'], 'staff_recorded_confirmation' => ['accepted']],
             'work' => ['work_performed' => $text, 'parts_replaced' => $text, 'internal_notes' => ['nullable', 'string', 'max:2000'], 'complete' => ['required', 'boolean'], 'completion_checks' => ['required_if:complete,1', 'nullable', 'string', 'min:5', 'max:2000'], 'final_result' => ['required_if:complete,1', 'nullable', 'string', 'min:5', 'max:2000']],
             'delivery' => ['recipient_name' => ['required', 'string', 'min:2', 'max:100'], 'outcome_notes' => $text, 'delivered_at' => ['required', 'date_format:Y-m-d\TH:i'], 'confirmation_method' => ['nullable', Rule::in(['staff_observation', 'message', 'document'])], 'confirmation_reference' => ['required_with:confirmation_method', 'nullable', 'string', 'min:5', 'max:1000'], 'handover_confirmed' => ['accepted'], 'amounts_confirmed' => ['sometimes', 'accepted']],
