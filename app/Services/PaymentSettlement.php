@@ -38,7 +38,11 @@ class PaymentSettlement
         if ($allocation > 0) {
             $op = DB::table('financial_operations')->insertGetId(['operation_key' => $operation, 'actor_id' => $actor, 'action' => $actor === null ? 'gateway.receipt' : 'payment.receipt', 'payload_digest' => hash_hmac('sha256', json_encode([$document->id, $amount, $method, $digest], JSON_THROW_ON_ERROR), config('app.key')), 'created_at' => now()]);
             $entry = new FinancialEntry;
-            foreach (['public_id' => (string) Str::uuid(), 'financial_operation_id' => $op, 'financial_document_id' => $document->id, 'payment_transaction_id' => $transaction->id, 'actor_id' => $actor, 'kind' => 'receipt', 'category' => $document->sales_order_id ? 'sales' : 'repair', 'charge_delta' => 0, 'receipt_delta' => $allocation, 'expense_delta' => 0, 'method' => $method, 'reference' => $reference, 'reference_digest' => $digest, 'note' => $actor === null ? 'تأیید و ثبت خودکار درگاه' : 'دریافت وجه تأییدشده توسط همکار', 'created_at' => now()] as $key => $value) {
+            // Preserve the legacy ledger's 12-character method column and its
+            // established transfer classification. The linked transaction retains
+            // the precise card_transfer origin and reviewed receipt evidence.
+            $ledgerMethod = $method === 'card_transfer' ? 'transfer' : $method;
+            foreach (['public_id' => (string) Str::uuid(), 'financial_operation_id' => $op, 'financial_document_id' => $document->id, 'payment_transaction_id' => $transaction->id, 'actor_id' => $actor, 'kind' => 'receipt', 'category' => $document->sales_order_id ? 'sales' : 'repair', 'charge_delta' => 0, 'receipt_delta' => $allocation, 'expense_delta' => 0, 'method' => $ledgerMethod, 'reference' => $reference, 'reference_digest' => $digest, 'note' => $actor === null ? 'تأیید و ثبت خودکار درگاه' : 'دریافت وجه تأییدشده توسط همکار', 'created_at' => now()] as $key => $value) {
                 $entry->$key = $value;
             }
             $entry->save();

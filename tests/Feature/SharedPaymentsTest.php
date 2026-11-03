@@ -219,6 +219,8 @@ class SharedPaymentsTest extends TestCase
         app(PaymentReview::class)->review($this->owner, 'password', $receipt->public_id, true, 'Confirmed actual funds', 500000, 'SYNTHETIC-REF');
         $this->assertSame(500000, $this->document->fresh()->paid_minor);
         $this->assertSame('approved', $receipt->fresh()->state);
+        $this->assertSame('transfer', FinancialEntry::query()->where('kind', 'receipt')->value('method'));
+        $this->assertSame('card_transfer', DB::table('payment_transactions')->value('method'));
         $this->expectException(HttpException::class);
         app(PaymentReview::class)->review($this->owner, 'password', $receipt->public_id, true, 'Duplicate review', 500000, 'SYNTHETIC-REF');
     }
