@@ -18,6 +18,7 @@
 | Maintenance design, state, recovery and rollback | [standalone page](docs/maintenance-page.md), [admin maintenance](docs/admin-maintenance.md) |
 | Local environment and testing | [local troubleshooting](docs/LOCAL-DEVELOPMENT-TROUBLESHOOTING.md), [test runner](scripts/test.ps1), `phpunit.xml` |
 | CI and integration | [CI guidance](docs/CI.md), [actual workflow](.github/workflows/ci.yml) — use the workflow for current jobs/commands |
+| Deployment failure prevention | [Deployment lessons](docs/DEPLOYMENT-LESSONS-LEARNED.md) — review before every package; update confirmed fixes and regression coverage. |
 | Hosting and release gates | [MariaDB compatibility](docs/MARIADB-COMPATIBILITY.md), [readiness evidence](docs/PRODUCTION-READINESS.md), [deployment guide](docs/DEPLOYMENT.md), and the latest separately approved release/rollback procedure |
 
 Trace behavior through `routes/`, `app/Http`, `app/Services`, `app/Policies`, `app/Support`, models, migrations and matching tests. Preserve established service transactions, native Gates/policies and Blade components. Public content is Persian RTL; approved branding/contact data comes from existing assets and `config/business.php`.
