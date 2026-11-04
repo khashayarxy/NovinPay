@@ -23,7 +23,7 @@ The client now performs one bounded fresh-window resync for explicit cursor rese
 - Repository/remote: `https://github.com/khashayarxy/NovinPay.git`.
 - Workspace: `C:\Users\Khashayar\Documents\NovinPay`.
 - Branch: `codex/novinpay-customer-repair-workflow`.
-- Original handoff implementation baseline: **`689bfdb266b067085ba800b2c9a263f55d3c3bd9`**. Latest pushed implementation: **`030d48edb2424d963e42948642726ee64a6aec18`**; later documentation commits may follow.
+- Original handoff implementation baseline: **`689bfdb266b067085ba800b2c9a263f55d3c3bd9`**. Latest pushed implementation: **`bec24334c458cf10678af82f7671889e7dfd6708`** (fresh-send optimization), following **`030d48edb2424d963e42948642726ee64a6aec18`** (epoch/resync fix); later documentation commits may follow.
 - [PR #13](https://github.com/khashayarxy/NovinPay/pull/13): OPEN, **Draft**, targeting `main`, latest implementation head verified; recheck later documentation HEAD. **Do not merge without explicit approval.**
 - Obtain the final Git/remote HEAD with `git log -1` and `git ls-remote`; implementation SHA and subsequent documentation HEAD can differ.
 - [CI run 41819313200](https://github.com/khashayarxy/NovinPay/actions/runs/41819313200): all four jobs passed on `689bfdb`: Frontend 13s; SQLite 1m7s; MySQL 8 3m46s; MariaDB 10.6.28 2m23s. This predates the intentionally failing regression now committed; later exact-head CI must be reported separately.
@@ -44,6 +44,7 @@ Relevant history (inspect commits when needed, not the entire repository again):
 | `8b0801e` | Exact originally failing epoch regression, deliberately preserved |
 | `f2f118c` | Historical release-tool source and tests, private fingerprint moved to manifest |
 | `030d48edb2424d963e42948642726ee64a6aec18` | Real epoch initialization fix, bounded cursor resync, passive timing and rapid-send tests |
+| `bec24334c458cf10678af82f7671889e7dfd6708` | Fresh-send critical path reduced from two serial requests to one; retry/ownership protections retained |
 
 ### Final preserved local differences
 
@@ -95,7 +96,7 @@ Provider activation boundaries:
 | Baseline source | `a5f76363dd3ad6db056d1d539ab83b94fd796dff`, 200 files verified, followed by scoped hotfixes; not evidence of a full Git fast-forward to latest HEAD |
 | Finalization | Owner reported successful finalization and live staging; latest owner reports widget opens and sends messages |
 | Disclosure verification | Owner-reported `CHAT_DISCLOSURE_HTTP_VERIFICATION_PASS`: 11 tested endpoints safe; private paths 403/404, anonymous operator API 401, Basic enforced |
-| Latest patch | `030d48e` controller, bridge, network and engine uploaded by authenticated cPanel API; exact prior `689bfdb` bytes checked and new bytes read back. Earlier team/theme/service patch retained. No migration, installer or initialization command replayed |
+| Latest patch | `030d48e` controller/bridge/network installed, then `bec2433` engine installed using its exact previous SHA-256. Both scoped updates read back and hashed; earlier team/theme/service patch retained. No migration, installer or initialization command replayed |
 | Extra source files | Original `operator/icons/operator-mark.svg` and `support/openssl.cnf` uploaded/readback verified; branded PNGs preserved |
 | Current data inspection | Read-only cPanel inspection during this task: schema-3 chat JSON, valid epoch, one conversation, four messages, no duplicate message IDs. Contents were not printed. This is not a complete delivery audit |
 | Browser acceptance | Agent Chrome fails `ERR_INVALID_AUTH_CREDENTIALS`; owner's Chrome works. Owner will perform final authenticated acceptance. Do not alter Basic or extract/inject cookies to work around this |
@@ -205,3 +206,5 @@ Do not claim completion, 100% parity, performance improvement, delivery, deploym
 Latest focused fix validation: 18 chat tests / 188 assertions; 8 frontend sync/theme tests; historical release tooling 42 tests / 101 assertions; PHP lint, PowerShell AST and scoped Pint passed. Hosted latency, initialization reliability and two-way acceptance remain pending. Existing finance files are the only intended residual working-tree noise and must not be committed merely to clear Git status.
 
 A later focused optimization removes only the redundant identity GET for fresh submissions enqueued in the current tab with matching role/scope/epoch and zero prior attempts. Server authorization/CSRF/ownership checks remain unchanged. Restored drafts and every retry still refresh identity and reconcile receipts. Executed frontend tests establish two serial critical-path requests before versus one after for a fresh send, for both roles; this is request-count evidence, not hosted millisecond improvement. Added POST tests reject old credentials after customer logout/operator revocation. Hosted initialization and two-way delivery still need acceptance; see the deployment lessons for exact measurement boundaries.
+
+Latest private deployment receipt: `/home/novinpay/novinpay-staging-38b9117-kit/chat-send-20261104-v1-receipt.json`, bound to `bec24334c458cf10678af82f7671889e7dfd6708`, reports `STAGING_FRESH_SEND_PATCH_READBACK_PASS_HOSTED_ACCEPTANCE_PENDING`. Engine SHA-256 is `83459a2b0c0fb35d85f9bc23468d61fe0b7db7cd828ffb75fd808a854940b677`; previous engine preserved privately. No data/configuration/production operation occurred. Latest focused checks: 11 frontend tests passed; direct POST logout and revocation tests passed (6 and 4 assertions respectively); Pint/build passed. Prior full scoped chat run was 18 tests / 188 assertions before the two additional denial assertions. Do not infer that the latest full CI has passed without checking its exact head.
