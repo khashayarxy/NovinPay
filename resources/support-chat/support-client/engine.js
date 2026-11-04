@@ -5,7 +5,7 @@ export class ChatEngine {
     constructor(role,hooks={},dependencies={}) {
         this.role=role;this.hooks=hooks;this.transport=new Transport(role,dependencies);this.box=new Outbox(dependencies);
         this.ackSamples=[];this.context=null;this.scope=null;this.initialized=false;this.paused=false;this.frozen=false;this.sending=false;this.timer=null;
-        this.knownAcks=new Map();this.lastPresence=0;this.queueBusy=false;
+        this.knownAcks=new Map();this.freshSubmissions=new Set();this.lastPresence=0;this.queueBusy=false;
         this.sendCooldowns=new Map();
         this.sync=new ConversationSync(this.transport,(...args)=>this.hooks.messages?.(...args));
         this.poller=new Poller(async()=>{
@@ -114,6 +114,7 @@ export class ChatEngine {
         this.assertSendAllowed();
         if(this.hooks.canSend?.(this.sync.id)===false)throw new Error('این گفتگو پایان یافته است؛ پیش‌نویس حفظ شد.');
         const row=await this.box.enqueue(this.context,this.sync.id,text,{attachments,replyTo,faqArticle,teamThrough:this.role==='operator'?(teamThrough??Math.max(0,...this.sync.values().filter(m=>m.type==='user'&&Number.isSafeInteger(m.id)).map(m=>m.id))):null,sourcePath:this.role==='customer'?(Object.hasOwn(globalThis,'SupportSourcePath')?globalThis.SupportSourcePath:location.pathname):null});
+        this.freshSubmissions.add(row.key);
         if(this.box.temporaryUnavailable&&!this.box.persistent)this.hooks.warning?.('بازیابی صف موقت در این مرورگر در دسترس نیست؛ پیش از تازه‌سازی منتظر تأیید پیام بمانید.','storage');this.hooks.queued?.(row);await this.renderQueue();this.scheduleSender(0);return row;
     }
     async renderQueue() {
@@ -130,6 +131,7 @@ export class ChatEngine {
     }
     pendingGrace(){const configured=globalThis.SupportWidgetConfig?.pending_indicator_grace_ms;if(Number.isFinite(configured))return Math.max(0,Math.min(2000,configured));const samples=[...this.ackSamples].sort((a,b)=>a-b);const base=samples.length?samples[Math.ceil(samples.length*.75)-1]:Math.max(globalThis.navigator?.connection?.rtt||0,(this.startupRtt||100)*2);return Math.min(1200,Math.max(150,base*1.5));}
     async accept(row,ack) {
+        this.freshSubmissions.delete(row.key);
         const metrics=globalThis.SupportDeliveryMetrics||{};metrics.accepted=[...(metrics.accepted||[]),{elapsed_ms:Math.max(0,Date.now()-row.created),attempts:row.attempts}].slice(-20);globalThis.SupportDeliveryMetrics=metrics;
         if(row.attempts===1&&Date.now()-row.created<10000){this.ackSamples.push(Date.now()-row.created);this.ackSamples=this.ackSamples.slice(-20);globalThis.SupportDeliveryMetrics={...globalThis.SupportDeliveryMetrics,ack_ms:[...this.ackSamples],grace_ms:this.pendingGrace()};}
         const submitted={...row,attachments:[...(row.attachments||[])]};
@@ -157,8 +159,10 @@ export class ChatEngine {
                 const reason=blockedReason(row,this.box.now());
                 if(reason && row.state!=='needs_action' && row.state!=='cancelled'){await this.box.update(row.key,r=>({...r,state:'needs_action',error:reason}));continue;}
                 if(['needs_action','cancelled'].includes(row.state)||row.nextAttempt>this.box.now()||row.leaseUntil>this.box.now())continue;
-                // Recheck the authenticated identity before replay, never a localStorage ID.
-                await this.auth();
+                // A new submission created in this tab already has a bootstrapped
+                // context. Its POST still enforces server identity, CSRF and ownership.
+                // Restored rows and every retry retain the explicit identity refresh.
+                if(row.attempts!==0||row.role!==this.role||!this.freshSubmissions.has(row.key)||row.scope!==this.context.scope_id||row.epoch!==this.context.session_epoch)await this.auth();
                 if(this.paused||this.frozen)return;
                 if(row.epoch!==this.context.session_epoch){await this.box.update(row.key,r=>({...r,state:'needs_action',error:'ورود دوباره انجام شده؛ ادامهٔ این پیام نیازمند تأیید شماست.'}));continue;}
                 const reserved=await this.box.reserve(row.key,this.context);
@@ -169,6 +173,7 @@ export class ChatEngine {
                     const ack=reserved.attempts>1?await this.transport.receipt(reserved):null;
                     await this.accept(reserved,ack||await this.transport.send(reserved));progressed=true;
                 }catch(error){
+                    this.freshSubmissions.delete(row.key);
                     this.handleError(error,reserved.conversation);
                     // Keep rejected/unknown text and its UUID; the bounded outbox
                     // retry and message-specific cooldown decide when it may resume.
@@ -180,6 +185,7 @@ export class ChatEngine {
         finally{this.sending=false;await this.renderQueue().catch(e=>this.hooks.warning?.(e.message));this.scheduleSender(document.hidden?45000:progressed?0:2000);}
     }
     async retry(row) {
+        this.freshSubmissions.delete(row.key);
         if(this.frozen)throw new Error('هویت قبلی بسته شده است.');
         await this.auth();
         if(row.scope!==this.context.scope_id)throw new Error('صف به هویت دیگری تعلق دارد.');
@@ -191,11 +197,11 @@ export class ChatEngine {
     }
     async cancel(row) {
         if(!confirm(row.attempts?'فقط تلاش‌های بعدی متوقف می‌شود؛ درخواست قبلی ممکن است ثبت شده باشد. ادامه؟':'پیام هنوز ارسال نشده است. متن محلی این پیام حذف شود؟'))return;
-        await this.box.cancel(row.key);await this.renderQueue();
+        await this.box.cancel(row.key);this.freshSubmissions.delete(row.key);await this.renderQueue();
     }
     async deleteLocal(row) {
         if(!confirm('متن این پیام فقط از صف همین دستگاه حذف شود؟ این کار پیام ثبت‌شده در سرور را حذف نمی‌کند.'))return;
-        await this.box.update(row.key,()=>null);await this.renderQueue();
+        await this.box.update(row.key,()=>null);this.freshSubmissions.delete(row.key);await this.renderQueue();
     }
     async clearStranded() {
         const rows=(await this.box.all()).filter(r=>r.role===this.role&&r.scope!==this.scope&&r.state!=='accepted');
@@ -204,7 +210,7 @@ export class ChatEngine {
         const scopes=new Set(rows.map(r=>r.scope));for(const scope of scopes){if(!/^[a-f0-9]{64}$/.test(scope))throw new Error('صف قدیمی خراب است؛ پاک‌سازی خودکار انجام نشد.');await this.box.deleteScope(scope);}
         this.hooks.stranded?.(0);
     }
-    freeze(){closeImagePreviews();this.frozen=true;this.paused=true;clearTimeout(this.timer);this.poller.stop();this.sync.select(null);}
+    freeze(){closeImagePreviews();this.freshSubmissions.clear();this.frozen=true;this.paused=true;clearTimeout(this.timer);this.poller.stop();this.sync.select(null);}
     async logout() {
         this.paused=true;clearTimeout(this.timer);this.poller.stop();
         const rows=(await this.box.list(this.scope)).filter(r=>r.state!=='accepted');

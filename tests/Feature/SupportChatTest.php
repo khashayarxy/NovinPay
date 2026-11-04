@@ -232,6 +232,7 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/api.php?get_session=1')->assertOk();
         $this->assertDatabaseHas('chat_customer_owners', ['customer_account_id' => $account->id]);
         auth('customer')->logout();
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'csrf_token' => $token, 'protocol_version' => '2', 'user_id' => $id, 'message' => 'synthetic rejected message', 'client_message_id' => (string) Str::uuid()])->assertUnauthorized();
         $this->get('https://localhost/support-chat/api.php?get_session=1')->assertUnauthorized();
     }
 
@@ -239,10 +240,11 @@ class SupportChatTest extends TestCase
     {
         $user = User::query()->sole();
         $this->actingAs($user)->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
-        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk();
+        $token = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->json('token');
         $_COOKIE[session_name()] = session_id();
         $this->withCookie(session_name(), session_id());
         AdminAccount::query()->where('user_id', $user->id)->update(['session_version' => 2]);
+        $this->post('https://localhost/support-chat/api.php', ['action' => 'send_reply', 'csrf_token' => $token, 'protocol_version' => '2', 'user_id' => 'invalid', 'reply' => 'synthetic rejected reply', 'client_message_id' => (string) Str::uuid()])->assertForbidden();
         $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertForbidden();
         $this->get('https://localhost/support-chat/operator/')->assertForbidden();
     }
