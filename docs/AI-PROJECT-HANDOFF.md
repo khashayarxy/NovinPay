@@ -46,14 +46,14 @@ Relevant history (inspect commits when needed, not the entire repository again):
 
 Ten pre-existing finance views show modified status, but `git diff --numstat` currently has no content changes (line-ending normalization). Preserve them: `resources/views/admin/finance/{customer,document,documents,filters,form,index,reports,source,summary,transactions}.blade.php`.
 
-Untracked pre-existing work, not qualified or published by this handoff:
+Release tooling was subsequently reviewed and preserved in Git as historical release-specific source (see `RELEASE-PIPELINE.md`), not qualified for current deployment:
 
 - `docs/RELEASE-PIPELINE.md`.
 - `scripts/release/`: `activation.php`, `backup-io.php`, `backup.php`, `bridge.ps1`, `health.php`, `lib.php`, `pipeline.php`, `production-environment.php`, `release.php`, `runtime.php`, `standalone.php`, `transfer.ps1`, `verify-offhost.ps1`.
 - `tests/Unit/ReleasePipelineTest.php`.
 - `SupportChatTest.php` now includes the committed failing regression described above; it is no longer an uncommitted exception.
 
-Do not reset/clean, discard, blindly stage all files, or publish unreviewed release tooling. Untracked local files are not available to a new clone/account by default.
+Do not reset/clean, discard, blindly stage all files, or execute historical release tooling. The scripts and fixture tests are preserved for a fresh clone, but private manifests/approvals/credentials/server-only dependencies are deliberately excluded. Local release tests passed 42 tests / 101 assertions; PHP lint and PowerShell AST parsing passed. A private credential fingerprint was moved from source to a mandatory private-manifest pin, with fail-closed regression tests. This is not host-execution evidence.
 
 ## 3. Architecture and navigation
 
