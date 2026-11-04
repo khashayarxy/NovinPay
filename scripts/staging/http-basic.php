@@ -52,7 +52,7 @@ function np_basic_load(string $kit, array $manifest): array
     } catch (JsonException) {
         throw new RuntimeException('basic_credential_json');
     }
-    np_basic_need(is_array($auth),'basic_credential_schema');
+    np_basic_need(is_array($auth), 'basic_credential_schema');
 
-    return np_basic_validate($auth,$hashes,$manifest['basicUser']);
+    return np_basic_validate($auth, $hashes, $manifest['basicUser']);
 }
