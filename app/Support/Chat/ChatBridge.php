@@ -89,7 +89,7 @@ final class ChatBridge
         $accounts = [];
         foreach (AdminAccount::query()->where('is_active', true)->get() as $grant) {
             $user = User::query()->find($grant->user_id);
-            if (! $user || $grant->must_change_password || ! $user->can('support.view')) {
+            if (! $user || ! $user->can('support.view')) {
                 continue;
             }
             $id = substr(hash_hmac('sha256', 'chat-operator:'.$user->id, config('app.key')), 0, 32);

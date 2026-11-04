@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\SupportTeamAdministration;
 use App\Support\AdminAccess;
 use App\Support\Chat\ChatBridge;
 use App\Support\Chat\LegacyResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class SupportChatController extends Controller
 {
@@ -44,7 +47,7 @@ class SupportChatController extends Controller
 
             return response(file_get_contents($file), 200, ['Content-Type' => $mime.(in_array(pathinfo($file, PATHINFO_EXTENSION), ['js', 'css', 'html', 'json', 'svg'], true) ? '; charset=utf-8' : ''), 'X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'no-store, private']);
         }
-        $original = ['get' => $_GET, 'post' => $_POST, 'files' => $_FILES, 'server' => $_SERVER];
+        $original = ['get' => $_GET, 'post' => $_POST, 'files' => $_FILES, 'server' => $_SERVER, 'cookie' => $_COOKIE];
         $timezone = date_default_timezone_get();
         $initialHeaders = headers_list();
         $initialStatus = http_response_code();
@@ -56,6 +59,9 @@ class SupportChatController extends Controller
             $bridge->begin();
             $_GET = $request->query->all();
             $_POST = $request->request->all();
+            // Native modules must consume Laravel's authenticated, decrypted
+            // cookies, never PHP's still-encrypted wire values.
+            $_COOKIE = $request->cookies->all();
             // The native FormData protocol uses empty strings (including image-only
             // messages). Restore Laravel's empty-to-null normalization at this boundary.
             array_walk_recursive($_POST, static function (&$value): void {
@@ -75,6 +81,20 @@ class SupportChatController extends Controller
             self::loadModule(resource_path('support-chat/support/operators.php'), true);
             if (in_array($path, ['operator-api.php', 'support-content-admin.php'], true)) {
                 $bridge->operator();
+                if ($path === 'operator-api.php' && in_array($request->input('action'), ['account_add', 'account_revoke'], true)) {
+                    \support_request_method('POST');
+                    $operator = \support_operator();
+                    \support_csrf($operator);
+                    \support_ops_admin($operator);
+                    app(SupportTeamAdministration::class)->apply($request->user(), $request->input('action'), $request->all());
+                    $bridge->syncOperators();
+                    throw new LegacyResponse(['status' => 'success']);
+                }
+                if ($path === 'operator-api.php' && $request->input('action') === 'accounts' && $request->isMethod('GET')) {
+                    $operator = \support_operator();
+                    $accounts = \support_ops_store(fn (array &$state) => array_values(array_map(fn ($account) => $operator['operator_role'] === 'administrator' ? \support_ops_public($account) : array_intersect_key($account, array_flip(['id', 'name', 'active'])), $state['accounts'])));
+                    throw new LegacyResponse(['status' => 'success', 'accounts' => $accounts, 'can_manage_accounts' => $request->user()->can('staff.manage')]);
+                }
                 if ($request->input('action') === 'account_update') {
                     self::loadModule(resource_path('support-chat/support/operator-profile.php'), true);
                     $operator = \support_operator();
@@ -98,6 +118,12 @@ class SupportChatController extends Controller
         } catch (\SupportFailure $failure) {
             $status = $failure->status;
             $payload = ['status' => 'error', 'code' => $failure->reason, 'message' => 'درخواست پشتیبانی انجام نشد.'];
+        } catch (ValidationException $error) {
+            $status = 422;
+            $payload = ['status' => 'error', 'code' => 'validation_failed', 'message' => 'اطلاعات یا گذرواژهٔ تأیید معتبر نیست.'];
+        } catch (HttpExceptionInterface $error) {
+            $status = $error->getStatusCode();
+            $payload = ['status' => 'error', 'code' => 'operator_permission_denied'];
         } catch (\Throwable) {
             $status = 503;
             $payload = ['status' => 'error', 'code' => 'service_unavailable', 'message' => 'پشتیبانی موقتاً در دسترس نیست.'];
@@ -122,6 +148,7 @@ class SupportChatController extends Controller
             $_POST = $original['post'];
             $_FILES = $original['files'];
             $_SERVER = $original['server'];
+            $_COOKIE = $original['cookie'];
         }
         if (preg_match('/^(?:SUPPORT_[A-Z0-9_]+|CHAT_DATA_DIR)\s*=/m', $content)) {
             $content = '';

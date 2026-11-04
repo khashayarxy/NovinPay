@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AdminAccount;
 use App\Models\CustomerAccount;
 use App\Models\User;
+use App\Services\SupportTeamAdministration;
 use App\Support\AdminAccess;
 use App\Support\Chat\ChatBridge;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,6 +57,27 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/assets/fonts/Vazirmatn.woff2')->assertOk()->assertHeader('Content-Type', 'font/woff2');
     }
 
+    public function test_customer_boot_configuration_matches_browser_contract(): void
+    {
+        $response = $this->get('https://localhost/support-chat/api.php?widget_config=1')->assertOk()->assertJsonStructure(['name', 'installation', 'source_paths', 'attachments', 'typing', 'customer_theme_default']);
+        $this->assertIsString($response->json('name'));
+        $this->assertIsArray($response->json('source_paths'));
+    }
+
+    public function test_browser_cookie_round_trip_uses_laravel_authenticated_decryption(): void
+    {
+        $first = $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertOk();
+        $name = session_name();
+        $id = session_id();
+        // PHP globals contain the encrypted wire value; Laravel's cookie bag is
+        // authenticated and decrypted by middleware before the controller runs.
+        $_COOKIE[$name] = str_repeat('encrypted-wire-value', 20);
+        $second = $this->withCookie($name, $id)->get('https://localhost/support-chat/api.php?get_csrf=1')->assertOk();
+        $this->assertSame($first->json('context.scope_id'), $second->json('context.scope_id'));
+        $this->get('https://localhost/support-chat/api.php?get_session=1')->assertOk()->assertJsonPath('status', 'success');
+        $this->withUnencryptedCookie($name, 'tampered-wire-value')->get('https://localhost/support-chat/api.php?get_session=1')->assertUnauthorized();
+    }
+
     public function test_widget_renders_interface_without_private_configuration_output(): void
     {
         $response = $this->get('https://localhost/support-chat/support-widget.php')->assertOk();
@@ -87,10 +109,56 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertNotFound();
     }
 
+    public function test_native_team_creation_and_revocation_preserve_staff_security(): void
+    {
+        $owner = User::query()->sole();
+        $this->actingAs($owner)->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
+        $boot = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk();
+        $this->withCookie(session_name(), session_id());
+        $data = ['action' => 'account_add', 'username' => 'support-test@example.test', 'name' => 'Test Support', 'password' => 'SafeTestPassword12', 'password_confirmation' => 'SafeTestPassword12', 'current_password' => 'password', 'role' => 'administrator', 'csrf_token' => $boot->json('token')];
+        $this->post('https://localhost/support-chat/operator-api.php', array_replace($data, ['csrf_token' => 'invalid']))->assertForbidden();
+        $this->post('https://localhost/support-chat/operator-api.php', array_replace($data, ['current_password' => 'wrong']))->assertStatus(422);
+        $this->post('https://localhost/support-chat/operator-api.php', array_replace($data, ['password_confirmation' => 'wrong']))->assertStatus(422);
+        $this->assertDatabaseMissing('users', ['email' => $data['username']]);
+        $this->post('https://localhost/support-chat/operator-api.php', $data)->assertOk();
+        $staff = User::where('email', $data['username'])->sole();
+        $grant = AdminAccount::where('user_id', $staff->id)->sole();
+        $this->assertSame('staff', $grant->role);
+        $this->assertSame(['support.view', 'support.manage'], $grant->permissions);
+        $this->assertTrue($grant->must_change_password);
+        $this->get('https://localhost/support-chat/operator-api.php?action=accounts')->assertOk()->assertJsonPath('can_manage_accounts', true);
+        // Removing chat access must not deactivate staff or remove unrelated grants.
+        $grant->forceFill(['permissions' => ['support.view', 'support.manage', 'products.view']])->save();
+        $id = substr(hash_hmac('sha256', 'chat-operator:'.$staff->id, config('app.key')), 0, 32);
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_revoke', 'id' => $id, 'current_password' => 'password', 'csrf_token' => $boot->json('token')])->assertOk();
+        $grant->refresh();
+        $this->assertTrue($grant->is_active);
+        $this->assertSame(['products.view'], $grant->permissions);
+        $this->assertSame(2, $grant->session_version);
+        $ownerId = substr(hash_hmac('sha256', 'chat-operator:'.$owner->id, config('app.key')), 0, 32);
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_revoke', 'id' => $ownerId, 'current_password' => 'password', 'csrf_token' => $boot->json('token')])->assertForbidden();
+    }
+
+    public function test_support_manager_cannot_provision_staff_or_bypass_password_rotation(): void
+    {
+        $owner = User::query()->sole();
+        app(SupportTeamAdministration::class)->apply($owner, 'account_add', ['username' => 'manager-test@example.test', 'name' => 'Manager', 'password' => 'SafeTestPassword12', 'password_confirmation' => 'SafeTestPassword12', 'current_password' => 'password', 'role' => 'administrator']);
+        $staff = User::where('email', 'manager-test@example.test')->sole();
+        $grant = AdminAccount::where('user_id', $staff->id)->sole();
+        $this->actingAs($staff)->withSession(['admin_session_version' => $grant->session_version, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
+        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertForbidden();
+        $grant->forceFill(['must_change_password' => false])->save();
+        $boot = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk();
+        $this->withCookie(session_name(), session_id());
+        $this->get('https://localhost/support-chat/operator-api.php?action=accounts')->assertOk()->assertJsonPath('can_manage_accounts', false);
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'csrf_token' => $boot->json('token')])->assertForbidden();
+    }
+
     private function customerContext(): array
     {
         $token = $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertOk()->json('token');
         $_COOKIE[session_name()] = session_id();
+        $this->withCookie(session_name(), session_id());
         $draft = $this->get('https://localhost/support-chat/api.php?get_session=1')->assertOk()->json('draft_user_id');
 
         return [$token, $draft];
@@ -113,6 +181,7 @@ class SupportChatTest extends TestCase
         $this->assertSame('&lt;script&gt;alert(1)&lt;/script&gt;', $stored['conversations'][$id]['messages'][0]['text']);
         $this->post('https://localhost/support-chat/api.php', ['edit_message' => '1', 'protocol_version' => '2', 'scope' => 'customer', 'user_id' => $id, 'message_id' => (string) $first['message_id'], 'revision' => '0', 'edit_request_id' => (string) Str::uuid(), 'text' => 'edited safely', 'csrf_token' => $token])->assertOk();
         $_COOKIE = [];
+        $this->defaultCookies = [];
         $this->customerContext();
         $this->get('https://localhost/support-chat/api.php?get_conversation=1&user_id='.$id)->assertNotFound();
         $this->post('https://localhost/support-chat/support-attachment.php', ['scope' => 'customer', 'user_id' => $id, 'upload_id' => (string) Str::uuid()])->assertForbidden();
@@ -142,6 +211,7 @@ class SupportChatTest extends TestCase
         $this->actingAs($user)->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
         $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk();
         $_COOKIE[session_name()] = session_id();
+        $this->withCookie(session_name(), session_id());
         AdminAccount::query()->where('user_id', $user->id)->update(['session_version' => 2]);
         $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertForbidden();
         $this->get('https://localhost/support-chat/operator/')->assertForbidden();
@@ -155,6 +225,7 @@ class SupportChatTest extends TestCase
         $this->actingAs($user)->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
         $operatorToken = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->json('token');
         $_COOKIE[session_name()] = session_id();
+        $this->withCookie(session_name(), session_id());
         $this->get('https://localhost/support-chat/operator-api.php?action=inbox')->assertOk()->assertJsonCount(1, 'conversations');
         $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'workflow', 'operation' => 'status', 'value' => 'resolved', 'user_id' => $id])->assertForbidden();
         $reply = $this->post('https://localhost/support-chat/api.php', ['action' => 'send_reply', 'user_id' => $id, 'reply' => 'synthetic answer', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $operatorToken])->assertOk()->json('message_id');
@@ -165,7 +236,7 @@ class SupportChatTest extends TestCase
         $this->post('https://localhost/support-chat/api.php', $vote)->assertOk()->assertJsonPath('replayed', true);
         $this->get('https://localhost/support-chat/operator-api.php?action=analytics')->assertOk()->assertJsonStructure(['stats']);
         $this->post('https://localhost/support-chat/api.php', ['lifecycle' => 'reopen', 'user_id' => $id, 'csrf_token' => $customerToken])->assertOk()->assertJsonPath('lifecycle.resolved', false);
-        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'csrf_token' => $operatorToken])->assertStatus(409);
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'csrf_token' => $operatorToken])->assertStatus(422);
     }
 
     public function test_corrupt_private_authority_fails_closed_without_disclosing_paths(): void
@@ -177,6 +248,7 @@ class SupportChatTest extends TestCase
         file_put_contents($this->private.'/data/chat_conversations.json', 'not json');
         $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertOk();
         $_COOKIE[session_name()] = session_id();
+        $this->withCookie(session_name(), session_id());
         $this->get('https://localhost/support-chat/api.php?get_session=1')->assertStatus(503)->assertDontSee($this->private);
     }
 
@@ -245,6 +317,7 @@ class SupportChatTest extends TestCase
         $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $conversation, 'message' => '', 'attachments' => json_encode([$id]), 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $token])->assertOk()->assertJsonPath('status', 'accepted');
         $this->get('https://localhost/support-chat/support-attachment.php?id='.$id)->assertOk()->assertHeader('Content-Type', 'image/webp');
         $_COOKIE = [];
+        $this->defaultCookies = [];
         $this->customerContext();
         $this->get('https://localhost/support-chat/support-attachment.php?id='.$id)->assertNotFound();
     }

@@ -182,3 +182,8 @@ Staging controller hotfix uploaded through cPanel with exact old-file fingerprin
 | `tools/support-security-reset.php` | True | True | False |
 | `tools/support-sms.php` | True | True | False |
 | `tools/support-test-cleanup.php` | True | True | False |
+
+
+## Current follow-up
+
+The original team table/filter/add/revoke UI is restored locally, with native email login, password confirmation and protected-owner current-password verification. Roles grant support permissions only; revocation preserves unrelated staff access and increments native session version. Newly provisioned staff remain subject to password rotation. Native profile password/role editing is still an explicit integration difference; full hosted parity is not established. Customer light default/manual persistence is an owner-requested integration difference. Hosted disclosure verification passed all 11 endpoints (owner result); customer initialization and two-operator acceptance remain separate gates.
