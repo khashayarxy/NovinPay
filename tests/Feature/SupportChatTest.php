@@ -164,6 +164,20 @@ class SupportChatTest extends TestCase
         return [$token, $draft];
     }
 
+    public function test_empty_installation_keeps_sync_epoch_before_and_after_first_send(): void
+    {
+        [$token, $id] = $this->customerContext();
+        $url = 'https://localhost/support-chat/api.php?'.http_build_query(['get_conversation' => '1', 'scope' => 'customer', 'user_id' => $id]);
+        $first = $this->get($url)->assertOk();
+        $next = $url.'&after_sequence=0&store_epoch='.$first->json('store_epoch');
+        $this->get($next)->assertOk();
+        $data = ['send_message' => '1', 'user_id' => $id, 'message' => 'Fixture message', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $token];
+        $ack = $this->post('https://localhost/support-chat/api.php', $data)->assertOk();
+        $this->assertSame($first->json('store_epoch'), $ack->json('store_epoch'));
+        $this->get($next)->assertOk()->assertJsonCount(1, 'messages');
+        $this->post('https://localhost/support-chat/api.php', $data)->assertOk()->assertJsonPath('replayed', true)->assertJsonPath('message_id', $ack->json('message_id'));
+    }
+
     public function test_message_ack_replay_edit_history_and_foreign_session_isolation(): void
     {
         [$token, $id] = $this->customerContext();

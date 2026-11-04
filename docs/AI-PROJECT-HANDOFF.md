@@ -6,7 +6,7 @@ Snapshot: **2026-11-04, Asia/Tehran**. This is a continuation record for Codex, 
 
 The active feature is simplified repairs plus the complete ZizoLearn-derived support chat, on isolated staging. The owner can open the widget and send messages, but reports a synchronization warning and excessive message latency. **Chat acceptance is incomplete.** The latest owner instruction temporarily switches work to this documentation-only handoff; resume implementation only within the owner's ongoing scope.
 
-A new, deliberately failing local regression test reproduces an empty-installation synchronization defect:
+An intentionally failing regression test, now preserved in Git, reproduces an empty-installation synchronization defect:
 
 - File: `tests/Feature/SupportChatTest.php`.
 - Method: `test_empty_installation_keeps_sync_epoch_before_and_after_first_send`.
@@ -14,7 +14,7 @@ A new, deliberately failing local regression test reproduces an empty-installati
 - Actual result before any fix: **FAIL**, expected second empty conversation poll 200, received **409**; 1 test, 4 assertions.
 - `resources/support-chat/support/storage.php::support_store` creates a new random `store_epoch` on each read when `chat_conversations.json` does not yet exist. Empty polls do not persist it. `support_message_page` then correctly rejects the previous epoch as `cursor_reset_required`.
 - This is a **confirmed code defect**, not yet a proven complete explanation of the owner's particular browser warning. No fix has been applied. Do not weaken cursor validation.
-- The uncommitted test is preserved; it is deliberately excluded from this documentation commit. A fresh clone will not contain it: recreate the scenario above if necessary. `git diff -- tests/Feature/SupportChatTest.php` in this workspace contains the exact test.
+- The exact original regression is committed without changing assertions, skipping it, marking it incomplete, or changing CI exclusions. A fresh clone now contains it. **The test suite/required CI is expected to fail on this known defect until a real implementation fix is reviewed.** Do not call that a green baseline or weaken the test to switch accounts.
 
 The source also clears stale cursors then rethrows the reset error; the generic 409 warning can remain visible. Consider a bounded authenticated resync for the specific recoverable reset, while preserving all outbox entries and still surfacing repeated resets or genuine integrity conflicts. This is a proposal, not implemented behavior.
 
@@ -26,7 +26,7 @@ The source also clears stale cursors then rethrows the reset error; the generic 
 - Implementation HEAD at handoff start: **`689bfdb266b067085ba800b2c9a263f55d3c3bd9`**, pushed.
 - [PR #13](https://github.com/khashayarxy/NovinPay/pull/13): OPEN, **Draft**, targeting `main`, exact head verified above. **Do not merge without explicit approval.**
 - This handoff is a later documentation-only commit; obtain its SHA using `git log -1`, rather than treating the implementation SHA as the final documentation HEAD.
-- [CI run 41819313200](https://github.com/khashayarxy/NovinPay/actions/runs/41819313200): all four jobs passed on `689bfdb`: Frontend 13s; SQLite 1m7s; MySQL 8 3m46s; MariaDB 10.6.28 2m23s. This does not include the new failing, uncommitted regression.
+- [CI run 41819313200](https://github.com/khashayarxy/NovinPay/actions/runs/41819313200): all four jobs passed on `689bfdb`: Frontend 13s; SQLite 1m7s; MySQL 8 3m46s; MariaDB 10.6.28 2m23s. This predates the intentionally failing regression now committed; later exact-head CI must be reported separately.
 
 Relevant history (inspect commits when needed, not the entire repository again):
 
@@ -51,7 +51,7 @@ Untracked pre-existing work, not qualified or published by this handoff:
 - `docs/RELEASE-PIPELINE.md`.
 - `scripts/release/`: `activation.php`, `backup-io.php`, `backup.php`, `bridge.ps1`, `health.php`, `lib.php`, `pipeline.php`, `production-environment.php`, `release.php`, `runtime.php`, `standalone.php`, `transfer.ps1`, `verify-offhost.ps1`.
 - `tests/Unit/ReleasePipelineTest.php`.
-- The modified `SupportChatTest.php` contains the new failing regression described above.
+- `SupportChatTest.php` now includes the committed failing regression described above; it is no longer an uncommitted exception.
 
 Do not reset/clean, discard, blindly stage all files, or publish unreviewed release tooling. Untracked local files are not available to a new clone/account by default.
 
