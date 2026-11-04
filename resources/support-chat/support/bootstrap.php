@@ -62,7 +62,7 @@ function support_private_dir(string $path, bool $owned=true): string {
         $web = realpath(__DIR__ . '/..');
     }
     if ($real===false || $web===false || str_starts_with(strtolower(str_replace('\\','/',$real)).'/',strtolower(str_replace('\\','/',$web)).'/')) support_failure(503,'private_storage_unavailable');
-    $documentRoot=realpath($_SERVER['DOCUMENT_ROOT']??'');
+    $documentRoot=($_SERVER['DOCUMENT_ROOT']??'')!==''?realpath($_SERVER['DOCUMENT_ROOT']):false;
     if($documentRoot&&str_starts_with(strtolower(str_replace('\\','/',$real)).'/',strtolower(str_replace('\\','/',$documentRoot)).'/'))support_failure(503,'private_storage_unavailable');
     $payment=realpath(PAYMENT_DATA_DIR);
     if ($payment!==false && str_starts_with(strtolower(str_replace('\\','/',$real)).'/',strtolower(str_replace('\\','/',$payment)).'/')) support_failure(503,'private_storage_unavailable');

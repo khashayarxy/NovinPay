@@ -180,4 +180,32 @@ class SupportChatTest extends TestCase
         $this->app->detectEnvironment(fn () => 'local');
         $this->post('/admin/support/confirm', ['current_password' => 'password'])->assertStatus(419);
     }
+
+    public function test_cli_working_directory_is_not_mistaken_for_the_public_document_root(): void
+    {
+        $bridge = app(ChatBridge::class);
+        $cwd = getcwd();
+        $document = $_SERVER['DOCUMENT_ROOT'] ?? null;
+        $bridge->begin();
+        try {
+            chdir($this->private);
+            $_SERVER['DOCUMENT_ROOT'] = '';
+            $result = support_private_dir($this->private.'/worker-probe');
+            $this->assertSame(realpath($this->private.'/worker-probe'), $result);
+            try {
+                support_private_dir(public_path('build'));
+                $this->fail('The explicit public directory must still be rejected.');
+            } catch (\SupportFailure $failure) {
+                $this->assertSame('private_storage_unavailable', $failure->reason);
+            }
+        } finally {
+            chdir($cwd);
+            if ($document === null) {
+                unset($_SERVER['DOCUMENT_ROOT']);
+            } else {
+                $_SERVER['DOCUMENT_ROOT'] = $document;
+            }
+            $bridge->finish();
+        }
+    }
 }
