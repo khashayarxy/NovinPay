@@ -1,0 +1,4 @@
+# Portable non-secret OpenSSL key-generation configuration; no CA or credentials.
+[req]
+distinguished_name = req_distinguished_name
+[req_distinguished_name]

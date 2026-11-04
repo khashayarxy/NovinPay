@@ -12,7 +12,7 @@ GitHub HEAD verified: `7d6f6ddcfbde4fd3fb1857f62504d230e4c43bb5`. Same upstream 
 - Message/storage/outbox/read/typing/presence/lifecycle/CSAT/analytics modules are retained. Local integration tests exercise ACK/replay/edit/isolation/operator replies/reads/lifecycle/CSAT/analytics and image-only normalization. Hosted two-operator, multipart attachment and reconnect acceptance remain pending.
 - **NOT full parity:** `operator/modules/team.js` replaces the original team-management UI with a staff-directory link; `operator/profile.js` redirects password and role management to Laravel. Latest owner requirement requires preserving the full original UI while mapping operations securely to native staff authority. Do not enable native duplicate account/password APIs merely to hide this gap.
 - External SMS/push/email issuance and notifications remain disabled by existing staging/provider restrictions; retained modules do not establish operational delivery. Cleanup/retention requires explicitly armed private CLI workflow.
-- The upstream inventory omitted operator icon assets and support/openssl.cnf, but repository inspection confirms they already exist. Existing NovinPay-branded PWA icons are preserved; the earlier additional-path list was not proof of missing files.
+- Four NovinPay-branded PWA PNGs already existed and remain unchanged. Two additional upstream files, operator/icons/operator-mark.svg and support/openssl.cnf, are now restored as tracked source. These two files were absent from the deployed archive and still require staging delivery. An import-manifest omission alone is not proof that a destination file is missing.
 
 ## Disclosure
 
