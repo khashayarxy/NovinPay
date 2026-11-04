@@ -1,0 +1,7 @@
+NovinPay support adaptation
+
+Support engine and client source originated in the owner's khashayarxy/zizolearn repository at the commit recorded in UPSTREAM.json. Provenance files record the original source, not the checksums of adapted files. No production records/configuration are included.
+
+Vazirmatn: Copyright (c) 2020, The Vazirmatn Project Authors. SIL Open Font License 1.1; see Vazirmatn-OFL.txt.
+Material Symbols: Google material-design-icons project; Apache License 2.0; see Material-Symbols-LICENSE.txt. The font itself is unchanged.
+NovinPay icons/logos are the existing project brand assets, unchanged.

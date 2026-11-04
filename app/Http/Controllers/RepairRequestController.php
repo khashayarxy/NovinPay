@@ -10,6 +10,7 @@ use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Services\CustomerNotifications;
 use App\Support\RepairIdentity;
+use App\Support\RepairTracking;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,7 +41,6 @@ class RepairRequestController extends Controller
         }
 
         $repair = new RepairRequest;
-        $repair->tracking_reference = 'NP-'.strtoupper(bin2hex(random_bytes(16)));
         $repair->submission_digest = RepairIdentity::digest('submission', $issuedToken);
         $repair->customer_name = $data['customer_name'];
         $repair->contact_phone = $data['contact_phone'];
@@ -56,6 +56,7 @@ class RepairRequestController extends Controller
         try {
             // The unique submission digest also prevents concurrent double submits.
             DB::transaction(function () use ($repair): void {
+                $repair->tracking_reference = RepairTracking::reserve();
                 $repair->save();
                 app(CustomerNotifications::class)->record($repair->customer_account_id, 'repair_registered', $repair->tracking_reference);
             });
@@ -88,7 +89,8 @@ class RepairRequestController extends Controller
         $data = $request->validated();
         // Never hydrate or decrypt customer/device fields for a tracking response.
         $physical = RepairCase::query()->select(['phone_digest'])
-            ->where('tracking_digest', RepairIdentity::digest('tracking', $data['tracking_reference']))->first();
+            ->where(fn ($query) => $query->where('tracking_digest', RepairIdentity::digest('tracking', $data['tracking_reference']))
+                ->orWhereHas('onlineRequest', fn ($source) => $source->where('tracking_reference', $data['tracking_reference'])))->first();
         $physicalMatch = hash_equals($physical?->phone_digest ?? str_repeat('0', 64), RepairIdentity::digest('phone', $data['contact_phone']));
         $repair = RepairRequest::query()->select(['phone_digest', 'status'])
             ->where('tracking_reference', $data['tracking_reference'])->first();

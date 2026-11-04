@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\RepairCaseController;
 use App\Http\Controllers\Admin\RepairOverviewController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\SupportAccessController;
 use App\Http\Controllers\ArticleController as PublicArticleController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ConsultationController;
@@ -26,14 +27,21 @@ use App\Http\Controllers\Payments\PaymentController;
 use App\Http\Controllers\Payments\ReceiptController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\SupportChatController;
 use App\Http\Middleware\EnsureAdminSession;
 use App\Http\Middleware\EnsureCustomerSession;
 use App\Http\Middleware\PrivateAdminResponse;
 use App\Http\Middleware\PrivateRepairResponse;
 use App\Http\Middleware\PublicArticleResponse;
 use App\Services\CustomerAccountLink;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+Route::match(['GET', 'POST'], '/support-chat/{path?}', SupportChatController::class)
+    ->where('path', '[a-zA-Z0-9_./-]*')
+    ->withoutMiddleware(PreventRequestForgery::class)
+    ->middleware('throttle:600,1')->name('support.chat');
 
 Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('account.')->group(function (): void {
     $controller = CustomerAccountController::class;
@@ -110,6 +118,9 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::middleware([EnsureAdminSession::class, 'can:access-admin'])->group(function (): void {
+        Route::get('support', fn () => redirect('/support-chat/operator/'))->middleware('can:support.view')->name('support.index');
+        Route::get('support/confirm', [SupportAccessController::class, 'confirm'])->middleware('can:support.view')->name('support.confirm');
+        Route::post('support/confirm', [SupportAccessController::class, 'authenticate'])->middleware(['can:support.view', 'throttle:5,1'])->name('support.authenticate');
         Route::get('deliveries', [DeliveryController::class, 'admin'])->middleware(['can:finance.view', 'can:finance.details'])->name('deliveries.index');
         Route::post('deliveries/{plan}/confirm', [DeliveryController::class, 'confirm'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:15,1'])->name('deliveries.confirm');
         Route::post('deliveries/{plan}/dispatch', [DeliveryController::class, 'dispatch'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('deliveries.dispatch');
@@ -235,6 +246,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
             Route::get('repairs/intake', [RepairCaseController::class, 'create'])->name('repair-cases.create');
             Route::post('repairs/intake', [RepairCaseController::class, 'store'])->defaults('operation', 'intake')->middleware('throttle:20,1')->name('repair-cases.store');
             Route::get('repairs/{repairCase}', [RepairCaseController::class, 'show'])->name('repair-cases.show');
+            Route::post('repairs/{repairCase}/record', [RepairCaseController::class, 'saveSimple'])->middleware('throttle:20,1')->name('repair-cases.record');
             foreach (['assign', 'transition', 'inspect', 'estimate', 'diagnose', 'decision', 'contact', 'work', 'delivery'] as $operation) {
                 Route::post('repairs/{repairCase}/'.$operation, [RepairCaseController::class, 'update'])->defaults('operation', $operation)->middleware('throttle:30,1')->name('repair-cases.'.$operation);
             }

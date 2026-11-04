@@ -48,6 +48,22 @@ class RepairOperationRequest extends FormRequest
 
     public function rules(): array
     {
+        if ($this->operation() === 'intake' && $this->boolean('simple_intake')) {
+            return [
+                'simple_intake' => ['required', 'accepted'],
+                'submission_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
+                'repair_request_id' => ['nullable', 'integer', 'exists:repair_requests,id'],
+                'customer_name' => ['required', 'string', 'min:2', 'max:100'],
+                'contact_phone' => ['required', 'string', 'regex:/\A09[0-9]{9}\z/'],
+                'device_model' => ['required', 'string', 'max:100'],
+                'device_serial' => ['nullable', 'string', 'max:120'],
+                'issue' => ['required', 'string', 'max:2000'],
+                'physical_condition' => ['required', 'string', 'max:2000'],
+                'received_at' => ['prohibited'], 'device_brand' => ['prohibited'],
+                'technician_id' => ['prohibited'], 'inbound_shipping_cost' => ['prohibited'],
+                'inbound_method' => ['prohibited'],
+            ];
+        }
         $text = ['required', 'string', 'min:2', 'max:2000'];
         $money = ['required', 'integer', 'min:0', 'max:1000000000'];
         $rules = match ($this->operation()) {

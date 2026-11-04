@@ -55,7 +55,7 @@ class RepairRequestTest extends TestCase
         $data = $this->payload(['contact_phone' => '+98 ۹۱۲-۳۴۵۶۷۸۹', 'status' => 'received', 'id' => 999, 'tracking_reference' => 'forged']);
         $this->post('/repair', $data)->assertRedirect(route('repair.confirmation'));
         $repair = RepairRequest::query()->sole();
-        $this->assertMatchesRegularExpression('/\ANP-[A-F0-9]{32}\z/', $repair->tracking_reference);
+        $this->assertMatchesRegularExpression('/\A[0-9]{8}\z/', $repair->tracking_reference);
         $this->assertSame(RepairRequestStatus::OnlineSubmitted, $repair->status);
         $this->assertSame('09123456789', $repair->contact_phone);
         $this->assertSame($data['customer_name'], $repair->customer_name);

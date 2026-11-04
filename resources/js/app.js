@@ -1,7 +1,9 @@
+import { initSimpleRepair } from './admin-simple-repair';
 import { initMobileNavigation } from './mobile-navigation';
 
 document.addEventListener('DOMContentLoaded', () => {
     initMobileNavigation();
+    initSimpleRepair();
     document.getElementById('error-summary')?.focus();
 
     if (window.isSecureContext && navigator.clipboard?.writeText) {

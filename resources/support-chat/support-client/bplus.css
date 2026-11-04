@@ -1,0 +1,74 @@
+/* Approved B+ presentation. Message geometry and P1 state remain renderer-owned. */
+:root[data-support-theme=dark]{color-scheme:dark;--support-selected-text:#91baff;--support-canvas:#101012!important;--support-surface:#19191c!important;--support-elevated:#252529!important;--support-border:#303034!important;--support-text:#f5f5f6!important;--support-muted:#aeacb8!important;--support-hover:#252c38!important;--canvas:#101012;--surface:#19191c;--ink:#f5f5f6;--muted:#aeacb8;--line:#303034}
+:root[data-support-theme=light]{color-scheme:light;--support-selected-text:#0758dd;--support-muted:#596271!important;--muted:#596271;--support-hover:#edf3ff;--support-canvas:#f5f5f6!important;--support-surface:#fff!important;--support-elevated:#f0f1f3!important;--support-border:#e4e4e8!important;--support-text:#25262c!important;--canvas:#f5f5f6;--ink:#25262c;--line:#e4e4e8}
+:root[data-support-theme=dark]{--input-bg:#252529;--input-bg-focus:#19191c;--input-border:#303034;--support-input-bg:#252529;--support-input-bg-focus:#19191c;--support-input-border:#303034;--support-input-border-hover:#494950;--support-input-border-focus:var(--support-state-border,#8994a5);--support-input-focus-ring:none}
+html[data-support-theme=dark] body,html[data-support-theme=dark] #chatWindow{background:#101012}
+html[data-support-theme=dark] #chatWindow :is(.chat-header,.chat-input-area,.chat-input,.v2-notification-popover,.v2-emoji-picker,.v2-emoji-picker button,.v2-contact-card,.support-image-viewer,.support-completion){background:#19191c;color:#f5f5f6}
+html[data-support-theme=dark] #chatWindow :is(.incoming .v2-bubble,.v2-media){background:#252529;color:#f5f5f6;border-color:transparent}
+html[data-support-theme=dark] #chatWindow :is(.support-welcome,.v2-retired,.support-unread-jump){background:#19191c;color:#f5f5f6}
+html[data-support-theme=dark] #chatWindow .v2-emoji-picker button:hover{background:#252529}
+html[data-support-theme=dark] #chatWindow :is(.support-reply-draft,.support-attachment-draft,.incoming .support-reply-reference){background:#252529;color:#f5f5f6}
+html[data-support-theme=dark] #chatWindow :is(.online-status,.v2-sender-name,.v2-notification-popover small){color:#aeacb8}
+html[data-support-theme] :is(#chatInput,#reply){direction:inherit;unicode-bidi:plaintext;text-align:start!important;font-size:16px!important}
+html[data-support-theme] :is(#chatInput,#reply):dir(ltr){direction:ltr}
+html[data-support-theme] :is(#chatInput,#reply):dir(rtl){direction:rtl}
+/* plaintext defaults an empty paragraph to LTR; normal bidi restores the RTL caret. */
+html[data-support-theme] :is(#chatInput,#reply):placeholder-shown{direction:rtl;unicode-bidi:normal}
+html[data-support-theme] :is(#chatInput,#reply){padding-inline:14px}
+html[data-support-theme] :is(.primary,.bplus-notification-primary){display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1.7;white-space:normal}
+html[data-support-theme] :is(.primary,.bplus-notification-primary)>.support-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;line-height:1}
+html[data-support-theme=light]{--bplus-bubble-in:#fff;--bplus-bubble-border:#dfe2e8;--bplus-bubble-shadow:0 1px 3px #17243b0d;--bplus-quote:#eef1f6}
+html[data-support-theme=dark]{--bplus-bubble-in:#29292f;--bplus-bubble-border:#3a3a42;--bplus-bubble-shadow:0 2px 5px #0003;--bplus-quote:#35353d}
+html[data-support-surface] :is(#chatWindow,#chatMessages) .incoming .v2-bubble{background:var(--bplus-bubble-in);border:1px solid var(--bplus-bubble-border);box-shadow:var(--bplus-bubble-shadow);color:var(--support-text)}
+html[data-support-surface] :is(#chatWindow,#chatMessages) .outgoing .v2-bubble{box-shadow:var(--bplus-bubble-shadow);background:#0866ff;color:#fff}
+html[data-support-surface] :is(#chatWindow,#chatMessages) .incoming .support-reply-reference{background:var(--bplus-quote);color:var(--support-text);border-color:#0866ff}
+html[data-support-surface] :is(#chatWindow,#chatMessages) .v2-media{background:var(--bplus-bubble-in);border:1px solid var(--bplus-bubble-border);box-shadow:var(--bplus-bubble-shadow)}
+html[data-support-theme] :is(.chat-send,#send){background:#0866ff;color:#fff;border-radius:8px;box-shadow:none;width:40px;height:40px;min-height:40px;min-width:40px;flex:none}
+html[data-support-surface=customer-v2] .chat-input-row{grid-template-columns:40px 30px 30px minmax(0,1fr)}
+html[data-support-theme] :is(.chat-send,#send)>.support-icon{transform:none;font-size:22px}
+html[data-support-theme] :is(.v2-notification-popover,.v2-emoji-picker,dialog){box-shadow:0 2px 6px #0001,0 10px 28px #0002;border-width:1px}
+.bplus-confirm-copy{font-size:12px;line-height:1.9}.v2-notification-popover button{min-height:40px}
+.bplus-url{direction:ltr;unicode-bidi:isolate;overflow-wrap:anywhere}
+[data-contextual-reply] .support-message-reply{opacity:0!important;pointer-events:none}
+/* On fine-hover devices the real button owns its reserved hit target even while
+   transparent. Descendant hover reveals its row; touch remains tap-to-reveal. */
+@media(hover:hover){[data-contextual-reply]:not(.touch-reply) .support-message-reply{pointer-events:auto}[data-contextual-reply]:not(.touch-reply) .chat-msg:hover .support-message-reply{opacity:1!important;pointer-events:auto}}
+[data-contextual-reply] .chat-msg:focus-within .support-message-reply,[data-contextual-reply] .reply-active .support-message-reply{opacity:1!important;pointer-events:auto}
+html[data-support-surface=operator] .conversation-heading{min-width:0;flex:1}.conversation-heading h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(min-width:900px){
+ html[data-support-surface=operator] #workspaceNav{display:none}
+ html[data-support-surface=operator] #viewConversations #workspace{grid-template-columns:304px minmax(0,1fr);gap:12px;padding:14px;background:var(--support-canvas)}
+ html[data-support-surface=operator] #workspace :is(#inbox,#detail){border:0;border-radius:14px;overflow:hidden}
+ html[data-support-surface=operator] #detail{display:flex;flex-direction:column;min-height:0}
+}
+html[data-support-surface=operator] #replyArea{background:var(--support-surface);border-top:1px solid var(--support-border)}
+html[data-support-surface=operator] #conversations button[aria-current=true]{background:var(--support-hover);box-shadow:inset -2px 0 #0866ff}
+html[data-support-surface=operator] .health-metric-row{min-width:0;gap:12px}.health-metric-row .metric-info{min-width:0;flex:1}.health-metric-row .metric-info small{white-space:normal;overflow-wrap:anywhere}.metric-values{flex-wrap:wrap;min-width:0}
+.badge-neutral{background:#80808018!important;color:var(--support-muted)!important}
+.health-metric-row .metric-info{flex-wrap:wrap}.health-metric-row .metric-info small{overflow:visible;text-overflow:clip;flex-basis:100%}
+.badge-warning{background:#f2c16b18!important;color:#80530d!important}html[data-support-theme=dark] .badge-warning{color:#f2c16b!important}
+html[data-support-theme=dark] #chatInput{background:#19191c!important;color:#f5f5f6!important}
+html[data-support-theme=dark] #chatWindow .v2-notification-popover button{background:#252529;border-color:#303034;color:#91baff}
+html[data-support-theme] #chatWindow .v2-notification-popover .bplus-notification-primary{background:#0866ff;border-color:#0866ff;color:#fff}
+html[data-support-theme=dark] #chatInput::placeholder{color:#aeacb8;opacity:1}
+html[data-support-theme] #chatInput{transition:border-color .15s ease,box-shadow .15s ease}
+@media(max-width:899px){
+ html[data-support-surface=operator] #viewConversations #workspace{display:block;grid-template-columns:none;width:100%;min-width:0}
+ html[data-support-surface=operator] #workspaceNav{display:none}
+ html[data-support-surface=operator] #workspace #inbox,html[data-support-surface=operator] #workspace #detail{width:100%;min-width:0;max-width:none}
+ html[data-support-surface=operator] body:not(.detail-open) #detail{display:none}
+ html[data-support-surface=operator] body.detail-open #inbox{display:none}
+ html[data-support-surface=operator] .admin-sidebar{position:fixed;inset:56px 0 0 auto;transform:translateX(110%)}
+ html[data-support-surface=operator] .admin-sidebar.mobile-open{transform:none}
+ html[data-support-surface=operator] .admin-stage{width:100%;min-width:0}
+ html[data-support-surface=operator] .chat-input-row{display:grid;grid-template-columns:44px minmax(0,1fr) 40px 40px;gap:6px}
+ html[data-support-surface=operator] #reply{grid-column:2/5;grid-row:1;width:100%}
+ html[data-support-surface=operator] #send{grid-column:1;grid-row:1}
+ html[data-support-surface=operator] .chat-input-row>.support-attach-button{grid-column:4;grid-row:2}
+ html[data-support-surface=operator] #emojiToggle{grid-column:3;grid-row:2}
+ html[data-support-surface=operator] .chat-input-row>button:not(#send):not(#emojiToggle):not(.support-attach-button){grid-column:2;grid-row:2;justify-self:end}
+ html[data-support-surface=operator] .health-metric-row{flex-direction:column;align-items:stretch}
+ html[data-support-surface=operator] .metric-values{justify-content:flex-start}
+}
+
+:root{--support-css-bplus:1}

@@ -6,6 +6,7 @@ use App\Enums\AdminPermission;
 use App\Http\Middleware\PreviewAwareSession;
 use App\Models\User;
 use App\Support\AdminAccess;
+use App\Support\Chat\ChatBridge;
 use App\Support\RepairIdentity;
 use App\Support\SiteMaintenanceState;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -23,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(ChatBridge::class);
         $this->app->singleton(SiteMaintenanceState::class, fn () => new SiteMaintenanceState(storage_path('framework/site-maintenance')));
         $this->app->singleton(PreviewAwareSession::class, fn ($app) => new PreviewAwareSession(
             $app->make(SessionManager::class), fn () => $app->make(CacheFactory::class)

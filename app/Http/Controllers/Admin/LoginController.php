@@ -78,6 +78,9 @@ class LoginController extends Controller
         RateLimiter::clear($throttleKey);
         RateLimiter::clear($ipKey);
         $request->session()->regenerate();
+        // Only a successful native password authentication can renew chat SSO authority.
+        $request->session()->put('support_authentication_nonce', bin2hex(random_bytes(16)));
+        $request->session()->put('support_authenticated_at', time());
         AdminHistory::record(AdminAction::Login, 'user', Auth::id());
         $account = AdminAccess::account(Auth::user());
         $request->session()->put('admin_session_version', $account->session_version);

@@ -1,0 +1,5 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/support-loader.php';
+require_once support_core_path('branding.php');
+try{if(($_SERVER['REQUEST_METHOD']??'')!=='GET')support_failure(405,'method_not_allowed');$id=support_content_id($_GET['id']??null);$kind=$_GET['kind']??'avatar';if(!in_array($kind,['avatar','logo'],true))support_failure(400,'invalid_input');$preview=($_GET['scope']??'')==='operator';if($preview){$context=support_operator();support_ops_admin($context);}$m=support_brand_lookup($id,$kind,$preview);if(!$m)support_failure(404,'image_unavailable');$path=support_brand_directory().'/'.$id.'.webp';if(is_link($path)||!is_file($path)||filesize($path)!==$m['bytes']||!hash_equals($m['sha256'],hash_file('sha256',$path)))support_failure(404,'image_unavailable');header('Content-Type: image/webp');header('Content-Length: '.$m['bytes']);header('Cache-Control: no-store, private');header('X-Content-Type-Options: nosniff');header('Cross-Origin-Resource-Policy: same-origin');header('Referrer-Policy: no-referrer');readfile($path);throw new \App\Support\Chat\LegacyResponse(null, http_response_code() ?: 200);}catch(Throwable $e){support_error_response($e);}

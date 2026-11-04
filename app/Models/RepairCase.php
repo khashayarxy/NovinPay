@@ -22,7 +22,7 @@ class RepairCase extends Model
 
     protected function casts(): array
     {
-        return ['customer_name' => 'encrypted', 'contact_phone' => 'encrypted', 'device_model' => 'encrypted', 'device_serial' => 'encrypted', 'issue' => 'encrypted', 'physical_condition' => 'encrypted', 'accessories' => 'encrypted', 'device_brand' => RepairBrand::class, 'status' => RepairStage::class, 'received_at' => 'datetime', 'version' => 'integer', 'assigned_to' => 'integer'];
+        return ['simple_workflow' => 'boolean', 'repair_price_toman' => 'integer', 'repair_notes' => 'encrypted', 'customer_name' => 'encrypted', 'contact_phone' => 'encrypted', 'device_model' => 'encrypted', 'device_serial' => 'encrypted', 'issue' => 'encrypted', 'physical_condition' => 'encrypted', 'accessories' => 'encrypted', 'device_brand' => RepairBrand::class, 'status' => RepairStage::class, 'received_at' => 'datetime', 'version' => 'integer', 'assigned_to' => 'integer'];
     }
 
     public function getRouteKeyName(): string
@@ -88,6 +88,10 @@ class RepairCase extends Model
     /** A quote is never a charge until the work/outcome is established. */
     public function billableToman(): ?int
     {
+        if ($this->simple_workflow) {
+            return $this->repair_price_toman !== null && in_array($this->status, [RepairStage::Ready, RepairStage::Delivered, RepairStage::ReturnPending, RepairStage::Returned], true)
+                ? $this->repair_price_toman + (int) $this->inbound_shipping_cost : null;
+        }
         $estimate = $this->estimates()->with('decision')->latest('revision')->first();
         if (! $estimate || (int) $estimate->repair_inspection_id !== (int) $this->inspections()->max('id')) {
             return ! $estimate && in_array($this->status, [RepairStage::ReturnPending, RepairStage::Returned], true) ? (int) $this->inbound_shipping_cost : null;

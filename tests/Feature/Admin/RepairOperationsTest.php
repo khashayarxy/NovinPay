@@ -157,7 +157,7 @@ class RepairOperationsTest extends TestCase
         $this->op($case, 'transition', ['status' => 'repairing'])->assertRedirect();
         $this->op($case, 'work', $this->work())->assertRedirect();
         $this->assertSame(100000, $case->fresh()->billableToman());
-        $this->get('/admin/repairs/'.$case->public_id)->assertOk()->assertSee('مراحل تعمیر')->assertSee('خلاصهٔ مالی');
+        $this->get('/admin/repairs/'.$case->public_id)->assertOk()->assertSee('هزینه تعمیر')->assertSee('سند مالی');
     }
 
     private function settle(RepairCase $case): void
@@ -420,7 +420,7 @@ class RepairOperationsTest extends TestCase
         $case = $this->intake();
         $this->post('/admin/repairs/search', ['q' => $case->tracking_reference, 'status' => 'received', 'brand' => 'PAX', 'from' => now()->subDay()->format('Y-m-d'), 'to' => now()->addDay()->format('Y-m-d')])->assertRedirect(route('admin.repair-cases.index'));
         $this->assertStringNotContainsString($case->tracking_reference, json_encode(session('repair_search')));
-        $this->get('/admin/repairs')->assertOk()->assertSee($case->public_id)->assertViewHas('counts', fn ($counts) => $counts['all'] === 1 && $counts['open'] === 1 && $counts['approval'] === 0);
+        $this->get('/admin/repairs')->assertOk()->assertSee($case->public_id)->assertViewHas('cases', fn ($cases) => $cases->total() === 1);
         $this->post('/admin/repairs/search', ['q' => '09000000000'])->assertRedirect();
         $this->assertStringNotContainsString('09000000000', json_encode(session('repair_search')));
         $this->post('/admin/repairs/search', ['status' => 'ready'])->assertRedirect();
@@ -528,14 +528,15 @@ class RepairOperationsTest extends TestCase
         $this->post('/admin/repairs/intake', $this->intakePayload())->assertForbidden();
     }
 
-    public function test_historical_technicians_remain_filterable_after_deactivation(): void
+    public function test_historical_assignment_is_preserved_without_an_assignment_filter(): void
     {
         $this->owner();
         $case = $this->intake();
         $tech = User::factory()->staff(['repairs.view', 'repairs.customer_data', 'repairs.inspect'])->create();
         $this->op($case, 'assign', ['technician_id' => $tech->id])->assertRedirect();
         AdminAccount::query()->where('user_id', $tech->id)->update(['is_active' => false]);
-        $this->get('/admin/repairs')->assertOk()->assertViewHas('technicians', fn ($users) => $users->contains('id', $tech->id));
+        $this->get('/admin/repairs')->assertOk()->assertDontSee('name="technician"', false);
+        $this->assertSame($tech->id, $case->fresh()->assigned_to);
         $this->post('/admin/repairs/search', ['technician' => $tech->id])->assertRedirect();
         $this->get('/admin/repairs')->assertSee($case->public_id);
         $this->op($case, 'assign', ['technician_id' => $tech->id])->assertUnprocessable();

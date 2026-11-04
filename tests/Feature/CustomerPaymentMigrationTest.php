@@ -21,7 +21,7 @@ class CustomerPaymentMigrationTest extends TestCase
 
     public function test_upgrade_from_existing_schema_preserves_populated_financial_history(): void
     {
-        $paths = glob(database_path('migrations/2026_11_03_*.php'));
+        $paths = array_merge(glob(database_path('migrations/2026_11_03_*.php')), glob(database_path('migrations/2026_11_04_*.php')));
         foreach (array_reverse($paths) as $path) {
             (require $path)->down();
         }
@@ -61,7 +61,7 @@ class CustomerPaymentMigrationTest extends TestCase
             $this->markTestSkipped('SQLite table-rebuild preservation test; MySQL/MariaDB require their migration harness.');
         }
         $before = $triggers();
-        $paths = glob(database_path('migrations/2026_11_03_*.php'));
+        $paths = array_merge(glob(database_path('migrations/2026_11_03_*.php')), glob(database_path('migrations/2026_11_04_*.php')));
         foreach (array_reverse($paths) as $path) {
             (require $path)->down();
         }

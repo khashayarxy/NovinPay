@@ -14,6 +14,8 @@ enum AdminPermission: string
     case ProductsView = 'products.view';
     case ProductsManage = 'products.manage';
     case RepairsView = 'repairs.view';
+    case SupportView = 'support.view';
+    case SupportManage = 'support.manage';
     case RepairsCustomerData = 'repairs.customer_data';
     case RepairsIntake = 'repairs.intake';
     case RepairsAssign = 'repairs.assign';
@@ -65,6 +67,8 @@ enum AdminPermission: string
             self::Dashboard => 'مشاهدهٔ پیشخوان',
             self::ProductsView => 'مشاهدهٔ محصولات',
             self::ProductsManage => 'ایجاد، ویرایش و حذف محصول',
+            self::SupportView => 'پاسخگویی به گفتگوهای پشتیبانی',
+            self::SupportManage => 'مدیریت و گزارش‌های پشتیبانی',
             self::RepairsView => 'مشاهدهٔ فهرست و اطلاعات غیرشخصی درخواست‌ها',
             self::RepairsCustomerData => 'مشاهدهٔ اطلاعات مشتری و شرح مشکل',
             self::RepairsIntake => 'پذیرش فیزیکی دستگاه',

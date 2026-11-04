@@ -21,6 +21,7 @@ use App\Support\AdminHistory;
 use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use App\Support\RepairTime;
+use App\Support\RepairTracking;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -48,28 +49,44 @@ final class RepairOperations
                 foreach (['repairs.view', 'repairs.customer_data', 'repairs.intake'] as $permission) {
                     Gate::forUser($actor)->authorize($permission);
                 }
-                abort_unless(in_array($data['physical_receipt_confirmed'] ?? null, [true, 1, '1', 'yes', 'on'], true), 422, 'دریافت فیزیکی باید صریحاً تأیید شود.');
+                $simple = in_array($data['simple_intake'] ?? null, [true, 1, '1'], true);
+                if (! $simple) {
+                    abort_unless(in_array($data['physical_receipt_confirmed'] ?? null, [true, 1, '1', 'yes', 'on'], true), 422, 'دریافت فیزیکی باید صریحاً تأیید شود.');
+                }
                 $source = ! empty($data['repair_request_id']) ? RepairRequest::query()->lockForUpdate()->findOrFail($data['repair_request_id']) : null;
                 if ($source) {
                     Gate::forUser($actor)->authorize('viewCustomerData', $source);
                     abort_if(RepairCase::query()->where('repair_request_id', $source->id)->exists(), 409, 'این درخواست قبلاً پذیرش فیزیکی شده است.');
                 }
-                $received = RepairTime::parse($data['received_at']);
+                $received = $simple ? now()->utc() : RepairTime::parse($data['received_at']);
                 abort_if($received->gt(now()) || $received->year < 2000, 422, 'زمان دریافت معتبر نیست.');
                 $case = new RepairCase;
                 $case->public_id = (string) Str::uuid();
                 $case->repair_request_id = $source?->id;
-                $case->tracking_reference = $source?->tracking_reference ?? 'NP-'.strtoupper(bin2hex(random_bytes(16)));
+                $case->tracking_reference = $simple ? RepairTracking::reserve() : ($source?->tracking_reference ?? 'NP-'.strtoupper(bin2hex(random_bytes(16))));
                 $case->tracking_digest = RepairIdentity::digest('tracking', $case->tracking_reference);
                 $case->intake_digest = RepairIdentity::digest('intake', $data['submission_token']);
                 $case->phone_digest = RepairIdentity::digest('phone', $data['contact_phone']);
                 foreach (['customer_name', 'contact_phone', 'device_brand', 'device_model', 'issue', 'physical_condition', 'accessories'] as $field) {
-                    $case->$field = $data[$field];
+                    $case->$field = $data[$field] ?? ($field === 'device_brand' ? $source?->device_brand : '');
                 }
+                $case->simple_workflow = $simple;
                 $serial = self::serial($data['device_serial'] ?? '');
                 $case->device_serial = $serial !== '' ? trim($data['device_serial']) : null;
                 $case->serial_digest = $serial !== '' ? RepairIdentity::digest('serial', $serial) : null;
-                $case->active_serial_digest = $serial !== '' ? RepairIdentity::digest('active-serial', $data['device_brand'].':'.$serial) : null;
+                if ($serial !== '') {
+                    // All intake paths serialize by normalized serial, including unknown-brand
+                    // devices. Retain historical cross-brand identifiers without allowing an
+                    // unknown-brand intake to duplicate an already active device.
+                    DB::table('repair_serial_locks')->insertOrIgnore(['serial_digest' => $case->serial_digest]);
+                    DB::table('repair_serial_locks')->where('serial_digest', $case->serial_digest)->lockForUpdate()->first();
+                    $active = RepairCase::query()->where('serial_digest', $case->serial_digest)->whereNotNull('active_serial_digest');
+                    if ($case->device_brand !== null) {
+                        $active->where(fn ($query) => $query->whereNull('device_brand')->orWhere('device_brand', $case->device_brand->value));
+                    }
+                    abort_if($active->lockForUpdate()->exists(), 409, 'این شماره سریال پرونده فعال دارد.');
+                }
+                $case->active_serial_digest = $serial !== '' ? RepairIdentity::digest('active-serial', ($case->device_brand?->value ?? '').':'.$serial) : null;
                 $case->status = RepairStage::Received;
                 $case->received_at = $received;
                 $case->received_by = $actor->id;
@@ -108,6 +125,7 @@ final class RepairOperations
             if (in_array($operation, ['diagnose', 'inspect', 'estimate', 'decision'], true)) {
                 abort_if(FinancialDocument::query()->where('repair_case_id', $case->id)->exists(), 409, 'سند مالی صادر شده است؛ اصلاح مالی باید با حفظ سابقه انجام شود.');
             }
+            abort_if($case->simple_workflow, 410, 'برای این پرونده از فرم سادهٔ تعمیر استفاده کنید.');
             $before = $case->status;
             $subject = null;
             $type = null;
