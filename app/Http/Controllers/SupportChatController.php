@@ -71,12 +71,12 @@ class SupportChatController extends Controller
             $_SERVER['HTTP_X_CSRF_TOKEN'] = $request->header('X-CSRF-Token');
             $_SERVER['CONTENT_LENGTH'] = $request->header('Content-Length', '0');
             http_response_code(200);
-            require_once resource_path('support-chat/support/bootstrap.php');
-            require_once resource_path('support-chat/support/operators.php');
+            self::loadModule(resource_path('support-chat/support/bootstrap.php'), true);
+            self::loadModule(resource_path('support-chat/support/operators.php'), true);
             if (in_array($path, ['operator-api.php', 'support-content-admin.php'], true)) {
                 $bridge->operator();
                 if ($request->input('action') === 'account_update') {
-                    require_once resource_path('support-chat/support/operator-profile.php');
+                    self::loadModule(resource_path('support-chat/support/operator-profile.php'), true);
                     $operator = \support_operator();
                     \support_csrf($operator);
                     \support_ops_admin($operator);
@@ -91,7 +91,7 @@ class SupportChatController extends Controller
                     \support_failure(409, 'native_account_management');
                 }
             }
-            require $file;
+            self::loadModule($file);
         } catch (LegacyResponse $ready) {
             $payload = $ready->payload;
             $status = $ready->status;
@@ -122,6 +122,11 @@ class SupportChatController extends Controller
             $_POST = $original['post'];
             $_FILES = $original['files'];
             $_SERVER = $original['server'];
+        }
+        if (preg_match('/^(?:SUPPORT_[A-Z0-9_]+|CHAT_DATA_DIR)\s*=/m', $content)) {
+            $content = '';
+            $status = 503;
+            $payload = ['status' => 'error', 'code' => 'service_unavailable'];
         }
         $response = $payload !== null ? response()->json($payload, $status, [], JSON_UNESCAPED_UNICODE) : response($content, $status);
         foreach ($outHeaders as $header) {
@@ -159,5 +164,15 @@ class SupportChatController extends Controller
         $response->headers->set('X-Content-Type-Options', 'nosniff');
 
         return $response;
+    }
+
+    /** Native modules must not overwrite the controller's endpoint or response variables. */
+    private static function loadModule(string $module, bool $once = false): void
+    {
+        if ($once) {
+            require_once $module;
+        } else {
+            require $module;
+        }
     }
 }

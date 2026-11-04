@@ -510,6 +510,30 @@
     {
       "path": "operator/modules/team.js",
       "upstream_sha256": "7926bc03bd84876b9412154fa5c711836b6927d1224bcfcacf9385261358a0d9"
+    },
+    {
+      "path": "operator/icons/apple-touch-icon.png",
+      "upstream_sha256": "8e0ea64eb2a4ff487b4fe3b57f08e729457bb9e2bcf278614ae6fafe3a766884"
+    },
+    {
+      "path": "operator/icons/icon-192.png",
+      "upstream_sha256": "00e70b426c7ff23a91e56035712d517fa323f164f8357af0e60b2419b67c07e5"
+    },
+    {
+      "path": "operator/icons/icon-512.png",
+      "upstream_sha256": "bbf66b9d73bcaa3c373d75426c94d98fd6acba6e293fe2fd4ea2fa7a26360c87"
+    },
+    {
+      "path": "operator/icons/maskable-512.png",
+      "upstream_sha256": "bbf66b9d73bcaa3c373d75426c94d98fd6acba6e293fe2fd4ea2fa7a26360c87"
+    },
+    {
+      "path": "operator/icons/operator-mark.svg",
+      "upstream_sha256": "8124e227f1c9cf415859e61b38fa8f270ae841247e92e45cec30306cdb310f65"
+    },
+    {
+      "path": "support/openssl.cnf",
+      "upstream_sha256": "4498f60618522aaf030dcc26f1fbfebb42e6c24c284092816800f9dd9b73b25e"
     }
   ]
 }

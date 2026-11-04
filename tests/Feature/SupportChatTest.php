@@ -56,6 +56,18 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/assets/fonts/Vazirmatn.woff2')->assertOk()->assertHeader('Content-Type', 'font/woff2');
     }
 
+    public function test_widget_renders_interface_without_private_configuration_output(): void
+    {
+        $response = $this->get('https://localhost/support-chat/support-widget.php')->assertOk();
+        $response->assertSee('chatWindow', false)->assertSee('customer-v2.js', false);
+        foreach (['SUPPORT_INSTALLATION_ID=', 'SUPPORT_PUBLIC_ROOT=', 'CHAT_DATA_DIR=', 'SUPPORT_RUNTIME_DIR=', $this->private] as $privateValue) {
+            $response->assertDontSee($privateValue, false);
+        }
+        foreach (['installation.env', 'support/installation.env', 'support/configuration.php', '../installation.env', 'data/messages.json', 'runtime/session', '.env'] as $path) {
+            $this->get('https://localhost/support-chat/'.$path)->assertNotFound();
+        }
+    }
+
     public function test_operator_requires_current_laravel_grant_and_recent_authentication(): void
     {
         $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertUnauthorized();
