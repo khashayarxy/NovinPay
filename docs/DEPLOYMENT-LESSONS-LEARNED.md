@@ -89,3 +89,5 @@ JSON.stringify({ delivery: chat?.SupportDeliveryMetrics, initialization: chat?.S
 ```
 
 Compare identity/send/sync HTTP durations, controller durations, ACK elapsed samples and initialization stages. Record actual samples before diagnosing network, PHP/controller, identity round trips or rendering as the bottleneck. Operator metrics are available as `window.SupportDeliveryMetrics` in the operator document. Hosted two-way success, handset-like browser behavior and measured speed improvements remain pending evidence.
+
+Staging delivery of the synchronization patch: four source files from `030d48edb2424d963e42948642726ee64a6aec18` installed by guarded cPanel API writes after comparing existing bytes against `689bfdb`. Private code backups and `chat-sync-20261104-v1-receipt.json` are retained in the staging kit. New files were read back and hashed; no installer, initialization command, migrations, data reset or production operation occurred. This is file-level deployment evidence, not authenticated web/OPcache, initialization or delivery acceptance. Owner-run metrics/acceptance is the next required evidence.

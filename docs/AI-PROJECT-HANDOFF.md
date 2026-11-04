@@ -1,10 +1,10 @@
 # NovinPayPos: AI project handoff
 
-Snapshot: **2026-11-04, Asia/Tehran**. This is a continuation record for Codex, Claude Code and other agents, not deployment authority. Read [working preferences](AI-WORKING-PREFERENCES.md) and [AGENTS.md](../AGENTS.md) first. Recheck changing facts before acting. Do not restart the release or repeat completed diagnostics merely because a helper exists.
+Snapshot: **2026-11-04, Asia/Tehran**, including the final preservation and synchronization follow-up. This is a continuation record for Codex, Claude Code and other agents, not deployment authority. Read [working preferences](AI-WORKING-PREFERENCES.md) and [AGENTS.md](../AGENTS.md) first. Recheck changing facts before acting. Do not restart the release or repeat completed diagnostics merely because a helper exists.
 
 ## 1. Immediate continuation point
 
-The active feature is simplified repairs plus the complete ZizoLearn-derived support chat, on isolated staging. The owner can open the widget and send messages, but reports a synchronization warning and excessive message latency. **Chat acceptance is incomplete.** The latest owner instruction temporarily switches work to this documentation-only handoff; resume implementation only within the owner's ongoing scope.
+The active feature is simplified repairs plus the complete ZizoLearn-derived support chat, on isolated staging. The owner can open the widget and send messages, but reports a synchronization warning and excessive message latency. **Chat acceptance is incomplete.** The owner subsequently authorized preserving remaining legitimate work and prioritized the synchronization fix. That fix and passive latency instrumentation were installed on staging; performance and hosted functional acceptance are still pending.
 
 The original intentionally failing regression is preserved in commit `8b0801e`. A subsequent real implementation fix now passes it without changing its assertions:
 
@@ -23,9 +23,9 @@ The client now performs one bounded fresh-window resync for explicit cursor rese
 - Repository/remote: `https://github.com/khashayarxy/NovinPay.git`.
 - Workspace: `C:\Users\Khashayar\Documents\NovinPay`.
 - Branch: `codex/novinpay-customer-repair-workflow`.
-- Implementation HEAD at handoff start: **`689bfdb266b067085ba800b2c9a263f55d3c3bd9`**, pushed.
-- [PR #13](https://github.com/khashayarxy/NovinPay/pull/13): OPEN, **Draft**, targeting `main`, exact head verified above. **Do not merge without explicit approval.**
-- This handoff is a later documentation-only commit; obtain its SHA using `git log -1`, rather than treating the implementation SHA as the final documentation HEAD.
+- Original handoff implementation baseline: **`689bfdb266b067085ba800b2c9a263f55d3c3bd9`**. Latest pushed implementation: **`030d48edb2424d963e42948642726ee64a6aec18`**; later documentation commits may follow.
+- [PR #13](https://github.com/khashayarxy/NovinPay/pull/13): OPEN, **Draft**, targeting `main`, latest implementation head verified; recheck later documentation HEAD. **Do not merge without explicit approval.**
+- Obtain the final Git/remote HEAD with `git log -1` and `git ls-remote`; implementation SHA and subsequent documentation HEAD can differ.
 - [CI run 41819313200](https://github.com/khashayarxy/NovinPay/actions/runs/41819313200): all four jobs passed on `689bfdb`: Frontend 13s; SQLite 1m7s; MySQL 8 3m46s; MariaDB 10.6.28 2m23s. This predates the intentionally failing regression now committed; later exact-head CI must be reported separately.
 
 Relevant history (inspect commits when needed, not the entire repository again):
@@ -41,8 +41,11 @@ Relevant history (inspect commits when needed, not the entire repository again):
 | `37613a1`, `cccdde0f4fe5cde10cb4309388d5e1db2091e5eb` | Safe verifier diagnostics; secure 403/404 private denial |
 | `d79804275d8418ad7e04b7049fc2b731580fbbf9` | Track original icon/OpenSSL support files |
 | `689bfdb266b067085ba800b2c9a263f55d3c3bd9` | Laravel/native cookie continuity, customer light default, original team UI adaptation |
+| `8b0801e` | Exact originally failing epoch regression, deliberately preserved |
+| `f2f118c` | Historical release-tool source and tests, private fingerprint moved to manifest |
+| `030d48edb2424d963e42948642726ee64a6aec18` | Real epoch initialization fix, bounded cursor resync, passive timing and rapid-send tests |
 
-### Existing local work: preserve, do not sweep into commits
+### Final preserved local differences
 
 Ten pre-existing finance views show modified status, but `git diff --numstat` currently has no content changes (line-ending normalization). Preserve them: `resources/views/admin/finance/{customer,document,documents,filters,form,index,reports,source,summary,transactions}.blade.php`.
 
@@ -92,12 +95,12 @@ Provider activation boundaries:
 | Baseline source | `a5f76363dd3ad6db056d1d539ab83b94fd796dff`, 200 files verified, followed by scoped hotfixes; not evidence of a full Git fast-forward to latest HEAD |
 | Finalization | Owner reported successful finalization and live staging; latest owner reports widget opens and sends messages |
 | Disclosure verification | Owner-reported `CHAT_DISCLOSURE_HTTP_VERIFICATION_PASS`: 11 tested endpoints safe; private paths 403/404, anonymous operator API 401, Basic enforced |
-| Latest patch | `689bfdb`'s controller, bridge, team module, theme init, critical shell and new service uploaded by authenticated cPanel API; byte readback verified; old files backed up privately |
+| Latest patch | `030d48e` controller, bridge, network and engine uploaded by authenticated cPanel API; exact prior `689bfdb` bytes checked and new bytes read back. Earlier team/theme/service patch retained. No migration, installer or initialization command replayed |
 | Extra source files | Original `operator/icons/operator-mark.svg` and `support/openssl.cnf` uploaded/readback verified; branded PNGs preserved |
 | Current data inspection | Read-only cPanel inspection during this task: schema-3 chat JSON, valid epoch, one conversation, four messages, no duplicate message IDs. Contents were not printed. This is not a complete delivery audit |
 | Browser acceptance | Agent Chrome fails `ERR_INVALID_AUTH_CREDENTIALS`; owner's Chrome works. Owner will perform final authenticated acceptance. Do not alter Basic or extract/inject cookies to work around this |
 
-Latest private staging evidence is under `/home/novinpay/novinpay-staging-38b9117-kit/`, including `chat-followup-20261104-v1-receipt.json` and five `chat-followup-20261104-v1-*.before` code backups. Receipt explicitly says files verified, browser acceptance pending. Preserve original encrypted recovery snapshots, attempt markers and prior receipts.
+Latest private staging evidence is under `/home/novinpay/novinpay-staging-38b9117-kit/`: `chat-sync-20261104-v1-receipt.json` binds the four files to `030d48edb2424d963e42948642726ee64a6aec18`, with four `chat-sync-20261104-v1-*.before` backups. It explicitly reports `STAGING_SYNC_PATCH_READBACK_PASS_HOSTED_ACCEPTANCE_PENDING`, hosted latency/two-way acceptance false. Earlier `chat-followup-20261104-v1-receipt.json` and five backups remain. No authenticated HTTP/body/OPcache observation of the latest patch has been claimed. Preserve original encrypted recovery snapshots, attempt markers and prior receipts.
 
 Local session-specific QA/tooling is under `C:\Users\Khashayar\.codex\visualizations\2026\10\20\01a15969-8b3c-7783-9b3b-bade84862fc0\repair-chat-20261104`. These are optional evidence artifacts, not portable tracked dependencies and not proof of execution. Do not copy the entire folder into Git.
 
