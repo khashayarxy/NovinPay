@@ -13,6 +13,10 @@
 <x-admin.errors />
 @if(session('success'))<p role="status">{{ session('success') }}</p>@endif
 @if($customer)
+@can('customers.view')
+@if($case->customer_id)<a class="admin-text-link" href="{{ route('admin.customers.show', $case->customer) }}">پرونده مشتری</a>
+@else @can('customers.link')<a class="admin-text-link" href="{{ route('admin.customers.index') }}">اتصال به پرونده مشتری</a>@endcan @endif
+@endcan
 <section class="admin-panel"><dl class="simple-repair-details">
 <div><dt>مشتری</dt><dd>{{ $case->customer_name }} · <bdi>{{ \App\Support\FaNumber::digits($case->contact_phone) }}</bdi></dd></div>
 <div><dt>دستگاه</dt><dd>{{ $case->device_model }} @if($case->device_serial)· <bdi>{{ $case->device_serial }}</bdi>@endif</dd></div>
