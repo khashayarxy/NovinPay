@@ -19,4 +19,18 @@ final class StagingSecurityVerifierDiagnosticsTest extends TestCase
         }
         $this->assertStringNotContainsString('echo $e->getMessage()', $source);
     }
+
+    public function test_private_denials_accept_only_403_or_404_and_still_scan_for_disclosure(): void
+    {
+        $code = file_get_contents(__DIR__.'/../../scripts/staging/verify-chat-security-v3.php');
+        foreach (['/storage/app/private/support-chat/installation.env', '/.env'] as $path) {
+            $this->assertMatchesRegularExpression("~'".preg_quote($path, '~')."'\\s*=>\\s*\\[403,\\s*404\\]~", $code);
+        }
+        $this->assertMatchesRegularExpression("~'/'\\s*=>\\s*200~", $code);
+        $this->assertStringContainsString('private_configuration_disclosure', $code);
+        $this->assertStringContainsString('widget_interface', $code);
+        $this->assertStringContainsString('basic_protection', $code);
+        $this->assertStringContainsString('probe_removed', $code);
+        $this->assertStringContainsString('responseHeaders', $code);
+    }
 }
