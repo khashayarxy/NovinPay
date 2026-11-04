@@ -9,6 +9,8 @@
 
 ## Authoritative project references
 
+For a new agent/session, start with [AI project handoff](docs/AI-PROJECT-HANDOFF.md) and [working preferences](docs/AI-WORKING-PREFERENCES.md). They distinguish dated evidence from open work; verify current Git/host state before relying on it. `CLAUDE.md` points to the same rules for Claude Code.
+
 | Area | Read when relevant |
 | --- | --- |
 | Architecture and runtime | [README](README.md), [foundation](docs/FOUNDATION.md), `composer.lock`, `package-lock.json`, `config/database.php` |
