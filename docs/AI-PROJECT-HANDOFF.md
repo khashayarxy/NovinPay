@@ -6,17 +6,17 @@ Snapshot: **2026-11-04, Asia/Tehran**. This is a continuation record for Codex, 
 
 The active feature is simplified repairs plus the complete ZizoLearn-derived support chat, on isolated staging. The owner can open the widget and send messages, but reports a synchronization warning and excessive message latency. **Chat acceptance is incomplete.** The latest owner instruction temporarily switches work to this documentation-only handoff; resume implementation only within the owner's ongoing scope.
 
-An intentionally failing regression test, now preserved in Git, reproduces an empty-installation synchronization defect:
+The original intentionally failing regression is preserved in commit `8b0801e`. A subsequent real implementation fix now passes it without changing its assertions:
 
 - File: `tests/Feature/SupportChatTest.php`.
 - Method: `test_empty_installation_keeps_sync_epoch_before_and_after_first_send`.
 - Command: `./scripts/test.ps1 --filter=test_empty_installation_keeps_sync_epoch`.
-- Actual result before any fix: **FAIL**, expected second empty conversation poll 200, received **409**; 1 test, 4 assertions.
+- Before fix: **FAIL**, expected second empty poll 200, received **409**; 1 test, 4 assertions. After fix: **PASS**, 1 test, 11 assertions. Compare commit `8b0801e` with the subsequent fix; do not hide or skip the regression.
 - `resources/support-chat/support/storage.php::support_store` creates a new random `store_epoch` on each read when `chat_conversations.json` does not yet exist. Empty polls do not persist it. `support_message_page` then correctly rejects the previous epoch as `cursor_reset_required`.
-- This is a **confirmed code defect**, not yet a proven complete explanation of the owner's particular browser warning. No fix has been applied. Do not weaken cursor validation.
-- The exact original regression is committed without changing assertions, skipping it, marking it incomplete, or changing CI exclusions. A fresh clone now contains it. **The test suite/required CI is expected to fail on this known defect until a real implementation fix is reviewed.** Do not call that a green baseline or weaken the test to switch accounts.
+- This is a **confirmed code defect**, not yet a proven complete explanation of the owner's particular browser warning. The fix publishes the empty store once under the existing exclusive lock during installation initialization; existing messages are preserved. Cursor validation remains strict.
+- The original regression commit intentionally fails. Current source contains its real fix and additional rapid-send/retry tests. No assertion or CI exclusion was changed to fake success. Exact-head CI for the new fixes must be checked separately.
 
-The source also clears stale cursors then rethrows the reset error; the generic 409 warning can remain visible. Consider a bounded authenticated resync for the specific recoverable reset, while preserving all outbox entries and still surfacing repeated resets or genuine integrity conflicts. This is a proposal, not implemented behavior.
+The client now performs one bounded fresh-window resync for explicit cursor reset, preserving the outbox and surfacing repeated resets or genuine integrity conflicts. New passive diagnostics retain safe operation/status/duration metadata and controller Server-Timing; no hosted speed improvement is claimed. See the final section of `DEPLOYMENT-LESSONS-LEARNED.md` for the read-only owner metrics expression.
 
 ## 2. Repository and Git evidence
 
@@ -172,13 +172,13 @@ git diff -- tests/Feature/SupportChatTest.php
 ./scripts/test.ps1 --filter=test_empty_installation_keeps_sync_epoch
 ```
 
-That last command is expected to fail until the current defect is fixed. Then run proportional tests:
+That command fails at regression-only commit `8b0801e` and passes after the real fix. Run proportional tests:
 
 ```powershell
 ./scripts/test.ps1 --filter=SupportChatTest
 ./scripts/test.ps1 --filter=SupportChatAssetsTest
 ./scripts/test.ps1 --filter=StagingSecurityVerifierDiagnosticsTest
-node --test tests/Frontend/support-theme.test.mjs
+node --test tests/Frontend/support-theme.test.mjs tests/Frontend/support-sync.test.mjs
 php vendor/bin/pint --test
 npm run build
 git diff --check
@@ -190,11 +190,13 @@ Latest local implementation validation before the new regression: `SupportChatTe
 
 Next implementation order:
 
-1. Reproduce and fix empty-store epoch continuity, with concurrency-safe initial persistence and no changes to existing messages. Test polling before/after first send, retries and duplicate ACK identity. Evaluate bounded specific cursor-reset recovery; never suppress general 409 integrity conflicts.
-2. Add safe bounded timing/error-code evidence if needed: operation category, status, server timing and durations only, no message text/IDs/cookies/credentials. Measure baseline before optimizing. Compare equivalent upstream/candidate operations; do not touch ZizoLearn production for benchmarks.
+1. Verify the qualified epoch/resync patch is installed on staging by exact hashes. The regression passes locally; do not rerun installers or reset existing chat data. Confirm hosted normal-flow behavior rather than assuming every reported 409 is the same defect.
+2. Collect the newly available bounded timing/error-code evidence from owner acceptance. No hosted before/after latency samples exist yet. Compare equivalent upstream/candidate operations without touching ZizoLearn production, then optimize the measured bottleneck.
 3. Optimize only measured bottlenecks. Preserve identity/replay/locking/durability guarantees, original features and bounded polling. Test rapid sends, lost ACK, reconnect and duplicate prevention.
 4. Deploy only the qualified staging patch through fingerprint-guarded file updates, preserving private recovery and receipts. No installer/migration replay.
 5. Owner performs authenticated acceptance: customer/operator messages both ways; no normal-flow warnings; ACK/retry/order/no-loss; attachments and reconnect; themes and original team UI. Record actual measured before/after latency, including unresolved limits.
 6. Finish remaining parity gaps, update lessons and publish focused commits to Draft PR #13 under current authorization. Keep production, ZizoLearn and live providers untouched. Production release/merge needs separate approval and fresh release gates.
 
 Do not claim completion, 100% parity, performance improvement, delivery, deployment or backup freshness without the corresponding evidence.
+
+Latest focused fix validation: 18 chat tests / 188 assertions; 8 frontend sync/theme tests; historical release tooling 42 tests / 101 assertions; PHP lint, PowerShell AST and scoped Pint passed. Hosted latency, initialization reliability and two-way acceptance remain pending. Existing finance files are the only intended residual working-tree noise and must not be committed merely to clear Git status.

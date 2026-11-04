@@ -213,6 +213,11 @@ final class ChatBridge
                 require_once resource_path('support-chat/support/bootstrap.php');
                 require_once resource_path('support-chat/support/operators.php');
                 require_once resource_path('support-chat/support/satisfaction.php');
+                // A new installation must publish its epoch once, before any
+                // read-only draft polls. Existing chat data is never rewritten.
+                \support_store(static function (array &$state, bool &$changed): void {
+                    $changed = ! is_file(CHAT_DATA_DIR.'/chat_conversations.json');
+                }, true);
                 \support_ops_store(static fn (array &$state) => null, true, true);
                 $this->syncOperators();
                 \support_satisfaction_store(static fn (array &$state) => null, true, true);

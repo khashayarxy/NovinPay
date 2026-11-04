@@ -26,6 +26,7 @@ export function validateAck(ack, row) {
 export class Transport {
     constructor(role,{fetch:fetcher=globalThis.fetch.bind(globalThis),now=Date.now}={}){this.role=role;this.fetcher=fetcher;this.now=now;this.token=null;this.context=null;}
     async request(path,{data=null,signal=null,timeout=data?30000:20000}={}) {
+        const started=performance.now();let outcome='pending',http=0,serverMs=null;
         const controller=new AbortController();let timer,abort;const observed=!/^(?:get_activity|update_activity)\.php/.test(path)&&!data?.operator_activity,ticket=observed?apiHealth.begin():0;
         if(signal){abort=()=>controller.abort();if(signal.aborted)abort();else signal.addEventListener('abort',abort,{once:true});}
         timer=setTimeout(()=>controller.abort(),timeout);
@@ -38,15 +39,19 @@ export class Transport {
                 options.body.append('csrf_token',this.token);options.headers['X-CSRF-Token']=this.token;
             }
             const response=await this.fetcher(path,options);
+            http=response.status;const timing=/\bchat;dur=([0-9.]+)/.exec(response.headers.get('Server-Timing')||'');if(timing&&Number.isFinite(Number(timing[1])))serverMs=Number(timing[1]);
             // Same-origin server clock for provisional presentation only; never security/expiry.
             const received=this.now(),server=Date.parse(response.headers.get('Date')||'');
             if(Number.isFinite(server)&&(!this.serverClock||server>=this.presentationTime(received)))this.serverClock={server,local:received};
             let body;try{body=await response.json();}catch{throw new RequestError('پاسخ سرور کامل نبود؛ نتیجه نامعلوم است.',response.ok?0:response.status,'invalid_response',retryAfter(response.headers.get('Retry-After'),this.now()));}
             if(body.code==='customer_send_limited')body.message='ارسال زیاد است؛ '+Math.ceil(retryAfter(response.headers.get('Retry-After'),this.now())/1000)+' ثانیه صبر کنید. لطفاً پرسش‌هایتان را در یک پیام کامل بنویسید.';
             if(!response.ok || body.status==='error')throw new RequestError(typeof body.message==='string'?body.message.slice(0,400):'درخواست انجام نشد؛ متن حفظ شده است.',response.status,body.code||'',retryAfter(response.headers.get('Retry-After'),this.now()));
-            if(observed)apiHealth.finish(ticket);return body;
-        }catch(error){const failure=error instanceof RequestError?error:new RequestError('ارتباط قطع یا انتظار تمام شد؛ نتیجه هنوز مشخص نیست.');if(observed&&!signal?.aborted)apiHealth.finish(ticket,failure);throw failure;}
-        finally{clearTimeout(timer);if(signal&&abort)signal.removeEventListener('abort',abort);}
+            outcome='ok';if(observed)apiHealth.finish(ticket);return body;
+        }catch(error){const failure=error instanceof RequestError?error:new RequestError('ارتباط قطع یا انتظار تمام شد؛ نتیجه هنوز مشخص نیست.');outcome=/^[a-z_]{1,64}$/.test(failure.code)?failure.code:'unavailable';if(observed&&!signal?.aborted)apiHealth.finish(ticket,failure);throw failure;}
+        finally{clearTimeout(timer);if(signal&&abort)signal.removeEventListener('abort',abort);
+            const operation=data?.send_message||data?.action==='send_reply'?'send':path.includes('get_csrf=')?'identity':path.includes('get_conversation=')?'sync':path.includes('receipts=')?'receipt':path.includes('get_session=')?'session':'auxiliary';
+            const metrics=globalThis.SupportDeliveryMetrics||{};metrics.requests=[...(metrics.requests||[]),{operation,http,outcome,ms:Math.round(performance.now()-started),controller_ms:serverMs}].slice(-80);globalThis.SupportDeliveryMetrics=metrics;
+        }
     }
     presentationTime(local){return this.serverClock?local+this.serverClock.server-this.serverClock.local:local;}
     async refresh(expectedScope=null,options={}){
@@ -155,7 +160,7 @@ export class ConversationSync {
         const page=await this.transport.request('api.php?'+new URLSearchParams({get_conversation:'1',scope:this.transport.role,user_id:id,around_sequence:String(message),limit:'50'}));
         if(generation!==this.generation||id!==this.id)return false;this.controller?.abort();this.generation++;this.messages.clear();this.epoch=null;this.cursor=0;this.merge(page,true);return true;
     }
-    async sync(older=false){
+    async sync(older=false,resetAttempt=false){
         // A bounded history window must not hide a gap behind the live cursor.
         // Return to a fresh latest page explicitly rather than appending across it.
         if(!this.id||this.busy||(!older&&this.hasNewer))return false;this.busy=true;
@@ -178,8 +183,12 @@ export class ConversationSync {
             return changed;
         }catch(error){
             if(generation!==this.generation)return false;
-            if(error.code==='cursor_reset_required'){this.messages.clear();this.cursor=0;this.epoch=null;this.editCursor=0;this.attention=null;this.onchange([],true);}
-            throw error;
+            if(error.code!=='cursor_reset_required')throw error;
+            // A reset explicitly invalidates the server window, not the outbox.
+            // Re-read once without a stale cursor; repeated resets still fail.
+            this.select(this.id);
+            if(resetAttempt||older)throw error;
         }finally{this.busy=false;}
+        return this.sync(false,true);
     }
 }

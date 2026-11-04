@@ -18,6 +18,7 @@ class SupportChatController extends Controller
 
     public function __invoke(Request $request, ChatBridge $bridge, string $path = ''): Response
     {
+        $started = hrtime(true);
         abort_unless(config('support_chat.enabled'), 404);
         abort_unless($request->isSecure() && preg_match('~\A[a-zA-Z0-9_./-]*\z~D', $path) && ! str_contains($path, '..') && ! str_starts_with($path, '/'), 404);
         $operatorPage = in_array($path, ['operator', 'operator/', 'operator/index.html'], true);
@@ -189,6 +190,8 @@ class SupportChatController extends Controller
         $response->headers->set('Cache-Control', 'no-store, private');
         $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
+        // Public duration only: no SQL, filenames, identities or request values.
+        $response->headers->set('Server-Timing', 'chat;dur='.round((hrtime(true) - $started) / 1_000_000, 2));
 
         return $response;
     }

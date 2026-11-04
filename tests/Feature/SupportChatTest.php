@@ -178,6 +178,22 @@ class SupportChatTest extends TestCase
         $this->post('https://localhost/support-chat/api.php', $data)->assertOk()->assertJsonPath('replayed', true)->assertJsonPath('message_id', $ack->json('message_id'));
     }
 
+    public function test_rapid_sends_and_lost_ack_retries_preserve_order_without_duplicates(): void
+    {
+        [$token, $id] = $this->customerContext();
+        $ids = [];
+        for ($i = 0; $i < 6; $i++) {
+            $data = ['send_message' => '1', 'user_id' => $id, 'message' => 'Fixture '.$i, 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $token];
+            $ack = $this->post('https://localhost/support-chat/api.php', $data)->assertOk()->assertJsonPath('replayed', false);
+            $ids[] = $ack->json('message_id');
+            $this->post('https://localhost/support-chat/api.php', $data)->assertOk()->assertJsonPath('replayed', true)->assertJsonPath('message_id', end($ids));
+        }
+        $page = $this->get('https://localhost/support-chat/api.php?'.http_build_query(['get_conversation' => '1', 'scope' => 'customer', 'user_id' => $id]))->assertOk()->assertJsonCount(6, 'messages');
+        $this->assertSame($ids, array_column($page->json('messages'), 'id'));
+        $this->assertCount(6, array_unique($ids));
+        $this->get('https://localhost/support-chat/api.php?get_session=1')->assertOk()->assertJsonPath('user_id', $id);
+    }
+
     public function test_message_ack_replay_edit_history_and_foreign_session_isolation(): void
     {
         [$token, $id] = $this->customerContext();
@@ -258,7 +274,9 @@ class SupportChatTest extends TestCase
         file_put_contents($this->private.'/runtime/operators/authority.json', 'not json');
         $this->actingAs(User::query()->sole())->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
         $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertStatus(503)->assertDontSee($this->private);
-        mkdir($this->private.'/data', 0700);
+        if (! is_dir($this->private.'/data')) {
+            mkdir($this->private.'/data', 0700);
+        }
         file_put_contents($this->private.'/data/chat_conversations.json', 'not json');
         $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertOk();
         $_COOKIE[session_name()] = session_id();

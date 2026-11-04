@@ -130,7 +130,8 @@ export class ChatEngine {
     }
     pendingGrace(){const configured=globalThis.SupportWidgetConfig?.pending_indicator_grace_ms;if(Number.isFinite(configured))return Math.max(0,Math.min(2000,configured));const samples=[...this.ackSamples].sort((a,b)=>a-b);const base=samples.length?samples[Math.ceil(samples.length*.75)-1]:Math.max(globalThis.navigator?.connection?.rtt||0,(this.startupRtt||100)*2);return Math.min(1200,Math.max(150,base*1.5));}
     async accept(row,ack) {
-        if(row.attempts===1&&Date.now()-row.created<10000){this.ackSamples.push(Date.now()-row.created);this.ackSamples=this.ackSamples.slice(-20);globalThis.SupportDeliveryMetrics={ack_ms:[...this.ackSamples],grace_ms:this.pendingGrace()};}
+        const metrics=globalThis.SupportDeliveryMetrics||{};metrics.accepted=[...(metrics.accepted||[]),{elapsed_ms:Math.max(0,Date.now()-row.created),attempts:row.attempts}].slice(-20);globalThis.SupportDeliveryMetrics=metrics;
+        if(row.attempts===1&&Date.now()-row.created<10000){this.ackSamples.push(Date.now()-row.created);this.ackSamples=this.ackSamples.slice(-20);globalThis.SupportDeliveryMetrics={...globalThis.SupportDeliveryMetrics,ack_ms:[...this.ackSamples],grace_ms:this.pendingGrace()};}
         const submitted={...row,attachments:[...(row.attachments||[])]};
         this.knownAcks.set(row.key,ack);
         try{await this.box.accepted(row.key,ack);}catch(e){this.hooks.warning?.('پیام در سرور ثبت شد؛ پاک‌سازی نسخه محلی انجام نشد. متن تا بررسی بعدی حفظ می‌شود.');}

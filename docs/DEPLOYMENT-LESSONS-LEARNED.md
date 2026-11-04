@@ -69,3 +69,23 @@ Owner-reported `CHAT_DISCLOSURE_HTTP_VERIFICATION_PASS` completed all 11 endpoin
 A real authenticated staging browser reached the session phase, then aborted `get_session` after timeout. Laravel encrypts outgoing native chat cookies, but native modules read PHP `$_COOKIE` (the encrypted wire value) instead of Laravel's authenticated/decrypted cookie bag. A regression reproduces the second-request 401 with valid encrypted transport and proves tampered-cookie denial. The controller now installs the decrypted Request cookie bag only within native dispatch and restores globals in `finally`; cookie encryption/CSRF/ownership rules stay enabled. Existing synthetic tests had supplied plaintext PHP globals and missed the real middleware boundary. Browser confirmation after guarded staging delivery is required before closing initialization. Diagnostic references are browser-generated, not server-log correlation IDs.
 
 Customer themes intentionally differ from upstream defaults: light regardless of OS, installation-scoped manual light/dark preference retained, no inheritance from site-wide `theme` or system mode. Critical loading/error bootstrap follows the same rule. `node --test tests/Frontend/support-theme.test.mjs` covers device-dark default, persistence, storage denial, legacy preference and unchanged operator system mode.
+
+
+## Empty-store epoch reset and latency qualification (2026-11-04)
+
+The exact regression is preserved in commit `8b0801e`: a second read-only draft poll before the first stored message returns 409 because a missing chat JSON file receives a new random epoch on every read. The subsequent fix publishes an empty schema-3 authority once under the existing exclusive chat lock during `ChatBridge::initialize`; an existing store is not rewritten. The unchanged regression now passes (11 assertions). This is a confirmed defect shared with the upstream missing-store path; it is not yet proof of the precise subtype of the owner's reported 409.
+
+`ConversationSync` now immediately re-reads one fresh window only after explicit `cursor_reset_required`; the old window is invalidated, while outbox entries and ACK identities stay untouched. A repeated reset still throws. Other conflicts, including `message_integrity` and `idempotency_conflict`, are never retried or suppressed. Focused Node tests cover bounded reset recovery, real conflict propagation and conversation-switch races. No polling interval, retry protection, session check or durable ACK rule was relaxed. Six consecutive unique sends plus lost-ACK retries preserve exactly six ordered messages in isolated integration tests.
+
+Owner reported initial loading failure reference `mw21zx46` followed by recovery without refresh; reliability is still unqualified. References are browser-local diagnostics, not known server correlation IDs. Automatic recovery is not acceptance. Agent Chrome Basic authentication remains unavailable; owner will perform hosted two-way acceptance.
+
+No honest hosted before/after send-latency comparison is available yet. Original `engine.js` and `network.js` matched authoritative upstream `7d6f6ddcfbde4fd3fb1857f62504d230e4c43bb5` before this patch. Do not remove the identity preflight or increase polling on an assumption. New passive evidence records at most 80 request durations, operation categories, HTTP/error codes and the `Server-Timing: chat;dur=...` controller duration; existing ACK elapsed samples remain available. No message text, recipient, conversation/session identifiers, URLs, cookies, SQL or credentials are recorded. Controller duration excludes Laravel bootstrap, wire time and client queueing; never call it total server processing time. This instrumentation is not a claimed speed optimization.
+
+For owner-run staging acceptance, reload the page, observe initial load and send a few distinct synthetic messages; test reply, retry/reconnect and persistence separately. In the owning page's browser console, this read-only expression returns only the bounded diagnostics (do not export a raw HAR containing cookies):
+
+```javascript
+const chat = [...document.querySelectorAll('iframe')].find(f => f.src.includes('/support-chat/support-widget.php'))?.contentWindow;
+JSON.stringify({ delivery: chat?.SupportDeliveryMetrics, initialization: chat?.SupportInitDiagnostics });
+```
+
+Compare identity/send/sync HTTP durations, controller durations, ACK elapsed samples and initialization stages. Record actual samples before diagnosing network, PHP/controller, identity round trips or rendering as the bottleneck. Operator metrics are available as `window.SupportDeliveryMetrics` in the operator document. Hosted two-way success, handset-like browser behavior and measured speed improvements remain pending evidence.
