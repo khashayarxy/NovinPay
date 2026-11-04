@@ -56,6 +56,13 @@ class SupportChatController extends Controller
             $bridge->begin();
             $_GET = $request->query->all();
             $_POST = $request->request->all();
+            // The native FormData protocol uses empty strings (including image-only
+            // messages). Restore Laravel's empty-to-null normalization at this boundary.
+            array_walk_recursive($_POST, static function (&$value): void {
+                if ($value === null) {
+                    $value = '';
+                }
+            });
             $_SERVER['REQUEST_METHOD'] = $request->method();
             $_SERVER['HTTPS'] = 'on';
             $_SERVER['SERVER_PORT'] = 443;
@@ -125,6 +132,26 @@ class SupportChatController extends Controller
                 } else {
                     $response->headers->set($name, trim($value));
                 }
+            }
+        }
+        // Declare known response types explicitly; PHP CLI does not retain native
+        // header() calls, and binary chat responses must never fall back to HTML.
+        if ($payload === null && $status >= 200 && $status < 300) {
+            $image = in_array($path, ['support-attachment.php', 'operator-avatar.php', 'support-avatar.php', 'support-profile-image.php'], true);
+            $type = match (true) {
+                $image => 'image/webp',
+                $path === 'support-theme.php' => 'text/javascript; charset=utf-8',
+                $path === 'operator/manifest.php' => 'application/manifest+json; charset=utf-8',
+                $path === 'operator-api.php' && $request->input('action') === 'analytics_csv' => 'text/csv; charset=utf-8',
+                default => null,
+            };
+            if ($type !== null) {
+                $response->headers->set('Content-Type', $type);
+            }
+            if ($image) {
+                $response->headers->set('Content-Security-Policy', "default-src 'none'; sandbox");
+                $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+                $response->headers->set('Content-Disposition', 'inline; filename="image.webp"');
             }
         }
         $response->headers->set('Cache-Control', 'no-store, private');

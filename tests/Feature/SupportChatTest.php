@@ -208,4 +208,32 @@ class SupportChatTest extends TestCase
             $bridge->finish();
         }
     }
+
+    public function test_image_only_message_preserves_empty_form_text_across_laravel_normalization(): void
+    {
+        [$token, $conversation] = $this->customerContext();
+        $context = $_SESSION;
+        $bridge = app(ChatBridge::class);
+        $bridge->begin();
+        try {
+            $image = imagecreatetruecolor(2, 2);
+            ob_start();
+            imagewebp($image);
+            $bytes = ob_get_clean();
+            imagedestroy($image);
+            $id = bin2hex(random_bytes(16));
+            support_atomic_replace(support_attachment_path($id), $bytes);
+            support_store(function (array &$state, bool &$changed) use ($context, $conversation, $bytes, $id): void {
+                $state['uploads'][$id] = ['sender' => support_principal($context, 'customer'), 'epoch' => $context['auth_epoch'], 'conversation' => $conversation, 'created' => time(), 'expires' => time() + 86400, 'bytes' => strlen($bytes), 'mime' => 'image/webp', 'width' => 2, 'height' => 2, 'sha256' => hash('sha256', $bytes), 'state' => 'uploaded'];
+                $changed = true;
+            }, true);
+        } finally {
+            $bridge->finish();
+        }
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $conversation, 'message' => '', 'attachments' => json_encode([$id]), 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $token])->assertOk()->assertJsonPath('status', 'accepted');
+        $this->get('https://localhost/support-chat/support-attachment.php?id='.$id)->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $_COOKIE = [];
+        $this->customerContext();
+        $this->get('https://localhost/support-chat/support-attachment.php?id='.$id)->assertNotFound();
+    }
 }

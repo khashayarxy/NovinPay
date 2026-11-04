@@ -113,7 +113,7 @@ class SimpleRepairTest extends TestCase
         $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
         $case = RepairCase::query()->sole();
         $this->post(route('admin.repair-cases.record', $case), ['version' => 1, 'status' => 'ready', 'repair_cost' => '300', 'money_scale' => '1000', 'delivery_method' => 'in_person'])->assertRedirect();
-        $this->get(route('admin.repair-cases.document', [$case, 'summary']))->assertOk()->assertSee('۳۰۰,۰۰۰');
+        $this->get(route('admin.repair-cases.document', [$case, 'summary']))->assertOk()->assertSee('۳۰۰٬۰۰۰');
         $revision = RepairRecordRevision::query()->sole();
         $this->assertArrayNotHasKey('payload', $revision->toArray());
         $this->expectException(QueryException::class);
