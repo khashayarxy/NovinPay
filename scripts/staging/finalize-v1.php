@@ -85,7 +85,7 @@ function np_snapshot(PDO $pdo): array
         $result[$table] = ['columns' => $columns, 'rows' => $count, 'sha256' => hash_final($hash)];
     }
 
-return $result;
+    return $result;
 }
 function np_compare(PDO $pdo, array $before): void
 {
@@ -246,20 +246,20 @@ try {
         $pdo->rollBack();
     }if ($admitted) {
         try {
-            $kernel->call('down',['--retry' => 60, '--no-interaction' => true]);
+            $kernel->call('down', ['--retry' => 60, '--no-interaction' => true]);
         } catch (Throwable) {
         }
-    }$code = $e instanceof RuntimeException && preg_match('~\A[a-zA-Z0-9_./-]+\z~D',$e->getMessage()) ? $e->getMessage() : 'details_withheld';
+    }$code = $e instanceof RuntimeException && preg_match('~\A[a-zA-Z0-9_./-]+\z~D', $e->getMessage()) ? $e->getMessage() : 'details_withheld';
     echo "FINALIZATION STOP: phase={$phase}; category={$code}; preserve evidence.\n";
     exit(1);
 } finally {
     if ($probe) {
-        clearstatcache(true,$probe);
+        clearstatcache(true, $probe);
         if (is_file($probe)) {
             unlink($probe);
         }
     }if (isset($lock) && is_resource($lock)) {
-        flock($lock,LOCK_UN);
+        flock($lock, LOCK_UN);
         fclose($lock);
     }
 }
