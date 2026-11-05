@@ -153,7 +153,7 @@ Reviewed helper flow: exact account/path/file/lock/package/auth identity; preser
 
 Local helper validation: main PHP, generated readiness child and generated protected probe all pass syntax; wrong-host invocation stops at identity before host/database/file mutation. This is not proof that hosted execution will pass. The normal cPanel API has no shell execution facility; one owner Terminal action is still required. Do not improvise a public command endpoint or extract credentials to bypass unavailable browser access.
 
-Exact reviewed command (all checks run before the helper):
+Historical v2 command (STOP occurred; do not run again; use reconciled v3 below):
 
 ```sh
 cd /home/novinpay/novinpay-staging-38b9117-kit && printf '%s  %s\n' \
@@ -168,3 +168,28 @@ cd /home/novinpay/novinpay-staging-38b9117-kit && printf '%s  %s\n' \
 Expected successful result: `STAGING_SYMFONY_SECURITY_PATCH_PASS` with three patched versions, advisories 0, migrations 22, maintenanceOff true and probeRemoved true. It explicitly does not claim real browser two-way acceptance. Do not rerun if STOP/PENDING occurs; preserve the unique evidence directory, inspect phase/results and reconcile. No current proof of hosted security remediation or new latency improvement exists until the actual output and independent checks are collected.
 
 Final execution helper is **v2**. Unexecuted v1 files remain private evidence and must not be run. Final review corrected a cleanup issue before any execution: PHP `exit` cannot be relied on to execute `finally`, so the exact created temporary probe is explicitly removed before both failure/PENDING exits. An isolated PHP fixture verified that only the generated probe path is removed and an unrelated file remains. V2 main/child/probe syntax passed, and v2 helper/manifest were uploaded mode 0600 with full readback hashes. Shared payloads were not retransmitted. Hosting execution and large-artifact checksum remain pending the single command above.
+
+
+## Symfony security v2 `identity / manifest_pin` (2026-11-05)
+
+**Verified cause:** the v2 helper still read `repair-chat-symfony-security-v1.json`, although the reviewed command pinned v2's hash. Readback verified helper SHA `62dbb94263b5810ce64a9c2358abc7f60a011ebe96c443c38b1e19e98f9bde86`, v1 manifest SHA `911a80c3d5de46e744a347b6dc021b4ffeef5297667c588aad13625f0bbf26fb`, and v2 SHA `f30408ddcc3df1fcc108983aab6735c4c019e9898add9a8282c21519289f526d`. This is a copied filename defect, not changed hosting identity or an invalid security guard. My previous wrong-host/syntax tests did not exercise the real manifest selection; that validation gap is now covered.
+
+Read-only cPanel reconciliation found the old lock, composer.json, operators.php and preserved operator backup still matching the approved fingerprints, all three installed Symfony packages still v8.1.8, no Laravel maintenance marker, no active private maintenance state, no security operation lock/journal directory and no generated public probe. The code failed before autoloading Laravel, DB access, operation journaling, snapshots or a maintenance fence. Database rows were not independently scanned again; no production path was inspected. Preserve v1/v2 artifacts and all prior evidence.
+
+**Correction:** tracked `scripts/staging/repair-chat-symfony-security-v3.php` derives the adjacent manifest path from its executing `__FILE__`, verifies the supplied SHA before parsing it, and uses `basename(__FILE__)` for helper artifact verification. No pin, owner/path, package inventory, backup, concurrency, authentication, fence or HTTP safeguard is removed. Apart from this selection fix and a no-execution include boundary for contract tests, v2 flow is retained and formatted for review. Private manifests stay outside Git.
+
+**Prevention:** `StagingSecurityManifestTest` reproduces the old mismatch, exercises actual loader selection with retained versions, rejects altered bytes and malformed pins, and checks ordering before backup/fence/dependency operations. Related finalizer/attempt-preservation tests: **7 tests / 29 assertions passed**. Syntax and scoped Pint pass. Wrong-host execution still stops before mutation. A test invocation using a pipe-separated filter hit the Windows wrapper's shell parsing; explicit file arguments passed. Pint after the wrapper in the same process hit its known environment/bootstrap issue; a fresh-process Pint passed. No full matrix/build repeated for this release-tool-only fix.
+
+**Execution:** only new v3 helper/manifest uploaded; shared payloads and all old artifacts preserved. Owner output establishes all five v2 transport SHA checks passed. V3 helper/manifest readback and 0600/UID 1321 are required before use; the command still independently verifies every payload. New manifest hash creates a distinct attempt journal; no previous attempt is deleted or treated as permission to replay. Normal cPanel Fileman has no command execution; one owner Terminal invocation is unavoidable. V3 has not been executed, so hosted patching remains pending. On STOP/PENDING preserve evidence, do not retry blindly.
+
+Current v3 command:
+
+```sh
+cd /home/novinpay/novinpay-staging-38b9117-kit && printf '%s  %s\n' \
+  071a7002629f66b29a27cb603e73c79e5e761ac76a63587d2fa7fbb54180ea04 repair-chat-symfony-security-v3.php \
+  9ac5ea63f05cdfeff4d441042d88ca5b17a3228e8b2f59ccc720280e4a31c0d8 repair-chat-security-composer-v1.b64 \
+  b674d99593e038bf4b9a2bb518ba535ba784c179d44d2542b40e878fcab0af2e repair-chat-security-composer-v1.lock \
+  9b35655127a62c01ead1bb549876bc947024cff7579da25f1bc0d35d147d3227 repair-chat-security-operators-v1.php \
+  99b7ca8ab259ccb3ab38c0dc2a9b95f25fd13b90d84a36a0c8d3fbbfeef141ea repair-chat-symfony-security-v3.json \
+  | sha256sum -c - && /opt/cpanel/ea-php84/root/usr/bin/php ./repair-chat-symfony-security-v3.php 99b7ca8ab259ccb3ab38c0dc2a9b95f25fd13b90d84a36a0c8d3fbbfeef141ea
+```
