@@ -186,10 +186,12 @@ Current v3 command:
 
 ```sh
 cd /home/novinpay/novinpay-staging-38b9117-kit && printf '%s  %s\n' \
-  071a7002629f66b29a27cb603e73c79e5e761ac76a63587d2fa7fbb54180ea04 repair-chat-symfony-security-v3.php \
+  78ee45faf3e6fced525687e476af5170c6d3aaad42294f9a86cae9f9547660cc repair-chat-symfony-security-v3.php \
   9ac5ea63f05cdfeff4d441042d88ca5b17a3228e8b2f59ccc720280e4a31c0d8 repair-chat-security-composer-v1.b64 \
   b674d99593e038bf4b9a2bb518ba535ba784c179d44d2542b40e878fcab0af2e repair-chat-security-composer-v1.lock \
   9b35655127a62c01ead1bb549876bc947024cff7579da25f1bc0d35d147d3227 repair-chat-security-operators-v1.php \
-  99b7ca8ab259ccb3ab38c0dc2a9b95f25fd13b90d84a36a0c8d3fbbfeef141ea repair-chat-symfony-security-v3.json \
-  | sha256sum -c - && /opt/cpanel/ea-php84/root/usr/bin/php ./repair-chat-symfony-security-v3.php 99b7ca8ab259ccb3ab38c0dc2a9b95f25fd13b90d84a36a0c8d3fbbfeef141ea
+  e4434545aa9be18a71ff8458fd6b96f5b68f9bea9553c39c295b22a90c0f090b repair-chat-symfony-security-v3.json \
+  | sha256sum -c - && /opt/cpanel/ea-php84/root/usr/bin/php ./repair-chat-symfony-security-v3.php e4434545aa9be18a71ff8458fd6b96f5b68f9bea9553c39c295b22a90c0f090b
 ```
+
+CI on 6264b5f caught a remaining Pint formatting pass in the newly expanded helper. Five whitespace-only lines were fixed; a fresh full repository `pint --test` and the same 7 tests / 29 assertions passed. Before issuing the command, both unexecuted v3 draft artifacts are preserved privately as `.pre-pint.before`, then updated only against their exact old hashes and read back. Final command uses the new hashes. No v3 execution occurred.

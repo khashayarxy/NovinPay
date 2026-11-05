@@ -94,7 +94,7 @@ function sp_http(string $path, array $auth, ?string $token = null): array
             $headers[strtolower(trim($p[0]))] = trim($p[1]);
         }
 
-return strlen($line);
+        return strlen($line);
     }]);
     $start = hrtime(true);
     $body = curl_exec($h);
@@ -305,20 +305,20 @@ try {
             sp_run([PHP_BINARY, STAGE.'/artisan', 'down', '--retry=60', '--no-interaction'], 'failure_fence');
         } catch (Throwable) {
         }
-    }$r = ['result' => 'STAGING_SECURITY_PATCH_STOP', 'phase' => $phase, 'category' => $e instanceof RuntimeException && preg_match('/\A[a-z_]+\z/D',$e->getMessage()) ? $e->getMessage() : 'details_withheld', 'maintenanceMayBeActive' => $armed, 'retrySafe' => false, 'productionModified' => false];
+    }$r = ['result' => 'STAGING_SECURITY_PATCH_STOP', 'phase' => $phase, 'category' => $e instanceof RuntimeException && preg_match('/\A[a-z_]+\z/D', $e->getMessage()) ? $e->getMessage() : 'details_withheld', 'maintenanceMayBeActive' => $armed, 'retrySafe' => false, 'productionModified' => false];
     if ($out) {
         try {
-            sp_put($out.'/STOP.json',json_encode($r,JSON_THROW_ON_ERROR));
+            sp_put($out.'/STOP.json', json_encode($r, JSON_THROW_ON_ERROR));
         } catch (Throwable) {
         }
     }$r['probeRemoved'] = sp_cleanup_probe();
-    fwrite(STDERR,json_encode($r)."\n");
+    fwrite(STDERR, json_encode($r)."\n");
     exit(1);
 } finally {
     if ($probe && is_file($probe) && ! is_link($probe)) {
         unlink($probe);
     }if (is_resource($lock)) {
-        flock($lock,LOCK_UN);
+        flock($lock, LOCK_UN);
         fclose($lock);
     }
 }
