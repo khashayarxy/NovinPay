@@ -111,3 +111,22 @@ Local profiling found `ChatBridge::session('operator')` calls `syncOperators`, w
 `support/operators.php` now compares the fully validated/cleaned encoded state with the bytes read under the existing exclusive lock. Only identical bytes avoid replacement; private file mode 0600 is still enforced. Changed state keeps the original durable atomic replacement. The tests prove session-version changes still persist, expired audit/subscription metadata is still written out, corrupt authorities still fail closed, and message/ownership/replay controls still pass. No caching of privileges or longer revocation window was introduced. Original source is preserved except this necessary hosting optimization; no upstream website was modified.
 
 Validation: scoped chat suite 19 tests / 194 assertions passed before adding the extra cleanup regression; that additional regression passed 1 test / 4 assertions. Frontend send/sync/theme suite 11 passed. PHP syntax passed. A Pint invocation in the same shell after the isolated test wrapper hit the previously observed local `LARAVEL_START`/configuration bootstrap failure; use a fresh process and report its actual outcome. Do not count the failed invocation as a pass.
+
+
+## 2026-11-05 delivery interruption and new dependency-audit blocker
+
+The operator no-op optimization is committed/pushed at `9a70b57175ba96a01d31ed366c4829b51e5b175a`. Its staging transfer failed with an HTTPS client send error. Read-only reconciliation, not a blind mutation retry, found the private backup `chat-authority-20261105-v1-operators.before` present and no completion receipt. Deployed `resources/support-chat/support/operators.php` still matches the previous source (SHA-256 `b75003008d5b76b79115c136ba8b0b7b62d4db541caec9454e9652f14ce8e8b7`); the new optimization is **NOT installed**. Earlier epoch/cursor/fresh-send patches remain the latest file-level delivery evidence. Preserve the backup and reconcile before any later write. Browser access was retried once through the supported browser workflow; it still reports `ERR_INVALID_AUTH_CREDENTIALS`. No password/auth configuration was changed.
+
+CI run `42048033743`, SQLite job `127316255330`, stopped at **Audit locked PHP dependencies** before Pint/tests. Local `composer audit --locked --format=json` independently exited 1 with six advisories across `symfony/http-foundation`, `symfony/http-kernel`, `symfony/routing`, all currently v8.1.8. These were published November 4, after the previous green run. Do not suppress audit, add ignores or claim the last green CI remains current. No exploitability of this application or live production was established; production has not been inspected.
+
+Primary references: [Symfony routing CVE-2026-118516](https://symfony.com/cve-2026-118516), [HTTP Foundation generated-URL advisory](https://github.com/symfony/symfony/security/advisories/GHSA-5mx8-mwrp-5693). Six reported IDs: `PKSA-24ph-xkrh-y79j`, `PKSA-pr6q-2w5s-kzzf`, `PKSA-nxjs-s6hn-vb6m`, `PKSA-b2gg-vk1g-6d5q`, `PKSA-3gxv-7xhq-mgmz`, `PKSA-y8c5-1b7f-r1gj`.
+
+A read-only solver check found the minimum patch set, with no added/removed packages and no PHP-major change:
+
+```powershell
+composer update symfony/http-foundation symfony/http-kernel symfony/routing --with-dependencies --minimal-changes --dry-run --no-scripts --no-plugins --no-install
+```
+
+Observed proposal: exactly these three packages v8.1.8 -> v8.1.11, solver reports no advisories for the proposed set. **Dry-run only**: composer.json, composer.lock and vendor were not changed. Applying dependencies is outside the chat-I/O optimization and needs applicable authorization under AGENTS.md. Then retain all mandatory CI/regression gates, including routing/auth/maintenance/ACK checks; published routing guidance requires rebuilding affected compiled routes during an authorized release. Do not clear hosting caches or replace vendor as part of this diagnosis. No production operations occurred.
+
+The fresh-process Pint check passed; the earlier same-shell Pint bootstrap failure is a local harness issue, not the CI cause. The additional metadata-cleanup regression passed separately; do not repeat the entire local test matrix solely to diagnose an audit failure.
