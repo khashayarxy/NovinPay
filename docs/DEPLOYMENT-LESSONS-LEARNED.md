@@ -145,7 +145,7 @@ Read-only cPanel evidence confirms staging currently has Laravel 13.35.0 and the
 
 Security commit `4df6f68edb66e20d3df40f34be61a513640ccffa` passed all four CI jobs in run `42049709704`: SQLite 1m15s, MySQL 8 4m37s, MariaDB 10.6.28 2m32s, Frontend 9s. Both Composer audits report zero advisories; exact three-entry lock comparison and PHP platform check passed. No production operation occurred.
 
-After CI, read-only staging reconciliation verified the complete installed runtime package version/reference inventory against the pre-patch lock, old operators.php, the retained interrupted-transfer backup, Basic helper integrity and account quota reserve. A **private, staging-only** execution package is prepared under `/home/novinpay/novinpay-staging-38b9117-kit`, not executed. Files: `repair-chat-symfony-security-v1.php`, `repair-chat-symfony-security-v1.json`, `repair-chat-security-composer-v1.b64`, `repair-chat-security-composer-v1.lock`, `repair-chat-security-operators-v1.php`. All are 0600. The bundled Composer is the existing trusted local Composer 2.10.2 binary transported as base64, not a new server-wide installation. The helper validates both encoded and decoded hashes. Private manifest/auth material and binary transport stay out of Git.
+After CI, read-only staging reconciliation verified the complete installed runtime package version/reference inventory against the pre-patch lock, old operators.php, the retained interrupted-transfer backup, Basic helper integrity and account quota reserve. A **private, staging-only** execution package is prepared under `/home/novinpay/novinpay-staging-38b9117-kit`, not executed. Files: `repair-chat-symfony-security-v2.php`, `repair-chat-symfony-security-v2.json`, `repair-chat-security-composer-v1.b64`, `repair-chat-security-composer-v1.lock`, `repair-chat-security-operators-v1.php`. All are 0600. The bundled Composer is the existing trusted local Composer 2.10.2 binary transported as base64, not a new server-wide installation. The helper validates both encoded and decoded hashes. Private manifest/auth material and binary transport stay out of Git.
 
 Upload of the 4,852,372-byte base64 artifact timed out at the client after 45 seconds but left a complete-size private server file. Read-only reconciliation found it; **it was not retransmitted**. Fileman refuses content readback above 1 MiB. Its full SHA-256 is therefore **pending the mandatory on-host checksum**, not claimed verified. The four smaller files passed byte readback/hash checks. No application/vendor/fence operation ran, so staging still has the pre-patch Symfony packages and previous operators.php. This is a transport/tool limitation, not a new permission request or a reason to bypass checks.
 
@@ -157,12 +157,14 @@ Exact reviewed command (all checks run before the helper):
 
 ```sh
 cd /home/novinpay/novinpay-staging-38b9117-kit && printf '%s  %s\n' \
-  c147a5b2b77ba5057760644f0574e642f8b6273075efb8ac94842c2daca34d8f repair-chat-symfony-security-v1.php \
+  62dbb94263b5810ce64a9c2358abc7f60a011ebe96c443c38b1e19e98f9bde86 repair-chat-symfony-security-v2.php \
   9ac5ea63f05cdfeff4d441042d88ca5b17a3228e8b2f59ccc720280e4a31c0d8 repair-chat-security-composer-v1.b64 \
   b674d99593e038bf4b9a2bb518ba535ba784c179d44d2542b40e878fcab0af2e repair-chat-security-composer-v1.lock \
   9b35655127a62c01ead1bb549876bc947024cff7579da25f1bc0d35d147d3227 repair-chat-security-operators-v1.php \
-  911a80c3d5de46e744a347b6dc021b4ffeef5297667c588aad13625f0bbf26fb repair-chat-symfony-security-v1.json \
-  | sha256sum -c - && /opt/cpanel/ea-php84/root/usr/bin/php ./repair-chat-symfony-security-v1.php 911a80c3d5de46e744a347b6dc021b4ffeef5297667c588aad13625f0bbf26fb
+  f30408ddcc3df1fcc108983aab6735c4c019e9898add9a8282c21519289f526d repair-chat-symfony-security-v2.json \
+  | sha256sum -c - && /opt/cpanel/ea-php84/root/usr/bin/php ./repair-chat-symfony-security-v2.php f30408ddcc3df1fcc108983aab6735c4c019e9898add9a8282c21519289f526d
 ```
 
 Expected successful result: `STAGING_SYMFONY_SECURITY_PATCH_PASS` with three patched versions, advisories 0, migrations 22, maintenanceOff true and probeRemoved true. It explicitly does not claim real browser two-way acceptance. Do not rerun if STOP/PENDING occurs; preserve the unique evidence directory, inspect phase/results and reconcile. No current proof of hosted security remediation or new latency improvement exists until the actual output and independent checks are collected.
+
+Final execution helper is **v2**. Unexecuted v1 files remain private evidence and must not be run. Final review corrected a cleanup issue before any execution: PHP `exit` cannot be relied on to execute `finally`, so the exact created temporary probe is explicitly removed before both failure/PENDING exits. An isolated PHP fixture verified that only the generated probe path is removed and an unrelated file remains. V2 main/child/probe syntax passed, and v2 helper/manifest were uploaded mode 0600 with full readback hashes. Shared payloads were not retransmitted. Hosting execution and large-artifact checksum remain pending the single command above.
