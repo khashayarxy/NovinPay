@@ -139,3 +139,30 @@ Owner explicitly authorized exactly `symfony/http-foundation`, `symfony/http-ker
 Both locked and installed `composer audit --format=json` now return empty advisory/abandoned/filter lists: all six previously reported IDs are absent, with no ignores added. PHP 8.4.27 platform requirements passed. Focused compatibility tests covering support chat, admin login/authorization, maintenance control/private preview and security headers: **79 tests / 901 assertions passed**. Frontend send/sync/theme: **11 passed**. Full Pint and diff checks passed. Required exact-head CI is a separate release gate.
 
 Read-only cPanel evidence confirms staging currently has Laravel 13.35.0 and the three Symfony packages 8.1.8, with its package lock matching the prior lock's versions. The local patch does not prove the host is patched. Updating hosting vendor files requires a controlled staging-only dependency operation and rebuilding the compiled route cache; never copy a Windows dev vendor tree over staging, update production, run migrations or reset chat data. Preserve the interrupted operator-patch backup and reconcile existing source first.
+
+
+## Symfony patch CI and staged execution package (2026-11-05)
+
+Security commit `4df6f68edb66e20d3df40f34be61a513640ccffa` passed all four CI jobs in run `42049709704`: SQLite 1m15s, MySQL 8 4m37s, MariaDB 10.6.28 2m32s, Frontend 9s. Both Composer audits report zero advisories; exact three-entry lock comparison and PHP platform check passed. No production operation occurred.
+
+After CI, read-only staging reconciliation verified the complete installed runtime package version/reference inventory against the pre-patch lock, old operators.php, the retained interrupted-transfer backup, Basic helper integrity and account quota reserve. A **private, staging-only** execution package is prepared under `/home/novinpay/novinpay-staging-38b9117-kit`, not executed. Files: `repair-chat-symfony-security-v1.php`, `repair-chat-symfony-security-v1.json`, `repair-chat-security-composer-v1.b64`, `repair-chat-security-composer-v1.lock`, `repair-chat-security-operators-v1.php`. All are 0600. The bundled Composer is the existing trusted local Composer 2.10.2 binary transported as base64, not a new server-wide installation. The helper validates both encoded and decoded hashes. Private manifest/auth material and binary transport stay out of Git.
+
+Upload of the 4,852,372-byte base64 artifact timed out at the client after 45 seconds but left a complete-size private server file. Read-only reconciliation found it; **it was not retransmitted**. Fileman refuses content readback above 1 MiB. Its full SHA-256 is therefore **pending the mandatory on-host checksum**, not claimed verified. The four smaller files passed byte readback/hash checks. No application/vendor/fence operation ran, so staging still has the pre-patch Symfony packages and previous operators.php. This is a transport/tool limitation, not a new permission request or a reason to bypass checks.
+
+Reviewed helper flow: exact account/path/file/lock/package/auth identity; preserve previous evidence; exclusive operation lock and unique started journal; private code-only vendor/lock/route-cache snapshot; staging-only 503 fence; Composer install from the new lock with no scripts/plugins/dev packages; exact version/reference inventory after install; zero-advisory audit; resume only the verified operators.php change; rebuild routes; fresh-process readiness with read-only DB transaction (22 migrations/protected owner/provider flags); token-protected temporary web version/OPcache check with app-scoped invalidation only; remove probe; preserve env/Basic configuration/maintenance state; admit traffic and check public/widget/operator-denial endpoints. No migrations, restore, credential changes or chat-data reset. A genuine failure preserves the fence and writes a private STOP; an authenticated network-only uncertainty after traffic admission rechecks local readiness and preservation and returns PENDING/75, never PASS. Existing started evidence prevents blind replay.
+
+Local helper validation: main PHP, generated readiness child and generated protected probe all pass syntax; wrong-host invocation stops at identity before host/database/file mutation. This is not proof that hosted execution will pass. The normal cPanel API has no shell execution facility; one owner Terminal action is still required. Do not improvise a public command endpoint or extract credentials to bypass unavailable browser access.
+
+Exact reviewed command (all checks run before the helper):
+
+```sh
+cd /home/novinpay/novinpay-staging-38b9117-kit && printf '%s  %s\n' \
+  c147a5b2b77ba5057760644f0574e642f8b6273075efb8ac94842c2daca34d8f repair-chat-symfony-security-v1.php \
+  9ac5ea63f05cdfeff4d441042d88ca5b17a3228e8b2f59ccc720280e4a31c0d8 repair-chat-security-composer-v1.b64 \
+  b674d99593e038bf4b9a2bb518ba535ba784c179d44d2542b40e878fcab0af2e repair-chat-security-composer-v1.lock \
+  9b35655127a62c01ead1bb549876bc947024cff7579da25f1bc0d35d147d3227 repair-chat-security-operators-v1.php \
+  911a80c3d5de46e744a347b6dc021b4ffeef5297667c588aad13625f0bbf26fb repair-chat-symfony-security-v1.json \
+  | sha256sum -c - && /opt/cpanel/ea-php84/root/usr/bin/php ./repair-chat-symfony-security-v1.php 911a80c3d5de46e744a347b6dc021b4ffeef5297667c588aad13625f0bbf26fb
+```
+
+Expected successful result: `STAGING_SYMFONY_SECURITY_PATCH_PASS` with three patched versions, advisories 0, migrations 22, maintenanceOff true and probeRemoved true. It explicitly does not claim real browser two-way acceptance. Do not rerun if STOP/PENDING occurs; preserve the unique evidence directory, inspect phase/results and reconcile. No current proof of hosted security remediation or new latency improvement exists until the actual output and independent checks are collected.
