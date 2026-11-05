@@ -14,8 +14,8 @@ function support_ops_store(callable $operation,bool $write=false,bool $initializ
     try{
         if(!$initialize&&(!is_file($path)||!is_file($marker)))support_failure(503,'operator_not_initialized');
         if($initialize&&!is_file($path)&&file_exists($marker))support_failure(503,'operator_authority_missing');
-        $s=['version'=>1,'accounts'=>[],'replies'=>[],'events'=>[],'subscriptions'=>[],'preferences'=>[]];
-        if(is_file($path)){if(filesize($path)>2097152)support_failure(503,'operator_capacity');try{$s=json_decode((string)file_get_contents($path),true,32,JSON_THROW_ON_ERROR);}catch(Throwable $e){support_failure(503,'operator_state_invalid');}}
+        $s=['version'=>1,'accounts'=>[],'replies'=>[],'events'=>[],'subscriptions'=>[],'preferences'=>[]];$originalBytes=null;
+        if(is_file($path)){if(filesize($path)>2097152)support_failure(503,'operator_capacity');try{$originalBytes=(string)file_get_contents($path);$s=json_decode($originalBytes,true,32,JSON_THROW_ON_ERROR);}catch(Throwable $e){support_failure(503,'operator_state_invalid');}}
         if(!is_array($s)||($s['version']??null)!==1||array_diff(array_keys($s),['version','accounts','replies','events','subscriptions','preferences']))support_failure(503,'operator_state_invalid');
         foreach(['accounts'=>100,'replies'=>100,'events'=>4000,'subscriptions'=>200,'preferences'=>100] as $key=>$max)if(!is_array($s[$key]??null)||count($s[$key])>$max)support_failure(503,'operator_capacity');
         foreach($s['accounts'] as $id=>$a)if(!is_array($a)||($a['id']??null)!==$id||!preg_match('/^[a-f0-9]{32}$/D',(string)$id)||!preg_match('/^[a-zA-Z0-9_.-]{3,80}$/D',$a['username']??'')||!is_string($a['name']??null)||strlen($a['name'])>200||!is_string($a['password']??null)||!(password_get_info($a['password'])['algo']??null)||!in_array($a['role']??null,['administrator','support'],true)||!is_bool($a['active']??null)||!preg_match('/^[a-f0-9]{32}$/D',$a['epoch']??''))support_failure(503,'operator_state_invalid');
@@ -23,7 +23,7 @@ function support_ops_store(callable $operation,bool $write=false,bool $initializ
         $s['events']=array_values(array_filter($s['events'],fn($e)=>is_array($e)&&is_int($e['at']??null)&&$e['at']>time()-604800));
         foreach($s['subscriptions'] as $id=>$sub){if(!preg_match('/^[a-f0-9]{32}$/D',(string)$id)||!is_array($sub)||!isset($s['accounts'][$sub['operator']??''])||!is_string($sub['sealed']??null)||strlen($sub['sealed'])>4096||!is_int($sub['expires']??null)||!is_int($sub['session_expires']??null))support_failure(503,'operator_state_invalid');if($write&&$sub['expires']<=time())unset($s['subscriptions'][$id]);}
         $result=$operation($s);
-        if($write){if(count($s['events'])>4000||count($s['accounts'])>100||count($s['replies'])>100||count($s['subscriptions'])>200)support_failure(503,'operator_capacity');$bytes=json_encode($s,JSON_THROW_ON_ERROR);if(strlen($bytes)>2097152)support_failure(503,'operator_capacity');support_atomic_replace($path,$bytes);}
+        if($write){if(count($s['events'])>4000||count($s['accounts'])>100||count($s['replies'])>100||count($s['subscriptions'])>200)support_failure(503,'operator_capacity');$bytes=json_encode($s,JSON_THROW_ON_ERROR);if(strlen($bytes)>2097152)support_failure(503,'operator_capacity');if($bytes!==$originalBytes)support_atomic_replace($path,$bytes);elseif(!@chmod($path,0600))support_failure(503,'operator_unavailable');}
         if($initialize&&!is_file($marker))support_atomic_replace($marker,'1');return $result;
     }finally{flock($lock,LOCK_UN);fclose($lock);}
 }

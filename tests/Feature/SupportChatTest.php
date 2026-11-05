@@ -249,6 +249,53 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/operator/')->assertForbidden();
     }
 
+    public function test_unchanged_operator_sync_avoids_private_rewrite_but_persists_revocation(): void
+    {
+        $bridge = app(ChatBridge::class);
+        $path = $this->private.'/runtime/operators/authority.json';
+        $before = file_get_contents($path);
+        $stamp = time() - 120;
+        touch($path, $stamp);
+        $bridge->begin();
+        try {
+            $bridge->syncOperators();
+            clearstatcache(true, $path);
+            $this->assertSame($before, file_get_contents($path));
+            $this->assertSame($stamp, filemtime($path), 'An unchanged operator sync must not replace the authority file.');
+            $owner = User::query()->sole();
+            AdminAccount::query()->where('user_id', $owner->id)->update(['session_version' => 2]);
+            $bridge->syncOperators();
+            clearstatcache(true, $path);
+            $this->assertNotSame($before, file_get_contents($path));
+            $this->assertGreaterThan($stamp, filemtime($path));
+        } finally {
+            $bridge->finish();
+        }
+    }
+
+    public function test_operator_noop_optimization_still_persists_expired_metadata_cleanup(): void
+    {
+        $bridge = app(ChatBridge::class);
+        $path = $this->private.'/runtime/operators/authority.json';
+        $bridge->begin();
+        try {
+            support_ops_store(static function (array &$state): void {
+                $id = array_key_first($state['accounts']);
+                $state['events'][] = ['at' => time() - 8 * 86400, 'actor' => $id, 'event' => 'synthetic_old_event'];
+                $state['subscriptions'][str_repeat('a', 32)] = ['operator' => $id, 'sealed' => 'synthetic', 'expires' => time() - 1, 'session_expires' => time() + 60];
+            }, true);
+            $before = json_decode(file_get_contents($path), true);
+            $this->assertNotEmpty($before['events']);
+            $this->assertNotEmpty($before['subscriptions']);
+            support_ops_store(static fn (array &$state) => null, true);
+            $after = json_decode(file_get_contents($path), true);
+            $this->assertSame([], $after['events']);
+            $this->assertSame([], $after['subscriptions']);
+        } finally {
+            $bridge->finish();
+        }
+    }
+
     public function test_operator_inbox_reply_reads_lifecycle_satisfaction_and_analytics(): void
     {
         [$customerToken, $id] = $this->customerContext();
