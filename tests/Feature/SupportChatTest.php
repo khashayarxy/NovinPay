@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\SupportTeamAdministration;
 use App\Support\AdminAccess;
 use App\Support\Chat\ChatBridge;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
+use Symfony\Component\HttpFoundation\Request;
 use Tests\TestCase;
 
 #[RunTestsInSeparateProcesses]
@@ -69,9 +71,18 @@ class SupportChatTest extends TestCase
     public function test_operator_entry_redirects_to_explicit_document_without_loop(): void
     {
         $this->actingAs(User::query()->sole())->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
-        $this->get('https://localhost/support-chat/operator')->assertRedirect('/support-chat/operator/index.html');
-        $this->get('https://localhost/admin/support')->assertRedirect('/support-chat/operator/index.html');
-        $this->get('https://localhost/support-chat/operator/index.html')->assertOk()->assertSee('<base href="../">', false);
+        $this->get('https://localhost/support-chat/operator')->assertRedirect('/support');
+        $this->get('https://localhost/admin/support')->assertRedirect('/support');
+        $this->get('https://localhost/support-chat/operator/index.html')->assertRedirect('/support');
+        // The standard test URL builder trims trailing slashes before dispatch.
+        $request = $this->createTestRequest(Request::create('https://localhost/support/'));
+        $kernel = $this->app->make(Kernel::class);
+        $response = $kernel->handle($request);
+        $this->createTestResponse($response, $request)->assertRedirect('/support');
+        $kernel->terminate($request, $response);
+        $this->get('https://localhost/support')->assertOk()->assertSee('<base href="/support-chat/">', false);
+        $this->get('https://localhost/support/sw.js')->assertOk()->assertHeader('Service-Worker-Allowed', '/support');
+        $this->get('https://localhost/support-chat/operator/manifest.php')->assertOk()->assertJsonPath('start_url', '/support')->assertJsonPath('scope', '/support');
         $this->get('https://localhost/support-chat/operator/app.js')->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
         $this->get('https://localhost/support-chat/support-client/engine.js')->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
     }
@@ -99,6 +110,8 @@ class SupportChatTest extends TestCase
 
     public function test_stateless_asset_route_keeps_private_operator_and_transport_boundaries(): void
     {
+        $this->get('https://localhost/support')->assertRedirect('/admin/login');
+        $this->get('https://localhost/support/sw.js')->assertForbidden();
         $this->get('http://localhost/support-chat/support-client/engine.js')->assertNotFound();
         $this->get('https://localhost/support-chat/operator/modules/team.js')->assertForbidden();
         $this->get('https://localhost/support-chat/operator-api.php')->assertUnauthorized();
@@ -329,6 +342,8 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertForbidden();
         $this->get('https://localhost/support-chat/operator/')->assertForbidden();
         $this->get('https://localhost/support-chat/operator/app.js')->assertForbidden();
+        $this->get('https://localhost/support')->assertForbidden();
+        $this->get('https://localhost/support/sw.js')->assertForbidden();
     }
 
     public function test_unchanged_operator_sync_avoids_private_rewrite_but_persists_revocation(): void
@@ -422,7 +437,7 @@ class SupportChatTest extends TestCase
         $this->get('/admin/support/confirm')->assertOk();
         $this->post('/admin/support/confirm', ['current_password' => 'wrong'])->assertSessionHasErrors('current_password');
         $this->assertNull(session('support_authentication_nonce'));
-        $this->post('/admin/support/confirm', ['current_password' => 'password'])->assertRedirect('/support-chat/operator/index.html');
+        $this->post('/admin/support/confirm', ['current_password' => 'password'])->assertRedirect('/support');
         $this->assertMatchesRegularExpression('/\A[a-f0-9]{32}\z/D', session('support_authentication_nonce'));
         $this->app->detectEnvironment(fn () => 'local');
         $this->post('/admin/support/confirm', ['current_password' => 'password'])->assertStatus(419);

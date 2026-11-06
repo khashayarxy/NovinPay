@@ -5,7 +5,7 @@ export function operatorPwa({button,dialog,registrationChanged,warn}){
  button.onclick=()=>{if(button.closest('details'))button.closest('details').open=false;sync();dialog.showModal();};$('pwaClose').onclick=()=>dialog.close();dialog.addEventListener('close',()=>button.focus({preventScroll:true}));
  addEventListener('beforeinstallprompt',e=>{e.preventDefault();prompt=e;sync();});addEventListener('appinstalled',()=>{prompt=null;installedHere=true;sync();});standalone.addEventListener('change',sync);
  $('pwaInstall').onclick=async()=>{if(!prompt)return;const current=prompt;prompt=null;try{await current.prompt();await current.userChoice;}catch(e){warn(e);}sync();};sync();queueMicrotask(sync);
- if('serviceWorker'in navigator)navigator.serviceWorker.register(new URL('operator/sw.js',document.baseURI),{scope:new URL('operator/',document.baseURI).pathname,updateViaCache:'none'}).then(r=>{
+ if('serviceWorker'in navigator)navigator.serviceWorker.register(new URL('/support/sw.js',location.origin),{scope:'/support',updateViaCache:'none'}).then(r=>{
   registrationChanged(r);
   const waiting=()=>{$('pwaUpdate').hidden=!r.waiting;$('pwaUpdateEntry').hidden=!r.waiting;};waiting();
   r.addEventListener('updatefound',()=>r.installing?.addEventListener('statechange',()=>setTimeout(waiting,0)));

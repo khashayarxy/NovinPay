@@ -32,6 +32,6 @@ class SupportAccessController extends Controller
         $request->session()->put('support_authenticated_at', time());
         $request->session()->forget('support_chat_window');
 
-        return redirect('/support-chat/operator/index.html');
+        return redirect('/support');
     }
 }

@@ -21,6 +21,19 @@ class SupportChatController extends Controller
         return $this->__invoke($request, $bridge, 'operator/'.$asset);
     }
 
+    public function operatorPanel(Request $request, ChatBridge $bridge): Response
+    {
+        return $this->__invoke($request, $bridge, 'operator/index.html');
+    }
+
+    public function operatorWorker(Request $request, ChatBridge $bridge): Response
+    {
+        $response = $this->__invoke($request, $bridge, 'operator/sw.js');
+        $response->headers->set('Service-Worker-Allowed', '/support');
+
+        return $response;
+    }
+
     public function __invoke(Request $request, ChatBridge $bridge, string $path = ''): Response
     {
         $started = hrtime(true);
@@ -38,8 +51,8 @@ class SupportChatController extends Controller
         if ($operatorPage && (! is_string($request->session()->get('support_authentication_nonce')) || time() - (int) $request->session()->get('support_authenticated_at', 0) >= 8 * 3600 || ($request->session()->has('support_chat_window') && time() - (int) $request->session()->get('support_chat_window.interactive_at', 0) > 1800))) {
             return redirect()->route('admin.support.confirm');
         }
-        if ($path === 'operator') {
-            return redirect('/support-chat/operator/index.html', 302);
+        if ($operatorPage && (! $request->routeIs('support.panel') || $request->getPathInfo() !== '/support')) {
+            return redirect('/support', 302);
         }
         if ($operatorPage) {
             $path = 'operator/index.html';
@@ -51,7 +64,12 @@ class SupportChatController extends Controller
                 'js' => 'text/javascript', 'css' => 'text/css', 'html' => 'text/html', 'json' => 'application/json', 'woff2' => 'font/woff2', 'png' => 'image/png', 'svg' => 'image/svg+xml',
             };
 
-            return response(file_get_contents($file), 200, ['Content-Type' => $mime.(in_array(pathinfo($file, PATHINFO_EXTENSION), ['js', 'css', 'html', 'json', 'svg'], true) ? '; charset=utf-8' : ''), 'X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'no-store, private']);
+            $content = file_get_contents($file);
+            if ($operatorPage) {
+                $content = str_replace('<base href="../">', '<base href="/support-chat/">', $content);
+            }
+
+            return response($content, 200, ['Content-Type' => $mime.(in_array(pathinfo($file, PATHINFO_EXTENSION), ['js', 'css', 'html', 'json', 'svg'], true) ? '; charset=utf-8' : ''), 'X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'no-store, private']);
         }
         $original = ['get' => $_GET, 'post' => $_POST, 'files' => $_FILES, 'server' => $_SERVER, 'cookie' => $_COOKIE];
         $timezone = date_default_timezone_get();
