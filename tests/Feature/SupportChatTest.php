@@ -11,6 +11,7 @@ use App\Support\Chat\ChatBridge;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
@@ -68,6 +69,9 @@ class SupportChatTest extends TestCase
     public function test_public_chat_assets_do_not_depend_on_database_sessions(): void
     {
         $default = config('database.default');
+        // CI logs to STDERR, which PHPUnit treats as a subprocess failure.
+        // Assert the expected safe error log without emitting that deliberate fault.
+        Log::spy();
         config(['session.driver' => 'database', 'session.connection' => 'qa_missing', 'database.default' => 'qa_missing', 'database.connections.qa_missing' => ['driver' => 'sqlite', 'database' => $this->private.'/absent.sqlite', 'prefix' => '']]);
         try {
             foreach (['support-client/customer-v2.js', 'support-client/engine.js', 'support-client/customer-v2.css'] as $path) {
@@ -75,6 +79,7 @@ class SupportChatTest extends TestCase
                 $this->assertFalse($response->headers->has('Set-Cookie'));
             }
             $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertStatus(500);
+            Log::shouldHaveReceived('error')->once()->with('Database operation failed; SQL and bindings withheld.', ['sqlstate' => 'unknown']);
             $this->assertFileDoesNotExist($this->private.'/absent.sqlite');
         } finally {
             config(['database.default' => $default]);
