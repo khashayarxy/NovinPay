@@ -1,82 +1,42 @@
 # NovinPayPos: AI project handoff
 
-
-
 Current workflow decision: **2026-11-06, Asia/Tehran**. Read [AGENTS](../AGENTS.md), [working preferences](AI-WORKING-PREFERENCES.md) and [deployment guide](DEPLOYMENT.md). Prior staging history remains in [deployment lessons](DEPLOYMENT-LESSONS-LEARNED.md); it is evidence, not an active workflow.
-
-
 
 ## Resume safely
 
-
-
 - Develop/test at `https://novinpaypos.test` (Herd), present changes locally for owner approval, then use explicitly authorized cPanel production deployment and owner production acceptance. No routine hosted staging, staging Basic login or staging acceptance requirement. Do not create a replacement staging environment.
-
 - Branch: `codex/novinpay-customer-repair-workflow`; latest observed pushed HEAD before this documentation change: `dc22620b4bf11082950e422ecf00b4d2961d8989`. PR #13 Draft/unmerged; verify current Git/remote before publishing. Ten finance Blade files contain preserved unrelated working-tree changes: do not stage/reset them.
-
 - Never use Docker/SSH, touch unrelated projects, merge PR #13, deploy unfinished features, alter production/provider settings or modify ZizoLearn without applicable explicit authorization.
-
-
 
 ## Architecture and implementation
 
-
-
 Laravel 13 / PHP >=8.4.1 locked dependencies, Blade/Tailwind/Vite, Persian RTL/Vazirmatn. MariaDB 10.6.28 hosting; preserve MySQL 8/SQLite tests. Native policies/Gates, protected owner/session revocation, private uploads, integer money, transactions, immutable ledger/trigger invariants.
-
-
 
 Feature branch includes customer OTP/accounts/addresses, orders/inventory/financial documents, payment attempts/verification/idempotency/reconciliation, receipt review/settlement, repair intake/records, delivery, notifications and Postex quote-only integration. See CUSTOMER-PAYMENTS-DEVELOPMENT.md, POSTEX-QUOTATIONS.md, SMSIR-CPANEL-READINESS.md, REPAIR-SUPPORT-STAGING.md (historical implementation evidence) and actual source. Production does not automatically contain these changes. SMS/notifications, Zibal live requests and postal billing/shipment creation stay disabled unless separately approved. SMS API tests were accepted and owner confirmed delayed handset delivery; do not repeat SMS investigation or send tests without authorization.
 
-
-
 Production path: `/home/novinpay/novinpay`; preserve `/home/novinpay/public_html -> /home/novinpay/novinpay/public`, `.env`, APP_KEY, credentials, data/uploads/sessions and existing working-tree modifications. Latest owner-confirmed release: `1f39bb476fd31880600564e58599c4488622c4c0`; this is historical, not a fresh production inspection. Maintenance feature has standalone 503/emergency fallback, native admin controls/private preview, atomic private state/audit and recovery. Keep it separate from `artisan down`. Rollback must preserve new AdminAction values/history and maintenance fencing.
-
-
 
 ## Chat: open priority
 
-
-
 Authoritative ZizoLearn GitHub source: `7d6f6ddcfbde4fd3fb1857f62504d230e4c43bb5` (main verified 2026-11-06). Preserve all original features/UI; adapt branding/paths/native auth only. Never connect to its production DB or copy secrets/messages. Source lives under `resources/support-chat`; integration: SupportChatController, ChatBridge, SupportTeamAdministration, routes and matching tests.
 
-
-
 - Configuration disclosure resolved for tested endpoints; private 403/404 are both valid denials; operator API 401. Preserve regressions and private storage boundaries.
-
 - Cookie bridge uses decrypted Laravel request cookies. Empty-store epoch regression at `8b0801e` genuinely failed, then real fix `030d48e` passed without weakening assertions. Fresh-send optimization removes one identity GET only for fresh matching same-tab submissions; retries/restored drafts still reconcile receipts.
-
 - Operator no-op optimization skips byte-identical durable rewrites while permission changes/cleanup still persist. Verified installed on former staging.
-
 - Owner reports slow startup, false loading failure followed by recovery, and 1–2s sends. Cause and parity are **not resolved**. Do not blame staging retirement, hide errors, extend timeouts, drop features, weaken ACK/CSRF/identity checks or fabricate before/after timings.
-
 - `dbb370a4c669aa4f454a0fca05946470b3b99300` adds exact-URL modulepreloads for the five-level dependency chain. All four CI jobs passed (42142010319); local PHP 21 tests/277 assertions and frontend12 passed, Pint/build passed. Former staging source readback passed, effective browser/OPcache/performance not accepted. Main startup frontend matches upstream apart from brand. NovinPay asset delivery through Laravel/no-store differs from standalone upstream; measure actual effects locally.
-
 - Next: local cold/warm resource/backend timing, reproduce the two initialization error controllers/races, profile send/ACK/poller/session/filesystem latency, fix measured causes with focused tests. Test two-way messaging, lost ACK/retry/reconnect/order/no-loss/attachments, themes and complete operator/team capabilities. Preserve light default/manual preference. Never claim 100% parity from file inventory.
-
-
 
 ## Former staging: retention, not deployment target
 
-
-
 Former URL `staging.novinpaypos.com`; app `/home/novinpay/novinpay-staging-workflow`, kit `/home/novinpay/novinpay-staging-38b9117-kit`, DB `novinpay_stg38`, runtime `novinpay_s38run`, migrator `novinpay_s38mig`. Retain isolated data/admin, configuration/keys, encrypted snapshots, attempt markers, receipts and private file backups until independently classified. No database deletion or privilege change is implied by retirement. Basic credential source was private kit `.staging-http-basic.json`, not bootstrap-secrets; never expose it. Retirement completed through cPanel on 2026-11-06: subdomain removed from DomainInfo, former public root deny-all (Basic directives removed after private backup), five HTTP paths verified 403 without challenge before domain removal. Private `retirement-20261106-receipt.json` in the retained kit records STAGING_RETIRED. DB/app/keys/two recovery directories/security code snapshot retained; no production mutation or disk reclamation. Postcheck: staging env0600, main-domain identity unchanged, no staging cron. A post-removal HTTPS probe failed certificate validation; no post-removal HTTP status is claimed and TLS was not bypassed. Do not renew/recreate the retired site.
-
-
 
 Last verified pre-retirement state: 22 migrations/13 triggers; Symfony8.1.11 security patch PASS receipt, audit0, maintenanceOFF, probe removed, code backup exists. No need to rerun installers/migrations/security patch. Retain lessons about migrator trigger visibility, MariaDB dump parsing, manifest pins, interrupted finalization and auth-source assumptions.
 
-
-
 ## Access and validation
-
-
 
 cPanel HTTPS API credential is DPAPI-protected under the private Windows NovinPay-SecureAccess workflow; values never belong in Git/chat. No shell execution API is verified. Respect denied credential/browser operations; never bypass them. If CLI is genuinely necessary use one reviewed SHA-verified procedure. Browser Basic issue was agent-specific, not production failure; retirement removes that workflow dependency.
 
-
-
 Use `./scripts/test.ps1 --filter=SupportChatTest`, `./scripts/test.ps1 tests/Unit/SupportChatAssetsTest.php`, relevant `node --test tests/Frontend/...`, compatible PHP Pint, applicable build and diff checks. Avoid pipe-separated filters in the Windows wrapper; use explicit test paths. Fresh-process Pint avoids known wrapper/bootstrap leakage. No full local matrix for documentation-only changes. Four required CI jobs remain SQLite/MySQL8/MariaDB10.6.28/frontend. CI does not replace local owner approval or final production acceptance after explicit release authorization.
-
 
 Latest local-only optimization (2026-11-06): opt-in combined customer bootstrap removes the serial identity/session GET; preserves legacy/operator paths, one-use snapshot and identity validation. Isolated warm PHP kernel samples: median15.746->8.448ms, p95(7 samples)19.565->9.259ms; not browser/upstream parity. Focused chat21/210, frontend16 passed. No production deployment. Cleanup/retention/policy-block details are in the latest deployment lessons. Continue local profiling and false-startup-failure investigation; this request-count improvement is not complete resolution.
