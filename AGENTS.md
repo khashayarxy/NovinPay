@@ -20,7 +20,7 @@ For a new agent/session, start with [AI project handoff](docs/AI-PROJECT-HANDOFF
 | Maintenance design, state, recovery and rollback | [standalone page](docs/maintenance-page.md), [admin maintenance](docs/admin-maintenance.md) |
 | Local environment and testing | [local troubleshooting](docs/LOCAL-DEVELOPMENT-TROUBLESHOOTING.md), [test runner](scripts/test.ps1), `phpunit.xml` |
 | CI and integration | [CI guidance](docs/CI.md), [actual workflow](.github/workflows/ci.yml) — use the workflow for current jobs/commands |
-| Deployment failure prevention | [Deployment lessons](docs/DEPLOYMENT-LESSONS-LEARNED.md) — review before every package; update confirmed fixes and regression coverage. |
+| Deployment failure prevention | [Deployment lessons](docs/DEPLOYMENT-LESSONS-LEARNED.md) — read relevant current lessons before packaging; retired staging incidents are historical, not routine gates. |
 | Hosting and release gates | [MariaDB compatibility](docs/MARIADB-COMPATIBILITY.md), [readiness evidence](docs/PRODUCTION-READINESS.md), [deployment guide](docs/DEPLOYMENT.md), and the latest separately approved release/rollback procedure |
 
 Trace behavior through `routes/`, `app/Http`, `app/Services`, `app/Policies`, `app/Support`, models, migrations and matching tests. Preserve established service transactions, native Gates/policies and Blade components. Public content is Persian RTL; approved branding/contact data comes from existing assets and `config/business.php`.
@@ -61,4 +61,4 @@ Trace behavior through `routes/`, `app/Http`, `app/Services`, `app/Policies`, `a
 
 ## Shared skills
 
-Use relevant shared/global skills only when exposed in the current Codex skill catalog and readable at their supplied `SKILL.md` paths. Check discovery rather than assuming a named optimization skill exists. Read only the selected workflow and needed references; do not copy global skills into this repository or change global configuration. Skill defaults do not override the owner's scope, platform instructions or the project safety gates. If a required skill is missing or conflicts with these boundaries, report it before dependent work.
+Use only relevant, currently exposed/readable shared Skills and needed references. No project-owned MCP registrations or Skills existed at the 2026-11-06 audit; do not duplicate global tools/configuration locally. Preserve shared tools used by other projects. Skill defaults do not expand authorization or override safety gates; report missing required capabilities or conflicts.
