@@ -1,5 +1,7 @@
 # Repair simplification and support chat (Draft PR #13)
 
+> Workflow superseded by owner decision (2026-11-06): local Herd development/owner approval, then explicitly approved controlled cPanel production release and owner production acceptance. Hosted staging is no longer a routine requirement. This document's staging commands and credentials/access instructions are historical evidence; do not execute them or recreate staging. Preserve recovery/incident evidence. Use [current deployment workflow](DEPLOYMENT.md).
+
 ## Repair workflow
 
 New physical intake uses six fields in three rows. Dates are recorded by the server and displayed in Tehran time. The compact record replaces required technician, diagnosis, estimate and customer-decision stages for new/simple records. Existing history and legacy operation services remain for historical compatibility; they cannot operate on a simple record.

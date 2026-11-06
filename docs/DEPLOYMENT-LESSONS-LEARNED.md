@@ -1,5 +1,7 @@
 # Deployment lessons learned
 
+> Workflow superseded by owner decision (2026-11-06): local Herd development/owner approval, then explicitly approved controlled cPanel production release and owner production acceptance. Hosted staging is no longer a routine requirement. This document's staging commands and credentials/access instructions are historical evidence; do not execute them or recreate staging. Preserve recovery/incident evidence. Use [current deployment workflow](DEPLOYMENT.md).
+
 Review this document before preparing a package. Add each confirmed failure and a regression test when resolving it. Historical PASS receipts are not proof that a later attempt ran.
 
 ## Isolated staging contract
@@ -211,3 +213,14 @@ Regression `tests/Frontend/support-preload.test.mjs` verifies exact query-string
 Preload delivery evidence: implementation `dbb370a4c669aa4f454a0fca05946470b3b99300`, all four CI jobs passed in run `42142010319`. Focused PHP chat 20/198 and assets 1/79 passed; frontend 12 passed; full Pint/build/diff checks passed. An initial assets invocation used the wrong Feature path and did not run; corrected Unit path passed. No assertions were weakened.
 
 Fingerprint-guarded cPanel update preserved the old widget in `/home/novinpay/novinpay-staging-38b9117-kit/chat-preload-20261106-v1-widget.before` before replacement. Source readback new SHA `d6bf813036b59beec3e013ef68c1758536a1c0e615e18ff37c17f7e4cb6f19c3`; old SHA `c0d1e93614b28d68f2bdf4c592bac2f42a91031f83b756be0d399612ac857498`. Private receipt `chat-preload-20261106-v1-receipt.json` reports `STAGING_PRELOAD_SOURCE_READBACK_PASS_HOSTED_ACCEPTANCE_PENDING`. No database operation, migration, data reset, runtime configuration change or maintenance toggle. Effective web OPcache and authenticated browser behavior were not verified; do not call this a completed performance fix. Remaining work: reproduce the startup failure with sanitized event/resource timing; determine actual network/server/IDB delays; verify two-way ACK/retry/recovery/attachments and comparable cold/warm upstream samples. No before/after milliseconds are available.
+
+
+## 2026-11-06 workflow replacement and staging retirement
+
+Owner discontinued routine hosted staging. Current workflow: Herd local development/tests/owner approval -> explicitly approved controlled cPanel production release -> owner production acceptance. Do not recreate a test subdomain or require staging Basic login/acceptance. This does not resolve chat latency or authorize unfinished production releases/PR #13 merge. Keep local profiling/upstream comparison and security/recovery requirements.
+
+Retirement: exact DomainInfo identity `staging.novinpaypos.com` -> `/home/novinpay/novinpay-staging-workflow/public` verified. Staging Basic directives were privately backed up, then replaced with explicit deny-all. Before subdomain removal, root/index/widget/one diagnostic/private path all returned403 without WWW-Authenticate and without scanned configuration/path disclosure. cPanel SubDomain::delsubdomain succeeded; subsequent DomainInfo/list_domains confirms staging absent and primary domain identity unchanged. Normal cPanel API2 cron inventory found no staging cron (UAPI Cron is unsupported here). No production files/config/data were changed.
+
+Private receipt: `/home/novinpay/novinpay-staging-38b9117-kit/retirement-20261106-receipt.json` (`STAGING_RETIRED`); old access file retained alongside it. Data/app/private config/keys, novinpay_stg38 and its roles, two recovery directories, security snapshot and all deployment/incident evidence preserved. No DB restore/drop/grant/revoke or file purge. Storage reclaimed0. Local old instructions backed up outside Git before editing. Post-removal HTTPS check failed certificate validation (SEC_E_CERT_EXPIRED); no post-removal HTTP result is claimed and no TLS bypass/renewal was attempted. The old document root remains deny-all independently of cached domain routing.
+
+No application behavior changes, build/test matrix or new release package was needed. Documentation validation is references/diff/scope; retirement validation is exact domain/readback/HTTP denial/retained resource metadata. Future deletion of inactive retained data requires reference/recovery classification first; do not confuse retirement with evidence destruction. Existing blocked credential operations remain blocked; Basic credential values were not read or transmitted.

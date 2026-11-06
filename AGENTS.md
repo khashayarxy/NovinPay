@@ -42,6 +42,14 @@ Trace behavior through `routes/`, `app/Http`, `app/Services`, `app/Policies`, `a
 - Required CI jobs are **PHP SQLite**, **PHP MySQL 8**, **PHP MariaDB 10.6.28**, and **Frontend**. Distinguish local results, skipped/unavailable checks and exact-head CI; a green build is not visual approval or deployment proof.
 - For UI changes inspect the affected desktop/mobile pages, RTL, keyboard/focus behavior and overflow (including 320px/390px). Keep QA artifacts out of Git. For instruction-only changes, validate references, coverage and diff; do not rerun the application/build unnecessarily.
 
+## Official workflow (owner decision, 2026-11-06)
+
+- Develop and test at `https://novinpaypos.test` (Herd). Present UI/features locally for owner approval.
+- After local approval and focused checks/required CI, obtain explicit production deployment approval and release directly to `https://novinpaypos.com` through cPanel. Owner performs final production acceptance; fixes follow the same local/controlled-release cycle.
+- Hosted staging is retired from normal work. Do not create/require another staging environment, Basic login, hosted staging acceptance, or staging deployment package. Historical staging scripts/receipts are recovery evidence, not active instructions.
+- Retain affected-file/data backup and verified rollback, migration safety, production identity/integrity checks and post-release verification. This workflow does not authorize merging Draft PR #13, unfinished releases, or live payment/SMS activation.
+- Investigate chat performance locally against authoritative ZizoLearn source. Staging retirement is not evidence of the cause or resolution of latency.
+
 ## Release and rollback boundaries
 
 - Publishing, protected merge and production deployment require their own explicit owner authorization; none follows from implementation or CI success. Use normal feature branches/PRs and approved merge strategy; no force-push, reset/clean or discarding unrelated work.

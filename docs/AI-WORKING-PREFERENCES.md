@@ -13,7 +13,7 @@ Applies to NovinPayPos work by Codex, Claude Code or another assistant. Read [pr
 ## Hard boundaries
 
 - **Never use Docker, Docker Compose, containers or SSH for this website.** Unrelated trading-bot resources are outside scope. Existing remote CI services do not authorize local container operations.
-- Do not modify or access production without explicit applicable authorization. Staging authority does not imply production authority.
+- Do not modify or access production without explicit applicable authorization. Retiring staging does not authorize application changes in production.
 - Keep PR #13 Draft and unmerged until the owner explicitly approves merging. Follow branch protection, required CI/reviews and the normal protected workflow; never force-push or rewrite history.
 - Preserve the original ZizoLearn chat capabilities, workflows and UI. Adapt only necessary branding, paths, native authorization/storage integration and hosting compatibility. Do not replace it with a smaller chat or change ZizoLearn itself.
 - Preserve business data, admin/customer identities, credentials, APP_KEY, sessions, uploads, financial/inventory invariants, audit history, encrypted backups, recovery keys, restore databases and deployment evidence.
@@ -27,14 +27,16 @@ Applies to NovinPayPos work by Codex, Claude Code or another assistant. Read [pr
 - Use `scripts/test.ps1` for isolated tests, compatible PHP >=8.4.1, focused checks first. Never use the ordinary development or production DB for tests. Avoid unguarded `composer setup`, `composer test`, migrations or dev servers; Herd already serves local HTTPS.
 - Preserve MariaDB 10.6.28/MySQL 8/SQLite compatibility and trigger contracts. Use integer money and existing conversions; never introduce 1,000x toman errors or fabricate settlement/gateway success.
 - Keep SMS/notifications, Zibal live requests and Postex prepaid billing/shipment operations disabled until separately authorized and validated. The SMS delivery-support issue is not a reason to rewrite the existing integration.
-- Test what changed. Focused success does not replace required CI, hosted two-way acceptance, visual checks or release safety gates. Report skipped/unavailable validation honestly.
+- Test what changed. Focused success does not replace required CI, local owner approval and production acceptance after an authorized release, visual checks or release safety gates. Report skipped/unavailable validation honestly.
 - Back up an existing instruction file before changing it. Reference authoritative documents rather than duplicating their entire contents.
 
 ## Hosting and deployment
 
+The official workflow is defined in [AGENTS.md](../AGENTS.md) and [deployment guide](DEPLOYMENT.md). No new hosted staging environment is required or authorized.
+
 - Prefer existing cPanel/LiteSpeed/PHP 8.4-compatible workflows. No persistent WebSocket/queue daemon requirement should be introduced without a real need and approval.
 - Read `DEPLOYMENT-LESSONS-LEARNED.md` before preparing a package; add confirmed causes, exact fixes and focused regression coverage when resolving an issue.
-- Preserve HTTP Basic staging protection. Agent-browser authentication issues must not block independent safe code work, and must not be mistaken for an application outage. Owner will perform final authenticated browser acceptance when agent access is unavailable.
+- Use local Herd development/owner review, then explicitly approved cPanel production deployment and owner production acceptance. No routine hosted staging or staging Basic Authentication requirement. Historical staging evidence remains protected; do not replay its deployment scripts.
 - Use authenticated HTTPS and exact-target/hash/readback checks for remote file work. Preserve previous versions privately. Do not blindly retry failed or ambiguous remote mutations.
 - Keep deployment phases resumable through evidence: reconcile existing files/schema/markers first. A known partially installed candidate requires finalization, not another install.
 - Require current quota, compatible CLI/web runtime, consistent encrypted backup, isolated restore, independent off-host recovery and compatible rollback before production activation. Never weaken freshness, locking or integrity gates just to pass.
@@ -43,4 +45,4 @@ Applies to NovinPayPos work by Codex, Claude Code or another assistant. Read [pr
 
 ## Preferred result format
 
-Give a concise summary of actual changes, exact commit/PR/staging state, focused test results, measured performance evidence where applicable, unresolved blockers and the next concrete action. Never imply that local tests establish live behavior or that all feature parity is complete from an import inventory alone.
+Give a concise summary of actual changes, exact commit/PR/local and production state, focused test results, measured performance evidence where applicable, unresolved blockers and the next concrete action. Never imply that local tests establish live behavior or that all feature parity is complete from an import inventory alone.
