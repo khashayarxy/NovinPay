@@ -30,6 +30,7 @@ use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\SupportChatController;
 use App\Http\Middleware\EnsureAdminSession;
 use App\Http\Middleware\EnsureCustomerSession;
+use App\Http\Middleware\PreviewAwareSession;
 use App\Http\Middleware\PrivateAdminResponse;
 use App\Http\Middleware\PrivateRepairResponse;
 use App\Http\Middleware\PublicArticleResponse;
@@ -37,6 +38,17 @@ use App\Services\CustomerAccountLink;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+
+// Public chat files contain no user/session data. Keep API and operator paths
+// on the stateful route below; concurrent module loads must not write sessions.
+Route::get('/support-chat/{path}', SupportChatController::class)
+    ->where('path', '(?:support-widget\.js|(?:support-client/|assets/fonts/|assets/icons/)[a-zA-Z0-9_./-]+\.(?:js|css|html|json|woff2|png|svg))')
+    ->withoutMiddleware([
+        PreviewAwareSession::class,
+        ShareErrorsFromSession::class,
+        PreventRequestForgery::class,
+    ])->name('support.chat.asset');
 
 Route::match(['GET', 'POST'], '/support-chat/{path?}', SupportChatController::class)
     ->where('path', '[a-zA-Z0-9_./-]*')

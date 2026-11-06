@@ -9,6 +9,7 @@ use App\Services\SupportTeamAdministration;
 use App\Support\AdminAccess;
 use App\Support\Chat\ChatBridge;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
@@ -62,6 +63,33 @@ class SupportChatTest extends TestCase
         $response = $this->get('https://localhost/support-chat/api.php?widget_config=1')->assertOk()->assertJsonStructure(['name', 'installation', 'source_paths', 'attachments', 'typing', 'customer_theme_default']);
         $this->assertIsString($response->json('name'));
         $this->assertIsArray($response->json('source_paths'));
+    }
+
+    public function test_public_chat_assets_do_not_depend_on_database_sessions(): void
+    {
+        $default = config('database.default');
+        config(['session.driver' => 'database', 'session.connection' => 'qa_missing', 'database.default' => 'qa_missing', 'database.connections.qa_missing' => ['driver' => 'sqlite', 'database' => $this->private.'/absent.sqlite', 'prefix' => '']]);
+        try {
+            foreach (['support-client/customer-v2.js', 'support-client/engine.js', 'support-client/customer-v2.css'] as $path) {
+                $response = $this->get('https://localhost/support-chat/'.$path)->assertOk();
+                $this->assertFalse($response->headers->has('Set-Cookie'));
+            }
+            $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertStatus(500);
+            $this->assertFileDoesNotExist($this->private.'/absent.sqlite');
+        } finally {
+            config(['database.default' => $default]);
+            DB::purge('qa_missing');
+        }
+    }
+
+    public function test_stateless_asset_route_keeps_private_operator_and_transport_boundaries(): void
+    {
+        $this->get('http://localhost/support-chat/support-client/engine.js')->assertNotFound();
+        $this->get('https://localhost/support-chat/operator/modules/team.js')->assertForbidden();
+        $this->get('https://localhost/support-chat/operator-api.php')->assertUnauthorized();
+        $this->get('https://localhost/support-chat/support/bootstrap.php')->assertNotFound();
+        config(['support_chat.enabled' => false]);
+        $this->get('https://localhost/support-chat/support-client/engine.js')->assertNotFound();
     }
 
     public function test_combined_customer_bootstrap_preserves_identity_csrf_and_legacy_contract(): void
