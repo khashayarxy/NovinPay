@@ -64,6 +64,44 @@ class SupportChatTest extends TestCase
         $this->assertIsArray($response->json('source_paths'));
     }
 
+    public function test_combined_customer_bootstrap_preserves_identity_csrf_and_legacy_contract(): void
+    {
+        $boot = $this->get('https://localhost/support-chat/api.php?get_session=1&bootstrap=1')->assertOk()
+            ->assertJsonStructure(['token', 'context', 'draft_user_id'])->assertJsonPath('user_id', null);
+        $this->withCookie(session_name(), session_id());
+        $identity = $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertOk();
+        $this->assertSame($boot->json('token'), $identity->json('token'));
+        $this->assertSame($boot->json('context.scope_id'), $identity->json('context.scope_id'));
+        $this->get('https://localhost/support-chat/api.php?get_session=1')->assertOk()->assertJsonMissingPath('token');
+        $data = ['send_message' => '1', 'user_id' => $boot->json('draft_user_id'), 'message' => 'synthetic bootstrap test', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid()];
+        $this->post('https://localhost/support-chat/api.php', $data)->assertForbidden();
+        $this->post('https://localhost/support-chat/api.php', $data + ['csrf_token' => $boot->json('token')])->assertOk();
+        if (getenv('NP_CHAT_PROFILE') === '1') {
+            $samples = ['legacy_two_requests' => [], 'combined_one_request' => []];
+            for ($i = 0; $i < 7; $i++) {
+                foreach (array_keys($samples) as $kind) {
+                    $start = hrtime(true);
+                    if ($kind === 'legacy_two_requests') {
+                        $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertOk();
+                        $this->get('https://localhost/support-chat/api.php?get_session=1')->assertOk();
+                    } else {
+                        $this->get('https://localhost/support-chat/api.php?get_session=1&bootstrap=1')->assertOk();
+                    }
+                    $samples[$kind][] = round((hrtime(true) - $start) / 1e6, 3);
+                }
+            }
+            foreach ($samples as &$values) {
+                sort($values);
+                $values = ['samples' => 7, 'median_ms' => $values[3], 'p95_ms' => $values[6]];
+            }
+            unset($values);
+            $report = fopen(sys_get_temp_dir().'/np-chat-profile-'.bin2hex(random_bytes(8)).'.json', 'xb');
+            $this->assertIsResource($report);
+            fwrite($report, json_encode(['isolated_php_kernel_only' => $samples], JSON_THROW_ON_ERROR));
+            fclose($report);
+        }
+    }
+
     public function test_browser_cookie_round_trip_uses_laravel_authenticated_decryption(): void
     {
         $first = $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertOk();

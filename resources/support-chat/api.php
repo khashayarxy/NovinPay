@@ -25,12 +25,13 @@ try {
         support_json(['token'=>$context['csrf_token'],'context'=>support_public_context($context,$scope)]);
     }
     if($method==='GET' && isset($_GET['get_session'])) {
-        $customer=support_customer_context();
+        $bootstrap=($_GET['bootstrap']??'')==='1';
+        $customer=support_customer_context($bootstrap);
         $result=support_store(function(array &$state,bool &$changed) use($customer) {
             foreach(array_reverse($state['conversations'],true) as $id=>$c) if(support_owned($c,$customer)&&!support_conversation_retired($c)) return ['status'=>'success','user_id'=>$id,'user_name'=>$c['user_name'],'user_email'=>$c['user_email'],'owned_count'=>count(array_filter($state['conversations'],fn($owned)=>support_owned($owned,$customer)&&!support_conversation_retired($owned))),'contact_name'=>html_entity_decode($c['user_name'],ENT_QUOTES|ENT_HTML5,'UTF-8'),'user_phone'=>$c['user_phone']??'','contact_prompt_state'=>$c['contact_prompt_state']??null,'retired'=>support_conversation_retired($c),'episode'=>(int)($c['episode']??1),'episode_started_at'=>$c['episode_started_at']??null];
             return ['status'=>'success','user_id'=>null,'draft_user_id'=>support_anonymous_id($customer)];
         });
-        support_json($result+['context'=>support_public_context($customer,'customer')]);
+        support_json($result+['context'=>support_public_context($customer,'customer')]+($bootstrap?['token'=>$customer['csrf_token']]:[]));
     }
     if($method==='POST' && isset($_POST['logout_customer'])) {
         $context=support_session('customer',false);support_csrf($context);support_destroy_session('customer');support_json(['status'=>'success']);

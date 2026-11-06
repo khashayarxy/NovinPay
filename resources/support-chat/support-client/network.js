@@ -55,11 +55,15 @@ export class Transport {
     }
     presentationTime(local){return this.serverClock?local+this.serverClock.server-this.serverClock.local:local;}
     async refresh(expectedScope=null,options={}){
-        const body=await this.request(`api.php?get_csrf=1&scope=${this.role}`,options),c=body.context;
+        this.bootstrapSession=null;
+        const session=options.session===true&&this.role==='customer';
+        const body=await this.request(session?'api.php?get_session=1&bootstrap=1':`api.php?get_csrf=1&scope=${this.role}`,options),c=body.context;
         if(!c || c.role!==this.role || c.protocol_version!==2 || !/^[a-f0-9]{64}$/.test(c.scope_id) || !/^[a-f0-9]{32}$/.test(c.session_epoch) || !/^[a-f0-9]{64}$/.test(body.token))throw new RequestError('پاسخ هویت معتبر نیست.');
         if(expectedScope && c.scope_id!==expectedScope)throw new RequestError('هویت تغییر کرده؛ صف قبلی ارسال نمی‌شود.',401,'identity_changed');
-        this.token=body.token;this.context=c;return c;
+        if(session&&(body.status!=='success'||!(body.user_id===null&&/^user_[a-f0-9]{32}_[0-9]{1,20}$/.test(body.draft_user_id)||/^user_[a-f0-9]{32}_[0-9]{1,20}$/.test(body.user_id))))throw new RequestError('پاسخ نشست معتبر نیست.');
+        this.token=body.token;this.context=c;if(session)this.bootstrapSession=body;return c;
     }
+    takeBootstrapSession(){const value=this.bootstrapSession;this.bootstrapSession=null;return value;}
     async send(row){
         const data={protocol_version:'2',scope:this.role,user_id:row.conversation,client_message_id:row.uuid};
         if(this.role==='customer'){data.send_message='1';data.message=row.text;}else{data.action='send_reply';data.reply=row.text;}

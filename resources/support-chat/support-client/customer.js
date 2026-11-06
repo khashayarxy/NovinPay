@@ -62,7 +62,7 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
         issuance?.clear();
         attachments?.clear();
     };
-    const create=async()=>{
+    const create=async(withSession=false)=>{
         reads?.destroy();alerts?.destroy();notificationSection?.permissionCleanup?.();notificationSection?.remove();engine?.destroy();navigation?.reset();setUnread(0);unreadCount=0;
         engine=new ChatEngine('customer',{
             queued:()=>navigation?.outgoing(),visible:()=>shown(),cooldown:()=>cooldown.refresh(),
@@ -96,7 +96,7 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
             },
         });
         engine.box.memory=pageQueue;
-        transcript=conversationView(d.messages,engine,{scroll:navigation,renderer:transcriptRenderer});engine.hooks.queue=(...args)=>{transcript.queue(...args);if(args[0].some(r=>r.conversation===engine.sync.id&&r.state!=='accepted'))welcomeHasMessages=true;welcome.hidden=welcomeHasMessages;};initializing=engine.initialize();try{await initializing;retentionNotice.hidden=engine.context.retention_enabled!==true;}finally{initializing=null;}recovery?.refresh();phone?.refresh();issuance?.refresh();
+        transcript=conversationView(d.messages,engine,{scroll:navigation,renderer:transcriptRenderer});engine.hooks.queue=(...args)=>{transcript.queue(...args);if(args[0].some(r=>r.conversation===engine.sync.id&&r.state!=='accepted'))welcomeHasMessages=true;welcome.hidden=welcomeHasMessages;};initializing=engine.initialize({session:withSession});try{await initializing;retentionNotice.hidden=engine.context.retention_enabled!==true;}finally{initializing=null;}recovery?.refresh();phone?.refresh();issuance?.refresh();
         reads=visibleReads({engine,host:d.messages,visible:shown,updated:(ids,page)=>{if(Number.isSafeInteger(page.customer_unread)){unreadCount=page.customer_unread;setUnread(unreadCount);}else engine.poller.wake();}});
         alerts=new DeviceAlerts(engine,{check:async event=>{if(messageViewport(d.messages,event.sequence,{active:shown()}))return false;if(event.preview&&event.sender&&event.unread!==0)return event;try{const h=await engine.transport.request('customer-notifications.php?action=hint&preview='+(alerts.prefs.preview?'1':'0'));return h.sequence===event.sequence&&h.store_epoch===event.storeEpoch&&h.unread>0&&!messageViewport(d.messages,event.sequence,{active:shown()})?h:false;}catch{return false;}},open:()=>{if(parent!==window)parent.postMessage({type:'support-customer-open'},location.origin);if(!d.win.classList.contains('active'))window.toggleChat();},alert:()=>launcher?.classList.add('has-unread')});
         presentation?.alerts?.(alerts,engine);
@@ -182,10 +182,10 @@ d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(docu
     const boot=()=>{if(bootJob)return bootJob;initRetry.disabled=true;initState('initializing','session');d.win.setAttribute('aria-busy','true');setComposerDisabled(true);
         const job=(async()=>{
             for(const key of ['chat_user_id','chat_user_name','chat_user_email'])try{localStorage.removeItem(key);}catch{}
-            if(!engine||engine.frozen)await create();
-            else if(!engine.initialized||engine.storageDegraded){engine.box.retryStorage();await engine.initialize();}
+            if(!engine||engine.frozen)await create(true);
+            else if(!engine.initialized||engine.storageDegraded){engine.box.retryStorage();await engine.initialize({session:true});}
             else await engine.auth();
-            const session=await engine.transport.request('api.php?get_session=1',{timeout:10000});contactValues(session);hasConversation=!!session.user_id;
+            const session=engine.transport.takeBootstrapSession()??await engine.transport.request('api.php?get_session=1',{timeout:10000});contactValues(session);hasConversation=!!session.user_id;
             const id=session.user_id||session.draft_user_id;if(engine.sync.id!==id)activate(id);else engine.poller.wake();
             attachments.recover();setComposerDisabled(!!engine.sync.lastPage?.lifecycle?.resolved);initState(engine.storageDegraded||d.win.dataset.historyState==='failed'?'partial':'ready',engine.storageDegraded?'storage':'session',engine.storageDegraded?'unavailable':'');
         })().catch(e=>{initState('failed','session',e.code==='storage_timeout'?'storage_timeout':e.status===401?'authentication':e.status===403?'csrf':e.status>=500?'server':e.status===0?'network':'initialization');setComposerDisabled(true);})

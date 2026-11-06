@@ -23,8 +23,8 @@ export class ChatEngine {
         this.queueTicker=setInterval(()=>this.renderQueue().catch(()=>{}),2000);
         window.addEventListener('online',this.wake);document.addEventListener('visibilitychange',this.wake);
     }
-    async initialize() {
-        const bootstrapStarted=Date.now();this.context=await this.transport.refresh(this.scope,{timeout:10000});this.startupRtt=Date.now()-bootstrapStarted;this.scope=this.context.scope_id;
+    async initialize({session=false}={}) {
+        const bootstrapStarted=Date.now();this.context=await this.transport.refresh(this.scope,{timeout:10000,session});this.startupRtt=Date.now()-bootstrapStarted;this.scope=this.context.scope_id;
         this.box.restoreTemporary(this.scope);this.restoreSendCooldowns();
         const [consent,snapshot]=await Promise.allSettled([this.box.consent(this.scope),this.box.snapshot()]);
         this.box.persistent=consent.status==='fulfilled'&&consent.value;
