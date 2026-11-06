@@ -7,16 +7,22 @@ use Illuminate\Contracts\Session\Session;
 use Illuminate\Session\Middleware\StartSession;
 use Symfony\Component\HttpFoundation\Response;
 
-// Only the two new preview GETs are read-only. Every other route delegates
-// unchanged to Laravel's existing session lifecycle.
+// Explicit read-only responses still read authenticated sessions but never
+// persist them. All authentication and mutating endpoints keep normal semantics.
 class PreviewAwareSession extends StartSession
 {
     private bool $readOnlyPreview = false;
 
     public function handle($request, Closure $next)
     {
-        $this->readOnlyPreview = ($request->isMethod('GET') || $request->isMethod('HEAD'))
-            && $request->routeIs('admin.maintenance.preview', 'admin.maintenance.preview.page');
+        // Match the native API's isset dispatch, including Laravel-normalized nulls.
+        $query = $request->query->all();
+        $publicChatConfiguration = $request->isMethod('GET') && $request->routeIs('support.chat')
+            && $request->route('path') === 'api.php'
+            && (isset($query['widget_config']) || isset($query['recovery_availability']));
+        $this->readOnlyPreview = (($request->isMethod('GET') || $request->isMethod('HEAD'))
+            && $request->routeIs('admin.maintenance.preview', 'admin.maintenance.preview.page', 'support.chat.operator.asset'))
+            || $publicChatConfiguration;
         try {
             if ($this->readOnlyPreview && $this->sessionConfigured()) {
                 // A read-only session needs no persistent cache lock either.

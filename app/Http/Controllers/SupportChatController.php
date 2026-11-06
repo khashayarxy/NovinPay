@@ -16,6 +16,11 @@ class SupportChatController extends Controller
 {
     private const ENDPOINTS = ['api.php', 'operator-api.php', 'operator-avatar.php', 'support-attachment.php', 'support-avatar.php', 'support-profile-image.php', 'support-content.php', 'support-content-admin.php', 'support-theme.php', 'support-typing.php', 'customer-notifications.php', 'get_activity.php', 'update_activity.php', 'support-widget.php', 'logout.php', 'operator/manifest.php'];
 
+    public function operatorAsset(Request $request, ChatBridge $bridge, string $asset): Response
+    {
+        return $this->__invoke($request, $bridge, 'operator/'.$asset);
+    }
+
     public function __invoke(Request $request, ChatBridge $bridge, string $path = ''): Response
     {
         $started = hrtime(true);
@@ -34,7 +39,7 @@ class SupportChatController extends Controller
             return redirect()->route('admin.support.confirm');
         }
         if ($path === 'operator') {
-            return redirect('/support-chat/operator/', 301);
+            return redirect('/support-chat/operator/index.html', 302);
         }
         if ($operatorPage) {
             $path = 'operator/index.html';

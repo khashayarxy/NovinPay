@@ -31,7 +31,7 @@ class ReadOnlyMaintenancePreviewTest extends TestCase
         $before = DB::table('sessions')->get()->toJson();
         $manager = new SessionManager($this->app);
         $middleware = new PreviewAwareSession($manager, fn () => throw new \RuntimeException('Preview must not write a cache lock'));
-        foreach (['admin.maintenance.preview', 'admin.maintenance.preview.page'] as $name) {
+        foreach (['admin.maintenance.preview', 'admin.maintenance.preview.page', 'support.chat.operator.asset'] as $name) {
             $request = Request::create('/admin/maintenance/preview', 'GET');
             $route = (new Route('GET', 'admin/maintenance/preview', fn () => null))->name($name);
             $request->setRouteResolver(fn () => $route);
@@ -51,5 +51,35 @@ class ReadOnlyMaintenancePreviewTest extends TestCase
         $middleware->handle($request, fn () => new Response('normal'));
         $this->assertDatabaseMissing('sessions', ['id' => str_repeat('a', 40)]);
         $this->assertNotSame($before, DB::table('sessions')->get()->toJson());
+    }
+
+    public function test_only_public_chat_configuration_gets_are_read_only(): void
+    {
+        config(['session.driver' => 'database', 'session.lottery' => [0, 100], 'session.block' => false]);
+        $middleware = new PreviewAwareSession(new SessionManager($this->app));
+        foreach (['widget_config', 'recovery_availability'] as $flag) {
+            $request = Request::create('/support-chat/api.php?'.$flag.'=1', 'GET');
+            $route = (new Route('GET', 'support-chat/{path}', fn () => null))->name('support.chat');
+            $route->bind($request);
+            $request->setRouteResolver(fn () => $route);
+            $before = DB::table('sessions')->get()->toJson();
+            $response = $middleware->handle($request, fn () => new Response('configuration'));
+            $this->assertSame($before, DB::table('sessions')->get()->toJson());
+            $this->assertSame([], $response->headers->getCookies());
+        }
+        // CSRF/bootstrap, message POSTs and operator APIs retain normal writes,
+        // even when a caller adds a configuration query flag.
+        foreach ([['GET', 'api.php', 'get_csrf=1'], ['GET', 'api.php', 'widget_config=&get_csrf=1'], ['POST', 'api.php', 'widget_config=1'], ['GET', 'operator-api.php', 'widget_config=1']] as [$method, $path, $query]) {
+            $request = Request::create('/support-chat/'.$path.'?'.$query, $method);
+            if ($request->query('widget_config') === '') {
+                $request->query->set('widget_config', null);
+            }
+            $route = (new Route(['GET', 'POST'], 'support-chat/{path}', fn () => null))->name('support.chat');
+            $route->bind($request);
+            $request->setRouteResolver(fn () => $route);
+            $response = $middleware->handle($request, fn () => new Response('stateful'));
+            $this->assertNotEmpty($response->headers->getCookies());
+            $this->assertDatabaseCount('sessions', 1);
+        }
     }
 }

@@ -66,6 +66,16 @@ class SupportChatTest extends TestCase
         $this->assertIsArray($response->json('source_paths'));
     }
 
+    public function test_operator_entry_redirects_to_explicit_document_without_loop(): void
+    {
+        $this->actingAs(User::query()->sole())->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
+        $this->get('https://localhost/support-chat/operator')->assertRedirect('/support-chat/operator/index.html');
+        $this->get('https://localhost/admin/support')->assertRedirect('/support-chat/operator/index.html');
+        $this->get('https://localhost/support-chat/operator/index.html')->assertOk()->assertSee('<base href="../">', false);
+        $this->get('https://localhost/support-chat/operator/app.js')->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
+        $this->get('https://localhost/support-chat/support-client/engine.js')->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
+    }
+
     public function test_public_chat_assets_do_not_depend_on_database_sessions(): void
     {
         $default = config('database.default');
@@ -318,6 +328,7 @@ class SupportChatTest extends TestCase
         $this->post('https://localhost/support-chat/api.php', ['action' => 'send_reply', 'csrf_token' => $token, 'protocol_version' => '2', 'user_id' => 'invalid', 'reply' => 'synthetic rejected reply', 'client_message_id' => (string) Str::uuid()])->assertForbidden();
         $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertForbidden();
         $this->get('https://localhost/support-chat/operator/')->assertForbidden();
+        $this->get('https://localhost/support-chat/operator/app.js')->assertForbidden();
     }
 
     public function test_unchanged_operator_sync_avoids_private_rewrite_but_persists_revocation(): void
@@ -411,7 +422,7 @@ class SupportChatTest extends TestCase
         $this->get('/admin/support/confirm')->assertOk();
         $this->post('/admin/support/confirm', ['current_password' => 'wrong'])->assertSessionHasErrors('current_password');
         $this->assertNull(session('support_authentication_nonce'));
-        $this->post('/admin/support/confirm', ['current_password' => 'password'])->assertRedirect('/support-chat/operator/');
+        $this->post('/admin/support/confirm', ['current_password' => 'password'])->assertRedirect('/support-chat/operator/index.html');
         $this->assertMatchesRegularExpression('/\A[a-f0-9]{32}\z/D', session('support_authentication_nonce'));
         $this->app->detectEnvironment(fn () => 'local');
         $this->post('/admin/support/confirm', ['current_password' => 'password'])->assertStatus(419);

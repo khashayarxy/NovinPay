@@ -50,6 +50,11 @@ Route::get('/support-chat/{path}', SupportChatController::class)
         PreventRequestForgery::class,
     ])->name('support.chat.asset');
 
+Route::get('/support-chat/operator/{asset}', [SupportChatController::class, 'operatorAsset'])
+    ->where('asset', '[a-zA-Z0-9_./-]+\.(?:js|css|json|woff2|png|svg)')
+    ->middleware('throttle:600,1')
+    ->name('support.chat.operator.asset');
+
 Route::match(['GET', 'POST'], '/support-chat/{path?}', SupportChatController::class)
     ->where('path', '[a-zA-Z0-9_./-]*')
     ->withoutMiddleware(PreventRequestForgery::class)
@@ -130,7 +135,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::middleware([EnsureAdminSession::class, 'can:access-admin'])->group(function (): void {
-        Route::get('support', fn () => redirect('/support-chat/operator/'))->middleware('can:support.view')->name('support.index');
+        Route::get('support', fn () => redirect('/support-chat/operator/index.html'))->middleware('can:support.view')->name('support.index');
         Route::get('support/confirm', [SupportAccessController::class, 'confirm'])->middleware('can:support.view')->name('support.confirm');
         Route::post('support/confirm', [SupportAccessController::class, 'authenticate'])->middleware(['can:support.view', 'throttle:5,1'])->name('support.authenticate');
         Route::get('deliveries', [DeliveryController::class, 'admin'])->middleware(['can:finance.view', 'can:finance.details'])->name('deliveries.index');
