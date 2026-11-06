@@ -195,3 +195,14 @@ cd /home/novinpay/novinpay-staging-38b9117-kit && printf '%s  %s\n' \
 ```
 
 CI on 6264b5f caught a remaining Pint formatting pass in the newly expanded helper. Five whitespace-only lines were fixed; a fresh full repository `pint --test` and the same 7 tests / 29 assertions passed. Before issuing the command, both unexecuted v3 draft artifacts are preserved privately as `.pre-pint.before`, then updated only against their exact old hashes and read back. Final command uses the new hashes. No v3 execution occurred.
+
+
+## 2026-11-06 startup parity investigation (not accepted as resolved)
+
+Read-only cPanel reconciliation found the v3 `STAGING_SYMFONY_SECURITY_PATCH_PASS` receipt: audit zero, migrations 22, maintenance OFF, probe removed, code backup present. All three installed packages are v8.1.11. Operator no-op optimization and engine/network hashes match local; customer/customer-v2 also match after CRLF normalization. Do not rerun the security installer. This receipt explicitly does not establish two-way browser acceptance.
+
+GitHub main for ZizoLearn still resolves to `7d6f6ddcfbde4fd3fb1857f62504d230e4c43bb5`. The fetched customer.js blob `02193942795d486cc85335443c7423e69e8009ff` matches NovinPay; customer-v2 differs only in fallback brand. Therefore the observed startup failure is not established as a missed frontend port. Two startup error controllers exist (12-second module import watchdog and config/session failure handling); their causal involvement in the owner's delayed recovery remains unverified. Do not simply extend timeouts or suppress failure UI.
+
+Confirmed architectural difference: NovinPay routes assets through Laravel with `no-store, private`; upstream files are standalone. A five-level static dependency discovery chain is customer-v2 -> customer -> engine -> network -> outbox. Exact-URL modulepreloads now expose those same five modules in the initial document; they do not add polling, new dependencies, credentials, cache lifetime or another module instance. This removes discovery dependencies for these modules, not proven network round trips or measured milliseconds. It is not a complete fix for initialization or delivery latency.
+
+Regression `tests/Frontend/support-preload.test.mjs` verifies exact query-string identity against actual imports and one preload per module. Send/ACK/lost-ACK/sync/theme tests remain unchanged. Browser attempt through the supported DevTools workflow still returned ERR_INVALID_AUTH_CREDENTIALS. Do not disable Basic, extract credentials or request HAR/message contents. Cold/warm p50/p95, real two-way ACK/attachment/reconnect tests and hosted before/after performance remain unverified. Source-level/local success is not performance acceptance. Production/ZizoLearn/live provider settings and unrelated finance files remain untouched.
