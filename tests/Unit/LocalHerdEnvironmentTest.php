@@ -37,7 +37,7 @@ class LocalHerdEnvironmentTest extends TestCase
     {
         // Only known files in this test's freshly created directory are removed.
         foreach (['herd-environment.json', 'development.sqlite', 'config.php'] as $file) {
-            if (file_exists($this->root.'/'.$file)) {
+            if (file_exists($this->root.'/'.$file) || is_link($this->root.'/'.$file)) {
                 unlink($this->root.'/'.$file);
             }
         }
