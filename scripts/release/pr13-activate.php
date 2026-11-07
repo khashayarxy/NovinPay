@@ -247,6 +247,7 @@ try {
     $exit = proc_close($process);
     need(($exit === 0 && cronIsFenced($cron)) || ($exit === 1 && trim($cron) === '' && preg_match('/\Ano crontab for novinpay\s*\z/D', trim($cronError))), 'unreviewed_scheduled_writer');
     unset($cron, $cronError);
+    phpProcesses('/proc', 1321, getmypid()); // Capability check BEFORE any live fence.
     $web = webOpcodeCheck([]);
     need(is_int($web['pid']) && $web['pid'] > 0 && is_file('/proc/'.$web['pid'].'/stat')
         && hash_equals($web['startTicks'], processStartTicks(file_get_contents('/proc/'.$web['pid'].'/stat'))), 'web_worker_not_visible_to_cli');

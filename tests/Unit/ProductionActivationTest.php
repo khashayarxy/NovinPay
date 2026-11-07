@@ -111,21 +111,43 @@ final class ProductionActivationTest extends TestCase
         backupMetadata(gzencode($member.$member.str_repeat("\0", 1024)));
     }
 
-    public function test_linux_proc_detects_a_real_blocked_php_worker_without_killing_it(): void
+    public function test_linux_proc_detects_a_real_worker_in_a_readable_kernel_inventory_without_killing_it(): void
     {
         if (PHP_OS_FAMILY !== 'Linux' || ! function_exists('posix_geteuid')) {
-            $this->markTestSkipped('Real /proc acceptance runs on Linux CI; Windows cannot establish host /proc visibility.');
+            $this->markTestSkipped('Linux kernel inventory test; Windows cannot establish cPanel /proc visibility.');
         }
         $worker = proc_open([PHP_BINARY, '-d', 'auto_prepend_file=', '-r', 'echo "ready\\n"; fflush(STDOUT); fgets(STDIN);'], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         try {
             $this->assertSame("ready\n", fgets($pipes[1]));
-            $this->assertGreaterThanOrEqual(1, phpProcesses('/proc', posix_geteuid(), getmypid()));
+            // The hosted CI account contains unrelated non-dumpable processes.
+            // Test the real child's kernel identity in an observable inventory;
+            // production still scans ALL same-effective-UID processes and stops
+            // on unreadable entries. This fixture is not host qualification.
+            $pid = proc_get_status($worker)['pid'];
+            $proc = $this->scratch.'/proc';
+            mkdir($proc.'/self', 0700, true);
+            mkdir($proc.'/'.$pid, 0700);
+            file_put_contents($proc.'/self/status', file_get_contents('/proc/self/status'));
+            file_put_contents($proc.'/'.$pid.'/status', file_get_contents('/proc/'.$pid.'/status'));
+            $this->assertTrue(symlink(readlink('/proc/'.$pid.'/exe'), $proc.'/'.$pid.'/exe'));
+            $this->assertSame(1, phpProcesses($proc, posix_geteuid(), getmypid()));
         } finally {
             fclose($pipes[0]); // Worker exits naturally; never terminate a worker.
             fclose($pipes[1]);
             fclose($pipes[2]);
             $this->assertSame(0, proc_close($worker));
         }
+    }
+
+    public function test_an_unreadable_same_effective_uid_executable_still_blocks_the_release(): void
+    {
+        $proc = $this->scratch.'/proc';
+        mkdir($proc.'/self', 0700, true);
+        mkdir($proc.'/222', 0700);
+        file_put_contents($proc.'/self/status', 'synthetic own status');
+        file_put_contents($proc.'/222/status', "Name:\tunknown\nUid:\t1321\t1321\t1321\t1321\nState:\tS\n");
+        $this->expectExceptionMessage('drain_executable_unreadable');
+        phpProcesses($proc, 1321, 999);
     }
 
     public function test_only_the_fenced_artisan_scheduler_is_allowed_not_other_database_or_php_cron(): void
