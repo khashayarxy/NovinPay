@@ -22,6 +22,9 @@ Applies to NovinPayPos work by Codex, Claude Code or another assistant. Read [pr
 
 ## Engineering and validation
 
+- Development/commit stays fast: owner local acceptance, minimal checks for a specific changed risk, no automatic broad integration/E2E/browser/database runs or builds. Comprehensive verification belongs to the single CI workflow on push, once per pushed revision; do not duplicate it locally before pushing.
+- Prefer a dedicated MariaDB 10.6.28 local runtime with production-compatible PHP 8.4 patches. The current guarded local acceptance environment remains SQLite until safely converted; do not pretend version parity is established. Preserve its data and keep disposable test targets separate. Retain SQLite compatibility in CI; add migrations only for genuine schema changes.
+
 - Inspect branch/HEAD/status and scoped diff before editing. Preserve unrelated modified/untracked work. Explicitly stage reviewed paths and inspect the staged diff before committing.
 - Reuse Laravel services, policies/Gates, Blade conventions and repository scripts. Avoid new dependencies, unrelated refactoring and another deployment framework.
 - Use `scripts/test.ps1` for isolated tests, compatible PHP >=8.4.1, focused checks first. Never use the ordinary development or production DB for tests. Avoid unguarded `composer setup`, `composer test`, migrations or dev servers; Herd already serves local HTTPS.
@@ -40,6 +43,7 @@ The official workflow is defined in [AGENTS.md](../AGENTS.md) and [deployment gu
 - Use authenticated HTTPS and exact-target/hash/readback checks for remote file work. Preserve previous versions privately. Do not blindly retry failed or ambiguous remote mutations.
 - Keep deployment phases resumable through evidence: reconcile existing files/schema/markers first. A known partially installed candidate requires finalization, not another install.
 - Require current quota, compatible CLI/web runtime, consistent encrypted backup, isolated restore, independent off-host recovery and compatible rollback before production activation. Never weaken freshness, locking or integrity gates just to pass.
+- Owner policy: backup cadence and maximum recovery age are 72 hours (`scripts/release/backup-policy.php`), until explicitly changed by the owner. No backups, restore DB provisioning or repeated rehearsals for ordinary commits or expiry while developing. Reuse valid evidence; prepare fresh recovery only when activation is imminent and necessary. Do not disable existing production backup protection.
 - Genuine security/integrity failures stay fail-closed. Transient external verification uncertainty is PENDING, not PASS or a reason to unnecessarily take a healthy site offline.
 - Cleanup only verified obsolete items after acceptance; retain recovery/audit assets and uncertain files. No broad wildcard deletion. Quarantine is preferable when a removal is not fully established.
 

@@ -4,6 +4,8 @@
 
 Review this document before preparing a package. Add each confirmed failure and a regression test when resolving it. Historical PASS receipts are not proof that a later attempt ran.
 
+Owner update (2026-11-07): development, push CI and production activation are separate. No backup/restore provisioning, rehearsal or release packaging for ordinary commits or expiry during development. Backup interval and maximum recovery age are72 hours, centrally configured in `scripts/release/backup-policy.php`; the historical four-hour stops no longer define policy. `BackupPolicyTest` covers72-hour boundaries, invalid age overrides and mandatory independent recovery. Future release bundles must pin the policy file and compatible helpers together; old private packages remain preserved, not executable current instructions. No manifests are regenerated just for this policy/documentation change.
+
 ## Quick diagnosis: read before deployment, backup, restore or migration
 
 Use the matching row first, then its detailed evidence below. **C** = confirmed cause; **U** = exact underlying cause unresolved. These 28 signatures include two U entries; a workaround is not proof of their root cause. Retired staging references identify historical source/tests in Git/private receipts, not commands to run or a requirement to recreate staging. Keep manifests, secret locations and recovery contents in the private release workflow.

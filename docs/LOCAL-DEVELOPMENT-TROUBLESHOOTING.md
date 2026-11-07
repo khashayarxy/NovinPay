@@ -1,5 +1,11 @@
 # Windows local connectivity and database safety
 
+## Preferred parity (owner decision, 2026-11-07)
+
+Prefer a dedicated MariaDB 10.6.28 local development database and PHP 8.4 patches matching production where practical. The guarded persistent environment described below still uses SQLite; no conversion or service installation has occurred. Herd's inventory tool was unavailable at this update. Preserve the current 22-migration data, chat, authentication and other-site guards until a safe project-scoped conversion is prepared. Never point destructive tests at that persistent acceptance database. Use existing guarded disposable MariaDB harnesses when an authorized target is available; retain SQLite CI compatibility. Do not create duplicate migrations to align environments, alter production, install Docker or change other Herd sites.
+
+The project's PHP8.4 CLI reported **8.4.27** during this update, matching the verified production CLI patch. The web runtime and installed local SQL services were not reverified because Herd's MCP transport was unavailable; this is not evidence that MariaDB parity is complete.
+
 ## Permanent owner acceptance environment (2026-11-06)
 
 The active NovinPay local database is now `%LOCALAPPDATA%/NovinPay-Local/development/development.sqlite`, a consistent SQLite backup of the approved synthetic22-migration fixture, including customer_accounts. Storage/chat history/uploads and authenticated sessions live in that directory's `storage` tree. This is persistent local data, outside Git, public, Codex QA cleanup and production. Preserve it; do not reset it to rerun tests. The older14-migration isolated DB and original fixture remain untouched. No migrations were replayed.

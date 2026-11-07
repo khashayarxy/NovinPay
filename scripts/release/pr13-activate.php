@@ -171,7 +171,7 @@ try {
         && $proof['archiveSha256'] === '45c4300aaeaeab217e75f793ad576f9631dff91f71fae127bd30be6edc0b1748'
         && hash_equals($proof['archiveSha256'], hash_file('sha256', $m['backup']['directory'].'/backup.npb')), 'independent_recovery_link');
     $fresh = static function () use ($proof): void {
-        \NovinPay\Release\recoveryGate($proof, ['automaticDatabaseRestore' => false, 'maxSnapshotAgeSeconds' => 14400], time());
+        \NovinPay\Release\recoveryGate($proof, ['automaticDatabaseRestore' => false], time());
     };
     $fresh();
     foreach ($m['recoveryReceipts'] as $file => $sha) {

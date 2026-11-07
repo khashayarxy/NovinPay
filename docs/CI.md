@@ -1,15 +1,21 @@
 # Continuous integration and protected main
 
-`.github/workflows/ci.yml` runs for every pull request targeting `main` and every
-push to `main`. Keep these job names stable: they are the required GitHub checks.
+`.github/workflows/ci.yml` runs once on each branch push, including feature branches
+and `main`. There is no second pull-request event matrix or local pre-push suite.
+Superseded in-progress revisions on the same branch are cancelled. Keep these job
+names stable: they are the required GitHub checks. GitHub can evaluate pushed head
+checks for PRs ([status-check documentation](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)).
+Fork-only changes require verified checks in the existing review workflow before
+merge; missing checks stay a blocker, never a skipped-check substitute.
 
 | Check | Validation |
 | --- | --- |
 | PHP SQLite | PHP 8.4, locked Composer install/audit, Pint, full PHPUnit suite with in-memory SQLite, article upgrade/rollback/reapply preservation |
 | PHP MySQL 8 | Full PHPUnit suite on a disposable MySQL 8 service, eight inventory, six financial and six article competing-connection scenarios, article upgrade preservation, complete migration rollback and reapply |
-| Frontend | Node 24 (within locked Vite engine requirements), npm ci, npm audit, Vite production build |
+| PHP MariaDB 10.6.28 | Native production-version MariaDB, full PHPUnit/integration suite, competing-connection/financial/article scenarios, upgrade preservation and rollback/reapply |
+| Frontend | Node 24, npm ci/audit, chat frontend functional/recovery regressions and Vite production build |
 
-Both PHP jobs set testing environment variables before Composer hooks execute,
+All three PHP jobs set testing environment variables before Composer hooks execute,
 use array sessions/cache and a randomly generated masked application key, and
 avoid cached application configuration. No owner environment, database, key,
 configuration or data is copied into CI. Each runner creates an empty `.env` to
@@ -31,7 +37,7 @@ dependency updates. Review and refresh action pins separately when needed.
 
 ## Integration procedure
 
-Work on a feature branch and open a pull request to `main`. All three checks must
+Work on a feature branch and open a pull request to `main`. All four checks must
 pass on the current change, the branch must be up to date, and review conversations
 must be resolved. No external reviewer is mandatory for this sole-owner repository.
 Merge through GitHub, then fetch and fast-forward local `main` without discarding
@@ -43,3 +49,9 @@ not by this workflow. Verify their active state after administrative changes.
 CI validates disposable databases; it does not approve a production migration.
 Deployment still requires owner authorization, backups, restore planning, preserved
 APP_KEY, and review of pending migrations and their data-loss implications.
+
+No active local commit/pre-push hooks were installed at the workflow audit. Keep
+it that way: no heavy automatic test/build/backup hook or new hook framework.
+Owner local acceptance and minimal risk-specific checks belong to development;
+the comprehensive matrix belongs to push. Real browser acceptance is manual or
+explicitly scoped, not claimed from frontend unit tests. No new E2E stack added.

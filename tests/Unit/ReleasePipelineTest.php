@@ -342,13 +342,13 @@ final class ReleasePipelineTest extends TestCase
             'recoveryKeyAvailable' => true, 'sourceDatabase' => 'novinpay_live1', 'snapshotUnix' => 1000];
     }
 
-    public function test_data_release_requires_its_explicit_snapshot_freshness_policy(): void
+    public function test_data_release_rejects_a_snapshot_older_than_the_owner_72_hour_window(): void
     {
         $this->expectExceptionMessage('backup_freshness');
-        recoveryGate($this->recovery(), ['risk' => 'data', 'automaticDatabaseRestore' => false, 'maxSnapshotAgeSeconds' => 3600], 4601);
+        recoveryGate($this->recovery(), ['risk' => 'data', 'automaticDatabaseRestore' => false], 1000 + 259201);
     }
 
-    public function test_presentation_reuse_requires_reviewed_preservation_and_code_only_recovery(): void
+    public function test_presentation_release_remains_eligible_within_the_owner_window(): void
     {
         recoveryGate($this->recovery(), ['risk' => 'presentation', 'reviewedPathsOnly' => true, 'codeRollbackVerified' => true,
             'currentConfigurationPreserved' => true, 'persistentStatePreserved' => true, 'approvedReuse' => true, 'automaticDatabaseRestore' => false], 100000);
@@ -358,13 +358,13 @@ final class ReleasePipelineTest extends TestCase
     public function test_presentation_label_alone_never_bypasses_recovery(): void
     {
         $this->expectExceptionMessage('backup_freshness');
-        recoveryGate($this->recovery(), ['risk' => 'presentation', 'automaticDatabaseRestore' => false], 100000);
+        recoveryGate($this->recovery(), ['risk' => 'presentation', 'automaticDatabaseRestore' => false], 1000 + 259201);
     }
 
     public function test_no_old_database_restore_as_automatic_code_rollback(): void
     {
         $this->expectExceptionMessage('recovery_identity');
-        recoveryGate($this->recovery(), ['automaticDatabaseRestore' => true, 'maxSnapshotAgeSeconds' => 3600], 1000);
+        recoveryGate($this->recovery(), ['automaticDatabaseRestore' => true], 1000);
     }
 
     public function test_unverified_offhost_recovery_is_not_accepted(): void

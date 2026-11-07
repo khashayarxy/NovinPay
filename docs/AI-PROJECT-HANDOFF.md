@@ -1,8 +1,12 @@
 # NovinPayPos: AI project handoff
 
-Current workflow decision: **2026-11-06, Asia/Tehran**. Read [AGENTS](../AGENTS.md), [working preferences](AI-WORKING-PREFERENCES.md) and [deployment guide](DEPLOYMENT.md). Prior staging history remains in [deployment lessons](DEPLOYMENT-LESSONS-LEARNED.md); it is evidence, not an active workflow.
+Current workflow decisions: **2026-11-07, Asia/Tehran**. Read [AGENTS](../AGENTS.md), [working preferences](AI-WORKING-PREFERENCES.md) and [deployment guide](DEPLOYMENT.md). Prior staging history remains in [deployment lessons](DEPLOYMENT-LESSONS-LEARNED.md); it is evidence, not an active workflow.
 
 ## Resume safely
+
+- Development is not release execution: owner tests locally, commits use only risk-justified lightweight checks, and one comprehensive CI workflow runs per pushed revision. Do not regenerate deployment packages/backups or rehearse migrations for routine iterations. The backup interval and maximum age are 72 hours, with integrity/restore/off-host/compatibility gates unchanged. Do not change that policy without explicit owner authorization.
+- Prefer MariaDB 10.6.28/PHP 8.4 parity; the current persistent Herd guard still pins SQLite. Its data must be preserved, and Herd's runtime inventory was unavailable at the policy update. No local DB switch/migration was performed. SQLite CI remains supported.
+- PR13 recovery v3/off-host verification passed; the original encrypted backup and isolated22/13 rehearsal remain preserved. A second isolated recovery target was explicitly provisioned but is unused: no new backup/restore/rehearsal began. Do not use an obsolete private activation package containing the former four-hour rule; refresh tooling only when an actual release is resumed.
 
 - Develop/test at `https://novinpaypos.test` (Herd), present changes locally for owner approval, then use explicitly authorized cPanel production deployment and owner production acceptance. No routine hosted staging, staging Basic login or staging acceptance requirement. Do not create a replacement staging environment.
 - Branch: `codex/novinpay-customer-repair-workflow`; verify current HEAD/remote rather than relying on an old snapshot SHA. PR #13 stays Draft/unmerged. Ten finance Blade files contain preserved unrelated working-tree changes: do not stage/reset them.

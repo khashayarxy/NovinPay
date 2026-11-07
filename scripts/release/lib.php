@@ -91,6 +91,23 @@ function quotaGate(array $proof, int $now, string $nonce, string $commit, int $p
         'Preserve recovery assets; inspect quota before further writes.');
 }
 
+/** Central owner policy; neither environment variables nor manifests override it. */
+function backupPolicy(): array
+{
+    static $policy;
+
+    return $policy ??= require __DIR__.'/backup-policy.php';
+}
+
+/** Advisory scheduling metadata only; never creates a backup or restore target. */
+function nextBackupDueUnix(int $snapshotUnix): int
+{
+    requireGate($snapshotUnix >= 0 && $snapshotUnix <= PHP_INT_MAX - backupPolicy()['intervalSeconds'],
+        'backup_schedule_timestamp', 'valid backup timestamp', [], 'Inspect the recorded backup receipt.');
+
+    return $snapshotUnix + backupPolicy()['intervalSeconds'];
+}
+
 /** A code rollback is never permission to restore an old live database snapshot. */
 function recoveryGate(array $proof, array $policy, int $now): void
 {
@@ -100,16 +117,13 @@ function recoveryGate(array $proof, array $policy, int $now): void
     requireGate(($proof['sourceDatabase'] ?? null) === 'novinpay_live1' && is_int($proof['snapshotUnix'] ?? null)
         && $proof['snapshotUnix'] <= $now && ($policy['automaticDatabaseRestore'] ?? null) === false,
         'recovery_identity', 'live database identity, valid timestamp and no automatic data rollback', [], 'Inspect the pinned recovery evidence.');
-    if (($policy['risk'] ?? null) === 'presentation' && ($policy['reviewedPathsOnly'] ?? null) === true
-        && ($policy['codeRollbackVerified'] ?? null) === true && ($policy['currentConfigurationPreserved'] ?? null) === true
-        && ($policy['persistentStatePreserved'] ?? null) === true && ($policy['approvedReuse'] ?? null) === true) {
-        // This is a historical disaster-recovery point, never a promise to recover newer transactions.
-        return;
-    }
-    $maxAge = $policy['maxSnapshotAgeSeconds'] ?? null;
-    requireGate(is_int($maxAge) && $maxAge > 0 && $now - $proof['snapshotUnix'] <= $maxAge,
-        'backup_freshness', 'snapshot within the explicit data-protection policy',
-        ['ageSeconds' => $now - $proof['snapshotUnix']], 'Create a new generation only when the reviewed recovery policy requires it; retain previous generations.');
+    $maxAge = backupPolicy()['maxSnapshotAgeSeconds'];
+    requireGate(! array_key_exists('maxSnapshotAgeSeconds', $policy) || $policy['maxSnapshotAgeSeconds'] === $maxAge,
+        'backup_policy_mismatch', 'owner-approved 72-hour policy', [], 'Update obsolete release configuration; do not regenerate a valid backup to satisfy an old age rule.');
+    requireGate($now - $proof['snapshotUnix'] <= $maxAge,
+        'backup_freshness', 'verified recovery snapshot no older than 72 hours',
+        ['ageSeconds' => $now - $proof['snapshotUnix'], 'maximumAgeSeconds' => $maxAge],
+        'Preserve existing evidence. Refresh recovery only for an imminent authorized release when required; never provision a restore target automatically.');
 }
 
 function resumeDecision(string $recorded, bool $postconditionMatches): string
