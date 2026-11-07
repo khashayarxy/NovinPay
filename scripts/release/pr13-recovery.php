@@ -6,6 +6,7 @@ use NovinPay\Release\Journal;
 // Recovery preparation only: never deploys, fences traffic or migrates live DB.
 require_once __DIR__.'/runtime.php';
 require_once __DIR__.'/pr13-schema-contract.php';
+require_once __DIR__.'/pr13-maintenance-snapshot.php';
 
 use function NovinPay\Release\privateRead;
 use function NovinPay\Release\requireGate;
@@ -80,7 +81,7 @@ try {
     $m['_sha256'] = $argv[2];
     requireGate(__DIR__ === '/home/novinpay/novinpay-release-pipeline-v1' && $m['baseline'] === '1f39bb476fd31880600564e58599c4488622c4c0'
         && $m['backup']['directory'] === '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1'
-        && $m['backup']['restoreDatabase'] === 'novinpay_restore13r1' && $m['stateDirectory'] === __DIR__.'/pipeline-pr13',
+        && $m['backup']['restoreDatabase'] === 'novinpay_restore13r1' && $m['stateDirectory'] === __DIR__.'/pipeline-pr13-r2',
         'manifest_scope', 'approved recovery paths only', [], 'Do not substitute production or earlier restore databases.');
     foreach ($m['tools'] as $name => $hash) {
         requireGate(preg_match('/\A[a-z0-9-]+\.(php|zip|json)\z/D', $name) === 1 && hash_equals($hash, hash('sha256', privateRead(__DIR__.'/'.$name))),
@@ -89,6 +90,25 @@ try {
     foreach (['sourceArchive', 'vendorArchive'] as $key) {
         requireGate(hash_equals($m[$key]['sha256'], hash_file('sha256', __DIR__.'/'.$m[$key]['name'])), 'artifact_hash', 'pinned source/vendor artifact', [], 'Verify archives.');
     }
+    // Preserve and fingerprint the accounted-for stop. Never relabel old receipts
+    // with a new manifest or turn an ambiguous backup into a fresh attempt.
+    $phase = 'prior_attempt_reconciliation';
+    $prior = __DIR__.'/pipeline-pr13';
+    requireGate(is_dir($prior) && ! is_link($prior) && fileowner($prior) === 1321 && (fileperms($prior) & 0777) === 0700,
+        'prior_journal_identity', 'original owner-only journal directory', [], 'Preserve and inspect path substitution or permission changes.');
+    $priorFiles = ['restore_defaults.started.json', 'restore_defaults.complete.json'];
+    $priorReceipts = [];
+    foreach ($priorFiles as $name) {
+        $bytes = privateRead($prior.'/'.$name);
+        requireGate(isset($m['priorAttempt']['files'][$name]) && hash_equals($m['priorAttempt']['files'][$name], hash('sha256', $bytes)),
+            'prior_evidence_changed', 'exact preserved receipt bytes', [], 'Inspect prior evidence without overwriting it.');
+        $priorReceipts[] = json_decode($bytes, true, flags: JSON_THROW_ON_ERROR);
+    }
+    requireGate(($m['priorAttempt']['manifestSha256'] ?? '') === '9d43b0ab1c0dbb7d3da4720c1fbb357081e79f2a4551a66a1cd3092f8a200a69'
+        && pr13PriorAttemptIsPreBackup(array_values(array_diff(scandir($prior), ['.', '..'])), $priorReceipts[0], $priorReceipts[1],
+            $m['priorAttempt']['manifestSha256'], file_exists($m['backup']['directory']) || is_link($m['backup']['directory']),
+            file_exists(__DIR__.'/pr13-rehearsal-app') || is_link(__DIR__.'/pr13-rehearsal-app')),
+        'prior_attempt_not_pre_backup', 'verified stop before export/import', [], 'Preserve all artifacts; do not retry an ambiguous operation.');
     require __DIR__.'/guard-v1.php';
     require __DIR__.'/backup-working-tree-v2.php';
     require __DIR__.'/pr13-backup-v1.php';
