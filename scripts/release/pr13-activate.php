@@ -149,6 +149,7 @@ register_shutdown_function(static function () use (&$finished, &$phase, &$armed)
 try {
     need(PHP_SAPI === 'cli' && PHP_VERSION_ID >= 80401 && function_exists('posix_geteuid') && posix_geteuid() === 1321
         && __DIR__ === KIT && count($argv) === 3, 'activation_scope');
+    need(! (bool) ini_get('opcache.enable_cli') || ini_get('opcache.file_cache') === '', 'cli_persistent_opcode_cache_unsupported');
     $text = privateRead($argv[1]);
     need(hash_equals($argv[2], hash('sha256', $text)), 'manifest_pin');
     $m = json_decode($text, true, flags: JSON_THROW_ON_ERROR);
