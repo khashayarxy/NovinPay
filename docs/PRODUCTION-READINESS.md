@@ -1,3 +1,5 @@
+> Historical evidence, not current authorization. Use [DEPLOYMENT.md](DEPLOYMENT.md): local approval -> controlled production release -> owner acceptance. No hosted staging prerequisite.
+
 # Existing production upgrade: evidence and remaining checks
 
 As of 2026-10-23. This is a release gate, not deployment authorization. No production files, records, schema, settings or privileges were changed. Preserve the existing environment, APP_KEY, users, uploads and data. The release/backup/rollback sequence is in [MARIADB-COMPATIBILITY.md](MARIADB-COMPATIBILITY.md).
@@ -78,8 +80,8 @@ The schema-privilege filter handles escaped underscores/percent signs in MariaDB
 
 ## Release decision
 
-**NO-GO for production.** Local synthetic-baseline tests and the existing four green CI jobs establish code compatibility under tested conditions, not live-schema equivalence or restore readiness. Do not repeat those full suites merely for these documentation changes; run the actual-schema upgrade/rollback/invariant checks once the export and equivalent staging privileges are available.
+**NO-GO for production.** Local synthetic-baseline tests and the existing four green CI jobs establish code compatibility under tested conditions, not live-schema equivalence or restore readiness. Do not repeat those full suites merely for these documentation changes; run the actual-schema upgrade/rollback/invariant checks once the export and equivalent isolated test/restore privileges are available.
 
-Required next evidence: actual table/trigger DDL and applied migration inventory; resolved symlink targets; effective web runtime/platform checks; actual-account grants and binary-log policy; provider-matched isolated staging; verified full backup and restoration rehearsal. Preserve all triggers and history. Financial/article destructive down migrations are not the default live rollback plan. Protected merge and deployment each require separate approval.
+Required next evidence: actual table/trigger DDL and applied migration inventory; resolved symlink targets; effective web runtime/platform checks; actual-account grants and binary-log policy; local owner approval and relevant isolated schema/restore verification; verified full backup and restoration rehearsal. Preserve all triggers and history. Financial/article destructive down migrations are not the default live rollback plan. Protected merge and deployment each require separate approval.
 
 Sources: [cPanel MySQL metadata](https://api.docs.cpanel.net/specifications/cpanel.openapi/database-information/mysql-get_server_information), [database privileges](https://api.docs.cpanel.net/specifications/cpanel.openapi/user-management/mysql-get_privileges_on_database), [schema API](https://api.docs.cpanel.net/specifications/cpanel.openapi/database-management/mysql-dump_database_schema), [file metadata](https://api.docs.cpanel.net/specifications/cpanel.openapi/manage-files/fileman-get_file_information).

@@ -12,7 +12,8 @@ class PublicSiteMaintenance
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (SiteMaintenanceState::adminCorridor($request->server->get('REQUEST_URI', '/'))) {
+        if (SiteMaintenanceState::adminCorridor($request->server->get('REQUEST_URI', '/'))
+            || SiteMaintenanceState::paymentCallback($request->server->get('REQUEST_URI', '/'), $request->method())) {
             return $next($request);
         }
         try {

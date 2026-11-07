@@ -7,6 +7,8 @@
             </div>
             <nav aria-label="پیوندهای کاربردی">
                 <h2>دسترسی سریع</h2>
+                <a href="{{ route('account.index') }}">حساب کاربری</a>
+                <a href="{{ route('cart.index') }}">سبد خرید</a>
                 <a href="{{ route('products.index') }}">فروشگاه</a>
                 <a href="{{ route('repair') }}">تعمیرات</a>
                 <a href="{{ route('contact') }}">تماس با ما</a>

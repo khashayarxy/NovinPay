@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تراکنش ناموفق | نوین‌پی</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preload" href="assets/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="assets/pay.css?v=5">
+</head>
+<body class="t-red">
+    <div class="container">
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+            </div>
+        </div>
+        <h2>تراکنش ناموفق</h2>
+        <p class="lead">متأسفانه تراکنش شما با مشکل مواجه شد.</p>
+        <p class="reason" id="reason"></p>
+        <div class="rows" id="rows"></div>
+        <p class="hint" id="hint" hidden>هنگام تماس با پشتیبانی، شناسه‌ی خطا را اعلام کنید.</p>
+        <div class="info-box" id="refundBox">
+            <p><span class="ln">در صورت کسر مبلغ از حساب بانکی شما،</span> <span class="ln"> تا ۷۲&nbsp;ساعت آینده به حساب مبدا</span> <span class="ln">بازگردانده خواهد شد.</span></p>
+        </div>
+        <div class="info-box go" id="retryBox">
+            <p><span class="ph">از بخش سفارش‌های حساب کاربری،</span> <span class="ph">می‌تونید مجدد برای پرداخت اقدام کنید.</span></p>
+        </div>
+        <div class="info-box warn" id="supportBox" hidden>
+            <p><strong>پرداخت مجدد نکنید.</strong></p>
+            <p>اگر مبلغی از حساب شما کسر شده، شناسه‌ی خطا را به پشتیبانی اعلام کنید تا پیگیری شود.</p>
+        </div>
+    </div>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        // کد ماشینی (از سرور) ← متن نمایشی؛ retry: آیا با لینک قبلی می‌شود دوباره پرداخت کرد
+        const REASONS = {
+            payment_unsuccessful:  { text: 'پرداخت موفق نبود.', retry: true },
+            not_confirmed:         { text: 'پرداخت تایید نشد.', retry: true },
+            gateway_rejected:      { text: 'پرداخت تایید نشد.', retry: true, withZc: true },
+            not_confirmed_support: { text: 'پرداخت تایید نشد. با پشتیبانی تماس بگیرید.', retry: false },
+            order_mismatch:        { text: 'اطلاعات پرداخت با سفارش مطابقت ندارد. با پشتیبانی تماس بگیرید.', retry: false },
+            payment_not_found:     { text: 'اطلاعات پرداخت یافت نشد.', retry: false },
+            missing_params:        { text: 'اطلاعات پرداخت یافت نشد', retry: false },
+            track_missing:         { text: 'کد پیگیری یافت نشد.', retry: false },
+            order_missing:         { text: 'شماره سفارش یافت نشد.', retry: false },
+            order_unbound:         { text: 'اطلاعات پرداخت قابل تطبیق با سفارش نیست. با پشتیبانی تماس بگیرید.', retry: false },
+            bad_invoice:           { text: 'اطلاعات سفارش نامعتبر است. با پشتیبانی تماس بگیرید.', retry: false },
+            amount_mismatch:       { text: 'مبلغ پرداختی مطابقت ندارد. با پشتیبانی تماس بگیرید.', retry: false }
+        };
+        function addRow(label, value) {
+            const row = document.createElement('div');
+            row.className = 'row';
+            const l = document.createElement('span');
+            l.textContent = label;
+            const b = document.createElement('b');
+            b.textContent = value;
+            row.append(l, b);
+            document.getElementById('rows').appendChild(row);
+        }
+
+        const code = params.get('code') || '';
+        const reason = Object.prototype.hasOwnProperty.call(REASONS, code) ? REASONS[code] : null;
+        const retrySafe = !!(reason && reason.retry);
+        if (reason) {
+            let text = reason.text;
+            const zc = params.get('zc') || '';
+            if (reason.withZc && /^[0-9]{1,4}$/.test(zc)) text += ' کد: ' + zc;
+            document.getElementById('reason').textContent = text;
+        }
+
+        const inc = params.get('inc') || '';
+        const incValid = /^E[0-9]{6}-[A-F0-9]{6}$/.test(inc);
+        if (incValid) addRow('شناسه‌ی خطا', inc);
+        const ref = params.get('ref_id') || '';
+        if (/^[0-9]{8,14}$/.test(ref)) addRow('کد پیگیری', ref);
+
+        if (!retrySafe) {
+            document.getElementById('refundBox').hidden = true;
+            document.getElementById('retryBox').hidden = true;
+            document.getElementById('supportBox').hidden = false;
+            document.getElementById('hint').hidden = !incValid;
+        }
+    </script>
+</body>
+</html>

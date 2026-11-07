@@ -8,15 +8,19 @@ use App\Http\Requests\StoreRepairRequest;
 use App\Http\Requests\TrackRepairRequest;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
+use App\Services\CustomerNotifications;
 use App\Support\RepairIdentity;
+use App\Support\RepairTracking;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class RepairRequestController extends Controller
 {
-    public function create(Request $request): View
+    public function create(Request $request): View|RedirectResponse
     {
         if (! $request->session()->has('repair_submission_token')) {
             $request->session()->put('repair_submission_token', bin2hex(random_bytes(32)));
@@ -37,19 +41,25 @@ class RepairRequestController extends Controller
         }
 
         $repair = new RepairRequest;
-        $repair->tracking_reference = 'NP-'.strtoupper(bin2hex(random_bytes(16)));
         $repair->submission_digest = RepairIdentity::digest('submission', $issuedToken);
         $repair->customer_name = $data['customer_name'];
         $repair->contact_phone = $data['contact_phone'];
         $repair->phone_digest = RepairIdentity::digest('phone', $data['contact_phone']);
         $repair->device_brand = RepairBrand::from($data['device_brand']);
         $repair->device_model = $data['device_model'];
-        $repair->issue = $data['issue'];
+        $repair->issue = $data['issue'].(! empty($data['additional_description']) ? "\n\n".$data['additional_description'] : '');
         $repair->status = RepairRequestStatus::OnlineSubmitted;
+        $account = Auth::guard('customer')->user();
+        $repair->customer_account_id = $account->id;
+        $repair->customer_id = $account->customer_id;
 
         try {
             // The unique submission digest also prevents concurrent double submits.
-            $repair->save();
+            DB::transaction(function () use ($repair): void {
+                $repair->tracking_reference = RepairTracking::reserve();
+                $repair->save();
+                app(CustomerNotifications::class)->record($repair->customer_account_id, 'repair_registered', $repair->tracking_reference);
+            });
         } catch (UniqueConstraintViolationException) {
             return $this->duplicateResponse($request);
         }
@@ -79,7 +89,8 @@ class RepairRequestController extends Controller
         $data = $request->validated();
         // Never hydrate or decrypt customer/device fields for a tracking response.
         $physical = RepairCase::query()->select(['phone_digest'])
-            ->where('tracking_digest', RepairIdentity::digest('tracking', $data['tracking_reference']))->first();
+            ->where(fn ($query) => $query->where('tracking_digest', RepairIdentity::digest('tracking', $data['tracking_reference']))
+                ->orWhereHas('onlineRequest', fn ($source) => $source->where('tracking_reference', $data['tracking_reference'])))->first();
         $physicalMatch = hash_equals($physical?->phone_digest ?? str_repeat('0', 64), RepairIdentity::digest('phone', $data['contact_phone']));
         $repair = RepairRequest::query()->select(['phone_digest', 'status'])
             ->where('tracking_reference', $data['tracking_reference'])->first();

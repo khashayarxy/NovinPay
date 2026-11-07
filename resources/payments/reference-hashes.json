@@ -1,0 +1,11 @@
+{
+  "public/pay/assets/Vazirmatn.woff2": "c87c30d1aa94af27f0277779cc053f9cf6177f9d897041c6bd8cb7cde2874ab5",
+  "public/pay/assets/pay.css": "b3d8048d23ea666d19f95ae391ad8993584368a30951edb8768d8f3d77721046",
+  "resources/payments/pay/canceled.html": "0b75224e5311fdad997ee4255acacb321af890bdb15e1a2e4ec261b57ceeeea6",
+  "resources/payments/pay/error.html": "c143c6c6d0052a346be4813e8d57b11f775407e3a4b7c499628f23a51387df47",
+  "resources/payments/pay/failed.html": "94f36b9c0ac16293ab94174646f1ab158643abb75fea2fdb1cd43a3cbba93c09",
+  "resources/payments/pay/index.html": "f2369f41b1e01b1859878ddba7242f5259de5222f7aecf022e538b30ec03edc8",
+  "resources/payments/pay/paid.html": "54735d2e7c4e02108088b7f742dba79bb89fc796971ca61ab96b30be7d92451f",
+  "resources/payments/pay/processing.html": "afda15ae563e86e7864b577c334a599896cdacb42597056326b1a1af07013e00",
+  "resources/payments/pay/success.html": "81703eb6c4c4f7d539d275a2fe2cac0ebd1c330e71e4d9da8c9b399f4d89d54b"
+}

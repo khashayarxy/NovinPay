@@ -20,11 +20,11 @@ enum RepairStage: string
     public function label(): string
     {
         return match ($this) {
-            self::Received => 'دستگاه دریافت شده', self::WaitingInspection => 'در انتظار بررسی',
+            self::Received => 'پذیرش‌شده', self::WaitingInspection => 'در انتظار بررسی',
             self::Inspecting => 'در حال بررسی', self::Inspected => 'بررسی تکمیل شده',
             self::WaitingApproval => 'در انتظار تأیید برآورد مشتری', self::Approved => 'مجاز برای تعمیر',
             self::Repairing => 'در حال تعمیر', self::Repaired => 'تعمیر تکمیل شده',
-            self::Ready => 'آمادهٔ مراجعه', self::Delivered => 'تحویل مشتری شده',
+            self::Ready => 'آماده تحویل', self::Delivered => 'تحویل‌شده',
             self::ReturnPending => 'تعمیر لغو شده؛ منتظر بازگرداندن', self::Returned => 'بازگردانده‌شده بدون تعمیر',
         };
     }
@@ -32,5 +32,15 @@ enum RepairStage: string
     public function closed(): bool
     {
         return in_array($this, [self::Delivered, self::Returned], true);
+    }
+
+    public function step(): int
+    {
+        return match ($this) {
+            self::Received, self::WaitingInspection => 2,
+            self::Inspecting, self::Inspected, self::WaitingApproval, self::Approved, self::Repairing => 3,
+            self::Repaired, self::ReturnPending => 4,
+            self::Ready, self::Delivered, self::Returned => 5,
+        };
     }
 }

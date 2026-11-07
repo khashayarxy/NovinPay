@@ -1,0 +1,72 @@
+/* Mobile-first finishing layer; message grouping and P1 remain engine-owned. */
+html[data-support-surface=operator] .operator-account{position:relative;margin-inline-start:auto;min-width:0;max-width:min(320px,48vw)}
+.operator-account>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--support-border);border-radius:10px;cursor:pointer;list-style:none;font-size:13px}
+.operator-account>summary::-webkit-details-marker{display:none}
+.operator-account:has(#operatorIdentity[hidden]){display:none}
+.operator-account #operatorIdentity{margin:0;max-width:100%;flex:1;overflow:hidden}.operator-account #menuName{max-width:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.operator-account .account-chevron{flex:none;font-size:18px}
+.operator-account-panel{position:absolute;inset-inline-end:0;top:calc(100% + 8px);z-index:120;width:min(300px,calc(100vw - 24px));padding:8px;border:1px solid var(--support-border);border-radius:12px;background:var(--support-surface);box-shadow:0 8px 28px #0002;display:grid;gap:4px}
+.operator-account-panel button{width:100%;text-align:start;background:transparent;border-color:transparent;min-height:44px;display:flex;align-items:center;gap:10px;padding:8px 12px}
+.operator-account-panel button:hover{background:var(--support-hover)}.operator-account-panel #accountFullName{padding:10px 12px;overflow-wrap:anywhere;font-size:13px;border-bottom:1px solid var(--support-border)}
+html[data-support-surface=operator][data-support-theme=light] .badge-urgent{color:#b91c1c}
+html[data-support-surface=operator][data-support-theme=dark] .badge-urgent{color:#ff9b9b}
+html[data-support-surface=operator][data-support-theme=light] .badge-success{color:#087443}
+html[data-support-surface=operator][data-support-theme=dark] .badge-success{color:#6ee7b7}
+html[data-support-surface=operator][data-support-theme=light] .badge-alert{color:#80530d}
+html[data-support-surface=operator][data-support-theme=dark] .badge-alert{color:#f2c16b}
+html[data-support-surface=operator] #operatorAccount .operator-account-panel #exit{width:100%;height:auto;justify-content:flex-start;padding:8px 12px}#operatorAccount #exit svg{width:20px;height:20px;flex:none}
+#pwaDialog{width:min(440px,calc(100vw - 24px));padding:20px;line-height:1.9}#pwaDialog p{margin-block:12px}#pwaDialog .dialog-heading h2{margin:0}#pwaUpdate{padding:12px;border-radius:10px;background:var(--support-elevated);color:var(--support-text)}
+#pwaUpdateEntry{color:var(--support-primary)}.operator-connectivity{padding:7px 14px;background:var(--support-elevated);border-bottom:1px solid var(--support-border);font-size:12px;color:var(--support-text);flex:none}
+html[data-support-surface=operator] #replyArea{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+html[data-support-surface=operator] .admin-shell{height:100%;min-height:0}
+html[data-support-surface=operator] .health-card-header{align-items:flex-start;gap:12px;flex-wrap:wrap}.health-card-title{min-width:0;flex:1}.health-card-title h3{line-height:1.8}.health-metric-row .metric-info{display:grid;grid-template-columns:24px minmax(0,1fr);gap:4px 8px}.health-metric-row .metric-info small{grid-column:2;line-height:1.9}.health-metric-row .metric-info strong{overflow-wrap:anywhere}.metric-values code{font-family:inherit;font-size:12px;white-space:normal}.health-metric-row bdi{unicode-bidi:isolate;overflow-wrap:anywhere}
+@media(max-width:899px){
+ html[data-support-surface=operator] .app-header{min-height:58px;gap:8px;padding:6px max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left))}
+ html[data-support-surface=operator] #breadcrumbHost,html[data-support-surface=operator] .operator-account :is(#connectionDot,#menuAvatar){display:none!important}
+ html[data-support-surface=operator] .operator-account{max-width:none;flex:1;margin:0}
+ html[data-support-surface=operator] .operator-account>summary{min-width:0;padding-inline:12px}
+ html[data-support-surface=operator] .operator-account-panel{position:fixed;inset:calc(58px + env(safe-area-inset-top,0px)) 12px auto;width:auto}
+ html[data-support-surface=operator] .app-header .icon-button{width:44px;height:44px;min-width:44px;min-height:44px}
+ html[data-support-surface=operator] .app-header .operator-identity{max-width:100%}
+ html[data-support-surface=operator] .admin-sidebar{inset:0 0 0 auto;width:min(300px,calc(100vw - 48px));min-width:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+ html[data-support-surface=operator] .sidebar-toggle{display:none}.drawer-close{margin-inline-start:auto;font-size:24px}
+ html[data-support-surface=operator] .admin-sidebar.collapsed .nav-label,html[data-support-surface=operator] .admin-sidebar.collapsed .brand-text,html[data-support-surface=operator] .admin-sidebar.collapsed .user-info{display:initial}
+ html[data-support-surface=operator] .admin-sidebar.collapsed .nav-item{justify-content:flex-start;width:auto;margin:0;padding-inline:12px}
+ html[data-support-surface=operator] .admin-nav .nav-item{min-height:46px}
+ html[data-support-surface=operator] .admin-stage{overscroll-behavior-y:auto}
+ html[data-support-surface=operator] :is(.dashboard-container,.knowledge-container,.contacts-container,.analytics-container,.team-container,.settings-container,.health-container){padding:18px 14px;gap:16px;min-width:0}
+ html[data-support-surface=operator] .admin-view :is(h1,h2){line-height:1.8}
+ html[data-support-surface=operator] .admin-card{padding:16px;min-width:0}
+ html[data-support-surface=operator] :is(.dashboard-header,.health-header,.knowledge-header,.contacts-header,.analytics-header,.team-header,.settings-header){gap:12px;align-items:flex-start}
+ html[data-support-surface=operator] #detail{height:100%;display:flex;flex-direction:column;min-height:0}
+ html[data-support-surface=operator] #detailHeader{padding:8px 12px;min-height:60px;flex:none}
+ html[data-support-surface=operator] #messageStream{min-height:0;flex:1;overscroll-behavior-y:auto}
+ html[data-support-surface=operator] #replyArea{flex:none;padding-inline:12px}
+ html[data-support-surface=operator] .chat-input-row .icon-button{min-height:44px;min-width:44px;width:44px;height:44px}
+ html[data-support-surface=operator] .chat-input-row{grid-template-columns:44px minmax(0,1fr) 44px 44px}
+ html[data-support-surface=operator] #reply{min-height:46px;max-height:120px}
+ html[data-support-surface=operator] .v2-bubble-wrap>.support-message-reply{width:44px;height:44px;min-height:44px}
+ html[data-support-surface=operator] .health-metric-row{padding:12px;gap:8px}.health-card-header .badge{max-width:100%;white-space:normal}
+ html[data-support-surface=operator] .health-header>.primary{width:100%}
+}
+@media(display-mode:standalone){html[data-support-surface=operator] .app-header{padding-top:calc(6px + env(safe-area-inset-top))}}
+@media(max-width:600px){
+ html[data-support-surface=operator] .report-table:has(.mobile-records){overflow:visible}
+ html[data-support-surface=operator] .mobile-records{display:block;width:100%;min-width:0}
+ .mobile-records thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .mobile-records tbody{display:grid;gap:12px}
+ .mobile-records tbody tr{display:grid;border:1px solid var(--support-border);border-radius:12px;padding:8px 12px;background:var(--support-surface)}
+ html[data-support-surface=operator] .mobile-records tbody td{display:grid;grid-template-columns:minmax(70px,30%) minmax(0,1fr);gap:8px;padding:8px 0;border:0;white-space:normal;min-width:0;overflow-wrap:anywhere;align-items:center}
+ .mobile-records td::before{content:attr(data-label);color:var(--support-muted);font-size:11px;grid-column:1;grid-row:1}
+ .mobile-records td>*{grid-column:2;min-width:0;max-width:100%}.mobile-records .table-snippet{white-space:normal;max-width:100%}
+ .mobile-records .contact-user-cell{flex-wrap:wrap;gap:8px}.mobile-records .contact-user-cell strong{flex:1;min-width:0;overflow-wrap:anywhere}.mobile-records .self-badge{flex:none;white-space:nowrap}
+}
+
+html[data-support-surface=operator] #bootSplash{flex-direction:column;gap:14px;padding:24px;text-align:center}#authStatus{max-width:360px;line-height:1.9}#retryAuth{min-height:44px}
+
+/* Compact composer and one account surface. */
+.sidebar-bottom{display:flex;align-items:center;gap:8px}.sidebar-user-card{flex:1;min-width:0;cursor:pointer}.sidebar-user-card:focus-visible{outline:2px solid var(--support-selected-text);outline-offset:2px;border-radius:9px}.sidebar-bottom>.icon-button{flex:none;width:44px;height:44px;padding:10px}#closedConversationNote{flex:none;margin:0;padding:7px 14px;color:var(--support-selected-text);background:var(--support-hover);font-size:12px}#endConversation{white-space:nowrap}html[data-support-surface=operator] #replyArea .chat-input-row{display:flex;align-items:flex-end;gap:4px}#replyArea .chat-input-row textarea{flex:1;min-width:0}#replyArea .chat-input-row>.icon-button,#replyArea .chat-input-row>.support-attach-button{flex:none;width:36px;min-width:36px;padding:6px}
+
+#installationSettings{margin-top:20px;padding-top:16px;border-top:1px solid var(--support-border)}#pwaInstallStatus{font-size:12px;color:var(--support-muted);margin:8px 0}#installationSettings button{min-height:44px;margin-inline-end:8px}
+
+html[data-support-surface=operator]:not([data-operator-auth=authenticated]) body{height:auto;min-height:100dvh;overflow-y:visible;touch-action:auto;overscroll-behavior-y:auto}html[data-support-surface=operator]:not([data-operator-auth=authenticated]) body main{flex:none;min-height:calc(100dvh - 58px)}

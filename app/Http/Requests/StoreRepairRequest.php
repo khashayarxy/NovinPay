@@ -3,11 +3,19 @@
 namespace App\Http\Requests;
 
 use App\Enums\RepairBrand;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class StoreRepairRequest extends PrivateRepairFormRequest
 {
     protected $redirectRoute = 'repair';
+
+    protected function prepareForValidation(): void
+    {
+        parent::prepareForValidation();
+        $account = Auth::guard('customer')->user();
+        $this->merge(['contact_phone' => $account?->phone]);
+    }
 
     public function rules(): array
     {
@@ -18,6 +26,7 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             // Models are not a fabricated catalogue: use the device's own label.
             'device_model' => ['required', 'string', 'max:100'],
             'issue' => ['required', 'string', 'min:10', 'max:2000'],
+            'additional_description' => ['nullable', 'string', 'max:1000'],
             'submission_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ];
     }

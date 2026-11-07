@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Enums\AdminAction;
 use App\Enums\RepairStage;
 use App\Models\AdminAccount;
+use App\Models\FinancialDocument;
 use App\Models\RepairCase;
+use App\Models\RepairContactAttempt;
 use App\Models\RepairDelivery;
 use App\Models\RepairEstimate;
 use App\Models\RepairEstimateDecision;
@@ -19,6 +21,7 @@ use App\Support\AdminHistory;
 use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use App\Support\RepairTime;
+use App\Support\RepairTracking;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -46,33 +49,61 @@ final class RepairOperations
                 foreach (['repairs.view', 'repairs.customer_data', 'repairs.intake'] as $permission) {
                     Gate::forUser($actor)->authorize($permission);
                 }
-                abort_unless(in_array($data['physical_receipt_confirmed'] ?? null, [true, 1, '1', 'yes', 'on'], true), 422, 'دریافت فیزیکی باید صریحاً تأیید شود.');
+                $simple = in_array($data['simple_intake'] ?? null, [true, 1, '1'], true);
+                if (! $simple) {
+                    abort_unless(in_array($data['physical_receipt_confirmed'] ?? null, [true, 1, '1', 'yes', 'on'], true), 422, 'دریافت فیزیکی باید صریحاً تأیید شود.');
+                }
                 $source = ! empty($data['repair_request_id']) ? RepairRequest::query()->lockForUpdate()->findOrFail($data['repair_request_id']) : null;
                 if ($source) {
                     Gate::forUser($actor)->authorize('viewCustomerData', $source);
                     abort_if(RepairCase::query()->where('repair_request_id', $source->id)->exists(), 409, 'این درخواست قبلاً پذیرش فیزیکی شده است.');
                 }
-                $received = RepairTime::parse($data['received_at']);
+                $received = $simple ? now()->utc() : RepairTime::parse($data['received_at']);
                 abort_if($received->gt(now()) || $received->year < 2000, 422, 'زمان دریافت معتبر نیست.');
                 $case = new RepairCase;
                 $case->public_id = (string) Str::uuid();
                 $case->repair_request_id = $source?->id;
-                $case->tracking_reference = $source?->tracking_reference ?? 'NP-'.strtoupper(bin2hex(random_bytes(16)));
+                $case->tracking_reference = $simple ? RepairTracking::reserve() : ($source?->tracking_reference ?? 'NP-'.strtoupper(bin2hex(random_bytes(16))));
                 $case->tracking_digest = RepairIdentity::digest('tracking', $case->tracking_reference);
                 $case->intake_digest = RepairIdentity::digest('intake', $data['submission_token']);
                 $case->phone_digest = RepairIdentity::digest('phone', $data['contact_phone']);
                 foreach (['customer_name', 'contact_phone', 'device_brand', 'device_model', 'issue', 'physical_condition', 'accessories'] as $field) {
-                    $case->$field = $data[$field];
+                    $case->$field = $data[$field] ?? ($field === 'device_brand' ? $source?->device_brand : '');
                 }
+                $case->simple_workflow = $simple;
                 $serial = self::serial($data['device_serial'] ?? '');
                 $case->device_serial = $serial !== '' ? trim($data['device_serial']) : null;
                 $case->serial_digest = $serial !== '' ? RepairIdentity::digest('serial', $serial) : null;
-                $case->active_serial_digest = $serial !== '' ? RepairIdentity::digest('active-serial', $data['device_brand'].':'.$serial) : null;
+                if ($serial !== '') {
+                    // All intake paths serialize by normalized serial, including unknown-brand
+                    // devices. Retain historical cross-brand identifiers without allowing an
+                    // unknown-brand intake to duplicate an already active device.
+                    DB::table('repair_serial_locks')->insertOrIgnore(['serial_digest' => $case->serial_digest]);
+                    DB::table('repair_serial_locks')->where('serial_digest', $case->serial_digest)->lockForUpdate()->first();
+                    $active = RepairCase::query()->where('serial_digest', $case->serial_digest)->whereNotNull('active_serial_digest');
+                    if ($case->device_brand !== null) {
+                        $active->where(fn ($query) => $query->whereNull('device_brand')->orWhere('device_brand', $case->device_brand->value));
+                    }
+                    abort_if($active->lockForUpdate()->exists(), 409, 'این شماره سریال پرونده فعال دارد.');
+                }
+                $case->active_serial_digest = $serial !== '' ? RepairIdentity::digest('active-serial', ($case->device_brand?->value ?? '').':'.$serial) : null;
                 $case->status = RepairStage::Received;
                 $case->received_at = $received;
                 $case->received_by = $actor->id;
+                $case->customer_id = $source?->customer_id;
+                $case->customer_account_id = $source?->customer_account_id;
+                $case->inbound_method = $data['inbound_method'] ?? 'in_person';
+                abort_unless(in_array($case->inbound_method, ['in_person', 'post', 'tipax', 'courier', 'other'], true), 422);
+                $cost = $data['inbound_shipping_cost'] ?? 0;
+                abort_unless(is_numeric($cost) && (int) $cost >= 0 && (int) $cost <= 1000000000, 422);
+                if ((int) $cost > 0) {
+                    Gate::forUser($actor)->authorize('finance.charge');
+                    abort_if($case->inbound_method === 'in_person', 422, 'پذیرش حضوری هزینهٔ ارسال ندارد.');
+                }
+                $case->inbound_shipping_cost = (int) $cost;
                 $case->save();
                 $this->event($case, $actor, AdminAction::RepairIntake, null);
+                app(CustomerNotifications::class)->record($case->customer_account_id, 'device_received', $case->public_id);
 
                 return $case;
             }, 3);
@@ -91,10 +122,34 @@ final class RepairOperations
             Gate::forUser($actor)->authorize('operate', [$case, $ability]);
             abort_if($case->version !== (int) $data['version'], 409, 'پرونده تغییر کرده است؛ صفحه را تازه‌سازی و اطلاعات را دوباره بررسی کنید.');
             abort_if($case->status->closed(), 409, 'پرونده بسته شده و قابل تغییر نیست.');
+            if (in_array($operation, ['diagnose', 'inspect', 'estimate', 'decision'], true)) {
+                abort_if(FinancialDocument::query()->where('repair_case_id', $case->id)->exists(), 409, 'سند مالی صادر شده است؛ اصلاح مالی باید با حفظ سابقه انجام شود.');
+            }
+            abort_if($case->simple_workflow, 410, 'برای این پرونده از فرم سادهٔ تعمیر استفاده کنید.');
             $before = $case->status;
             $subject = null;
             $type = null;
             switch ($operation) {
+                case 'diagnose':
+                    abort_unless($case->assigned_to && in_array($case->status, [RepairStage::Received, RepairStage::WaitingInspection, RepairStage::Inspecting, RepairStage::Inspected, RepairStage::WaitingApproval, RepairStage::Approved], true), 409, 'ابتدا تکنسین را مشخص کنید؛ عیب‌یابی در این مرحله مجاز نیست.');
+                    $inspection = $this->append(new RepairInspection, $actor, $case, ['findings' => $data['diagnosis'], 'diagnosis' => $data['diagnosis'], 'proposed_actions' => $data['customer_summary']], ['findings', 'diagnosis', 'proposed_actions', 'internal_notes']);
+                    $estimate = new RepairEstimate;
+                    $estimate->repair_inspection_id = $inspection->id;
+                    $estimate->revision = (int) $case->estimates()->max('revision') + 1;
+                    $subject = $this->append($estimate, $actor, $case, $data, ['customer_summary', 'service_cost', 'parts_cost', 'diagnosis_fee']);
+                    $case->status = RepairStage::WaitingApproval;
+                    $action = AdminAction::RepairEstimate;
+                    $type = 'estimate';
+                    break;
+                case 'contact':
+                    $estimate = $case->estimates()->latest('revision')->firstOrFail();
+                    abort_unless($case->status === RepairStage::WaitingApproval && $estimate->id === (int) $data['estimate_id'] && ! $estimate->decision()->exists(), 409);
+                    $attempt = new RepairContactAttempt;
+                    $attempt->repair_estimate_id = $estimate->id;
+                    $subject = $this->append($attempt, $actor, $case, $data, ['note']);
+                    $action = AdminAction::RepairContact;
+                    $type = 'contact';
+                    break;
                 case 'assign':
                     $technician = User::query()->lockForUpdate()->findOrFail($data['technician_id']);
                     // Lock the grant too: account activation and assignment serialize.
@@ -137,12 +192,12 @@ final class RepairOperations
                     $type = 'inspection';
                     break;
                 case 'estimate':
-                    abort_unless(in_array($case->status, [RepairStage::Inspected, RepairStage::WaitingApproval, RepairStage::Approved], true), 409, 'ابتدا بررسی را تکمیل کنید.');
+                    abort_unless(in_array($case->status, [RepairStage::Inspected, RepairStage::WaitingApproval, RepairStage::Approved, RepairStage::ReturnPending], true), 409, 'ابتدا بررسی را تکمیل کنید.');
                     $inspection = $case->inspections()->latest('id')->firstOrFail();
                     $estimate = new RepairEstimate;
                     $estimate->repair_inspection_id = $inspection->id;
                     $estimate->revision = (int) $case->estimates()->max('revision') + 1;
-                    $subject = $this->append($estimate, $actor, $case, $data, ['customer_summary', 'service_cost', 'parts_cost']);
+                    $subject = $this->append($estimate, $actor, $case, $data + ['diagnosis_fee' => 0], ['customer_summary', 'service_cost', 'parts_cost', 'diagnosis_fee']);
                     $case->status = RepairStage::WaitingApproval;
                     $action = AdminAction::RepairEstimate;
                     $type = 'estimate';
@@ -160,7 +215,7 @@ final class RepairOperations
                     }
                     $decision->save();
                     $subject = $decision;
-                    $case->status = $data['decision'] === 'approved' ? RepairStage::Approved : RepairStage::Inspected;
+                    $case->status = $data['decision'] === 'approved' ? RepairStage::Approved : RepairStage::ReturnPending;
                     $action = AdminAction::RepairDecision;
                     $type = 'decision';
                     break;
@@ -184,6 +239,17 @@ final class RepairOperations
                     abort_if(! empty($data['confirmation_reference']) && empty($data['confirmation_method']), 422, 'مرجع تحویل به روش تأیید مشخص نیاز دارد.');
                     abort_unless(in_array($data['handover_confirmed'] ?? null, [true, 1, '1', 'yes', 'on'], true), 422, 'تحویل واقعی باید صریحاً تأیید شود.');
                     abort_unless(in_array($case->status, [RepairStage::Ready, RepairStage::ReturnPending], true), 409, 'تحویل فقط پس از کنترل‌های پایان یا تصمیم بازگرداندن مجاز است.');
+                    $document = FinancialDocument::query()->where('repair_case_id', $case->id)->lockForUpdate()->first();
+                    $charge = $case->billableToman();
+                    // No unrecorded debt may disappear merely because the device leaves custody.
+                    abort_unless($charge !== null || $case->estimates()->doesntExist(), 409, 'ابتدا نتیجه و هزینهٔ نهایی را مشخص کنید.');
+                    if (($charge ?? (int) $case->inbound_shipping_cost) > 0 || $document) {
+                        abort_unless($document && $document->paid_minor === $document->charged_minor, 409, 'پیش از تحویل، سند مالی و تسویهٔ مانده را ثبت کنید.');
+                        app(FinancialOperations::class)->reconcile($document);
+                    }
+                    if ($case->customer_account_id && $document) {
+                        app(DeliveryManagement::class)->completePlan($document, $actor);
+                    }
                     $delivery = new RepairDelivery;
                     $delivery->outcome = $case->status === RepairStage::Ready ? 'repaired' : 'returned_without_repair';
                     if ($delivery->outcome === 'repaired') {
@@ -207,6 +273,15 @@ final class RepairOperations
             $case->version++;
             $case->save();
             $this->event($case, $actor, $action, $before, $type, $subject?->id);
+            $notice = match (true) {
+                in_array($operation, ['diagnose', 'estimate'], true) => 'quotation_available',
+                $case->status === RepairStage::Repaired && $before !== RepairStage::Repaired => 'repair_completed',
+                $case->status === RepairStage::Ready && $before !== RepairStage::Ready => 'pickup_ready',
+                default => null,
+            };
+            if ($notice) {
+                app(CustomerNotifications::class)->record($case->customer_account_id, $notice, $case->public_id.':'.$case->version);
+            }
 
             return $case;
         }, 3);

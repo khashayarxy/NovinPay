@@ -1,0 +1,539 @@
+{
+  "repository": "khashayarxy/zizolearn",
+  "commit": "7d6f6ddcfbde4fd3fb1857f62504d230e4c43bb5",
+  "scope": "support engine, endpoints and browser clients only; no configuration, customer data, payments or bot code",
+  "files": [
+    {
+      "path": "api.php",
+      "upstream_sha256": "6d6ead9394902d45e9abed22ca4206d44b6ac73d51a162b20b6eaf5876549c5b"
+    },
+    {
+      "path": "customer-notifications.php",
+      "upstream_sha256": "57dbdffafd1ec7c981c4d6fad016cf8f7547021c066171a7af605bbe3b06b014"
+    },
+    {
+      "path": "get_activity.php",
+      "upstream_sha256": "b4d277a0938dc6e155e9eb73317106f70ca4a3ccf6f90d33a1bd55b75e354e06"
+    },
+    {
+      "path": "logout.php",
+      "upstream_sha256": "09941314353bc42277e319a2c0062a0f0ebf2bed0f536dae09619f00405c8431"
+    },
+    {
+      "path": "operator-api.php",
+      "upstream_sha256": "168d7811540d5a10a3114b6e75a3a48220f3de49d9bce2dd0f72fce6b6abb53b"
+    },
+    {
+      "path": "operator-avatar.php",
+      "upstream_sha256": "6f9398765da8c3be9e8745a6cd3a2a9eaa00132fa3696e7f5c8a8c1e97ea863f"
+    },
+    {
+      "path": "support-attachment.php",
+      "upstream_sha256": "99b4f20349b0b60894df6c77453ac4821d80f8ee5dfd1e1edfa2e9477eef7a43"
+    },
+    {
+      "path": "support-avatar.php",
+      "upstream_sha256": "3c97deab066618e0bbc782bbeddd0e10f8da0eceacd4637959f4a0028196e99c"
+    },
+    {
+      "path": "support-content-admin.php",
+      "upstream_sha256": "f3556de33e3e34e922a7c3b2b17b157ab83cc1dd047d1af8a79fa3756e396e2c"
+    },
+    {
+      "path": "support-content.php",
+      "upstream_sha256": "9bea6b8296f5b930cd5a92ad7cfe387276132f4e8a196c796ab2bdb41d03b17d"
+    },
+    {
+      "path": "support-loader.php",
+      "upstream_sha256": "06480f842499d5708066ae5a75309685bd24c66b3a096b3d3a1eff50ebb49bc1"
+    },
+    {
+      "path": "support-profile-image.php",
+      "upstream_sha256": "5afde7b34230e66b81a8d9cbb3635a5e6044c982052cabacffdf4c6f82225056"
+    },
+    {
+      "path": "support-theme.php",
+      "upstream_sha256": "136c6084098619166320207240b2a47e5128628137b7604812ec0893da6b1e94"
+    },
+    {
+      "path": "support-typing.php",
+      "upstream_sha256": "2dc7087f826dae9b35356fbbfeca528eb7fd9e95222107b129afaf216749f50d"
+    },
+    {
+      "path": "support-widget.js",
+      "upstream_sha256": "07179d68b45e4c11a2f1b610fcb7092dc5db55416df6b17989bc857804117c46"
+    },
+    {
+      "path": "support-widget.php",
+      "upstream_sha256": "4cf0b8d33b854fd7951050f1951cfd29c71fbedd8c5aef5c0d85305ce3593508"
+    },
+    {
+      "path": "update_activity.php",
+      "upstream_sha256": "1c2915d6bcb7f5771c8077cfe500f3e45ee09365ff409a4d0fc9321fd40d3a5c"
+    },
+    {
+      "path": "operator/analytics.js",
+      "upstream_sha256": "904ab8f935b833045f8e5d255a3ffa26755571b27634ba99355e8d66293dfabf"
+    },
+    {
+      "path": "operator/app.css",
+      "upstream_sha256": "5c3a57602a70cbabbd64a05e1d97a10ce11d48c61b0ed380b43c667386beb054"
+    },
+    {
+      "path": "operator/app.js",
+      "upstream_sha256": "e22fffba4491b3921c756196b52f70b1cd26d04c0e6ea55e90440ff74ffd9a37"
+    },
+    {
+      "path": "operator/auth-lifecycle.js",
+      "upstream_sha256": "374dc8c61a82bbfc65fd3aa61d450a7d72359a9680eea11771d012bb26ea07b0"
+    },
+    {
+      "path": "operator/drafts.js",
+      "upstream_sha256": "0483e42bc71df5eb9d855663bd267fd68ec31e7cacbf30f3ce041c666ded56ce"
+    },
+    {
+      "path": "operator/emoji.js",
+      "upstream_sha256": "ef42bde9b7551ab7e48ac6e51ac3a1edb352d36dc0e58c1c07cdd1a7553e168c"
+    },
+    {
+      "path": "operator/faq-settings.js",
+      "upstream_sha256": "51333235ca0dbeed8da59b8c67a821af62d188ae199e6df771c5f45c45dbb452"
+    },
+    {
+      "path": "operator/health.js",
+      "upstream_sha256": "f074592b8ca04ca25e913a014b7b6c9d0eac2d2dff8724249f920c6dc9a7d16f"
+    },
+    {
+      "path": "operator/index.html",
+      "upstream_sha256": "f62ace4f3d627277a1b0d6c45b3988167a1af83fca9d9803f3b84d31f2344780"
+    },
+    {
+      "path": "operator/manifest.php",
+      "upstream_sha256": "2a03eb6b5c22d10ee166b48d64707bbeffd0a504ea872395b8b60ca382a81692"
+    },
+    {
+      "path": "operator/mobile.css",
+      "upstream_sha256": "db96777229921ac31ec689078c216ebae4af4a2bb26dbf8677028578fec66290"
+    },
+    {
+      "path": "operator/mobile.js",
+      "upstream_sha256": "eb888bb934291b3e40c47084ea90b5b443a0fa06fd2df5ededbeaa156b5f1b8a"
+    },
+    {
+      "path": "operator/overlays.js",
+      "upstream_sha256": "dd7a24b8bdd7da419b631a074fce1b861bbb7c1a86dac1a3ef685d7d5a35e5d5"
+    },
+    {
+      "path": "operator/productivity.js",
+      "upstream_sha256": "c58b8ff1c2d16f96d9fa2dcc0e752d40330b4e3c5e51eda2e8df4e1ef1ff4841"
+    },
+    {
+      "path": "operator/profile.js",
+      "upstream_sha256": "d151e0977f622069acd2d76a50585e53dd793a79a3e10d007ec352e1c2d3113a"
+    },
+    {
+      "path": "operator/pwa.js",
+      "upstream_sha256": "8b90458f03ec6362ae03a7f999760a4099f1b007986c227211325421602710d8"
+    },
+    {
+      "path": "operator/quick-reply-editor.js",
+      "upstream_sha256": "5dc181395a17ce6536820c3320ce0ecd180b60194d0938e637b33c7fbaddeebc"
+    },
+    {
+      "path": "operator/readiness.js",
+      "upstream_sha256": "ad31546e188cb8395af319dd1a49d5c4897c3721f8c148d828d7e527ef6666aa"
+    },
+    {
+      "path": "operator/sw.js",
+      "upstream_sha256": "22229790d9d9d672890ece4bd83e23b814bcd08c0518d4c270cd6fbdc8cfe1a4"
+    },
+    {
+      "path": "operator/widget-settings.js",
+      "upstream_sha256": "87bc80f208d0a2d422395cc24f0a943b1bc0557629abfff960e7ad16e54d015c"
+    },
+    {
+      "path": "operator/workspace.css",
+      "upstream_sha256": "620177e7b71cbb3f538654107d335d794bc3656c1b989dd768a0c57f1a0a1d3a"
+    },
+    {
+      "path": "support/analytics.php",
+      "upstream_sha256": "de2ef1692cf709549764e0b770b09a71f982e4648a773d269780ea074aa23c43"
+    },
+    {
+      "path": "support/attachments.php",
+      "upstream_sha256": "e7081c574ebd031ff560e822dfb0b978e594defa75e2418fee0def51c3f7dfaa"
+    },
+    {
+      "path": "support/bootstrap.php",
+      "upstream_sha256": "d6a4fd5bfc573c4107c8f21554e3a0aed2c2022efa0ec42e5b0bd3890a091c77"
+    },
+    {
+      "path": "support/branding.php",
+      "upstream_sha256": "ee66bf4d9ad059f81d5288a3dfe64088d6e58b02e55bd8d09e40ad91f708fac3"
+    },
+    {
+      "path": "support/code-recovery.php",
+      "upstream_sha256": "b7ce7d296fb4f3b55885b70454474c2f7b8956befca9ce2344a3c67f5b112744"
+    },
+    {
+      "path": "support/configuration.php",
+      "upstream_sha256": "0ea0095e6a3d1be0f1457af30b3eb0f713579148b88d45d225b624aaffd9a604"
+    },
+    {
+      "path": "support/contact.php",
+      "upstream_sha256": "2fb3786a4cddbcfe43d008d2fcb668421f53e6456e5d1684c2ae67cc184e02c4"
+    },
+    {
+      "path": "support/context.php",
+      "upstream_sha256": "df088755a0a704d3cc3a99cf0f50704682db04518618e3b4219593d5b0062960"
+    },
+    {
+      "path": "support/customer-notifications.php",
+      "upstream_sha256": "790983b5ff153ffefe52a29714a335ef4706721ec392a4d7ad7ba46f4ec48349"
+    },
+    {
+      "path": "support/health.php",
+      "upstream_sha256": "9cb4e15f068511e099ce0709457063f8132f39ac1231d35a7f48ddda007b5533"
+    },
+    {
+      "path": "support/knowledge.php",
+      "upstream_sha256": "a987daed7f52160ccd7253c331a9e8552b0fa6e81e3fca2bd2d4a0e9be09bd15"
+    },
+    {
+      "path": "support/lifecycle.php",
+      "upstream_sha256": "507b9d08abcf859cc559e950a4c588ed523e2c1aeb847c18e6840237f927e41a"
+    },
+    {
+      "path": "support/message-edits.php",
+      "upstream_sha256": "dfe7e6c9f9fc3c9bff9d79da2877025f905d8cd27aff92b1b5a7c122ffc41b58"
+    },
+    {
+      "path": "support/messages.php",
+      "upstream_sha256": "141ff08596f547fc69f14b389e6c24e89d0bf4dc2cf7fa5c58c83c86ee8b1329"
+    },
+    {
+      "path": "support/notifications.php",
+      "upstream_sha256": "4fec71724ae31c5e2cc34c620c9e588c123cd89643a53ecfe214f5636a461212"
+    },
+    {
+      "path": "support/operations.php",
+      "upstream_sha256": "90c03ff944a4ef505629d101eeaf04210ac50183633213fd586d5692af0b1e8d"
+    },
+    {
+      "path": "support/operator-notifications.php",
+      "upstream_sha256": "bedafc21d779f6bf429e132b493ddd940cf20d47f90d29324875c45e9ffe734f"
+    },
+    {
+      "path": "support/operator-profile.php",
+      "upstream_sha256": "ef0c7c13cec368963cbc8b38b484a60df934b1de329580a49b0632f85613bdd5"
+    },
+    {
+      "path": "support/operator-reads.php",
+      "upstream_sha256": "4fdafff8ea9024c1bc790a034c51bee3484088c1f7df4bb70770cd9b36c2e686"
+    },
+    {
+      "path": "support/operator-security.php",
+      "upstream_sha256": "59af7f6e6a8fa7ccf039a6eb9049d156e942adeccd1a597e70f344ded757e675"
+    },
+    {
+      "path": "support/operators.php",
+      "upstream_sha256": "b75003008d5b76b79115c136ba8b0b7b62d4db541caec9454e9652f14ce8e8b7"
+    },
+    {
+      "path": "support/phone.php",
+      "upstream_sha256": "e6fa0acfdf53eb3e0dbc46a40e8b06f554ae8d407afbdfef819e0b39ebc436dc"
+    },
+    {
+      "path": "support/presence.php",
+      "upstream_sha256": "5af2b4b05f19cf9e476f49e2a50e1b23ba9191019c52a43ef592784a4b4a8b4d"
+    },
+    {
+      "path": "support/productivity.php",
+      "upstream_sha256": "adb260b58673d77073d16fdd0baba4c3948d69eda3984ebe02c5d7c1732b8d58"
+    },
+    {
+      "path": "support/profile-images.php",
+      "upstream_sha256": "35a1e598818974d3fcf0e88f555d123f14d2b1426e979c8782a21b05a1a444e7"
+    },
+    {
+      "path": "support/readiness.php",
+      "upstream_sha256": "b1974ab8cbf64c2a4a25a341a521178f016d311dfe9f2fb4ad2377cb0b31da4d"
+    },
+    {
+      "path": "support/recovery-email.php",
+      "upstream_sha256": "e5d2d14eeb33384c317cdadfdde8e5263c03cb40a1c6eaa86c858f4d1af709ef"
+    },
+    {
+      "path": "support/recovery.php",
+      "upstream_sha256": "38ff491e6ffbb33b3f5bed611a0f547124fe28522558aadab143b10b9a4ee2b0"
+    },
+    {
+      "path": "support/replies.php",
+      "upstream_sha256": "8a7a4e45560b6c18690df86c9e7094c6da069222ee67fff509f1b3a8542e3c15"
+    },
+    {
+      "path": "support/retention.php",
+      "upstream_sha256": "c417eaabd2ba1f21469905dba45dc7bdaf88e87a151a006be2b7c9199396a7e4"
+    },
+    {
+      "path": "support/satisfaction.php",
+      "upstream_sha256": "cd00f0a7c88785f42b2ebd1226178e878f70c54509cb4a5d5385ac62f6dbcd45"
+    },
+    {
+      "path": "support/sms.php",
+      "upstream_sha256": "d758515c0ea3a079585c8f30359e8a003cfa685894bab6cfb7859000b0b022f7"
+    },
+    {
+      "path": "support/storage.php",
+      "upstream_sha256": "43f61fe5f536ed3a0b506841e72b20d61b84e9c75fc0ef99fb76b59230049f27"
+    },
+    {
+      "path": "support/typing.php",
+      "upstream_sha256": "f7f838d23f24726cfea552457c66124f39e58574937bde6e178ddff7d90b4199"
+    },
+    {
+      "path": "support-client/attachments.js",
+      "upstream_sha256": "d251cd63fd78c1c50c4041161215c94d5165db0dc19e3e42b03db076b551c508"
+    },
+    {
+      "path": "support-client/attention-store.js",
+      "upstream_sha256": "5c256c9104c6b80edb16de19231e27dd4154c9e31d38d6cf9d657539759d4351"
+    },
+    {
+      "path": "support-client/attention.js",
+      "upstream_sha256": "4317da01cc01f93373d87df3e512c12c54a3a020511e9f7e968a91699270d53c"
+    },
+    {
+      "path": "support-client/bplus.css",
+      "upstream_sha256": "33c0a4ff97f49693d02b1c150cf9c0168217485e4e0b06d428109eb1eda03546"
+    },
+    {
+      "path": "support-client/bplus.js",
+      "upstream_sha256": "0fb859d2217dfc67cb4dac48145cc65fcc73b3f44f987cfb0e659302482052b0"
+    },
+    {
+      "path": "support-client/chat.css",
+      "upstream_sha256": "f5b0b2197ff6c22d939d3e9f6d90a044d519657306f4a229cb6210bef1756784"
+    },
+    {
+      "path": "support-client/compat-bootstrap.js",
+      "upstream_sha256": "fd02ab49e6b1e1490967bbf6bbba1aa8c84a809af2a577d44d097a240cfb0a09"
+    },
+    {
+      "path": "support-client/composer-size.js",
+      "upstream_sha256": "b48aaaabf520cb26ca46b58e1f06653c45713dc1087bf97d8b2be69fbb1f853e"
+    },
+    {
+      "path": "support-client/critical-shell.html",
+      "upstream_sha256": "8116fdfbc2c166543a977a52e1f91193eacc57e1273c732cb9b0f02af337d0ea"
+    },
+    {
+      "path": "support-client/customer-entry.js",
+      "upstream_sha256": "6d50295a07e76a581595ed74bab1faef8fce88e8bc372c0790cdac2e2704e482"
+    },
+    {
+      "path": "support-client/customer-faq.js",
+      "upstream_sha256": "314a479bfa51ce067d9bc2d5adca71acebdcafc5a06c68ca1f28b8ae7718fd8f"
+    },
+    {
+      "path": "support-client/customer-layout.css",
+      "upstream_sha256": "290be05e14e0964db0cddbaaddf0be49b115ad49c74b9d71e72c7862e70ca52b"
+    },
+    {
+      "path": "support-client/customer-shell.js",
+      "upstream_sha256": "4f966a4f809688125dfb2bd3828bb441f10a2ad3ac32e7434f1b66f2777efa56"
+    },
+    {
+      "path": "support-client/customer-sw.js",
+      "upstream_sha256": "740e1b953a51b21cee01e7867314dd391d37528441e82d1d3ce6a642f3b39d84"
+    },
+    {
+      "path": "support-client/customer-v2-renderer.js",
+      "upstream_sha256": "72559a9db684abff0f3cd5991116c95db9e59ede3d2136c2c8c1b940ed89ef5a"
+    },
+    {
+      "path": "support-client/customer-v2-tools.js",
+      "upstream_sha256": "122c54801a26506a80f930e41946ecf677c2bbfc9712af4b7450b5fc233cfd8d"
+    },
+    {
+      "path": "support-client/customer-v2.css",
+      "upstream_sha256": "b52796719d6a9655a6d1e2b5b6a8fc1e61021514dbe32d642c5453535acb2965"
+    },
+    {
+      "path": "support-client/customer-v2.js",
+      "upstream_sha256": "212ba3b831dcc57a025ce7e13e2ce53a244dae02e45a2b953f66e11c884aa5df"
+    },
+    {
+      "path": "support-client/customer.js",
+      "upstream_sha256": "9e74f6097d823d44613d6ea548813ccd4c096e99d691134a61c013c6a3531e21"
+    },
+    {
+      "path": "support-client/design-tokens.css",
+      "upstream_sha256": "2855829ee3eccf79f29c0503e432dcb3237e214c1aaba22cdfa084f9a995177b"
+    },
+    {
+      "path": "support-client/engine.js",
+      "upstream_sha256": "7f5e5f067eadd0d38e71dd458c90a4fc485fb5acdfea0c7f8ee8ea013e1cc5ba"
+    },
+    {
+      "path": "support-client/icons.js",
+      "upstream_sha256": "c72be87f3a5faa86db25e1b13447a4e338c8d328490bd1866ccdfc7f66ef46d0"
+    },
+    {
+      "path": "support-client/interaction.css",
+      "upstream_sha256": "a0e83576c8b6123f00acb4f411d9fb5c7830eb970048e2f7b6e8e2f2ff57e861"
+    },
+    {
+      "path": "support-client/issuance.js",
+      "upstream_sha256": "f0f3e4e27a913c35b35eb6a46acd2950e8a507337b6ff11a77492a7cac707bbf"
+    },
+    {
+      "path": "support-client/launcher.css",
+      "upstream_sha256": "ef89a7ae2132b082c12bf391f59dffdb0b8b8fee6c3f636c53f0615ac4091679"
+    },
+    {
+      "path": "support-client/menu.js",
+      "upstream_sha256": "ee283ea2a2e09d8f67cdc632f79b68401e65b64e866fbdc38688cd32885a6e26"
+    },
+    {
+      "path": "support-client/message-edit.js",
+      "upstream_sha256": "699671a7d64b0b07c97c4356f661c34431d280f9acbbd5b5f2b34e9338ccccc4"
+    },
+    {
+      "path": "support-client/message-groups.js",
+      "upstream_sha256": "4f2987761f90f311bcdb611ec140f5ddabf3461d2b189e92c6d54bfc77fce865"
+    },
+    {
+      "path": "support-client/network.js",
+      "upstream_sha256": "12f687b1d3f594a49738cc057ec6714b88c9b1ee7d710db3f6061dbc5a68c4bd"
+    },
+    {
+      "path": "support-client/outbox.js",
+      "upstream_sha256": "84389f047db22be1bc6f96c7c35f06f81adae346f727142a67931337f096c24a"
+    },
+    {
+      "path": "support-client/persian-date.js",
+      "upstream_sha256": "8123b2d51f56bf03c417cd6a394620afc8fe862a8455897f292fd76fc9987bc2"
+    },
+    {
+      "path": "support-client/phone.js",
+      "upstream_sha256": "f2e160af86aeb503954ed10382fd79ebd6b33847a6555d4c0c454034878cce63"
+    },
+    {
+      "path": "support-client/recovery.js",
+      "upstream_sha256": "f108f26d18bb18709ca13836330bca8562ed8c561bdaf4ee022f85ddc2ef8535"
+    },
+    {
+      "path": "support-client/reply.js",
+      "upstream_sha256": "58377b97b0f78e72e9e950b1e426d4e1cda59e0e59be493375561c6c925d52a0"
+    },
+    {
+      "path": "support-client/satisfaction.js",
+      "upstream_sha256": "bfed61b9e1e529cd6ef5a58570c103dbb36fff7269e6a1bc32ce93e664ef7192"
+    },
+    {
+      "path": "support-client/selection-toast.js",
+      "upstream_sha256": "da7fcb4de80c72fecaa872d92620afdc2521500dd4c344ce236624e5bac878d3"
+    },
+    {
+      "path": "support-client/send-cooldown.js",
+      "upstream_sha256": "b3c88fa3f45f731758dc448bdb81234ca90f04dd1aa6f06a9be68209402a8112"
+    },
+    {
+      "path": "support-client/theme-init.js",
+      "upstream_sha256": "bf71b521f7ff7b3ada977bf8a4b4df8fa3169eb9fad88a3fa6d048a9d0931cd4"
+    },
+    {
+      "path": "support-client/theme.js",
+      "upstream_sha256": "a0e26ee03f30bc33daca1d9f7d8f37e3284e9a65bb850b1d8dce037512def1a3"
+    },
+    {
+      "path": "support-client/typing.js",
+      "upstream_sha256": "bec2b5e25f10710ac77bb7f37dab390547361589421d884aa95e6006286e7af9"
+    },
+    {
+      "path": "support-client/unread-jump.js",
+      "upstream_sha256": "4a24c7c87c9f56ec9334ef8053f2e9d72b070f1a2804943dcf5e975ec1b81baf"
+    },
+    {
+      "path": "support-client/widget.css",
+      "upstream_sha256": "17a50393f6183d463eaf47004caffd40ca1b7c065c880eaf80efffc71996f5d1"
+    },
+    {
+      "path": "support-client/widget.html",
+      "upstream_sha256": "0f5635be7b7115041b676b65e4de83989fd07d55178a340ddd309b610ea687e5"
+    },
+    {
+      "path": "support-client/widget.js",
+      "upstream_sha256": "e63b632bd6c60a2644e1b1c29a90ddd540949bb9cfb256b4565c5849743fa591"
+    },
+    {
+      "path": "operator/modules/analytics.js",
+      "upstream_sha256": "f6576650cf7ab8427293aea1d415bf25265ee245d90a70fd881e4bbf375e24f8"
+    },
+    {
+      "path": "operator/modules/contacts.js",
+      "upstream_sha256": "5d0c2396d58e3e1835bed0cdaa505baae62a5e699623d7389646d12860115654"
+    },
+    {
+      "path": "operator/modules/dashboard.js",
+      "upstream_sha256": "12f36446fb365055187651eaaa8a5cc6f48d3588d85f7894e4ce3ad1fe0e53e0"
+    },
+    {
+      "path": "operator/modules/health.js",
+      "upstream_sha256": "6422931958e2f1c5111c37c14e9c67607e267b8992618317c85480e8f6737666"
+    },
+    {
+      "path": "operator/modules/icons.js",
+      "upstream_sha256": "eaa55233a053ef7418dcb7355c26d58fd0d7c6e00c5cb04d1d8e341e87067a81"
+    },
+    {
+      "path": "operator/modules/knowledge.js",
+      "upstream_sha256": "d4616691b243adca755e803724eb9384b834cb60dc8eb64cb574efce5e7f6298"
+    },
+    {
+      "path": "operator/modules/mobile-table.js",
+      "upstream_sha256": "a343cb528909c63adf60c02fd51004f178acc9fd2d7004e148786980f34a6240"
+    },
+    {
+      "path": "operator/modules/replies.js",
+      "upstream_sha256": "8c1375f6f9d6164dd12f26da822014ae69e7f61a05f34cab223c66c0013ace8f"
+    },
+    {
+      "path": "operator/modules/router.js",
+      "upstream_sha256": "c9d45e0f5dedce44fa5401497d6364c93718aefb2ed48e844009635013a1fc44"
+    },
+    {
+      "path": "operator/modules/settings.js",
+      "upstream_sha256": "62106c0fb414def3b779b338781573b92cac54de578b69e048720134f7d0ff12"
+    },
+    {
+      "path": "operator/modules/team.js",
+      "upstream_sha256": "7926bc03bd84876b9412154fa5c711836b6927d1224bcfcacf9385261358a0d9"
+    },
+    {
+      "path": "operator/icons/apple-touch-icon.png",
+      "upstream_sha256": "8e0ea64eb2a4ff487b4fe3b57f08e729457bb9e2bcf278614ae6fafe3a766884"
+    },
+    {
+      "path": "operator/icons/icon-192.png",
+      "upstream_sha256": "00e70b426c7ff23a91e56035712d517fa323f164f8357af0e60b2419b67c07e5"
+    },
+    {
+      "path": "operator/icons/icon-512.png",
+      "upstream_sha256": "bbf66b9d73bcaa3c373d75426c94d98fd6acba6e293fe2fd4ea2fa7a26360c87"
+    },
+    {
+      "path": "operator/icons/maskable-512.png",
+      "upstream_sha256": "bbf66b9d73bcaa3c373d75426c94d98fd6acba6e293fe2fd4ea2fa7a26360c87"
+    },
+    {
+      "path": "operator/icons/operator-mark.svg",
+      "upstream_sha256": "8124e227f1c9cf415859e61b38fa8f270ae841247e92e45cec30306cdb310f65"
+    },
+    {
+      "path": "support/openssl.cnf",
+      "upstream_sha256": "4498f60618522aaf030dcc26f1fbfebb42e6c24c284092816800f9dd9b73b25e"
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پرداخت موفق | نوین‌پی</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preload" href="assets/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="assets/pay.css?v=5">
+</head>
+<body class="t-green">
+    <div class="confetti-container" id="confettiContainer" aria-hidden="true"></div>
+
+    <div class="container" id="checking">
+        <div class="spinner"></div>
+        <p class="lead">در حال تایید نهایی پرداخت...</p>
+    </div>
+
+    <div class="container t-gray" id="netError" hidden>
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v7"/><path d="M12 17.2v.1"/></svg>
+            </div>
+        </div>
+        <h2><span class="ph">ارتباط با سرور</span> <span class="ph">برقرار نشد</span></h2>
+        <p class="lead"><span class="ln"><span class="ph">اتصال اینترنت‌تون</span> <span class="ph">رو چک کنید</span></span><span class="ln">و دوباره امتحان کنید.</span></p>
+        <button class="btn" type="button" id="retryBtn">تلاش مجدد</button>
+    </div>
+
+    <div class="container" id="content" hidden>
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path pathLength="20" d="M5.5 12.5l4.2 4.2L18.5 7.8"/></svg>
+            </div>
+        </div>
+        <h2><span class="ph">پرداخت با موفقیت</span> <span class="ph">انجام شد</span></h2>
+        <p class="lead"><span class="ph">سفارش شما تایید شد</span> <span class="ph">و به زودی فعال می‌شود.</span></p>
+        <div class="rows">
+            <div class="row"><span>شماره سفارش</span><b id="orderId">---</b></div>
+            <div class="row"><span>کد پیگیری</span><b id="refId">---</b></div>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const rawOrder = params.get('order_id') || '';
+        const rawRef = params.get('ref_id') || '';
+        const orderId = /^[a-zA-Z0-9_-]{1,64}$/.test(rawOrder) ? rawOrder : '';
+        const refId = /^[0-9]{1,20}$/.test(rawRef) ? rawRef : '';
+        const enc = encodeURIComponent;
+
+        function show(id) {
+            ['checking', 'content', 'netError'].forEach(function (n) {
+                document.getElementById(n).hidden = n !== id;
+            });
+        }
+
+        function launchConfetti() {
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const colors = ['#f44336', '#e91e63', '#9c27b0', '#3f51b5', '#2196f3', '#009688', '#4caf50', '#ffeb3b', '#ff9800', '#ff5722'];
+            const container = document.getElementById('confettiContainer');
+            for (let i = 0; i < 80; i++) {
+                const div = document.createElement('div');
+                div.className = 'confetti';
+                div.style.left = Math.random() * 100 + '%';
+                div.style.background = colors[Math.floor(Math.random() * colors.length)];
+                div.style.width = (Math.random() * 8 + 4) + 'px';
+                div.style.height = (Math.random() * 8 + 4) + 'px';
+                div.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                div.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                div.style.animationDelay = (Math.random() * 3) + 's';
+                container.appendChild(div);
+            }
+        }
+
+        function route(d) {
+            const status = d && d.status;
+            if (status === 'success') {
+                document.getElementById('orderId').textContent = orderId;
+                document.getElementById('refId').textContent = refId;
+                show('content');
+                launchConfetti();
+            } else if (status === 'processing') {
+                window.location.replace('/pay/processing.html?order_id=' + enc(orderId) + '&ref_id=' + enc(refId));
+            } else if (status === 'error') {
+                window.location.replace('/pay/error.html?code=' + enc(d.code || 'unknown') + '&ref_id=' + enc(refId) + '&order_id=' + enc(orderId) + '&inc=' + enc(d.inc || ''));
+            } else {
+                window.location.replace('/pay/failed.html?code=' + enc((d && d.code) || '') + '&zc=' + enc((d && d.zc) || '') + '&ref_id=' + enc(refId) + '&order_id=' + enc(orderId) + '&inc=' + enc((d && d.inc) || ''));
+            }
+        }
+
+        function check(attempt) {
+            const ctl = new AbortController();
+            const timer = setTimeout(function () { ctl.abort(); }, 15000);
+            fetch('/bot/check_payment_status.php?order_id=' + enc(orderId) + '&track_id=' + enc(refId), { cache: 'no-store', signal: ctl.signal })
+                .then(function (r) { return r.json(); })
+                .then(function (d) { clearTimeout(timer); route(d); })
+                .catch(function () {
+                    clearTimeout(timer);
+                    if (attempt < 2) setTimeout(function () { check(attempt + 1); }, 1500);
+                    else show('netError');
+                });
+        }
+
+        document.getElementById('retryBtn').addEventListener('click', function () {
+            show('checking');
+            check(0);
+        });
+
+        if (!orderId || !refId) {
+            window.location.replace('/pay/error.html?code=missing_params');
+        } else {
+            check(0);
+        }
+    </script>
+</body>
+</html>

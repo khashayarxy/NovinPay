@@ -19,7 +19,7 @@ class AddSecurityHeaders
         $response = $next($request);
 
         $response->headers->set('X-Content-Type-Options', 'nosniff');
-        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        $response->headers->set('X-Frame-Options', $response->headers->get('X-Frame-Options') === 'DENY' ? 'DENY' : 'SAMEORIGIN');
         if (! $response->headers->has('Referrer-Policy')) {
             $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         }

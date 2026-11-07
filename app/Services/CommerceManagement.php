@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Enums\AdminAction;
 use App\Models\Customer;
+use App\Models\DeliveryPlan;
+use App\Models\FinancialDocument;
 use App\Models\InventoryItem;
 use App\Models\InventoryUnit;
 use App\Models\SalesOrder;
@@ -161,6 +163,16 @@ final class CommerceManagement
         if ($order->exists) {
             $this->version($order, $data);
         }
+        if ($order->exists && $order->customer_account_id) {
+            $document = FinancialDocument::query()->where('sales_order_id', $order->id)->lockForUpdate()->first();
+            abort_if($document && in_array($action, ['order.save', 'order.release', 'order.cancel'], true), 409, 'سند مالی صادر شده است؛ تغییر یا لغو باید با حفظ سوابق مالی بررسی شود.');
+            if ($action === 'order.fulfill') {
+                abort_unless($document && $document->paid_minor === $document->charged_minor, 409, 'پیش از تحویل سفارش اینترنتی، تسویهٔ سند لازم است.');
+                app(FinancialOperations::class)->reconcile($document);
+                $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->lockForUpdate()->first();
+                abort_unless($plan && ! $plan->requested_method && $plan->state === 'planned', 409, 'روش تحویل باید تأیید شده باشد.');
+            }
+        }
         abort_if(in_array($before, ['fulfilled', 'cancelled'], true), 409, 'سفارش نهایی‌شده فقط خواندنی است.');
         if ($action === 'order.save') {
             abort_if($before !== null && $before !== 'draft', 409, 'ویرایش فقط در پیش‌نویس مجاز است؛ ابتدا رزرو را آزاد کنید.');
@@ -219,6 +231,9 @@ final class CommerceManagement
             if ($action === 'order.fulfill') {
                 $order->fulfillment_info = $data['fulfillment_info'];
                 $order->fulfilled_at = now();
+                if ($order->customer_account_id) {
+                    app(DeliveryManagement::class)->completePlan($document, $actor);
+                }
             }
         }
         $order->version++;

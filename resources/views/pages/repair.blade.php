@@ -10,19 +10,22 @@
         <section class="public-panel" aria-labelledby="repair-form-title">
             <div class="public-panel__heading"><span class="public-icon"><x-home.icon name="tool" /></span><div><h2 id="repair-form-title">ثبت درخواست آنلاین</h2><p>همهٔ موارد ستاره‌دار ضروری هستند.</p></div></div>
             <x-form-errors />
+            @if(auth('customer')->check())
             <form method="post" action="{{ route('repair.store') }}" class="public-form">
                 @csrf
                 <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
                 <div class="public-form__grid">
-                    <x-repair-field name="customer_name" label="نام و نام خانوادگی"><input id="customer_name" name="customer_name" class="input" autocomplete="name" required minlength="2" maxlength="100" aria-invalid="{{ $errors->has('customer_name') ? 'true' : 'false' }}" aria-describedby="customer_name-feedback"></x-repair-field>
-                    <x-repair-field name="contact_phone" label="شمارهٔ همراه" hint="شمارهٔ ۱۱ رقمی با ۰۹؛ برای پیگیری هم لازم است."><input type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="tel" autocomplete="tel" required maxlength="40" placeholder="0912 000 0000" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback"></x-repair-field>
+                    <x-repair-field name="customer_name" label="نام و نام خانوادگی"><input id="customer_name" name="customer_name" value="{{ auth('customer')->user()?->name }}" class="input" autocomplete="name" required minlength="2" maxlength="100" aria-invalid="{{ $errors->has('customer_name') ? 'true' : 'false' }}" aria-describedby="customer_name-feedback"></x-repair-field>
+                    <x-repair-field name="contact_phone" label="شمارهٔ همراه" hint="شمارهٔ ۱۱ رقمی با ۰۹؛ برای پیگیری هم لازم است."><input readonly value="{{ auth('customer')->user()?->phone }}" type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="tel" autocomplete="tel" required maxlength="40" placeholder="0912 000 0000" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback"></x-repair-field>
                     <x-repair-field name="device_brand" label="برند دستگاه"><select id="device_brand" name="device_brand" class="input" required aria-invalid="{{ $errors->has('device_brand') ? 'true' : 'false' }}" aria-describedby="device_brand-feedback"><option value="">انتخاب برند</option>@foreach ($brands as $brand)<option value="{{ $brand->value }}">{{ $brand->value }}</option>@endforeach</select></x-repair-field>
                     <x-repair-field name="device_model" label="مدل دستگاه" hint="مدل را از روی برچسب دستگاه بنویسید."><input id="device_model" name="device_model" class="input" required maxlength="100" aria-invalid="{{ $errors->has('device_model') ? 'true' : 'false' }}" aria-describedby="device_model-feedback"></x-repair-field>
                 </div>
                 <x-repair-field name="issue" label="شرح مشکل" hint="۱۰ تا ۲۰۰۰ نویسه؛ اطلاعات کارت بانکی، رمز یا اطلاعات حساب را وارد نکنید."><textarea id="issue" name="issue" class="input" rows="5" required minlength="10" maxlength="2000" aria-invalid="{{ $errors->has('issue') ? 'true' : 'false' }}" aria-describedby="issue-feedback"></textarea></x-repair-field>
+                <x-repair-field name="additional_description" label="توضیح بیشتر (اختیاری)"><textarea class="input" id="additional_description" name="additional_description" maxlength="1000" rows="3"></textarea></x-repair-field>
                 <p class="public-hint">نام، شماره تماس، مدل و شرح مشکل برای ثبت این درخواست ذخیره می‌شوند. <a class="public-inline-link" href="{{ route('privacy') }}">اطلاعات حریم خصوصی</a></p>
                 <button class="np-button np-button--primary" type="submit">ثبت درخواست تعمیر <x-home.icon name="arrow-left" /></button>
             </form>
+            @else<div class="public-notice"><h2>ابتدا شمارهٔ همراه خود را تأیید کنید</h2><p>درخواست تعمیر به حساب شما متصل می‌شود تا پیگیری آن خصوصی بماند.</p><a class="np-button np-button--primary" href="{{ route('account.login') }}">ورود یا ثبت‌نام</a></div>@endif
         </section>
         <aside class="public-sidebar">
             <div class="public-notice"><x-home.icon name="shield-check" /><h2>درخواست آنلاین، پیش از پذیرش دستگاه</h2><p>در این مرحله فقط اطلاعات درخواست ثبت می‌شود. دریافت فیزیکی، هزینه و زمان تعمیر با ارسال فرم تأیید نمی‌شوند.</p></div>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فاکتور پرداخت‌شده | نوین‌پی</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preload" href="assets/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="assets/pay.css?v=5">
+</head>
+<body class="t-green">
+    <div class="container" id="checking">
+        <div class="spinner"></div>
+        <p class="lead">در حال بررسی وضعیت سفارش...</p>
+    </div>
+
+    <div class="container t-gray" id="netError" hidden>
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v7"/><path d="M12 17.2v.1"/></svg>
+            </div>
+        </div>
+        <h2><span class="ph">ارتباط با سرور</span> <span class="ph">برقرار نشد</span></h2>
+        <p class="lead"><span class="ln"><span class="ph">اتصال اینترنت‌تون</span> <span class="ph">رو چک کنید</span></span><span class="ln">و دوباره امتحان کنید.</span></p>
+        <button class="btn" type="button" id="retryBtn">تلاش مجدد</button>
+    </div>
+
+    <div class="container t-gray" id="unknown" hidden>
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v7"/><path d="M12 17.2v.1"/></svg>
+            </div>
+        </div>
+        <h2><span class="ph">اطلاعات این سفارش</span> <span class="ph">پیدا نشد</span></h2>
+        <p class="lead"><span class="ln"><span class="ph">اگر پرداخت انجام دادید،</span> <span class="ph">چند دقیقه صبر کنید</span></span><span class="ln">و دوباره این صفحه رو باز کنید.</span><span class="ln"><span class="ph">سوال یا مشکلی بود،</span> <span class="ph">به پشتیبان پیام بدید.</span></span></p>
+    </div>
+
+    <div class="container" id="content" hidden>
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path pathLength="20" d="M5.5 12.5l4.2 4.2L18.5 7.8"/></svg>
+            </div>
+        </div>
+        <h2><span class="ph">این فاکتور قبلاً</span> <span class="ph">پرداخت شده است</span></h2>
+        <div class="rows" id="details"></div>
+        <div class="info-box go">
+            <p><span class="ln"><span class="ph">سفارش خود را از حساب کاربری</span> <span class="ph">پیگیری کنید.</span></span><span class="ln"><span class="ph">سوال یا مشکلی بود،</span> <span class="ph">به پشتیبان پیام بدید.</span></span></p>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const rawOrder = params.get('order_id') || '';
+        const orderId = /^[a-zA-Z0-9_-]{1,64}$/.test(rawOrder) ? rawOrder : '';
+        const toFa = function (s) { return String(s).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }); };
+        const box = document.getElementById('details');
+
+        function show(id) {
+            ['checking', 'content', 'unknown', 'netError'].forEach(function (n) {
+                document.getElementById(n).hidden = n !== id;
+            });
+        }
+
+        function getJson(url, ms) {
+            const ctl = new AbortController();
+            const timer = setTimeout(function () { ctl.abort(); }, ms);
+            return fetch(url, { cache: 'no-store', signal: ctl.signal })
+                .then(function (r) { return r.json(); })
+                .then(function (d) { clearTimeout(timer); return d; },
+                      function (e) { clearTimeout(timer); throw e; });
+        }
+
+        function add(label, value, plain) {
+            const row = document.createElement('div');
+            row.className = plain ? 'row plain' : 'row';
+            const l = document.createElement('span');
+            l.textContent = label;
+            const v = document.createElement('b');
+            v.textContent = value;
+            row.append(l, v);
+            box.appendChild(row);
+        }
+
+        function renderDetails(d) {
+            if (box.querySelector('[data-r]')) return;
+            box.innerHTML = '';
+            add('شماره سفارش', orderId);
+            if (Number.isFinite(d.amount) && d.amount > 0) add('مبلغ', d.amount.toLocaleString('fa-IR') + ' تومان', true);
+            if (/^\d{4}\/\d{2}\/\d{2}$/.test(d.date || '')) add('تاریخ پرداخت', toFa(d.date), true);
+            if (/^\d{2}:\d{2}$/.test(d.time || '')) add('ساعت پرداخت', toFa(d.time), true);
+            if (typeof d.track === 'string' && /^[0-9]{1,20}$/.test(d.track)) add('کد پیگیری', d.track);
+            box.firstChild.setAttribute('data-r', '1');
+        }
+
+        function start() {
+            show('checking');
+            if (!orderId) { show('unknown'); return; }
+            box.innerHTML = '';
+            add('شماره سفارش', orderId);
+            const q = encodeURIComponent(orderId);
+            getJson('/bot/receipt_info.php?q=1&order_id=' + q, 9000)
+                .then(function (d) {
+                    if (d && d.limited) { show('netError'); return; }
+                    if (!d || d.paid !== true) { show('unknown'); return; }
+                    show('content');
+                    if (d.ok) { renderDetails(d); return; }
+                    return getJson('/bot/receipt_info.php?order_id=' + q, 15000)
+                        .then(function (f) { if (f && f.ok) renderDetails(f); })
+                        .catch(function () {});
+                })
+                .catch(function () { show('netError'); });
+        }
+
+        document.getElementById('retryBtn').addEventListener('click', start);
+        start();
+    </script>
+</body>
+</html>

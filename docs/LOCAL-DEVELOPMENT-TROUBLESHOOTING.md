@@ -1,5 +1,19 @@
 # Windows local connectivity and database safety
 
+## Permanent owner acceptance environment (2026-11-06)
+
+The active NovinPay local database is now `%LOCALAPPDATA%/NovinPay-Local/development/development.sqlite`, a consistent SQLite backup of the approved synthetic22-migration fixture, including customer_accounts. Storage/chat history/uploads and authenticated sessions live in that directory's `storage` tree. This is persistent local data, outside Git, public, Codex QA cleanup and production. Preserve it; do not reset it to rerun tests. The older14-migration isolated DB and original fixture remain untouched. No migrations were replayed.
+
+The existing host-filtered Herd `.valet-env.php` retains legacy-host denial and returns an empty environment for unrelated hosts. Only its NovinPay branch delegates to the tracked `scripts/local/herd-environment.php` with the fixed private directory above. That loader pins SQLite database/URL, local host, private storage/cache paths and SQLite sessions; rejects absent files, symlinks/path substitution or cached config/routes/events; requires file cache and disabled external SMS/Zibal/Postex. It does not fall back to project .env. The shared entry had to change because its previous hardcoded DB overrode project settings. No routing, PHP handler, other-site configuration or project .env was changed.
+
+Open `https://novinpaypos.test/` for the integrated customer widget, `/support-chat/support-widget.php` for its standalone view, and `/admin/login` then `/admin/support` for the operator dashboard. Synthetic owner login details are managed privately in `%LOCALAPPDATA%/NovinPay-Local/development/auth.json`; open that file locally, never paste its values into chat/Git. Root ACL permits only the current Windows user and SYSTEM, with inheritance to data files. Real customer-account OTP remains disabled: `/account/login` renders, but no live SMS/authentication bypass is supplied. Guest chat is usable; OTP account/session security is covered by mocked focused tests.
+
+The setup is disk-backed, survives normal Herd restarts and needs no temporary guard activation. Fresh browser contexts and PHP processes were tested; a full shared Herd restart was not performed because it would interrupt other sites, and the Herd MCP transport is unavailable. Per-site dev-stack auto-start remains disabled. Do not run unguarded Artisan/queue/dev commands: the web guard is not a CLI environment loader. Use `scripts/test.ps1` for disposable tests, never run config/route cache generation or migrations against this acceptance DB.
+
+Private `development/recovery/installation.json` records the installed shared guard hash and original backup. Before any future rollback, stop this site's test requests, reconcile the current hash, and atomically restore the verified backup; never delete either DB/storage tree. That restores the older guard and intentionally makes full chat acceptance unavailable until a reviewed replacement is installed. Never install the Herd hook or copy its private settings/database into production; the tracked loader is inert unless explicitly invoked by the local hook.
+
+Focused validation: `./scripts/test.ps1 tests/Unit/LocalHerdEnvironmentTest.php tests/Feature/SupportChatTest.php tests/Feature/CustomerAccountTest.php`. See the latest deployment lessons for browser measurements and acceptance scope.
+
 Verified 2026-10-23 with Windows 11, Herd 2.0.3, Happ 4.5.6.627, and canonical `https://novinpaypos.test`. The project is `C:\Users\Khashayar\Documents\NovinPay`. Use the isolated Herd site, never an unguarded `artisan serve`, `artisan dev`, queue worker or migration against the original SQLite file.
 
 ## Reproduced cause and approved correction

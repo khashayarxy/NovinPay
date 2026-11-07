@@ -27,6 +27,14 @@ class SiteMaintenanceState
         return is_string($path) && preg_match('~\A/admin(?:/[A-Za-z0-9_-]+)*/?\z~D', $path) === 1;
     }
 
+    public static function paymentCallback(string $uri, string $method): bool
+    {
+        // Exact origin-form callback only. It has no public browsing/admin bypass.
+        return $method === 'GET' && str_starts_with($uri, '/') && ! str_starts_with($uri, '//')
+            && ! str_contains($uri, '\\') && ! str_contains($uri, '#') && ! preg_match('/[\x00-\x20\x7f]/', $uri)
+            && explode('?', $uri, 2)[0] === '/bot/payment_verify.php';
+    }
+
     public function read(): array
     {
         clearstatcache();

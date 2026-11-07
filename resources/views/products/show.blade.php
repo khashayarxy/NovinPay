@@ -48,6 +48,7 @@
                     <p class="mt-3 text-sm leading-8 text-slate-600 sm:text-base">{{ $product->summary }}</p>
                 @endif
 
+                @if(app(\App\Services\StoreCheckout::class)->offer($product))<form class="mt-6 flex flex-wrap gap-3 items-end" method="post" action="{{ route('cart.add',$product) }}">@csrf<div><label class="label" for="store-quantity">تعداد</label><input class="input" id="store-quantity" type="number" name="quantity" value="1" min="1" max="10" required></div><button class="btn btn-primary">افزودن به سبد خرید</button><a class="public-inline-link" href="{{ route('cart.index') }}">مشاهدهٔ سبد</a></form>@endif
                 <div class="mt-6 rounded-xl border border-slate-200 bg-white p-5">
                     <p class="text-xs text-slate-500">قیمت</p>
                     <p class="mt-1 text-2xl font-bold text-slate-900">
@@ -59,7 +60,7 @@
                         @endif
                     </p>
                     <p class="mt-3 text-xs leading-6 text-slate-500">
-                        خرید آنلاین در این نسخه فعال نیست؛ برای استعلام قیمت و شرایط خرید با ما تماس بگیرید.
+                        @if(app(\App\Services\StoreCheckout::class)->offer($product)) قیمت و موجودی هنگام ثبت سفارش دوباره بررسی می‌شوند. @else برای استعلام موجودی و شرایط خرید با ما تماس بگیرید. @endif
                     </p>
                 </div>
 

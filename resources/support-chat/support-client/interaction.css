@@ -1,0 +1,107 @@
+/* Single state policy for V2/operator only. Legacy fallback retains its own CSS.
+   disabled/error > keyboard focus > focus/selection > hover > neutral.
+   The keyboard stroke sits inside the existing edge, without an additive halo. */
+html[data-support-surface]{--support-state-border:#7b8798;--support-control-hover:#c7ccd4;--support-control-selected:#edf2f9;--support-focus:#7b8798;--support-float-shadow:0 2px 6px #0001,0 10px 26px #0002;--support-input-border-focus:var(--support-state-border);--support-input-border-hover:var(--support-control-hover);--support-input-focus-ring:none;--input-border-focus:var(--support-state-border);--input-focus-ring:none}
+html[data-support-surface][data-support-theme=dark]{--support-state-border:#8994a5;--support-control-hover:#494950;--support-control-selected:#292b32;--support-focus:#8994a5;--support-float-shadow:0 2px 6px #0003,0 10px 26px #0004;--support-hover:#252529!important}
+html[data-support-surface] :is(#chatWindow,body) :is(button,summary,a,input,textarea,select){transition:border-color .15s ease;outline:none}
+html[data-support-surface] :is(#chatWindow,body) :is(input:not([type=checkbox]):not([type=radio]),textarea,select){border:1px solid var(--support-border);box-shadow:none}
+@media(hover:hover){
+ html[data-support-surface] :is(#chatWindow,body) :is(input,textarea,select):hover:not(:disabled):not(:focus):not([aria-invalid=true]){border-color:var(--support-control-hover)}
+ html[data-support-surface] :is(#chatWindow,body) :is(button,summary,a):hover:not(:disabled):not(:focus):not([aria-pressed=true]:not(.support-quick-theme)):not([aria-selected=true]):not([aria-current=page]):not(.active){background-color:var(--support-hover)}
+ html[data-support-surface] :is(#chatWindow,body) :is(.primary,.chat-send,.bplus-notification-primary):hover:not(:disabled):not(:focus){background:#0758dd}
+}
+html[data-support-surface] :is(#chatWindow,body) :is(input:not([type=checkbox]):not([type=radio]),textarea,select):focus{border-color:var(--support-state-border);box-shadow:none;outline:none;background:var(--support-input-bg-focus,var(--support-surface))}
+html[data-support-surface] :is(#chatWindow,body) :is(button,summary,a):focus{background-color:var(--support-control-focus-bg,var(--support-control-selected));box-shadow:none}
+html[data-support-surface] :is(#chatWindow,body) :is(.primary,.chat-send,.bplus-notification-primary):focus{background:#0866ff}
+html[data-support-surface] :is(#chatWindow,body) :is(button,summary,a):focus-visible{outline:2px solid var(--support-focus);outline-offset:-2px;box-shadow:none}
+html[data-support-surface] :is(#chatWindow,body) :is(.primary,.chat-send,.bplus-notification-primary):focus-visible{outline-color:#c6dcff}
+html[data-support-surface] :is(#chatWindow,body) :is(button,summary,a):not(.support-message-reply):active{transform:none}
+html[data-support-surface] :is(#chatWindow,body) :is(button,input,select,textarea):disabled{cursor:default;opacity:.5}
+html[data-support-surface] :is(#chatWindow,body) [aria-invalid=true]{border-color:var(--support-danger)!important;box-shadow:none}
+html[data-support-surface] :is(#chatWindow,body) input:is([type=checkbox],[type=radio]):focus-visible{outline:2px solid var(--support-focus);outline-offset:2px}
+html[data-support-surface] :is(#chatWindow,body) input:is([type=checkbox],[type=radio]){accent-color:#0866ff}
+html[data-support-surface] :is(#chatWindow,body) :is([aria-pressed=true],[aria-selected=true],.settings-tab-btn.active,.nav-item.active){background-color:var(--support-control-selected-bg,var(--support-control-selected))}
+html[data-support-surface=operator] #conversations button[aria-current=true]{background:var(--support-control-selected);box-shadow:inset -2px 0 #0866ff}
+html[data-support-surface=operator] #conversations button[aria-current=true]:focus-visible{outline:2px solid var(--support-focus);outline-offset:-2px;box-shadow:none}
+html[data-support-surface] :is(#chatWindow,body) :is(.v2-notification-popover,.v2-emoji-picker,.operator-emoji-picker,.v2-message-action-menu,dialog){border:1px solid var(--support-border);background:var(--support-surface);color:var(--support-text);box-shadow:var(--support-float-shadow)}
+html[data-support-surface] :is(#chatWindow,body) :is(.v2-emoji-picker,.operator-emoji-picker) button{transform:none;background:transparent;min-width:40px;min-height:44px}
+/* Utility component tokens feed the base button styles and shared state policy.
+   Keep primary, destructive, image-overlay removal and selected navigation surfaces. */
+html[data-support-surface] :is(#chatWindow,body) :is(.icon-button:not(.primary):not(.danger):not(.warning),.chat-header-actions>button,.v2-emoji-toggle,.support-attach-button,.support-image-close,.support-message-reply,.support-reply-draft>button,.support-macro-heading>button,.support-selection-toast>button,.conversation-context>summary,.drawer-close){--support-control-bg:transparent;--support-control-border:transparent;--support-control-focus-bg:transparent;border-radius:9px;box-shadow:none}
+html[data-support-surface] :is(.support-quick-theme,.v2-bell){--support-control-selected-bg:transparent}
+html[data-support-surface=customer-v2] .v2-bell[data-state=enabled]{color:#0866ff}
+@media(hover:hover){html[data-support-surface=customer-v2] :is(#chatWindow,body) .v2-bell:hover:not(:disabled):not(:focus-visible){background-color:var(--support-hover)}}
+html[data-support-surface] :is(#chatWindow,body) .support-message-reply{background:transparent;color:var(--support-muted)}
+/* Customer Send is a primary action, not a generic utility surface. Two stable
+   shell IDs beat the generic state selector without altering shared tokens. */
+html[data-support-surface=customer-v2] #chatWindow #inputArea .chat-send:not(:disabled){background:#0866ff;color:#fff;opacity:1}
+@media(hover:hover){html[data-support-surface=customer-v2] #chatWindow #inputArea .chat-send:hover:not(:disabled):not(:focus-visible):not(:active){background:#0758dd}}
+html[data-support-surface=customer-v2] #chatWindow #inputArea .chat-send:active:not(:disabled){background:#064bc0}
+/* Quotes inside blue customer bubbles keep their translucent surface in every
+   interaction state; general light/dark button surfaces are inappropriate here. */
+html[data-support-surface] .outgoing .support-reply-reference{--support-hover:rgba(255,255,255,.04);--support-control-focus-bg:rgba(255,255,255,.04);--support-control-selected-bg:rgba(255,255,255,.04);--support-focus:#c6dcff;transition:border-color .15s ease,background-color .12s ease}
+@media(prefers-reduced-motion:reduce){html[data-support-surface] .outgoing .support-reply-reference{transition:none}}
+
+.support-selection-toast{position:absolute;z-index:30;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--support-border,#303034);border-radius:12px;background:var(--support-surface,#19191c);color:var(--support-text,#f5f5f6);box-shadow:var(--support-float-shadow,0 4px 18px #0002);font:12px/1.8 Vazirmatn,Tahoma,sans-serif;direction:rtl;opacity:1;transition:opacity .18s ease!important;box-sizing:border-box}
+.support-selection-toast>span{min-width:0;flex:1;overflow-wrap:anywhere}.support-selection-toast>button{min-width:44px;min-height:44px;width:44px;flex:none;border:0;background:transparent;color:inherit;font:20px/1 sans-serif;border-radius:8px;padding:8px}
+.support-selection-toast.leaving{opacity:0}.support-selection-toast[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.support-selection-toast{transition:none!important}}
+.support-auto-label{font-size:11px;font-weight:400;line-height:1.7;color:var(--support-muted);margin:0;direction:rtl}
+html[data-support-surface=customer-v2] #chatWindow .v2-typing{box-sizing:border-box;width:66px;height:42px;min-width:66px;min-height:42px;flex:0 0 42px;justify-content:center;gap:6px;padding:0;margin:0 auto 12px 16px;align-self:auto;background:var(--bplus-bubble-in);border:1px solid var(--bplus-bubble-border);box-shadow:var(--bplus-bubble-shadow);border-radius:14px;border-bottom-left-radius:5px;color:var(--support-muted)}
+html[data-support-surface=customer-v2] #chatWindow .v2-typing i{flex:0 0 6px;width:6px;height:6px;animation:typing-dot 1.2s infinite}
+html[data-support-surface=customer-v2] #chatWindow .v2-typing i:nth-child(2){animation-delay:.15s}html[data-support-surface=customer-v2] #chatWindow .v2-typing i:nth-child(3){animation-delay:.3s}
+@media(prefers-reduced-motion:reduce){html[data-support-surface] :is(#chatWindow,body) *{transition:none}html[data-support-surface=customer-v2] #chatWindow .v2-typing i{animation:none}}
+@media(forced-colors:active){html[data-support-surface] :is(#chatWindow,body) :is(input,textarea,select,button,summary,a):focus-visible{outline:2px solid Highlight;outline-offset:-2px}}
+
+/* Critical controls never expose raw font ligature names. */
+.support-icon[data-svg-icon]{font-size:0!important}.support-icon[data-svg-icon]>svg{display:inline-block;width:22px;height:22px;vertical-align:middle;flex:none}.support-read-state[data-svg-icon]>svg{width:14px;height:14px}html:not(.support-icons-ready) .support-icon:not([data-svg-icon]):not(:has(img)){visibility:hidden}
+
+/* visibility:hidden alone still downloads icon fonts during CSS layout. */
+html:not(.support-icons-ready) .support-icon{font-family:Vazirmatn,Tahoma,sans-serif!important}
+
+:root{--support-css-interaction:1}
+
+html[data-support-surface] .bplus-notification-primary{background:#0866ff!important;color:#fff!important;border:1px solid #0866ff!important;min-height:40px;border-radius:9px}html[data-support-surface] .bplus-notification-primary:disabled{opacity:.65}.v2-meta .support-read-state{display:inline-block;width:18px;height:18px;flex:none}
+
+
+html[data-support-surface] .bplus-notification-primary:hover:not(:disabled){background:#0758dd!important}html[data-support-surface] .bplus-notification-primary:active:not(:disabled){background:#064bc0!important}
+
+.support-composer-input{box-sizing:border-box;line-height:1.7;overflow-x:hidden;overflow-y:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;scrollbar-width:thin;scrollbar-color:var(--support-muted,#8793a5) transparent}.support-composer-input::-webkit-scrollbar{width:3px}.support-composer-input::-webkit-scrollbar-track{background:transparent}.support-composer-input::-webkit-scrollbar-thumb{background:var(--support-border,#c5cbd5);border-radius:8px}.support-new-separator{flex:none;align-self:stretch;display:flex;align-items:center;gap:10px;color:var(--support-muted,#718096);font-size:11px;line-height:1.8;margin:4px 0}.support-new-separator:before,.support-new-separator:after{content:"";flex:1;border-top:1px solid var(--support-border,#dce2ea)}
+
+/* Viewport-owned latest action: its position is independent of scrollbars and composer height. */
+.support-transcript-viewport{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;min-width:0}
+.support-transcript-viewport>.support-latest-compact{position:absolute;bottom:14px;left:0;right:0;margin-inline:auto;transform:none;display:grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:1px solid var(--support-border);border-radius:50%;background:var(--support-surface);color:var(--support-text);box-shadow:var(--support-shadow-subtle,0 2px 8px #00000012);z-index:2;transition:background-color .12s ease}
+.support-transcript-viewport>.support-latest-compact:hover{background:var(--support-elevated)}
+.support-transcript-viewport>.support-latest-compact:focus-visible{outline:2px solid var(--support-focus);outline-offset:3px}
+.support-latest-compact .support-icon{font-size:20px;pointer-events:none}
+
+@media(prefers-reduced-motion:reduce){.support-transcript-viewport>.support-latest-compact{transition:none}}
+
+/* Message actions reuse the existing context/touch menu without moving Reply. */
+.support-edit-pencil{position:static;transform:none;width:36px;height:36px;border:0;border-radius:9px;background:transparent;color:var(--support-muted);opacity:0;pointer-events:auto;display:grid;place-items:center}.chat-msg:hover .support-edit-pencil,.chat-msg:focus-within .support-edit-pencil,.chat-msg.reply-active .support-edit-pencil{opacity:1}.support-edit-pencil:hover{background:var(--support-hover)}.support-edit-pencil:focus-visible{opacity:1;outline:2px solid var(--support-focus)}.support-composer-edit{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:2px;direction:ltr;min-height:44px;color:var(--support-text);font-size:12px}.support-edit-heading{grid-column:2;grid-row:1;display:flex;gap:6px;align-items:center;direction:rtl}.support-composer-edit button{grid-column:1;grid-row:1;margin:0;width:44px;height:44px;min-height:44px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--support-muted);font-size:22px}.support-composer-edit .support-edit-error{grid-column:2;direction:rtl}
+.support-edit-error{font-size:11px;overflow-wrap:anywhere}.support-edit-target .v2-bubble{outline:1px solid var(--support-focus);outline-offset:2px}.support-editing .support-reply-preview{display:none}
+.support-edited{font-size:10px;color:var(--support-muted);font-weight:400}
+
+.support-macro-row{display:flex;align-items:center;gap:6px;min-width:0}.support-macro-row>.support-macro-item{flex:1;min-width:0}.support-macro-add{min-height:40px;padding:6px 12px;border:0;border-radius:9px;background:transparent;color:var(--support-selected-text,#0758dd);font:inherit}.support-quick-editor{box-sizing:border-box;width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:16px;border:1px solid var(--support-border);border-radius:14px;background:var(--support-surface);color:var(--support-text)}.support-quick-editor input,.support-quick-editor textarea,.support-quick-editor select{max-width:100%;box-sizing:border-box}.support-quick-editor button{min-height:40px}.support-quick-editor h2{font-size:16px}.support-quick-editor label{display:block;margin-top:8px}.support-quick-editor small[role=status]{display:block}
+
+html[data-support-surface] :is(.support-message-editor,.support-quick-editor) .primary{--support-hover:#0758dd;--support-control-focus-bg:#0866ff;--support-control-selected-bg:#0866ff;--support-focus:#c6dcff}.chat-msg[aria-keyshortcuts]:focus-visible{outline:2px solid var(--support-focus);outline-offset:3px}
+
+/* Reserve action columns inside the measured row; no off-row absolute targets. */
+html[data-support-surface] :is(#chatWindow,body) .v2-bubble-wrap{display:grid;grid-template-columns:36px minmax(0,1fr);gap:4px;direction:ltr;max-width:100%;min-width:0;align-items:center}
+html[data-support-surface] :is(#chatWindow,body) .outgoing .v2-bubble{grid-column:2;grid-row:1;min-width:0}
+html[data-support-surface] :is(#chatWindow,body) .outgoing .has-edit{grid-template-columns:36px 36px minmax(0,1fr)}
+html[data-support-surface] :is(#chatWindow,body) .outgoing .has-edit .v2-bubble{grid-column:3}
+html[data-support-surface] :is(#chatWindow,body) .support-edit-pencil{grid-column:2;grid-row:1}
+html[data-support-surface] :is(#chatWindow,body) .v2-bubble-wrap>.support-message-reply{position:static;transform:none;margin:0;grid-column:1;grid-row:1;width:36px;height:36px;min-height:36px;padding:0;align-self:center}
+html[data-support-surface] :is(#chatWindow,body) .incoming .v2-bubble-wrap{grid-template-columns:minmax(0,1fr) 36px}
+html[data-support-surface] :is(#chatWindow,body) .incoming .v2-bubble{grid-column:1;grid-row:1;min-width:0}
+html[data-support-surface] :is(#chatWindow,body) .incoming .v2-bubble-wrap>.support-message-reply{grid-column:2;transform:scaleX(-1)}
+html[data-support-surface] .support-message-text{overflow-wrap:anywhere;min-width:0}
+html[data-support-surface=operator] #emptyConversation{color:var(--support-muted)}
+html[data-support-surface=operator] #emptyConversation h2{color:var(--support-text)}
+
+.needs-reply-dot{width:8px;height:8px;flex:none;border-radius:50%;background:#b76508;display:inline-block}
+
+/* Identical glyph, target and neutral/interaction treatment for message actions. */
+html[data-support-surface] :is(#chatWindow,body) .v2-bubble-wrap>:is(.support-edit-pencil,.support-message-reply){width:36px;height:36px;min-height:36px;padding:0;border:0;border-radius:9px;box-shadow:none;background:transparent;color:var(--support-muted);font-size:18px;line-height:1;display:grid;place-items:center}
+html[data-support-surface] :is(#chatWindow,body) .v2-bubble-wrap>:is(.support-edit-pencil,.support-message-reply) .support-icon{font-size:18px;width:18px;height:18px;line-height:18px}
