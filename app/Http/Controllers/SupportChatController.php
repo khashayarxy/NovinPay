@@ -41,6 +41,8 @@ class SupportChatController extends Controller
         abort_unless($request->isSecure() && preg_match('~\A[a-zA-Z0-9_./-]*\z~D', $path) && ! str_contains($path, '..') && ! str_starts_with($path, '/'), 404);
         $operatorPage = in_array($path, ['operator', 'operator/', 'operator/index.html'], true);
         if ($operatorPage && ! auth()->check()) {
+            $request->session()->put('support_return_after_login', true);
+
             return redirect()->route('admin.login');
         }
         if (str_starts_with($path, 'operator/') || $path === 'operator') {

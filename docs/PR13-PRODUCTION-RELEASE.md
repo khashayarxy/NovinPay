@@ -30,4 +30,12 @@ The old presentation-only pipeline is incompatible: it explicitly assumes14 migr
 
 ## Execution access
 
+### Migrator privilege STOP investigation (2026-11-07)
+
+The owner ran the inventory once; all seven integrity checks passed, then `migrator_schema_privileges` stopped before writes. Authenticated cPanel `Mysql/get_privileges_on_database` reports SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES and TRIGGER for the retained migrator on the live schema. No permission change is justified by this evidence. It does not prove the representation returned by MariaDB's SQL metadata view to that account.
+
+The original predicate matches TABLE_SCHEMA and quoted GRANTEE literally. Escaped underscores or another account representation are hypotheses, not confirmed causes. `scripts/release/pr13-privilege-diagnostic.php` reproduces that predicate and compares only the same target account/schema metadata, within a read-only transaction. Candidate normalization is diagnostic only; it never changes the release gate or grants readiness. Upload it privately with a new pinned manifest; preserve the failed preflight and earlier artifacts. Run the supplied diagnostic once, reconcile its sanitized output, then correct the validator only if justified. No backup, migration, grants or activation is part of this diagnostic.
+
+The expired operator-session action now has scoped inline primary-button styling, so it retains its box styling when protected CSS is unavailable. It links to the fixed `/support` entry. Native login records a boolean return intent and honors it only for authorized staff after mandatory password-change handling; user-provided return URLs are ignored.
+
 Authenticated cPanel file/quota API works. No authorized server-shell execution API is established. Computer Use was stopped by URL-verification policy; do not retry/bypass it or add a public execution backdoor. The next owner action is one integrity-verified private Terminal inventory command, supplied with the uploaded manifest. No backup, migration or activation is executed by that command. Reconcile its results before preparing the executable activation.

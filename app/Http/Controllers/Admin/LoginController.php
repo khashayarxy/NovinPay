@@ -88,6 +88,13 @@ class LoginController extends Controller
             return redirect()->route('admin.password.edit');
         }
 
+        // Fixed internal destination only; never accept a return URL from input.
+        if ($request->session()->pull('support_return_after_login') === true && Auth::user()->can('support.view')) {
+            $request->session()->forget('url.intended');
+
+            return redirect('/support');
+        }
+
         if ($account->isSuperAdmin()) {
             return redirect()->intended(AdminAccess::landingUrl(Auth::user()));
         }

@@ -87,6 +87,40 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/support-client/engine.js')->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
     }
 
+    public function test_session_expiry_shell_keeps_its_button_style_without_protected_stylesheets(): void
+    {
+        $this->actingAs(User::query()->sole())->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
+        $this->get('https://localhost/support')->assertOk()
+            ->assertSee('<style id="support-login-button-style">', false)
+            ->assertSee('id="support-login"', false)
+            ->assertSee('class="primary support-login-button" href="/support"', false)
+            ->assertSee('background:#0866ff;color:#fff', false)
+            ->assertSee('.support-login-button:focus-visible', false)
+            ->assertSee('.support-login-button:active', false);
+        $this->withSession(['support_authenticated_at' => time() - 8 * 3600 - 1]);
+        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertUnauthorized();
+        $this->get('https://localhost/support')->assertRedirect('/admin/support/confirm');
+    }
+
+    public function test_operator_login_returns_only_to_the_fixed_authorized_support_destination(): void
+    {
+        $owner = User::query()->sole();
+        $this->get('https://localhost/support')->assertRedirect('/admin/login')->assertSessionHas('support_return_after_login', true);
+        $this->post('https://localhost/admin/login', ['email' => $owner->email, 'password' => 'password', 'return_to' => 'https://invalid.example/'])->assertRedirect('/support');
+        $this->assertFalse(session()->has('support_return_after_login'));
+        $this->get('https://localhost/support')->assertOk();
+    }
+
+    public function test_support_return_does_not_bypass_staff_permissions_or_password_rotation(): void
+    {
+        $staff = User::factory()->staff(['products.view'])->create();
+        $this->withSession(['support_return_after_login' => true])->post('https://localhost/admin/login', ['email' => $staff->email, 'password' => 'password'])->assertRedirect(route('admin.products.index'));
+        $this->get('https://localhost/support')->assertForbidden();
+        $this->post('https://localhost/admin/logout')->assertRedirect('/admin/login');
+        $rotating = User::factory()->staff(['support.view'], mustChangePassword: true)->create();
+        $this->withSession(['support_return_after_login' => true])->post('https://localhost/admin/login', ['email' => $rotating->email, 'password' => 'password'])->assertRedirect(route('admin.password.edit'));
+    }
+
     public function test_public_chat_assets_do_not_depend_on_database_sessions(): void
     {
         $default = config('database.default');
