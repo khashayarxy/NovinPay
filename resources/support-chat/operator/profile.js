@@ -21,10 +21,10 @@ export function profileSettings({api,current,updated,reauthenticate,warn,pending
    const role=document.createElement('select');role.setAttribute('aria-label','نقش '+p.name);for(const [v,t] of [['support','پشتیبان'],['administrator','مدیر']])role.add(new Option(t,v));role.value=p.role;
    const active=field('حساب فعال','',{type:'checkbox'});active.input.checked=p.active;
    const publish=field('نمایش نام و تصویر برای مشتری','',{type:'checkbox'});publish.input.checked=p.public_profile.enabled;
-   role.disabled=true;active.input.disabled=true;card.append(name.wrap,role,active.wrap,publish.wrap,button('ذخیرهٔ حساب',async()=>{const r=await api('account_update',{id:p.id,name:name.input.value,role:role.value,active:active.input.checked?'1':'0',public:publish.input.checked?'1':'0'});if(r.reauthenticate)return reauthenticate();saved(card);await directory();await updated();}));
+   card.append(name.wrap,role,active.wrap,publish.wrap,button('ذخیرهٔ حساب',async()=>{const r=await api('account_update',{id:p.id,name:name.input.value,role:role.value,active:active.input.checked?'1':'0',public:publish.input.checked?'1':'0'});if(r.reauthenticate)return reauthenticate();saved(card);await directory();await updated();}));
    const picker=document.createElement('input');picker.type='file';picker.accept='image/jpeg,image/png,image/webp';picker.setAttribute('aria-label','تصویر '+p.name);picker.onchange=async()=>{if(!picker.files[0])return;picker.disabled=true;try{await upload(p.id,picker.files[0]);await directory();if(p.id===current().id)await load();}catch(e){report(e);}finally{picker.value='';picker.disabled=false;}};
    picker.hidden=true;card.append(button('تغییر تصویر',()=>picker.click()),picker,button('حذف تصویر',async()=>{await remove(p.id);await directory();if(p.id===current().id)await load();}));
-   if(p.id!==current().id){const manage=document.createElement('a');manage.href='/admin/staff';manage.textContent='مدیریت دسترسی و گذرواژه';card.append(manage);}
+   if(p.id!==current().id){const reset=field('رمز تازه؛ نشست‌های قبلی باطل می‌شوند','',{type:'password',max:72});reset.input.autocomplete='new-password';card.append(reset.wrap,button('بازنشانی رمز',async()=>{await api('account_password',{id:p.id,password:reset.input.value});reset.input.value='';saved(card);$('settingsFeedback').textContent='رمز تغییر کرد؛ اپراتور باید دوباره وارد شود.';}));}
    $('accounts').append(card);
   }
   $('accounts').setAttribute('aria-busy','false');
@@ -33,8 +33,6 @@ export function profileSettings({api,current,updated,reauthenticate,warn,pending
  $('chooseSelfAvatar').onclick=()=>$('selfAvatarFile').click();
  $('selfAvatarFile').onchange=async()=>{const picker=$('selfAvatarFile');if(!picker.files[0]||!profile)return;picker.disabled=true;try{showSelf((await upload(profile.id,picker.files[0])).profile);feedback('تصویر پروفایل تغییر کرد.');}catch(e){report(e);}finally{picker.value='';picker.disabled=false;}};
  $('removeSelfAvatar').onclick=async()=>{try{showSelf((await remove(profile.id)).profile);feedback('تصویر پروفایل حذف شد.');}catch(e){report(e);}};
- $('selfPassword').onsubmit=event=>{event.preventDefault();location.href='/admin/account/password';};
- $('changeSelfPassword').textContent='تغییر گذرواژه مدیریت';
- for(const id of ['currentSelfPassword','newSelfPassword']){const field=$(id);field.required=false;field.closest('label').hidden=true;}
+ $('selfPassword').onsubmit=async event=>{event.preventDefault();$('changeSelfPassword').disabled=true;try{await api('profile_password',{current_password:$('currentSelfPassword').value,password:$('newSelfPassword').value});$('currentSelfPassword').value=$('newSelfPassword').value='';await reauthenticate();}catch(e){report(e);}finally{$('changeSelfPassword').disabled=false;}};
  return {load,directory,clear(){directoryEpoch++;loadEpoch++;profile=null;$('selfName').value='';$('selfPublic').checked=false;$('selfAvatarFile').value='';$('accountPassword').value='';$('currentSelfPassword').value=$('newSelfPassword').value='';$('selfAvatar').replaceChildren();$('accounts').replaceChildren();}};
 }

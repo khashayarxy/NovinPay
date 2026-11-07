@@ -27,6 +27,6 @@
     <x-home.header />
     <main id="main-content" class="flex-1" tabindex="-1">@yield('content')</main>
     <x-home.footer />
-@if(config('support_chat.enabled'))<script src="/support-chat/support-widget.js" defer></script>@endif
+@if(config('support_chat.enabled'))<script src="{{ app(\App\Support\Chat\ChatAssets::class)->url('support-widget.js') }}" defer></script>@endif
 </body>
 </html>

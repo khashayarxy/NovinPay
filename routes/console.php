@@ -2,6 +2,7 @@
 
 use App\Models\PaymentAttempt;
 use App\Services\CustomerNotifications;
+use App\Services\IndependentSupportOperators;
 use App\Services\SmsIr;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
@@ -97,3 +98,21 @@ Artisan::command('support:cleanup {--apply : Apply eligible attachment cleanup} 
         $bridge->finish();
     }
 })->purpose('Private chat cleanup; dry-run by default, staging/testing only');
+
+Artisan::command('support:independent-enroll {username?}', function (IndependentSupportOperators $operators): int {
+    $password = $this->secret('New independent support password (12-72 bytes)');
+    $confirmation = $this->secret('Confirm independent support password');
+    if (! is_string($password) || ! is_string($confirmation) || ! hash_equals($password, $confirmation)) {
+        $this->error('Password confirmation failed; nothing changed.');
+
+        return 1;
+    }
+    try {
+        $operators->enroll($this->argument('username'), $password);
+    } finally {
+        unset($password, $confirmation);
+    }
+    $this->info('Independent support authentication enrolled; admin credentials unchanged.');
+
+    return 0;
+})->purpose('One-time independent support owner enrollment; passwords are entered privately');

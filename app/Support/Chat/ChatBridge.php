@@ -2,9 +2,6 @@
 
 namespace App\Support\Chat;
 
-use App\Models\AdminAccount;
-use App\Models\User;
-use App\Support\AdminAccess;
 use Dotenv\Dotenv;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -41,105 +38,11 @@ final class ChatBridge
         unset($GLOBALS['novinpay_chat_contexts']);
     }
 
-    public function operator(): AdminAccount
-    {
-        $user = Auth::guard('web')->user();
-        if (! $user) {
-            \support_failure(401, 'session_expired');
-        }
-        $grant = AdminAccess::account($user);
-        if (! $grant || $grant->must_change_password || request()->session()->get('admin_session_version') !== $grant->session_version || ! $user->can('support.view')) {
-            \support_failure(403, 'operator_permission_denied');
-        }
-        $session = request()->session();
-        $nonce = $session->get('support_authentication_nonce');
-        $authenticatedAt = $session->get('support_authenticated_at');
-        if (! is_string($nonce) || ! preg_match('/\A[a-f0-9]{32}\z/D', $nonce) || ! is_int($authenticatedAt) || time() - $authenticatedAt >= 8 * 3600) {
-            \support_failure(401, 'session_expired');
-        }
-        $window = $session->get('support_chat_window');
-        if (! is_array($window) || ($window['nonce'] ?? null) !== $nonce) {
-            $window = ['nonce' => $nonce, 'interactive_at' => time()];
-            $session->put('support_chat_window', $window);
-        }
-        if (time() - ($window['interactive_at'] ?? 0) > 1800) {
-            \support_failure(401, 'session_expired');
-        }
-
-        return $grant;
-    }
-
-    public function touchOperator(): void
-    {
-        $this->operator();
-        $window = request()->session()->get('support_chat_window');
-        $window['interactive_at'] = time();
-        request()->session()->put('support_chat_window', $window);
-    }
-
-    public function endOperator(): void
-    {
-        $window = request()->session()->get('support_chat_window', []);
-        $window['interactive_at'] = 0;
-        request()->session()->put('support_chat_window', $window);
-    }
-
-    public function syncOperators(): void
-    {
-        $accounts = [];
-        foreach (AdminAccount::query()->where('is_active', true)->get() as $grant) {
-            $user = User::query()->find($grant->user_id);
-            if (! $user || ! $user->can('support.view')) {
-                continue;
-            }
-            $id = substr(hash_hmac('sha256', 'chat-operator:'.$user->id, config('app.key')), 0, 32);
-            $accounts[$id] = ['name' => $user->name, 'username' => 'np_'.$user->id, 'role' => $user->can('support.manage') ? 'administrator' : 'support', 'epoch' => substr(hash_hmac('sha256', $user->password.':'.$grant->session_version.':'.json_encode($grant->permissions).':'.$grant->role, config('app.key')), 0, 32)];
-        }
-        \support_ops_store(function (array &$state) use ($accounts): void {
-            foreach ($state['accounts'] as $id => &$existing) {
-                if (! isset($accounts[$id])) {
-                    $existing['active'] = false;
-                }
-            }
-            unset($existing);
-            foreach ($accounts as $id => $data) {
-                if (! isset($state['accounts'][$id])) {
-                    $state['accounts'][$id] = ['id' => $id, 'name' => $data['name'], 'password' => password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT)];
-                } elseif ($state['accounts'][$id]['epoch'] !== $data['epoch']) {
-                    require_once resource_path('support-chat/support/operator-profile.php');
-                    \support_profile_invalidate($state, $state['accounts'][$id]);
-                }
-                unset($data['name']);
-                $state['accounts'][$id] = array_replace($state['accounts'][$id], $data, ['active' => true]);
-            }
-        }, true);
-    }
-
     public function session(string $role, array $base): array
     {
+        // Operator authority, credentials and sessions are independent of Laravel.
         if ($role === 'operator') {
-            $this->operator();
-            if (isset($this->contexts[$role])) {
-                return $this->contexts[$role];
-            }
-            $this->syncOperators();
-            $id = substr(hash_hmac('sha256', 'chat-operator:'.Auth::guard('web')->id(), config('app.key')), 0, 32);
-            $account = \support_ops_store(fn (array &$state) => $state['accounts'][$id] ?? null);
-            if (! $account || ! $account['active']) {
-                \support_failure(403, 'operator_permission_denied');
-            }
-            $version = \support_ops_version($account);
-            if (($base['operator_id'] ?? null) !== $id || ($base['credential_version'] ?? null) !== $version || ($base['authenticated'] ?? null) !== true) {
-                \support_change_operator(function () use (&$base, $id, $version): void {
-                    if (! session_regenerate_id(true)) {
-                        \support_failure(503, 'session_unavailable');
-                    }
-                    $_SESSION = array_replace($_SESSION, ['authenticated' => true, 'operator_id' => $id, 'credential_version' => $version, 'auth_epoch' => bin2hex(random_bytes(16))]);
-                    $base = $_SESSION;
-                });
-            }
-
-            return $this->contexts[$role] = $base;
+            return $base;
         }
         if (isset($this->contexts[$role])) {
             return $this->contexts[$role];
@@ -219,7 +122,7 @@ final class ChatBridge
                     $changed = ! is_file(CHAT_DATA_DIR.'/chat_conversations.json');
                 }, true);
                 \support_ops_store(static fn (array &$state) => null, true, true);
-                $this->syncOperators();
+
                 \support_satisfaction_store(static fn (array &$state) => null, true, true);
             } finally {
                 $this->finish();
