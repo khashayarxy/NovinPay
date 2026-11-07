@@ -100,7 +100,7 @@ Artisan::command('support:cleanup {--apply : Apply eligible attachment cleanup} 
 })->purpose('Private chat cleanup; dry-run by default, staging/testing only');
 
 Artisan::command('support:independent-enroll {username?}', function (IndependentSupportOperators $operators): int {
-    $password = $this->secret('New independent support password (12-72 bytes)');
+    $password = $this->secret('New independent support password (12-72 bytes; do not reuse the admin password)');
     $confirmation = $this->secret('Confirm independent support password');
     if (! is_string($password) || ! is_string($confirmation) || ! hash_equals($password, $confirmation)) {
         $this->error('Password confirmation failed; nothing changed.');
@@ -108,11 +108,12 @@ Artisan::command('support:independent-enroll {username?}', function (Independent
         return 1;
     }
     try {
-        $operators->enroll($this->argument('username'), $password);
+        $username = $operators->enroll($this->argument('username'), $password);
     } finally {
         unset($password, $confirmation);
     }
     $this->info('Independent support authentication enrolled; admin credentials unchanged.');
+    $this->line('Retained support login username: '.$username);
 
     return 0;
 })->purpose('One-time independent support owner enrollment; passwords are entered privately');

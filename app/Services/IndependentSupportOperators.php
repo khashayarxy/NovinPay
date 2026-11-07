@@ -8,7 +8,7 @@ use RuntimeException;
 final class IndependentSupportOperators
 {
     /** Explicit, interactive one-time enrollment; never imports administrator passwords. */
-    public function enroll(?string $username, string $password): void
+    public function enroll(?string $username, string $password): string
     {
         if (! app()->runningInConsole()) {
             throw new RuntimeException('Console enrollment required.');
@@ -19,7 +19,8 @@ final class IndependentSupportOperators
             require_once resource_path('support-chat/support/bootstrap.php');
             require_once resource_path('support-chat/support/operators.php');
             $candidate = \support_ops_account($username ?? 'support_owner', $username ?? 'support_owner', $password, 'administrator');
-            \support_ops_store(function (array &$state) use ($candidate, $username): void {
+
+            return \support_ops_store(function (array &$state) use ($candidate, $username): string {
                 if (($state['authentication'] ?? null) === 'independent-v1') {
                     throw new RuntimeException('Already enrolled; use support account management.');
                 }
@@ -69,6 +70,8 @@ final class IndependentSupportOperators
                 $state['subscriptions'] = [];
                 $state['authentication'] = 'independent-v1';
                 \support_ops_audit($state, $selected, 'independent_authentication_enrolled');
+
+                return $state['accounts'][$selected]['username'];
             }, true);
         } finally {
             $bridge->finish();
