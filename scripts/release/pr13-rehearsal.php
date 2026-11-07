@@ -126,8 +126,10 @@ try {
         'migrations' => 22, 'triggers' => 13, 'baselineTriggersPreserved' => true, 'originalRowsPreserved' => true, 'originalForeignKeysPreserved' => true,
         'tablesVerified' => count($before), 'triggerContracts' => $contracts, 'productionModified' => false, 'rollbackExecuted' => false], JSON_THROW_ON_ERROR).PHP_EOL;
 } catch (Throwable $error) {
-    echo json_encode(['result' => 'PR13_REHEARSAL_STOP', 'phase' => $phase, 'category' => $error instanceof PDOException ? 'database_details_withheld' : 'contract_or_runtime',
-        'check' => $error instanceof RuntimeException && preg_match('/\A[a-z0-9_]+\z/', $error->getMessage()) ? $error->getMessage() : 'details_withheld',
-        'productionModified' => false, 'retrySafe' => false]).PHP_EOL;
+    $report = NovinPay\Release\failureReport($error, $phase, $phase, false);
+    $report['result'] = 'PR13_REHEARSAL_STOP';
+    $report['productionModified'] = false;
+    $report['retrySafe'] = false;
+    echo json_encode($report, JSON_THROW_ON_ERROR).PHP_EOL;
     exit(1);
 }

@@ -174,8 +174,13 @@ try {
         }
         $phase = 'isolated_eight_migration_rehearsal';
         $rehearsal = $journal->phase('migration_rehearsal', static function () use ($argv, $root): array {
-            $r = NovinPay\Release\command([PHP_BINARY, __DIR__.'/pr13-rehearsal.php', $argv[1], $argv[2], $root], $root, 'isolated_migration_rehearsal', 600);
-            requireGate($r['exit'] === 0, 'isolated_migration_rehearsal', 'reviewed upgrade preserves original data', ['exit' => $r['exit'], 'failedCheck' => $r['failureCode']], 'Inspect isolated evidence; never migrate production on failure.');
+            $r = NovinPay\Release\command([PHP_BINARY, __DIR__.'/pr13-rehearsal-v2.php', $argv[1], $argv[2], $root], $root, 'isolated_migration_rehearsal', 600);
+            $child = json_decode(trim($r['stdout']), true);
+            $safeLabel = static fn ($value) => is_string($value) && preg_match('/\A[a-z0-9_]+\z/D', $value) ? $value : 'details_withheld';
+            requireGate($r['exit'] === 0, 'isolated_migration_rehearsal', 'reviewed upgrade preserves original data',
+                ['exit' => $r['exit'], 'failedCheck' => $safeLabel($child['check'] ?? null), 'childPhase' => $safeLabel($child['phase'] ?? null),
+                    'sqlState' => $child['actual']['sqlState'] ?? null, 'driverCode' => $child['actual']['driverCode'] ?? null],
+                'Inspect isolated evidence; never migrate production on failure.');
 
             return json_decode(trim($r['stdout']), true, flags: JSON_THROW_ON_ERROR);
         }, static fn ($r) => ($r['result'] ?? '') === 'PR13_ISOLATED_MIGRATION_REHEARSAL_PASS' && $r['originalRowsPreserved'] && $r['originalForeignKeysPreserved'] && $r['baselineTriggersPreserved']);
