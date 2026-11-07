@@ -22,14 +22,15 @@ ini_set('log_errors', '0');
 umask(0077);
 $lock = null;
 try {
-    need(PHP_SAPI === 'cli' && posix_geteuid() === 1321 && __DIR__ === KIT && count($argv) === 3, 'cancellation_scope');
+    need(PHP_SAPI === 'cli' && posix_geteuid() === 1321 && KIT.'/pr13-activation-72h-v1' === __DIR__ && count($argv) === 3, 'cancellation_scope');
+    $argv[1] = manifestPath($argv[1], TOOLS);
     $text = privateRead($argv[1]);
     need(hash_equals($argv[2], hash('sha256', $text)), 'cancellation_manifest_pin');
     $m = json_decode($text, true, flags: JSON_THROW_ON_ERROR);
-    need($m['mode'] === 'pr13-migration-activation-v1' && $m['stateDirectory'] === STATE
+    need($m['mode'] === 'pr13-migration-activation-v1' && $m['stateDirectory'] === STATE && $m['toolDirectory'] === TOOLS
         && $m['baseline'] === '1f39bb476fd31880600564e58599c4488622c4c0', 'cancellation_manifest_scope');
     foreach ($m['tools'] as $file => $sha) {
-        need(preg_match('/\A[a-z0-9-]+\.php\z/D', $file) && hash_equals($sha, hash('sha256', privateRead(KIT.'/'.$file))), 'cancellation_tool_identity');
+        need(preg_match('/\A[a-z0-9-]+\.php\z/D', $file) && hash_equals($sha, hash('sha256', privateRead(TOOLS.'/'.$file))), 'cancellation_tool_identity');
     }
     $lock = new Journal(STATE, $argv[2]);
     need(! file_exists(STATE.'/ddl.started.json') && ! file_exists(STATE.'/source.started.json')
@@ -49,7 +50,7 @@ try {
     }
     define('APP', APP);
     define('SOURCE_DB', 'novinpay_live1');
-    require KIT.'/production-environment.php';
+    require TOOLS.'/production-environment.php';
     \verifiedProductionEnvironment();
     $credentials = '/home/novinpay/novinpay-releases/155fc9f30feb5b9d0c41445b33f1118d5e07da8e/.stage2-credentials.json';
     need(hash_equals($m['credentialsSha256'], hash('sha256', privateRead($credentials))), 'cancellation_credentials');

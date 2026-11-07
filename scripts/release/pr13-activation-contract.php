@@ -13,6 +13,16 @@ function need(bool $ok, string $check): void
     }
 }
 
+/** Resolve before children change cwd; never follow an operator-supplied symlink. */
+function manifestPath(string $input, string $tools): string
+{
+    need(! is_link($input) && is_file($input), 'activation_manifest_path');
+    $path = realpath($input);
+    need(is_string($path) && realpath(dirname($path)) === realpath($tools) && str_ends_with($path, '.json'), 'activation_manifest_directory');
+
+    return $path;
+}
+
 /** No time-based inference: success requires observable absence of PHP writers. */
 function waitForDrain(callable $sample, callable $pause, callable $clock, float $deadline): array
 {

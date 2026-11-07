@@ -21,6 +21,7 @@ require_once __DIR__.'/pr13-schema-contract.php';
 const APP = '/home/novinpay/novinpay';
 const KIT = '/home/novinpay/novinpay-release-pipeline-v1';
 const STATE = KIT.'/pipeline-pr13-activation-r1';
+const TOOLS = __DIR__;
 
 function run(array $args, string $cwd = APP, int $seconds = 120): string
 {
@@ -148,19 +149,22 @@ register_shutdown_function(static function () use (&$finished, &$phase, &$armed)
 });
 try {
     need(PHP_SAPI === 'cli' && PHP_VERSION_ID >= 80401 && function_exists('posix_geteuid') && posix_geteuid() === 1321
-        && __DIR__ === KIT && count($argv) === 3, 'activation_scope');
+        && KIT.'/pr13-activation-72h-v1' === __DIR__ && count($argv) === 3, 'activation_scope');
     need(! (bool) ini_get('opcache.enable_cli') || ini_get('opcache.file_cache') === '', 'cli_persistent_opcode_cache_unsupported');
+    need(! is_link(TOOLS) && realpath(TOOLS) === TOOLS && fileowner(TOOLS) === 1321 && (fileperms(TOOLS) & 0777) === 0700, 'private_tool_directory');
+    $argv[1] = manifestPath($argv[1], TOOLS);
     $text = privateRead($argv[1]);
     need(hash_equals($argv[2], hash('sha256', $text)), 'manifest_pin');
     $m = json_decode($text, true, flags: JSON_THROW_ON_ERROR);
     $m['_sha256'] = $argv[2];
     need(ini_get('memory_limit') === '-1' || ini_set('memory_limit', '512M') !== false, 'bounded_recovery_memory');
     need($m['mode'] === 'pr13-migration-activation-v1' && $m['stateDirectory'] === STATE
+        && $m['toolDirectory'] === TOOLS
         && $m['baseline'] === '1f39bb476fd31880600564e58599c4488622c4c0' && $m['candidate'] === 'ded4e16302770f28f7bfe8e567e9a2de2314f99d'
         && $m['backup']['directory'] === '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1'
         && $m['backup']['restoreDatabase'] === 'novinpay_restore13r1', 'activation_manifest_scope');
     foreach ($m['tools'] as $file => $sha) {
-        need(preg_match('/\A[a-z0-9-]+\.php\z/D', $file) === 1 && hash_equals($sha, hash('sha256', privateRead(KIT.'/'.$file))), 'activation_tool_hash');
+        need(preg_match('/\A[a-z0-9-]+\.php\z/D', $file) === 1 && hash_equals($sha, hash('sha256', privateRead(TOOLS.'/'.$file))), 'activation_tool_hash');
     }
     foreach (['sourceArchive', 'vendorArchive', 'frontendArchive'] as $key) {
         need(preg_match('/\Apr13-[a-z0-9.-]+\.zip\z/D', $m[$key]['name']) === 1
@@ -181,7 +185,7 @@ try {
         need($r['manifest'] === $m['recoveryManifestSha256'], 'recovery_manifest_link');
     }
     $receipt = json_decode(privateRead(KIT.'/pipeline-pr13-r2/backup.complete.json'), true, flags: JSON_THROW_ON_ERROR)['result'];
-    require KIT.'/pr13-backup-v1.php';
+    require TOOLS.'/pr13-backup-v1.php';
     $key = base64_decode(trim(privateRead('/home/novinpay/.novinpay-maint10-key')), true);
     need(is_string($key) && strlen($key) === 32, 'existing_recovery_key');
     $plain = \NovinPay\Release\Backup\decryptBundle(file_get_contents($m['backup']['directory'].'/backup.npb'), $key);
@@ -214,7 +218,7 @@ try {
     }
     define('APP', APP);
     define('SOURCE_DB', 'novinpay_live1');
-    require KIT.'/production-environment.php';
+    require TOOLS.'/production-environment.php';
     $env = \verifiedProductionEnvironment();
     $credentials = '/home/novinpay/novinpay-releases/155fc9f30feb5b9d0c41445b33f1118d5e07da8e/.stage2-credentials.json';
     need(hash_equals($m['credentialsSha256'], hash('sha256', privateRead($credentials))), 'retained_credentials');
@@ -228,7 +232,7 @@ try {
         $db->exec('SET SESSION TRANSACTION READ ONLY');
         need(in_array($db->query('SELECT CURRENT_ROLE()')->fetchColumn(), [null, 'NONE'], true), 'unexpected_active_database_role');
     }
-    require_once KIT.'/pr13-preflight-v2.php';
+    require_once TOOLS.'/pr13-preflight-v2.php';
     $grants = $observer->prepare('SELECT GRANTEE,TABLE_SCHEMA,PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA IN (?,?)');
     $grants->execute(["'novinpay_mig1'@'localhost'", 'novinpay_live1', 'novinpay\\_live1']);
     need(\pr13MigratorSchemaPrivilegesPresent($grants->fetchAll(), 'novinpay_live1', 'novinpay_mig1@localhost'), 'current_migrator_privileges');
@@ -258,7 +262,7 @@ try {
     need(! file_exists(STATE) && ! is_link(STATE) && mkdir(STATE, 0700), 'existing_activation_preserve_no_retry');
     $journal = new Journal(STATE, $argv[2]);
     writeNew(STATE.'/activation.started.json', ['manifest' => $argv[2], 'parentPid' => getmypid(), 'startedUtc' => gmdate('c')]);
-    require KIT.'/pr13-recovery-v3.php'; // imports only the reviewed safe extractor
+    require TOOLS.'/pr13-recovery-v3.php'; // imports only the reviewed safe extractor
     $phase = 'stage_verified_artifacts';
     \pr13ExtractPrivate(KIT.'/'.$m['sourceArchive']['name'], KIT.'/pr13-activation-app');
     \pr13ExtractPrivate(KIT.'/'.$m['vendorArchive']['name'], KIT.'/pr13-activation-app/vendor');
@@ -333,7 +337,7 @@ try {
         putenv($key.'='.$value);
     }
     $phase = 'ddl';
-    $journal->phase('ddl', static fn () => json_decode(run([PHP_BINARY, KIT.'/pr13-live-database.php', $argv[1], $argv[2], 'migrate'], KIT, 600), true, flags: JSON_THROW_ON_ERROR),
+    $journal->phase('ddl', static fn () => json_decode(run([PHP_BINARY, TOOLS.'/pr13-live-database.php', $argv[1], $argv[2], 'migrate'], KIT, 600), true, flags: JSON_THROW_ON_ERROR),
         static fn ($r) => ($r['result'] ?? '') === 'PR13_LIVE_MIGRATION_PRESERVATION_PASS' && $r['originalRowsPreserved'] && $r['originalForeignKeysPreserved'] && $r['baselineTriggersPreserved']);
     foreach (array_keys($overrides) as $key) {
         putenv($key);
@@ -361,7 +365,7 @@ try {
         putenv($key.'='.$value);
     }
     $phase = 'candidate_readiness';
-    $ready = json_decode(run([PHP_BINARY, KIT.'/pr13-live-database.php', $argv[1], $argv[2], 'ready'], APP, 300), true, flags: JSON_THROW_ON_ERROR);
+    $ready = json_decode(run([PHP_BINARY, TOOLS.'/pr13-live-database.php', $argv[1], $argv[2], 'ready'], APP, 300), true, flags: JSON_THROW_ON_ERROR);
     need(($ready['result'] ?? '') === 'PR13_RUNTIME_READINESS_PASS', 'candidate_readiness_failed');
     foreach (['vendorFiles' => '/vendor/', 'frontendFiles' => '/public/build/'] as $key => $prefix) {
         foreach ($m[$key] as $file => $sha) {

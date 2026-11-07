@@ -10,6 +10,7 @@ use function NovinPay\Release\Pr13\cliFence;
 use function NovinPay\Release\Pr13\cronIsFenced;
 use function NovinPay\Release\Pr13\effectiveProcessUid;
 use function NovinPay\Release\Pr13\enabledChatEnvironment;
+use function NovinPay\Release\Pr13\manifestPath;
 use function NovinPay\Release\Pr13\opcodeProbeSource;
 use function NovinPay\Release\Pr13\phpProcesses;
 use function NovinPay\Release\Pr13\processStartTicks;
@@ -80,6 +81,45 @@ final class ProductionActivationTest extends TestCase
     {
         $this->expectExceptionMessage('drain_proc_unavailable');
         phpProcesses($this->scratch, 1321, 999);
+    }
+
+    public function test_manifest_stays_resolvable_when_child_working_directory_changes(): void
+    {
+        $file = $this->scratch.'/manifest.json';
+        file_put_contents($file, '{"synthetic":true}');
+        mkdir($this->scratch.'/child');
+        $cwd = getcwd();
+        try {
+            chdir($this->scratch);
+            $absolute = manifestPath('manifest.json', $this->scratch);
+            chdir($this->scratch.'/child');
+            $this->assertSame('{"synthetic":true}', file_get_contents($absolute));
+            $this->assertSame(realpath($file), $absolute);
+        } finally {
+            chdir($cwd);
+        }
+        $this->expectExceptionMessage('activation_manifest_directory');
+        manifestPath($file, $this->scratch.'/child');
+    }
+
+    public function test_versioned_bundle_imports_do_not_mix_old_root_release_libraries(): void
+    {
+        $root = dirname(__DIR__, 2).'/scripts/release/';
+        $bundle = $this->scratch.'/bundle';
+        mkdir($bundle);
+        $files = ['pr13-activate.php' => 'pr13-activate.php', 'pr13-live-database.php' => 'pr13-live-database.php',
+            'pr13-cancel-before-ddl.php' => 'pr13-cancel-before-ddl.php', 'pr13-activation-contract.php' => 'pr13-activation-contract.php',
+            'pr13-rehearsal-v2.php' => 'pr13-rehearsal.php', 'pr13-recovery-v3.php' => 'pr13-recovery.php',
+            'runtime.php' => 'runtime.php', 'lib.php' => 'lib.php', 'backup-policy.php' => 'backup-policy.php',
+            'pr13-schema-contract.php' => 'pr13-schema-contract.php', 'pr13-maintenance-snapshot.php' => 'pr13-maintenance-snapshot.php'];
+        foreach ($files as $to => $from) {
+            copy($root.$from, $bundle.'/'.$to);
+        }
+        file_put_contents($this->scratch.'/runtime.php', '<?php throw new RuntimeException("old_root_runtime_loaded");');
+        $loader = $bundle.'/loader.php';
+        file_put_contents($loader, '<?php require __DIR__."/pr13-activate.php"; require __DIR__."/pr13-live-database.php"; require __DIR__."/pr13-cancel-before-ddl.php"; require __DIR__."/pr13-recovery-v3.php"; echo NovinPay\\Release\\backupPolicy()["maxSnapshotAgeSeconds"];');
+        [$exit, $out, $err] = $this->execute($loader);
+        $this->assertSame([0, '259200', ''], [$exit, $out, $err]);
     }
 
     public function test_worker_start_identity_survives_spaces_and_parentheses_in_the_process_name(): void

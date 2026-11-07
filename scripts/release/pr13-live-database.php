@@ -30,7 +30,9 @@ try {
     $text = privateRead($argv[1]);
     need(hash_equals($argv[2], hash('sha256', $text)), 'manifest_pin');
     $m = json_decode($text, true, flags: JSON_THROW_ON_ERROR);
-    $journal = __DIR__.'/pipeline-pr13-activation-r1';
+    $kit = '/home/novinpay/novinpay-release-pipeline-v1';
+    need($kit.'/pr13-activation-72h-v1' === __DIR__, 'live_child_tool_directory');
+    $journal = $kit.'/pipeline-pr13-activation-r1';
     $permit = json_decode(privateRead($journal.'/child-permit.json'), true, flags: JSON_THROW_ON_ERROR);
     need($permit['parentPid'] === posix_getppid() && $permit['manifest'] === $argv[2]
         && hash_equals($permit['ticketSha256'], hash('sha256', getenv('NOVINPAY_PR13_TICKET') ?: '')),
@@ -39,7 +41,7 @@ try {
         && is_file('/home/novinpay/novinpay/storage/framework/down'), 'both_fences_required');
     $migration = $argv[3] === 'migrate';
     need($migration || $argv[3] === 'ready', 'live_child_action');
-    $root = $migration ? __DIR__.'/pr13-activation-app' : '/home/novinpay/novinpay';
+    $root = $migration ? $kit.'/pr13-activation-app' : '/home/novinpay/novinpay';
     need(realpath($root) === $root && ! is_link($root), 'live_child_root');
     if ($migration) {
         need(is_file($journal.'/ddl.started.json') && ! file_exists($journal.'/ddl.complete.json'), 'ddl_single_use');
