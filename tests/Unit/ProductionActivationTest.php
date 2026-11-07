@@ -10,6 +10,7 @@ use function NovinPay\Release\Pr13\cliFence;
 use function NovinPay\Release\Pr13\cronIsFenced;
 use function NovinPay\Release\Pr13\effectiveProcessUid;
 use function NovinPay\Release\Pr13\enabledChatEnvironment;
+use function NovinPay\Release\Pr13\opcodeProbeSource;
 use function NovinPay\Release\Pr13\phpProcesses;
 use function NovinPay\Release\Pr13\processStartTicks;
 use function NovinPay\Release\Pr13\recoveryAction;
@@ -157,6 +158,19 @@ final class ProductionActivationTest extends TestCase
         $this->assertSame('', $out);
         $this->assertStringContainsString('command not executed', $err);
         $this->assertStringNotContainsString('vendor/autoload', file_get_contents($file));
+    }
+
+    public function test_generated_web_probe_rejects_missing_authorization_and_cannot_claim_cli_as_web_php(): void
+    {
+        $file = $this->scratch.'/probe.php';
+        file_put_contents($file, opcodeProbeSource([], hash('sha256', 'synthetic-token')));
+        $status = 'register_shutdown_function(function(){fwrite(STDERR,(string)http_response_code());});';
+        [$exit, $out, $err] = $this->execute($file, $status);
+        $this->assertSame([0, '', '404'], [$exit, $out, $err]);
+        [$exit, $out, $err] = $this->execute($file, '$_SERVER["HTTP_X_NP_RELEASE"]="synthetic-token";'.$status);
+        $this->assertSame(0, $exit);
+        $this->assertSame('503', $err);
+        $this->assertSame('STOP', json_decode($out, true)['result']);
     }
 
     public function test_real_web_fence_returns_503_for_json_and_empty_head_without_loading_the_framework(): void

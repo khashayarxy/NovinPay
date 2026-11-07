@@ -129,6 +129,19 @@ exit;
 PHP;
 }
 
+function opcodeProbeSource(array $paths, string $tokenHash): string
+{
+    need(preg_match('/\A[a-f0-9]{64}\z/D', $tokenHash) === 1, 'probe_token_hash');
+
+    return '<?php ini_set("display_errors","0"); if (!hash_equals('.var_export($tokenHash, true).',hash("sha256",$_SERVER["HTTP_X_NP_RELEASE"]??""))) {http_response_code(404);exit;}'
+        .'header("Cache-Control: no-store");header("Content-Type: application/json");$ok=PHP_VERSION_ID>=80401&&PHP_SAPI==="litespeed"&&posix_geteuid()===1321;'
+        .'foreach(["flock","fsync","imagewebp","finfo_open"] as $fn){$ok=$ok&&function_exists($fn);}'
+        .'$s=@file_get_contents("/proc/self/stat");$e=is_string($s)?strrpos($s,") "):false;$f=$e===false?[]:preg_split("/\\s+/",trim(substr($s,$e+2)));$ok=$ok&&isset($f[19])&&ctype_digit($f[19]);'
+        .'if(ini_get("opcache.enable")){$ok=$ok&&ini_get("opcache.file_cache")===""&&function_exists("opcache_get_status")&&function_exists("opcache_invalidate")&&function_exists("opcache_is_script_cached");if($ok){$ok=is_array(opcache_get_status(false));}}'
+        .'foreach ('.var_export(array_values($paths), true).' as $p) {if($ok&&ini_get("opcache.enable")&&opcache_is_script_cached($p)&&!opcache_invalidate($p,true)){$ok=false;break;}}'
+        .'http_response_code($ok?200:503);echo json_encode(["result"=>$ok?"PR13_WEB_OPCODE_PASS":"STOP","pid"=>getmypid(),"startTicks"=>$f[19]??null]);';
+}
+
 function cliFence(): string
 {
     return "#!/usr/bin/env php\n<?php\nfwrite(STDERR, \"PR13_DEPLOYMENT_WRITE_FENCE: command not executed; preserve release journal.\\n\");\nexit(75);\n";

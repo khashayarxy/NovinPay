@@ -104,11 +104,7 @@ function webOpcodeCheck(array $paths): array
     $token = bin2hex(random_bytes(32));
     $name = '_np_pr13_cache_'.bin2hex(random_bytes(12)).'.php';
     $file = APP.'/public/'.$name;
-    $source = '<?php ini_set("display_errors","0"); if (!hash_equals('.var_export(hash('sha256', $token), true).',hash("sha256",$_SERVER["HTTP_X_NP_RELEASE"]??""))) {http_response_code(404);exit;}'
-        .'header("Cache-Control: no-store");header("Content-Type: application/json");$ok=PHP_VERSION_ID>=80401&&PHP_SAPI==="litespeed"&&posix_geteuid()===1321;'
-        .'$s=@file_get_contents("/proc/self/stat");$e=is_string($s)?strrpos($s,") "):false;$f=$e===false?[]:preg_split("/\\s+/",trim(substr($s,$e+2)));$ok=$ok&&isset($f[19])&&ctype_digit($f[19]);'
-        .'foreach ('.var_export(array_values($paths), true).' as $p) {if(ini_get("opcache.enable")){if(!function_exists("opcache_invalidate")||!function_exists("opcache_is_script_cached")){$ok=false;break;}if(opcache_is_script_cached($p)&&!opcache_invalidate($p,true)){$ok=false;break;}}}'
-        .'http_response_code($ok?200:503);echo json_encode(["result"=>$ok?"PR13_WEB_OPCODE_PASS":"STOP","pid"=>getmypid(),"startTicks"=>$f[19]??null]);';
+    $source = opcodeProbeSource($paths, hash('sha256', $token));
     $handle = fopen($file, 'xb');
     try {
         need(is_resource($handle) && chmod($file, 0600) && fwrite($handle, $source) === strlen($source) && fflush($handle) && fsync($handle), 'opcode_probe_create');
@@ -375,6 +371,12 @@ try {
     foreach (array_merge(array_keys($m['changedRuntimeFiles']), array_map(static fn ($p) => 'vendor/'.$p, array_keys($m['vendorFiles'])), ['bootstrap/cache/config.php', 'bootstrap/cache/routes-v7.php']) as $file) {
         if (str_ends_with($file, '.php') && is_file(APP.'/'.$file)) {
             $php[] = APP.'/'.$file;
+        }
+    }
+    foreach (['bootstrap/cache', 'storage/framework/views'] as $directory) {
+        foreach (glob(APP.'/'.$directory.'/*.php') as $file) {
+            need(! is_link($file) && fileowner($file) === 1321, 'compiled_cache_identity');
+            $php[] = $file;
         }
     }
     webOpcodeCheck(array_unique($php));

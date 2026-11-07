@@ -50,7 +50,7 @@ try {
         $cfg = (new ConfigurationUrlParser)->parseConfiguration($app['config']['database.connections.mariadb']);
         need($app->basePath() === $root && $cfg['database'] === 'novinpay_live1' && $cfg['host'] === 'localhost'
             && $cfg['username'] === ($migration ? 'novinpay_mig1' : 'novinpay_app1') && $cfg['strict'] === true
-            && $cfg['timezone'] === '+00:00' && $app['config']['app.env'] === 'production', 'before_provider_database_identity');
+            && $cfg['timezone'] === '+00:00' && $app['config']['app.env'] === 'production' && $app['config']['app.url'] === 'https://novinpaypos.com', 'before_provider_database_identity');
     });
     $app->make(Kernel::class)->bootstrap();
     $db = DB::connection()->getPdo();
