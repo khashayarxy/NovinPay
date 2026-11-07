@@ -326,6 +326,39 @@ final class ProductionActivationTest extends TestCase
         return [proc_close($p), $out, $err];
     }
 
+    public function test_direct_activation_reports_scope_failure_even_when_server_globals_are_disabled(): void
+    {
+        foreach (['GPC', 'GPCS'] as $order) {
+            // The real entry point fails its fixed host/tool scope before any I/O.
+            $file = dirname(__DIR__, 2).'/scripts/release/pr13-activate.php';
+            $p = proc_open([PHP_BINARY, '-d', 'auto_prepend_file=', '-d', 'variables_order='.$order, $file, 'unused-manifest', 'unused-pin'],
+                [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+            fclose($pipes[0]);
+            $out = stream_get_contents($pipes[1]);
+            $err = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $this->assertSame(1, proc_close($p));
+            $this->assertSame('', $err);
+            $report = json_decode(trim($out), true, flags: JSON_THROW_ON_ERROR);
+            $this->assertSame('PR13_ACTIVATION_STOP', $report['result']);
+            $this->assertSame('activation_scope', $report['check']);
+            $this->assertFalse($report['productionModified']);
+        }
+    }
+
+    public function test_silent_exit_observer_reports_invalid_scope_without_server_globals_or_application_access(): void
+    {
+        [$exit, $out, $err] = $this->execute(dirname(__DIR__, 2).'/scripts/release/pr13-silent-observe.php', 'unset($_SERVER);');
+        $this->assertSame(1, $exit);
+        $this->assertSame('', $err);
+        $report = json_decode(trim($out), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame('PR13_READONLY_SILENT_INSPECTION_STOP', $report['result']);
+        $this->assertSame('readonly_inspection_scope', $report['check']);
+        $this->assertSame([], $report['observations']);
+        $this->assertFalse($report['retryAuthorized']);
+    }
+
     public function test_real_cli_fence_exits_before_any_artisan_bootstrap(): void
     {
         $file = $this->scratch.'/artisan';

@@ -131,7 +131,9 @@ function webOpcodeCheck(array $paths): array
     return json_decode($response, true, flags: JSON_THROW_ON_ERROR);
 }
 
-if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') !== __FILE__) {
+// CLI keeps argv even when variables_order excludes S. Inclusion by another
+// helper must still return, but a direct invocation must not disappear silently.
+if (realpath(($_SERVER['SCRIPT_FILENAME'] ?? '') ?: ($argv[0] ?? '')) !== __FILE__) {
     return;
 }
 
@@ -424,8 +426,8 @@ try {
     need(trim(run(['git', 'rev-parse', 'HEAD'])) === $m['candidate'], 'final_commit');
     writeNew(STATE.'/activation.complete.json', ['manifest' => $argv[2], 'result' => 'PR13_RELEASE_PASS', 'candidate' => $m['candidate'], 'migrations' => 22, 'triggers' => 13,
         'maintenanceEnabled' => false, 'databaseRestored' => false, 'ownerAuthenticatedAcceptance' => 'pending', 'completedUtc' => gmdate('c')]);
-    $finished = true;
     echo json_encode(['result' => 'PR13_RELEASE_PASS', 'candidate' => $m['candidate'], 'migrations' => 22, 'triggers' => 13, 'maintenanceEnabled' => false, 'ownerAuthenticatedAcceptance' => 'pending'], JSON_THROW_ON_ERROR).PHP_EOL;
+    $finished = true;
 } catch (Throwable $error) {
     // After any DDL, never resume baseline or restore a historical database.
     // Re-arm both fences even if an error occurs after traffic admission.
@@ -458,8 +460,8 @@ try {
     if ($journal instanceof Journal && ! file_exists(STATE.'/activation.failed.json')) {
         writeNew(STATE.'/activation.failed.json', $report);
     }
-    $finished = true;
     echo json_encode($report, JSON_THROW_ON_ERROR).PHP_EOL;
+    $finished = true;
     exit($pendingAfterAdmission ? 75 : 1);
 } finally {
     $journal?->close();
