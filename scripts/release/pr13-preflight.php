@@ -17,6 +17,25 @@ function pr13MigrationDelta(array $actual, array $baseline, array $candidate): a
     return array_values(array_diff($candidate, $baseline));
 }
 
+function pr13MigratorSchemaPrivilegesPresent(array $rows, string $database, string $account): bool
+{
+    if ($database !== 'novinpay_live1' || $account !== 'novinpay_mig1@localhost') {
+        return false;
+    }
+    // MariaDB metadata retains escaped literal underscores in database grants.
+    // Match only these two exact spellings; never expand SQL grant patterns.
+    $scopes = [$database, str_replace('_', '\\_', $database)];
+    $privileges = [];
+    foreach ($rows as $row) {
+        if (($row['GRANTEE'] ?? null) === "'novinpay_mig1'@'localhost'"
+            && in_array($row['TABLE_SCHEMA'] ?? null, $scopes, true)) {
+            $privileges[] = $row['PRIVILEGE_TYPE'] ?? null;
+        }
+    }
+
+    return array_diff(['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'INDEX', 'TRIGGER'], $privileges) === [];
+}
+
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') !== __FILE__) {
     return;
 }
@@ -84,11 +103,10 @@ try {
     $role = $db->query('SELECT CURRENT_ROLE()')->fetchColumn();
     $need($role === null || $role === 'NONE', 'active_role');
     $check = 'migrator_schema_privileges';
-    [$accountUser, $accountHost] = explode('@', $db->query('SELECT CURRENT_USER()')->fetchColumn(), 2);
-    $grants = $db->prepare('SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA=? AND GRANTEE=?');
-    $grants->execute([SOURCE_DB, "'".$accountUser."'@'".$accountHost."'"]);
-    $privileges = $grants->fetchAll(PDO::FETCH_COLUMN);
-    $need(array_diff(['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'INDEX', 'TRIGGER'], $privileges) === [], $check);
+    $account = $db->query('SELECT CURRENT_USER()')->fetchColumn();
+    $grants = $db->prepare('SELECT GRANTEE,TABLE_SCHEMA,PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA IN (?,?)');
+    $grants->execute(["'novinpay_mig1'@'localhost'", SOURCE_DB, str_replace('_', '\\_', SOURCE_DB)]);
+    $need(pr13MigratorSchemaPrivilegesPresent($grants->fetchAll(), SOURCE_DB, $account), $check);
     $check = 'migration_history';
     $pending = pr13MigrationDelta($db->query('SELECT migration FROM migrations ORDER BY migration')->fetchAll(PDO::FETCH_COLUMN), $m['baselineMigrations'], $m['candidateMigrations']);
     $check = 'trigger_inventory';
