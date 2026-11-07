@@ -50,7 +50,7 @@ function phpProcesses(string $proc, int $uid, int $self): int
         if (effectiveProcessUid($status) !== $uid) {
             continue;
         }
-        $exe = @readlink($entry.'/exe');
+        $exe = is_link($entry.'/exe') ? @readlink($entry.'/exe') : false;
         if ($exe === false) {
             // Kernel threads/zombies have no executable; any other ambiguity fails closed.
             need(! is_dir($entry) || preg_match('/^State:\s+Z/m', $status) === 1, 'drain_executable_unreadable');
