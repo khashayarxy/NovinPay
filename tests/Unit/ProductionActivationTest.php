@@ -20,6 +20,7 @@ use function NovinPay\Release\Pr13\phpProcesses;
 use function NovinPay\Release\Pr13\processStartTicks;
 use function NovinPay\Release\Pr13\recoveryAction;
 use function NovinPay\Release\Pr13\replaceOwned;
+use function NovinPay\Release\Pr13\verifyCancelledAttempt;
 use function NovinPay\Release\Pr13\waitForDrain;
 use function NovinPay\Release\Pr13\webFence;
 
@@ -105,6 +106,49 @@ final class ProductionActivationTest extends TestCase
         }
         $this->expectExceptionMessage('activation_manifest_directory');
         manifestPath($file, $this->scratch.'/child');
+    }
+
+    public function test_new_generation_requires_pinned_cancellation_without_reusing_or_mutating_old_journal(): void
+    {
+        $receipt = json_encode(['result' => 'PR13_PRE_DDL_CANCELLATION_PASS', 'manifest' => 'old-manifest',
+            'baseline' => 'baseline', 'databaseWrites' => false, 'activationReplayAllowed' => false]);
+        $file = $this->scratch.'/cancellation.complete.json';
+        file_put_contents($file, $receipt);
+        chmod($file, 0600);
+        $hash = hash('sha256', $receipt);
+        verifyCancelledAttempt($this->scratch, $hash, 'old-manifest', 'baseline');
+        $this->assertSame($receipt, file_get_contents($file));
+        foreach (['ddl.started.json', 'source.started.json', 'admission.started.json', 'activation.complete.json'] as $marker) {
+            file_put_contents($this->scratch.'/'.$marker, '{}');
+            try {
+                verifyCancelledAttempt($this->scratch, $hash, 'old-manifest', 'baseline');
+                $this->fail('A previous activation boundary must block a new attempt.');
+            } catch (RuntimeException $error) {
+                $this->assertSame('previous_attempt_crossed_activation_boundary', $error->getMessage());
+            } finally {
+                unlink($this->scratch.'/'.$marker);
+            }
+            $this->assertSame($receipt, file_get_contents($file));
+        }
+        $this->expectExceptionMessage('previous_cancellation_pin');
+        verifyCancelledAttempt($this->scratch, str_repeat('0', 64), 'old-manifest', 'baseline');
+    }
+
+    public function test_a_changed_baseline_or_replay_allowed_receipt_cannot_authorize_a_new_attempt(): void
+    {
+        foreach ([['baseline' => 'wrong'], ['activationReplayAllowed' => true], ['databaseWrites' => true], ['manifest' => 'wrong']] as $change) {
+            $receipt = json_encode(array_replace(['result' => 'PR13_PRE_DDL_CANCELLATION_PASS', 'manifest' => 'old-manifest',
+                'baseline' => 'baseline', 'databaseWrites' => false, 'activationReplayAllowed' => false], $change));
+            $file = $this->scratch.'/cancellation.complete.json';
+            file_put_contents($file, $receipt);
+            chmod($file, 0600);
+            try {
+                verifyCancelledAttempt($this->scratch, hash('sha256', $receipt), 'old-manifest', 'baseline');
+                $this->fail('A cancellation for different inputs cannot authorize activation.');
+            } catch (RuntimeException $error) {
+                $this->assertSame('previous_cancellation_contract', $error->getMessage());
+            }
+        }
     }
 
     public function test_versioned_bundle_imports_do_not_mix_old_root_release_libraries(): void

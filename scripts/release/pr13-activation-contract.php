@@ -24,6 +24,21 @@ function manifestPath(string $input, string $tools): string
     return $path;
 }
 
+/** A new generation may follow cancellation, never replay or erase its journal. */
+function verifyCancelledAttempt(string $directory, string $receiptHash, string $manifestHash, string $baseline): void
+{
+    foreach (['ddl.started.json', 'source.started.json', 'admission.started.json', 'activation.complete.json'] as $marker) {
+        need(! file_exists($directory.'/'.$marker) && ! is_link($directory.'/'.$marker), 'previous_attempt_crossed_activation_boundary');
+    }
+    $text = \NovinPay\Release\privateRead($directory.'/cancellation.complete.json');
+    need(hash_equals($receiptHash, hash('sha256', $text)), 'previous_cancellation_pin');
+    $receipt = json_decode($text, true, flags: JSON_THROW_ON_ERROR);
+    need(($receipt['result'] ?? null) === 'PR13_PRE_DDL_CANCELLATION_PASS'
+        && ($receipt['manifest'] ?? null) === $manifestHash && ($receipt['baseline'] ?? null) === $baseline
+        && ($receipt['databaseWrites'] ?? null) === false && ($receipt['activationReplayAllowed'] ?? null) === false,
+        'previous_cancellation_contract');
+}
+
 /** No time-based inference: success requires observable absence of PHP writers. */
 function waitForDrain(callable $sample, callable $pause, callable $clock, float $deadline): array
 {

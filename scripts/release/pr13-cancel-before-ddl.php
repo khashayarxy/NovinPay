@@ -22,7 +22,7 @@ ini_set('log_errors', '0');
 umask(0077);
 $lock = null;
 try {
-    need(PHP_SAPI === 'cli' && posix_geteuid() === 1321 && KIT.'/pr13-activation-72h-v1' === __DIR__ && count($argv) === 3, 'cancellation_scope');
+    need(PHP_SAPI === 'cli' && posix_geteuid() === 1321 && KIT.'/pr13-activation-72h-v2' === __DIR__ && count($argv) === 3, 'cancellation_scope');
     $argv[1] = manifestPath($argv[1], TOOLS);
     $text = privateRead($argv[1]);
     need(hash_equals($argv[2], hash('sha256', $text)), 'cancellation_manifest_pin');
