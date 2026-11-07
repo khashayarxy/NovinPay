@@ -1,0 +1,19 @@
+@if(in_array($stage,['received','waiting_inspection','inspecting','inspected','waiting_approval','approved']))
+@can('operate', [$case, 'diagnose'])
+<details class="repair-action-detail" @if(in_array($stage,['received','waiting_inspection','inspecting','inspected'])) open @endif><summary>عیب‌یابی و برآورد</summary>
+<x-repair-operation :case="$case" action="diagnose" title="ثبت عیب‌یابی و قیمت">
+<x-operation-field name="diagnosis" label="مشکل تشخیص‌داده‌شده" kind="textarea"/>
+<x-operation-field name="customer_summary" label="تعمیر پیشنهادی برای مشتری" kind="textarea"/>
+<x-operation-field name="service_cost" label="دستمزد تعمیر (تومان)" type="number"/>
+<x-operation-field name="parts_cost" label="قطعات (تومان)" type="number" value="0"/>
+<x-operation-field name="diagnosis_fee" label="هزینهٔ عیب‌یابی در صورت انصراف (تومان)" type="number" value="0"/>
+<p class="admin-hint">تغییر برآورد به تأیید تازهٔ مشتری نیاز دارد. هزینهٔ عیب‌یابی جدا از تعمیر موفق دریافت نمی‌شود.</p>
+<button class="btn btn-primary">ثبت و انتظار پاسخ مشتری</button>
+</x-repair-operation></details>
+@endcan
+@endif
+@if($stage === 'waiting_approval' && $estimates->first())
+@can('operate', [$case, 'contact'])<details class="repair-action-detail"><summary>مشتری پاسخ نداد</summary>
+<x-repair-operation :case="$case" action="contact" title="ثبت تلاش تماس"><input type="hidden" name="estimate_id" value="{{ $estimates->first()->id }}"><x-operation-field name="note" label="توضیح تماس" kind="textarea" :maxlength="1000"/><p class="admin-hint">پرونده در انتظار پاسخ می‌ماند؛ تعمیر هنوز مجاز نیست.</p><button class="btn btn-secondary">ثبت تماس بی‌پاسخ</button></x-repair-operation>
+</details>@endcan
+@endif

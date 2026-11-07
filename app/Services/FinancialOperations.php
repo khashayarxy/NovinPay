@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\AdminAction;
-use App\Enums\RepairStage;
 use App\Models\AdminAccount;
 use App\Models\Customer;
 use App\Models\FinancialDocument;
@@ -56,6 +55,7 @@ final class FinancialOperations
                     $original = null;
                 } else {
                     $original = $action === 'reverse' ? FinancialEntry::query()->where('public_id', $data['entry'])->lockForUpdate()->firstOrFail() : null;
+                    abort_if($original?->payment_transaction_id, 409, 'پرداخت تأییدشده را با حذف دریافت اصلاح نکنید؛ طلب و بازپرداخت باید با حفظ مرجع پرداخت ثبت شود.');
                     $query = FinancialDocument::query()->lockForUpdate();
                     $document = $original?->financial_document_id ? $query->findOrFail($original->financial_document_id) : (! empty($data['document']) ? $query->where('public_id', $data['document'])->firstOrFail() : null);
                     if ($document) {
@@ -129,13 +129,12 @@ final class FinancialOperations
         $sourceColumn = $data['source_type'] === 'order' ? 'sales_order_id' : 'repair_case_id';
         abort_if(FinancialDocument::query()->where($sourceColumn, $source->id)->exists(), 409, 'برای این منبع قبلاً سند صادر شده است.');
         if ($source instanceof SalesOrder) {
-            abort_unless($source->status === 'fulfilled' && $source->currency === 'TOMAN', 409, 'فقط سفارش تحویل‌شده مبنای صدور این سند است.');
+            abort_unless(($source->status === 'fulfilled' || ($source->status === 'confirmed' && $source->customer_account_id)) && $source->currency === 'TOMAN', 409, 'سفارش اینترنتی باید تأیید و رزرو شده باشد؛ سفارش داخلی باید تحویل شده باشد.');
             $amount = FinanceMoney::minor($source->total);
         } else {
-            abort_unless(in_array($source->status, [RepairStage::Repaired, RepairStage::Ready, RepairStage::Delivered], true), 409, 'تعمیر باید تکمیل شده باشد.');
-            $estimate = $source->estimates()->with('decision')->latest('revision')->first();
-            abort_unless($estimate && $estimate->decisionStatus() === 'approved' && (int) $estimate->repair_inspection_id === (int) $source->inspections()->max('id'), 409, 'آخرین برآورد تأییدشده و بررسی سازگار لازم است.');
-            $amount = $estimate->total() * 100;
+            $billable = $source->billableToman();
+            abort_unless($billable !== null, 409, 'ابتدا تعمیر تأییدشده را تکمیل یا انصراف واقعی مشتری را ثبت کنید.');
+            $amount = $billable * 100;
         }
         abort_unless($amount > 0 && $amount <= 999999999999999, 422, 'سند مطالبه به مبلغ مثبت و معتبر نیاز دارد.');
         $document = new FinancialDocument;

@@ -21,9 +21,12 @@ class RepairCasePolicy
 
     public function operate(User $user, RepairCase $repairCase, string $operation): bool
     {
+        if ($operation === 'diagnose') {
+            return $this->operate($user, $repairCase, 'inspect') && $this->operate($user, $repairCase, 'estimate');
+        }
         $permission = match ($operation) {
             'assign' => AdminPermission::RepairsAssign, 'inspect' => AdminPermission::RepairsInspect,
-            'estimate' => AdminPermission::RepairsEstimate, 'decision' => AdminPermission::RepairsApprove,
+            'estimate' => AdminPermission::RepairsEstimate, 'decision', 'contact' => AdminPermission::RepairsApprove,
             'work', 'start' => AdminPermission::RepairsWork, 'manage' => AdminPermission::RepairsManage,
             'delivery' => AdminPermission::RepairsDeliver, 'print' => AdminPermission::RepairsPrint,
             default => null,

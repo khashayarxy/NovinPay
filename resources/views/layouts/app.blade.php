@@ -15,7 +15,7 @@
         <title>{{ config('app.name') }} | فروش و تعمیر دستگاه کارتخوان</title>
     @endif
     <meta name="description" content="@yield('meta_description', 'فروش و تعمیر دستگاه‌های کارتخوان (POS) در شهریار')">
-    @if (request()->routeIs('repair*', 'consultation*', 'terms', 'privacy'))
+    @if (request()->routeIs('repair*', 'consultation*', 'terms', 'privacy', 'account.*', 'payments.*', 'delivery.*', 'cart.*'))
         <meta name="robots" content="noindex, nofollow">
     @endif
     @endisset
@@ -27,5 +27,6 @@
     <x-home.header />
     <main id="main-content" class="flex-1" tabindex="-1">@yield('content')</main>
     <x-home.footer />
+@if(config('support_chat.enabled'))<script src="/support-chat/support-widget.js" defer></script>@endif
 </body>
 </html>

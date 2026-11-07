@@ -6,7 +6,8 @@ use App\Support\SiteMaintenanceState;
 require_once dirname(__DIR__, 2).'/app/Support/SiteMaintenanceState.php';
 
 $siteRoot = dirname(__DIR__, 2);
-if (SiteMaintenanceState::adminCorridor($_SERVER['REQUEST_URI'] ?? '/')) {
+if (SiteMaintenanceState::adminCorridor($_SERVER['REQUEST_URI'] ?? '/')
+    || (SiteMaintenanceState::paymentCallback($_SERVER['REQUEST_URI'] ?? '/', $_SERVER['REQUEST_METHOD'] ?? 'GET') && is_readable($siteRoot.'/vendor/autoload.php') && is_readable($siteRoot.'/bootstrap/app.php'))) {
     return null;
 }
 $siteState = new SiteMaintenanceState($siteRoot.'/storage/framework/site-maintenance');

@@ -4,6 +4,7 @@ require dirname(__DIR__).'/Concurrency/bootstrap.php';
 
 use App\Models\FinancialDocument;
 use App\Models\FinancialEntry;
+use App\Models\PaymentTransaction;
 use App\Models\SalesOrder;
 use App\Models\User;
 use App\Services\FinancialOperations;
@@ -87,6 +88,16 @@ $order = financeOrder();
 $data = ['source_type' => 'order', 'source' => $order->public_id, 'source_version' => 1];
 $reports[] = financeRace('duplicate-document', financeCommand($one, 'issue', $data), financeCommand($two, 'issue', $data), [200, 409]);
 auditCheck(FinancialDocument::where('sales_order_id', $order->id)->count() === 1, 'one issued source document');
+$document = financeDocument();
+$data = ['document' => $document->public_id, 'amount_minor' => 8000];
+$reports[] = financeRace('shop-payment-overlap', financeCommand($one, 'payment.in_store', $data), financeCommand($two, 'payment.in_store', $data), [200, 200]);
+auditCheck($document->fresh()->paid_minor === 10000, 'overlapping actual payments allocate only the receivable');
+auditCheck((int) DB::table('payment_credit_events')->where('financial_document_id', $document->id)->sum('amount_delta') === 6000, 'excess actual money preserved as credit liability');
+auditCheck(PaymentTransaction::where('financial_document_id', $document->id)->count() === 2, 'both real receipts retained');
+$document = financeDocument();
+$command = financeCommand($one, 'payment.in_store', ['document' => $document->public_id, 'amount_minor' => 1000]);
+$reports[] = financeRace('shop-payment-idempotency', $command, $command, [200, 200]);
+auditCheck($document->fresh()->paid_minor === 1000 && PaymentTransaction::where('financial_document_id', $document->id)->count() === 1, 'same payment operation records exactly once');
 foreach (FinancialDocument::cursor() as $document) {
     app(FinancialOperations::class)->reconcile($document);
 }

@@ -22,7 +22,7 @@ class RepairCase extends Model
 
     protected function casts(): array
     {
-        return ['customer_name' => 'encrypted', 'contact_phone' => 'encrypted', 'device_model' => 'encrypted', 'device_serial' => 'encrypted', 'issue' => 'encrypted', 'physical_condition' => 'encrypted', 'accessories' => 'encrypted', 'device_brand' => RepairBrand::class, 'status' => RepairStage::class, 'received_at' => 'datetime', 'version' => 'integer', 'assigned_to' => 'integer'];
+        return ['simple_workflow' => 'boolean', 'repair_price_toman' => 'integer', 'repair_notes' => 'encrypted', 'customer_name' => 'encrypted', 'contact_phone' => 'encrypted', 'device_model' => 'encrypted', 'device_serial' => 'encrypted', 'issue' => 'encrypted', 'physical_condition' => 'encrypted', 'accessories' => 'encrypted', 'device_brand' => RepairBrand::class, 'status' => RepairStage::class, 'received_at' => 'datetime', 'version' => 'integer', 'assigned_to' => 'integer'];
     }
 
     public function getRouteKeyName(): string
@@ -78,5 +78,33 @@ class RepairCase extends Model
     public function latestInspection(): HasOne
     {
         return $this->hasOne(RepairInspection::class)->latestOfMany();
+    }
+
+    public function contactAttempts(): HasMany
+    {
+        return $this->hasMany(RepairContactAttempt::class);
+    }
+
+    /** A quote is never a charge until the work/outcome is established. */
+    public function billableToman(): ?int
+    {
+        if ($this->simple_workflow) {
+            return $this->repair_price_toman !== null && in_array($this->status, [RepairStage::Ready, RepairStage::Delivered, RepairStage::ReturnPending, RepairStage::Returned], true)
+                ? $this->repair_price_toman + (int) $this->inbound_shipping_cost : null;
+        }
+        $estimate = $this->estimates()->with('decision')->latest('revision')->first();
+        if (! $estimate || (int) $estimate->repair_inspection_id !== (int) $this->inspections()->max('id')) {
+            return ! $estimate && in_array($this->status, [RepairStage::ReturnPending, RepairStage::Returned], true) ? (int) $this->inbound_shipping_cost : null;
+        }
+        if (in_array($this->status, [RepairStage::Repaired, RepairStage::Ready, RepairStage::Delivered], true)
+            && $estimate->decisionStatus() === 'approved'
+            && $this->workEntries()->where('repair_estimate_id', $estimate->id)->where('is_completion', true)->exists()) {
+            return $estimate->total() + (int) $this->inbound_shipping_cost;
+        }
+        if (in_array($this->status, [RepairStage::ReturnPending, RepairStage::Returned], true) && $estimate->decisionStatus() === 'rejected') {
+            return (int) $estimate->diagnosis_fee + (int) $this->inbound_shipping_cost;
+        }
+
+        return null;
     }
 }

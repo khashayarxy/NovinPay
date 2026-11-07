@@ -30,6 +30,7 @@ enum AdminAction: string
     case RepairInspection = 'repair.inspection';
     case RepairEstimate = 'repair.estimate';
     case RepairDecision = 'repair.estimate_decision';
+    case RepairContact = 'repair.contact_attempt';
     case RepairWork = 'repair.work';
     case RepairDelivery = 'repair.delivery';
     case RepairDocument = 'repair.document_viewed';
@@ -50,6 +51,7 @@ enum AdminAction: string
     case OrderChanged = 'order.changed';
     case OrderCustomerViewed = 'order.customer_viewed';
     case FinancePosted = 'finance.posted';
+    case FinanceEvidenceViewed = 'finance.evidence_viewed';
 
     public function label(): string
     {
@@ -77,6 +79,7 @@ enum AdminAction: string
             self::RepairIntake => 'پذیرش فیزیکی دستگاه', self::RepairAssigned => 'تغییر تخصیص تکنسین',
             self::RepairTransition => 'تغییر مرحلهٔ عملیاتی تعمیر', self::RepairInspection => 'ثبت بررسی فنی',
             self::RepairEstimate => 'صدور نسخهٔ برآورد', self::RepairDecision => 'ثبت تصمیم مشتری توسط کارمند',
+            self::RepairContact => 'ثبت تلاش تماس با مشتری تعمیر',
             self::RepairWork => 'ثبت کار تعمیر', self::RepairDelivery => 'ثبت تحویل دستگاه',
             self::RepairDocument => 'مشاهدهٔ سند قابل چاپ تعمیر',
             self::CustomerCreated => 'ایجاد پروفایل مشتری', self::CustomerUpdated => 'ویرایش یا بایگانی پروفایل مشتری',
@@ -91,6 +94,7 @@ enum AdminAction: string
             self::OrderChanged => 'عملیات داخلی سفارش',
             self::OrderCustomerViewed => 'مشاهدهٔ اطلاعات خصوصی مشتری سفارش',
             self::FinancePosted => 'ثبت مستند عملیات مالی',
+            self::FinanceEvidenceViewed => 'مشاهدهٔ مدرک خصوصی پرداخت',
         };
     }
 }

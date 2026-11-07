@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Support\RepairIdentity;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,7 +25,7 @@ class RepairServiceProvider extends ServiceProvider
         });
         RateLimiter::for('repair-submit', function (Request $request) use ($response): array {
             $limits = [Limit::perHour(10)->by('submit-ip:'.RepairIdentity::digest('ip', $request->ip() ?? ''))->response($response)];
-            $phone = RepairIdentity::phone($request->input('contact_phone'));
+            $phone = Auth::guard('customer')->user()?->phone ?? '';
             if (preg_match('/\A09[0-9]{9}\z/', $phone)) {
                 $limits[] = Limit::perHour(3)->by('submit-phone:'.RepairIdentity::digest('phone', $phone))->response($response);
             }

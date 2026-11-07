@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\RepairRequestStatus;
+use App\Models\CustomerAccount;
 use App\Models\RepairRequest;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -19,6 +21,12 @@ class RepairRequestTest extends TestCase
     {
         parent::setUp();
         Cache::flush();
+        $account = new CustomerAccount;
+        foreach (['public_id' => (string) Str::uuid(), 'phone' => '09123456789', 'phone_digest' => RepairIdentity::digest('customer-account-phone', '09123456789'), 'verified_at' => now()] as $key => $value) {
+            $account->$key = $value;
+        }
+        $account->save();
+        $this->actingAs($account->fresh(), 'customer')->withSession(['customer_session_version' => 1]);
     }
 
     private function payload(array $overrides = []): array
@@ -47,7 +55,7 @@ class RepairRequestTest extends TestCase
         $data = $this->payload(['contact_phone' => '+98 ۹۱۲-۳۴۵۶۷۸۹', 'status' => 'received', 'id' => 999, 'tracking_reference' => 'forged']);
         $this->post('/repair', $data)->assertRedirect(route('repair.confirmation'));
         $repair = RepairRequest::query()->sole();
-        $this->assertMatchesRegularExpression('/\ANP-[A-F0-9]{32}\z/', $repair->tracking_reference);
+        $this->assertMatchesRegularExpression('/\A[0-9]{8}\z/', $repair->tracking_reference);
         $this->assertSame(RepairRequestStatus::OnlineSubmitted, $repair->status);
         $this->assertSame('09123456789', $repair->contact_phone);
         $this->assertSame($data['customer_name'], $repair->customer_name);
@@ -72,9 +80,6 @@ class RepairRequestTest extends TestCase
             'missing name' => ['customer_name', ''],
             'name array' => ['customer_name', ['unsafe']],
             'long name' => ['customer_name', str_repeat('a', 101)],
-            'invalid phone' => ['contact_phone', '12345678901'],
-            'phone array' => ['contact_phone', ['09123456789']],
-            'long phone' => ['contact_phone', str_repeat('0', 150)],
             'unapproved brand' => ['device_brand', 'Ingenico'],
             'brand array' => ['device_brand', ['PAX']],
             'missing model' => ['device_model', ''],
@@ -115,6 +120,7 @@ class RepairRequestTest extends TestCase
         $this->assertDatabaseCount('repair_requests', 1);
         $this->assertSame($original->customer_name, $original->fresh()->customer_name);
         $this->assertNull(session('repair_submission_token'));
+        $this->travel(61)->minutes(); // A changed client phone must not bypass the verified-phone limit.
         $freshForm = $this->payload(['contact_phone' => '09999999999']);
         $this->assertNotSame($data['submission_token'], $freshForm['submission_token']);
         $this->post('/repair', $freshForm)->assertRedirect(route('repair.confirmation'));
@@ -145,6 +151,13 @@ class RepairRequestTest extends TestCase
     public function test_malformed_submissions_are_also_limited_by_ip(): void
     {
         for ($attempt = 0; $attempt < 10; $attempt++) {
+            $phone = sprintf('09123%06d', $attempt);
+            $account = new CustomerAccount;
+            foreach (['public_id' => (string) Str::uuid(), 'phone' => $phone, 'phone_digest' => RepairIdentity::digest('customer-account-phone', $phone), 'verified_at' => now()] as $key => $value) {
+                $account->$key = $value;
+            }
+            $account->save();
+            $this->actingAs($account->fresh(), 'customer')->withSession(['customer_session_version' => 1]);
             $this->post('/repair', [])->assertSessionHasErrors();
         }
         $this->post('/repair', [])->assertStatus(429)->assertHeader('Retry-After');

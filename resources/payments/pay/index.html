@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preload" href="assets/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="assets/pay.css?v=5">
+    <title>انتقال به درگاه پرداخت | نوین‌پی</title>
+</head>
+<body class="t-indigo">
+    <div class="container" id="go">
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path pathLength="20" d="M7 11V8a5 5 0 0 1 10 0v3"/><path pathLength="20" d="M6 11h12v9H6z"/></svg>
+            </div>
+        </div>
+        <h2>در حال انتقال به درگاه پرداخت</h2>
+        <p class="lead">لطفاً چند لحظه صبر کنید.</p>
+        <div class="bar" aria-hidden="true"></div>
+        <p class="hint">اتصال شما با درگاه پرداخت، امن و رمزگذاری‌شده است.</p>
+        <div class="info-box go late" id="fallback" hidden>
+            <p><span class="ph">اگر به‌صورت خودکار</span> <span class="ph">منتقل نشدید،</span> <span class="ph">این دکمه را بزنید.</span></p>
+            <a class="btn" id="fallbackLink" href="#">انتقال به درگاه پرداخت</a>
+        </div>
+    </div>
+
+    <div class="container t-rose" id="bad" hidden>
+        <div class="icon-wrap">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path pathLength="20" d="M6 6l12 12"/><path pathLength="20" d="M18 6L6 18"/></svg>
+            </div>
+        </div>
+        <h2>لینک پرداخت نامعتبر است</h2>
+        <p class="lead">امکان انتقال به درگاه با این لینک وجود ندارد.</p>
+        <div class="info-box go">
+            <p><span class="ph">از بخش سفارش‌های حساب کاربری،</span> <span class="ph">می‌تونید مجدد برای پرداخت اقدام کنید.</span></p>
+        </div>
+    </div>
+
+    <noscript>
+        <div class="container t-amber">
+            <h2>جاوااسکریپت غیرفعال است</h2>
+            <p class="lead">برای انتقال به درگاه پرداخت، جاوااسکریپت مرورگر باید فعال باشد.</p>
+        </div>
+        <style>#go { display: none; }</style>
+    </noscript>
+
+    <script>
+        (function () {
+            var payUrl = new URLSearchParams(window.location.search).get('pay_url') || '';
+            var valid = /^https:\/\/gateway\.zibal\.ir\/start\/[0-9]{1,20}$/.test(payUrl);
+
+            if (valid) {
+                var link = document.getElementById('fallbackLink');
+                link.href = payUrl;
+                setTimeout(function () { document.getElementById('fallback').hidden = false; }, 4000);
+                window.location.replace(payUrl);
+            } else {
+                document.body.className = 't-rose';
+                document.getElementById('go').hidden = true;
+                document.getElementById('bad').hidden = false;
+                document.title = 'لینک پرداخت نامعتبر | نوین‌پی';
+            }
+        })();
+    </script>
+</body>
+</html>

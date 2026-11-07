@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/admin');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['code', 'phone', 'address', 'postal_code', 'recipient', 'amount', 'reference', 'bank_reference', 'note']);
         $exceptions->respond(function (Response $response): Response {
             if ($response->getStatusCode() === 503) {
                 $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');

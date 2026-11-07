@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Support\FaNumber;
+
 class TrackRepairRequest extends PrivateRepairFormRequest
 {
     protected $redirectRoute = 'repair.track';
@@ -11,14 +13,14 @@ class TrackRepairRequest extends PrivateRepairFormRequest
         parent::prepareForValidation();
 
         $reference = $this->input('tracking_reference');
-        $this->merge(['tracking_reference' => is_string($reference) ? strtoupper(trim($reference)) : '']);
+        $this->merge(['tracking_reference' => is_string($reference) ? strtoupper(FaNumber::normalizeDigits(trim($reference))) : '']);
     }
 
     public function rules(): array
     {
         return [
             'contact_phone' => ['required', 'string', 'regex:/\A09[0-9]{9}\z/'],
-            'tracking_reference' => ['required', 'string', 'regex:/\ANP-[A-F0-9]{32}\z/'],
+            'tracking_reference' => ['required', 'string', 'regex:/\A(?:[0-9]{1,8}|NP-[A-F0-9]{32})\z/'],
         ];
     }
 

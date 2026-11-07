@@ -19,7 +19,7 @@ class RepairEstimate extends Model
 
     protected function casts(): array
     {
-        return ['customer_summary' => 'encrypted', 'service_cost' => 'integer', 'parts_cost' => 'integer', 'revision' => 'integer', 'created_at' => 'datetime'];
+        return ['customer_summary' => 'encrypted', 'service_cost' => 'integer', 'parts_cost' => 'integer', 'diagnosis_fee' => 'integer', 'revision' => 'integer', 'created_at' => 'datetime'];
     }
 
     public function actor(): BelongsTo

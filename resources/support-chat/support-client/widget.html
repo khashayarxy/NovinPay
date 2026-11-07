@@ -1,0 +1,44 @@
+<button class="chat-btn" onclick="toggleChat()" aria-label="پشتیبانی">
+    <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+    <span class="chat-badge" id="badge">۰</span>
+</button>
+
+<div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+        <div class="chat-heading"><h4>
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            پشتیبانی نوین‌پی
+        </h4><span class="online-status" id="adminStatus">پاسخ در همین گفتگو</span></div>
+        <div class="chat-header-actions">
+            <button class="chat-logout" id="logoutBtn" onclick="logout()" title="خروج" style="display: none;">
+                <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </button>
+            <button class="chat-close" onclick="closeChat()" title="بستن">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+    </div>
+
+    <section id="supportInit" class="support-init-status" role="status" aria-live="polite" hidden><span data-init-text>در حال آماده‌سازی چت…</span><button type="button" data-init-retry hidden>تلاش مجدد</button><small data-init-reference></small></section>
+    <div class="chat-initial" id="initialForm">
+        <h5>چطور می‌توانیم کمکتان کنیم؟</h5>
+        <input type="text" id="userName" aria-label="نام شما" placeholder="نام (اختیاری)" maxlength="200" autocomplete="name" />
+        <input type="email" id="userEmail" aria-label="ایمیل (اختیاری)" placeholder="ایمیل (اختیاری)" aria-describedby="supportEmailHint" autocomplete="email" maxlength="254" />
+        <input type="tel" id="userPhone" aria-label="شماره همراه (اختیاری)" placeholder="شماره همراه (اختیاری)" inputmode="tel" maxlength="30" autocomplete="tel" />
+        <small id="supportEmailHint">برای شروع، تأیید ایمیل یا شماره همراه لازم نیست.</small>
+
+        <button class="btn-start-chat" onclick="startChat()">ذخیره اطلاعات</button>
+    </div>
+
+    <div class="error-msg" id="errorMsg" role="alert" aria-live="assertive" tabindex="-1"></div>
+    <div class="chat-messages" id="messages" style="display:none;"></div>
+
+    <div class="chat-input-area" id="inputArea" style="display:none;">
+        <div class="chat-input-row">
+            <textarea class="chat-input" id="chatInput" aria-label="متن پیام" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
+            <button class="chat-send" aria-label="ارسال پیام" onclick="sendMessage()">
+                <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </div>
+</div>

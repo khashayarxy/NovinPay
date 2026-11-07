@@ -1,0 +1,10 @@
+/* ES5 bootstrap: no identities, messages or security tokens are stored here. */
+(function(){
+ var needs=!Object.hasOwn||!Array.prototype.at||!window.crypto||!window.crypto.randomUUID;
+ window.__supportCompat=needs;window.SupportCompatibilityDiagnostics={release:'workflow3',mode:needs?'compatible':'v2',capabilities:{random:!!(window.crypto&&window.crypto.getRandomValues),storage:!!window.indexedDB,modules:'noModule' in document.createElement('script')}};
+ if(!Object.hasOwn)Object.hasOwn=function(o,k){return Object.prototype.hasOwnProperty.call(o,k);};
+ if(!Array.prototype.at)Object.defineProperty(Array.prototype,'at',{value:function(i){i=Math.trunc(i)||0;if(i<0)i+=this.length;return this[i];},configurable:true,writable:true});
+ if(window.crypto&&window.crypto.getRandomValues&&!window.crypto.randomUUID){window.crypto.randomUUID=function(){var b=new Uint8Array(16);window.crypto.getRandomValues(b);b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;var s='',i;for(i=0;i<16;i++){if(i===4||i===6||i===8||i===10)s+='-';s+=('0'+b[i].toString(16)).slice(-2);}return s;};}
+function unavailable(){if(window.SupportCompatibilityDiagnostics.capabilities.modules)return;var shell=document.getElementById('chatWindow'),launcher=document.querySelector('.chat-btn');if(!shell)return;['messages','inputArea','initialForm'].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});var notice=document.createElement('div');notice.setAttribute('role','status');notice.style.padding='16px';notice.textContent='این مرورگر از چت امن پشتیبانی نمی‌کند. مرورگر را به‌روز کنید. ';var retry=document.createElement('button');retry.type='button';retry.textContent='تلاش مجدد';retry.onclick=function(){location.reload();};notice.appendChild(retry);shell.appendChild(notice);window.toggleChat=function(){shell.style.display='flex';shell.classList.add('active');};if(launcher)launcher.classList.remove('support-entry-pending');}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',unavailable);else unavailable();
+})();
