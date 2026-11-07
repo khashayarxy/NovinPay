@@ -19,7 +19,9 @@ const bytes=await Promise.all(files.map(async file=>{
  const original=await readFile(path.join(source,file));
  // The directory hash replaces legacy per-import versions. Canonical imports
  // must match HTML modulepreloads or browsers instantiate/fetch modules twice.
- return file.endsWith('.js')?Buffer.from(original.toString('utf8').replace(/(["'])(\.{1,2}\/[a-zA-Z0-9_./-]+\.js)\?v=[^"']+\1/g,'$1$2$1')):original;
+ // Never rewrite concatenated URLs: retry counters must remain query values,
+ // not become part of the filename (for example customer-faq.js0).
+ return file.endsWith('.js')?Buffer.from(original.toString('utf8').replace(/(["'])(\.{1,2}\/[a-zA-Z0-9_./-]+\.js)\?v=[a-zA-Z0-9_.-]+\1(?!\s*\+)/g,'$1$2$1')):original;
 }));
 const digest=createHash('sha256');files.forEach((file,i)=>digest.update(file+'\0').update(bytes[i]));
 const version=digest.digest('hex').slice(0,24);
