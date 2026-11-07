@@ -2,6 +2,8 @@
 
 namespace Tests\Unit;
 
+use NovinPay\Release\GateFailure;
+use PHPUnit\Framework\Attributes\WithoutErrorHandler;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -10,7 +12,9 @@ use function NovinPay\Release\Pr13\cliFence;
 use function NovinPay\Release\Pr13\cronIsFenced;
 use function NovinPay\Release\Pr13\effectiveProcessUid;
 use function NovinPay\Release\Pr13\enabledChatEnvironment;
+use function NovinPay\Release\Pr13\executableAfterMiss;
 use function NovinPay\Release\Pr13\manifestPath;
+use function NovinPay\Release\Pr13\observeDrain;
 use function NovinPay\Release\Pr13\opcodeProbeSource;
 use function NovinPay\Release\Pr13\phpProcesses;
 use function NovinPay\Release\Pr13\processStartTicks;
@@ -20,6 +24,7 @@ use function NovinPay\Release\Pr13\waitForDrain;
 use function NovinPay\Release\Pr13\webFence;
 
 require_once __DIR__.'/../../scripts/release/pr13-activate.php';
+require_once __DIR__.'/../../scripts/release/pr13-drain-observe.php';
 
 final class ProductionActivationTest extends TestCase
 {
@@ -179,6 +184,7 @@ final class ProductionActivationTest extends TestCase
         }
     }
 
+    #[WithoutErrorHandler] // Exercise expected failed /proc reads with native @ semantics.
     public function test_an_unreadable_same_effective_uid_executable_still_blocks_the_release(): void
     {
         $proc = $this->scratch.'/proc';
@@ -188,6 +194,71 @@ final class ProductionActivationTest extends TestCase
         file_put_contents($proc.'/222/status', "Name:\tunknown\nUid:\t1321\t1321\t1321\t1321\nState:\tS\n");
         $this->expectExceptionMessage('drain_executable_unreadable');
         phpProcesses($proc, 1321, 999);
+    }
+
+    public function test_process_becoming_zombie_after_status_read_is_reobserved_before_failing(): void
+    {
+        $entry = $this->scratch.'/222';
+        mkdir($entry);
+        $running = "Uid:\t1321\t1321\t1321\t1321\nState:\tS\n";
+        file_put_contents($entry.'/status', str_replace("State:\tS", "State:\tZ", $running));
+        $this->assertNull(executableAfterMiss($entry, $running, 1321));
+    }
+
+    #[WithoutErrorHandler]
+    public function test_process_disappearance_does_not_use_a_cached_directory_result(): void
+    {
+        $entry = $this->scratch.'/222';
+        mkdir($entry);
+        $this->assertTrue(is_dir($entry)); // Deliberately populate PHP's stat cache.
+        rmdir($entry);
+        $this->assertNull(executableAfterMiss($entry, "State:\tS\n", 1321));
+    }
+
+    #[WithoutErrorHandler]
+    public function test_a_previous_zombie_sample_cannot_hide_a_current_live_unreadable_process(): void
+    {
+        $entry = $this->scratch.'/222';
+        mkdir($entry);
+        file_put_contents($entry.'/status', "Uid:\t1321\t1321\t1321\t1321\nState:\tS\n");
+        try {
+            executableAfterMiss($entry, "State:\tZ\n", 1321);
+            $this->fail('A current unreadable live process must block activation.');
+        } catch (GateFailure $error) {
+            $this->assertSame('drain_executable_unreadable', $error->check);
+            $this->assertSame('Z', $error->actual['stateBefore']);
+            $this->assertSame('S', $error->actual['stateAfter']);
+            $this->assertSame(222, $error->actual['pid']);
+            $this->assertStringNotContainsString($entry, json_encode($error->actual));
+        }
+    }
+
+    public function test_process_uid_transition_is_not_treated_as_proven_absence(): void
+    {
+        $entry = $this->scratch.'/222';
+        mkdir($entry);
+        file_put_contents($entry.'/status', "Uid:\t1321\t0\t0\t0\nState:\tS\n");
+        $this->expectExceptionMessage('drain_process_identity_changed');
+        executableAfterMiss($entry, "Uid:\t1321\t1321\t1321\t1321\nState:\tS\n", 1321);
+    }
+
+    #[WithoutErrorHandler]
+    public function test_readonly_observer_reports_the_blocking_process_without_private_process_content(): void
+    {
+        $proc = $this->scratch.'/proc';
+        mkdir($proc.'/self', 0700, true);
+        mkdir($proc.'/222');
+        mkdir($proc.'/333');
+        file_put_contents($proc.'/self/status', 'observer');
+        file_put_contents($proc.'/222/status', "Name:\tprivate-process-name\nUid:\t1321\t1321\t1321\t1321\nState:\tS\n");
+        file_put_contents($proc.'/333/status', "Name:\tunrelated\nUid:\t2000\t2000\t2000\t2000\nState:\tS\n");
+        $sample = observeDrain($proc, 1321, 999);
+        $this->assertNull($sample['phpProcesses']);
+        $this->assertSame('drain_executable_unreadable', $sample['failures'][0]['check']);
+        $this->assertSame([222], array_column($sample['executableMisses'], 'pid'));
+        $this->assertStringNotContainsString('private-process-name', json_encode($sample));
+        $this->assertStringNotContainsString('unrelated', json_encode($sample));
+        $this->assertStringNotContainsString($this->scratch, json_encode($sample));
     }
 
     public function test_only_the_fenced_artisan_scheduler_is_allowed_not_other_database_or_php_cron(): void

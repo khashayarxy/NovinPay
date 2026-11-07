@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace NovinPay\Release\Pr13;
 
+use NovinPay\Release\GateFailure;
 use RuntimeException;
 
 function need(bool $ok, string $check): void
@@ -53,6 +54,7 @@ function phpProcesses(string $proc, int $uid, int $self): int
         }
         $status = @file_get_contents($entry.'/status');
         if ($status === false) {
+            clearstatcache(true, $entry);
             need(! is_dir($entry), 'drain_process_identity_unreadable');
 
             continue; // A process exited between enumeration and inspection.
@@ -60,12 +62,13 @@ function phpProcesses(string $proc, int $uid, int $self): int
         if (effectiveProcessUid($status) !== $uid) {
             continue;
         }
-        $exe = is_link($entry.'/exe') ? @readlink($entry.'/exe') : false;
+        // /proc entries change independently of PHP's stat/realpath caches.
+        $exe = @readlink($entry.'/exe');
         if ($exe === false) {
-            // Kernel threads/zombies have no executable; any other ambiguity fails closed.
-            need(! is_dir($entry) || preg_match('/^State:\s+Z/m', $status) === 1, 'drain_executable_unreadable');
-
-            continue;
+            $exe = executableAfterMiss($entry, $status, $uid);
+            if ($exe === null) {
+                continue;
+            }
         }
         $name = strtolower(basename(str_replace(' (deleted)', '', $exe)));
         if (str_starts_with($name, 'lsphp') || str_starts_with($name, 'php')) {
@@ -74,6 +77,39 @@ function phpProcesses(string $proc, int $uid, int $self): int
     }
 
     return $count;
+}
+
+/** A missed executable is not absence: re-observe the process before deciding. */
+function executableAfterMiss(string $entry, string $before, int $uid): ?string
+{
+    clearstatcache(true, $entry);
+    clearstatcache(true, $entry.'/exe');
+    $after = @file_get_contents($entry.'/status');
+    if ($after === false) {
+        clearstatcache(true, $entry);
+        need(! is_dir($entry), 'drain_process_identity_unreadable');
+
+        return null; // Its disappearance was freshly established, not cached.
+    }
+    need(effectiveProcessUid($after) === $uid, 'drain_process_identity_changed');
+    if (preg_match('/^State:\s+Z/m', $after) === 1) {
+        return null; // Fresh zombie state proves this process can no longer write.
+    }
+    error_clear_last();
+    $exe = @readlink($entry.'/exe');
+    if ($exe !== false) {
+        return $exe;
+    }
+    $error = error_get_last()['message'] ?? '';
+    $state = static function (string $status): ?string {
+        return preg_match('/^State:\s+([A-Z])/m', $status, $match) === 1 ? $match[1] : null;
+    };
+    throw new GateFailure('drain_executable_unreadable', 'readable executable or freshly proven exited/zombie process', [
+        'pid' => (int) basename($entry), 'effectiveUid' => $uid,
+        'stateBefore' => $state($before), 'stateAfter' => $state($after),
+        'readlinkError' => preg_match('/permission denied|operation not permitted/i', $error) ? 'access_denied'
+            : (str_contains(strtolower($error), 'no such file') ? 'not_found' : 'unclassified'),
+    ], 'Preserve fences; inspect process visibility. Never ignore a live unreadable process or replay activation.');
 }
 
 function effectiveProcessUid(string $status): int
