@@ -39,6 +39,12 @@ Use the matching row first, then its detailed evidence below. **C** = confirmed 
 | KB27 Browser URL verification / agent Basic session failure | C: authorized browser workflow could not establish a safe URL/session; owner browser and independent HTTP could still work. | Use supported browser recovery; otherwise scoped cPanel APIs and one reviewed owner Terminal action. Owner authenticated acceptance remains distinct. | No policy bypass, cookie extraction or public execution endpoint. |
 | KB28 Windows filter pipe / Pint bootstrap failure | C: pipe filters crossed wrapper shell parsing; formatter in the affected process inherited incompatible bootstrap context. Fresh-process checks passed. | Explicit supported filters/files; compatible fresh PHP CLI for Pint; preserve Herd guards/global configuration. Test runner and historical security-manifest notes. | Local focused check only; never treat as a host failure. |
 
+### Migration activation: pre-bootstrap HTTP and CLI fencing
+
+The presentation updater did not establish request draining; maintenance alone never proved that an old PHP request/queue worker had finished writing. `pr13-activate.php` installs both HTTP and Artisan fences before observing workers. `ProductionActivationTest` verifies that elapsed time, unknown process visibility, another DB connection or a newly appearing worker cannot satisfy draining. Real Linux `/proc` acceptance runs in CI; Windows does not prove cPanel visibility. A timeout preserves the owned fences/journal; only the independently verified pre-DDL cancellation can reopen the baseline. Never kill workers or weaken process/cron checks to force a PASS.
+
+The application's chat initialization command intentionally accepts staging/testing only. Production activation uses a private parent-authorized provisioner with the same reviewed defaults; no environment impersonation and no change to that application guard. External SMS/push/recovery delivery stays disabled. These are preventive source-reviewed checks, not a claim that hosted activation ran.
+
 ### Six checks before offering a command
 
 1. Pin branch/HEAD/runtime diff, the executing helper version, its actual manifest path and all payload hashes. Reconcile any partial upload first; an archive prepared is not an operation executed.

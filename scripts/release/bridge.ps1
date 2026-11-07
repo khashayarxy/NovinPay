@@ -13,7 +13,8 @@ $pin=(Get-FileHash -LiteralPath $ManifestPath).Hash.ToLowerInvariant()
 $package='/home/novinpay/novinpay-release-pipeline-v1'
 $legacyScope=!$QuotaOnly -and $m.stateDirectory -ceq "$package/pipeline-pr12" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr12-v2'
 $pr13Scope=$QuotaOnly -and $m.stateDirectory -ceq "$package/pipeline-pr13-r2" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1' -and $m.backup.restoreDatabase -ceq 'novinpay_restore13r1' -and $m.baseline -ceq '1f39bb476fd31880600564e58599c4488622c4c0'
-if(!$legacyScope -and !$pr13Scope){throw 'Bridge manifest scope mismatch'}
+$pr13Activation=$QuotaOnly -and $m.mode -ceq 'pr13-migration-activation-v1' -and $m.stateDirectory -ceq "$package/pipeline-pr13-activation-r1" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1' -and $m.backup.restoreDatabase -ceq 'novinpay_restore13r1' -and $m.baseline -ceq '1f39bb476fd31880600564e58599c4488622c4c0' -and $m.candidate -ceq 'ded4e16302770f28f7bfe8e567e9a2de2314f99d'
+if(!$legacyScope -and !$pr13Scope -and !$pr13Activation){throw 'Bridge manifest scope mismatch'}
 $deadline=[DateTimeOffset]::UtcNow.AddHours($Hours)
 function Status([string]$state){[IO.File]::WriteAllText($StatusPath,(@{result=$state;pid=$PID;atUtc=[DateTimeOffset]::UtcNow.ToString('o');manifestSha256=$pin}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))}
 function OpenAccess {
@@ -76,7 +77,12 @@ try {
    $done[$base]=$true;Status ('QUOTA_'+$q.phase.ToUpperInvariant())
   }
   if($QuotaOnly){
-   if(@($entries|Where-Object {$_.file -ceq 'pipeline-pr13-r2' -and $_.type -ceq 'dir'}).Count){
+   if($pr13Activation -and @($entries|Where-Object {$_.file -ceq 'pipeline-pr13-activation-r1' -and $_.type -ceq 'dir'}).Count){
+    $journal=@(Get-Entries $m.stateDirectory)
+    if(@($journal|Where-Object file -ceq 'activation.complete.json').Count){Status 'ACTIVATION_COMPLETE';exit 0}
+    if(@($journal|Where-Object file -ceq 'activation.failed.json').Count){Status 'ACTIVATION_STOP_PRESERVED';exit 75}
+   }
+   if($pr13Scope -and @($entries|Where-Object {$_.file -ceq 'pipeline-pr13-r2' -and $_.type -ceq 'dir'}).Count){
     if(@(Get-Entries $m.stateDirectory|Where-Object file -ceq 'backup.complete.json').Count){Status 'BACKUP_COMPLETE_TRANSFER_PENDING';exit 0}
    }
    Start-Sleep -Seconds 5;continue
