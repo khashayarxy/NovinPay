@@ -29,7 +29,9 @@ try {
         'variablesOrderIncludesServer' => str_contains(ini_get('variables_order'), 'S'),
         'autoPrependConfigured' => ini_get('auto_prepend_file') !== '', 'autoAppendConfigured' => ini_get('auto_append_file') !== '',
         'cliOpcacheEnabled' => (bool) ini_get('opcache.enable_cli'), 'opcacheUseCwd' => (bool) ini_get('opcache.use_cwd'),
-        'persistentOpcacheConfigured' => ini_get('opcache.file_cache') !== '', 'sessionGcDivisorPositive' => (int) ini_get('session.gc_divisor') > 0];
+        'persistentOpcacheConfigured' => is_string(ini_get('opcache.file_cache')) && ini_get('opcache.file_cache') !== '',
+        'opcacheExtensionLoaded' => extension_loaded('Zend OPcache'), 'opcacheDirectivesAvailable' => ini_get('opcache.enable_cli') !== false,
+        'sessionGcDivisorPositive' => (int) ini_get('session.gc_divisor') > 0];
     require_once $tools.'/runtime.php';
     require_once $tools.'/pr13-activation-contract.php';
     require_once $tools.'/pr13-schema-contract.php';

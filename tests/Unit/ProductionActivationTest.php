@@ -19,6 +19,7 @@ use function NovinPay\Release\Pr13\opcodeProbeSource;
 use function NovinPay\Release\Pr13\phpProcesses;
 use function NovinPay\Release\Pr13\processStartTicks;
 use function NovinPay\Release\Pr13\recoveryAction;
+use function NovinPay\Release\Pr13\releaseOpcodeCacheIsOff;
 use function NovinPay\Release\Pr13\replaceOwned;
 use function NovinPay\Release\Pr13\verifyCancelledAttempt;
 use function NovinPay\Release\Pr13\waitForDrain;
@@ -30,6 +31,37 @@ require_once __DIR__.'/../../scripts/release/pr13-drain-observe.php';
 final class ProductionActivationTest extends TestCase
 {
     private string $scratch;
+
+    public function test_opcode_guard_accepts_absent_engine_or_explicitly_disabled_registered_caches_only(): void
+    {
+        $this->assertTrue(releaseOpcodeCacheIsOff(false, false, false, false, false));
+        foreach (['0', '', 'Off', 'false', 'no', 'none'] as $off) {
+            $this->assertTrue(releaseOpcodeCacheIsOff($off, $off, '', true, true));
+        }
+        foreach ([['1', '0', '', true, true], ['0', '1', '', true, true], ['0', '0', '/synthetic-cache', true, true],
+            [false, false, false, true, true], [false, false, false, false, true], ['0', false, '', true, false],
+            ['unexpected', '0', '', true, true], ['0', '0', false, true, true]] as $unsafe) {
+            $this->assertFalse(releaseOpcodeCacheIsOff(...$unsafe));
+        }
+    }
+
+    public function test_real_php_without_ini_reproduces_false_directives_without_an_opcode_engine(): void
+    {
+        $contract = dirname(__DIR__, 2).'/scripts/release/pr13-activation-contract.php';
+        $code = 'require '.var_export($contract, true).'; $a=ini_get("opcache.enable_cli");$b=ini_get("opcache.file_cache_only");$c=ini_get("opcache.file_cache");'
+            .'echo json_encode(["oldGuard"=>! (bool)$a && ! (bool)$b && $c==="",'
+            .'"correctedGuard"=>NovinPay\\Release\\Pr13\\releaseOpcodeCacheIsOff($a,$b,$c,extension_loaded("Zend OPcache"),function_exists("opcache_get_status"))]);';
+        $p = proc_open([PHP_BINARY, '-n', '-d', 'opcache.enable_cli=0', '-d', 'opcache.file_cache_only=0', '-d', 'opcache.file_cache=', '-r', $code],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        fclose($pipes[0]);
+        $out = stream_get_contents($pipes[1]);
+        $err = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $this->assertSame(0, proc_close($p));
+        $this->assertSame('', $err);
+        $this->assertSame(['oldGuard' => false, 'correctedGuard' => true], json_decode($out, true, flags: JSON_THROW_ON_ERROR));
+    }
 
     protected function setUp(): void
     {

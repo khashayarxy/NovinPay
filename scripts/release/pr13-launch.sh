@@ -42,17 +42,17 @@ trap on_exit EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 trap 'exit 129' HUP
-directory='/home/novinpay/novinpay-release-pipeline-v1/pr13-activation-72h-v3'
+directory='/home/novinpay/novinpay-release-pipeline-v1/pr13-activation-72h-v4'
 test "$#" -eq 2
 [[ "$1" =~ ^[a-f0-9]{64}$ ]] && [[ "$2" =~ ^[a-f0-9]{64}$ ]]
 test "$(id -u)" -eq 1321
 test ! -L "$directory"
 test "$(stat -c '%a' "$directory")" = 700
 cd "$directory"
-printf '%s  %s\n' "$2" 'pr13-activation-72h-v3.sha256' | sha256sum --check --strict -
-sha256sum --check --strict pr13-activation-72h-v3.sha256
+printf '%s  %s\n' "$2" 'pr13-activation-72h-v4.sha256' | sha256sum --check --strict -
+sha256sum --check --strict pr13-activation-72h-v4.sha256
 status=0
 pr13_supervise '/opt/cpanel/ea-php84/root/usr/bin/php' "$directory/pr13-activate.php" \
- "$directory/pr13-activation-72h-v3.json" "$1" || status=$?
+ "$directory/pr13-activation-72h-v4.json" "$1" || status=$?
 reported=1
 exit "$status"

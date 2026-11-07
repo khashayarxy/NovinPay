@@ -49,9 +49,19 @@ function pr13LaunchResult(string $stdout, int $exit, array $manifest, string $pi
     }
 
     // Never echo raw stdout/stderr or arbitrary exception fields to the terminal.
-    return [['result' => $report['result'], 'phase' => $report['phase'], 'check' => $report['check'], 'category' => $report['category'],
+    $public = ['result' => $report['result'], 'phase' => $report['phase'], 'check' => $report['check'], 'category' => $report['category'],
         'childExitCode' => $exit, 'retrySafe' => false, 'maintenanceMayBeActive' => $report['maintenanceMayBeActive'] ?? true,
-        'nextAction' => 'Preserve private output and journal. No replay; inspect the named check and exact phase.'], $exit];
+        'nextAction' => 'Preserve private output and journal. No replay; inspect the named check and exact phase.'];
+    if (in_array($report['check'], ['cli_release_opcode_cache_must_be_off', 'live_child_release_opcode_cache_must_be_off'], true)) {
+        foreach (['opcacheLoaded', 'opcacheApiAvailable', 'cliDirectiveAvailable', 'fileOnlyDirectiveAvailable',
+            'fileCacheDirectiveAvailable', 'fileCacheConfigured', 'engineAbsent'] as $key) {
+            if (is_bool($report['actual'][$key] ?? null)) {
+                $public['runtime'][$key] = $report['actual'][$key];
+            }
+        }
+    }
+
+    return [$public, $exit];
 }
 
 if (realpath(($_SERVER['SCRIPT_FILENAME'] ?? '') ?: ($argv[0] ?? '')) !== __FILE__) {
@@ -63,7 +73,7 @@ ini_set('log_errors', '0');
 try {
     if (PHP_SAPI !== 'cli' || count($argv) !== 5 || $argv[1] !== __DIR__.'/launch.stdout'
         || ! preg_match('/\A[0-9]{1,3}\z/D', $argv[2]) || ! preg_match('/\A[a-f0-9]{64}\z/D', $argv[4])
-        || $argv[3] !== __DIR__.'/pr13-activation-72h-v3.json') {
+        || $argv[3] !== __DIR__.'/pr13-activation-72h-v4.json') {
         throw new RuntimeException('launch_report_scope');
     }
     $read = static function (string $path): string {
@@ -79,7 +89,7 @@ try {
         throw new RuntimeException('launch_report_manifest');
     }
     $m = json_decode($text, true, flags: JSON_THROW_ON_ERROR);
-    if ($m['toolDirectory'] !== __DIR__ || $m['stateDirectory'] !== dirname(__DIR__).'/pipeline-pr13-activation-r3'
+    if ($m['toolDirectory'] !== __DIR__ || $m['stateDirectory'] !== dirname(__DIR__).'/pipeline-pr13-activation-r4'
         || ! hash_equals($m['tools']['pr13-launch-result.php'], hash_file('sha256', __FILE__))) {
         throw new RuntimeException('launch_report_manifest_scope');
     }

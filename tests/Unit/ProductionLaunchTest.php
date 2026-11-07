@@ -56,6 +56,11 @@ final class ProductionLaunchTest extends TestCase
         $this->assertStringNotContainsString('synthetic-private-output', json_encode($report));
         [$report] = \pr13LaunchResult(json_encode(array_replace($stop, ['check' => '/private/path'])), 1, $this->manifest(), 'pin', []);
         $this->assertSame('child_result_labels_invalid', $report['check']);
+        $stop['check'] = 'cli_release_opcode_cache_must_be_off';
+        $stop['actual'] = ['opcacheLoaded' => false, 'fileCacheConfigured' => false, 'private' => 'synthetic-private-output'];
+        [$report] = \pr13LaunchResult(json_encode($stop), 1, $this->manifest(), 'pin', []);
+        $this->assertSame(['opcacheLoaded' => false, 'fileCacheConfigured' => false], $report['runtime']);
+        $this->assertStringNotContainsString('synthetic-private-output', json_encode($report));
     }
 
     public function test_pending_requires_admission_and_readiness_receipts_and_exit_75(): void
@@ -85,10 +90,10 @@ final class ProductionLaunchTest extends TestCase
                 copy(__DIR__.'/../../scripts/release/'.$name, $bundle.'/'.$name);
                 chmod($bundle.'/'.$name, 0600);
             }
-            $manifest = $this->manifest() + ['toolDirectory' => $bundle, 'stateDirectory' => $root.'/pipeline-pr13-activation-r3',
+            $manifest = $this->manifest() + ['toolDirectory' => $bundle, 'stateDirectory' => $root.'/pipeline-pr13-activation-r4',
                 'tools' => ['pr13-launch-result.php' => hash_file('sha256', $bundle.'/pr13-launch-result.php')]];
             $text = json_encode($manifest);
-            $file = $bundle.'/pr13-activation-72h-v3.json';
+            $file = $bundle.'/pr13-activation-72h-v4.json';
             file_put_contents($file, $text);
             chmod($file, 0600);
             $child = $bundle.'/child.php';

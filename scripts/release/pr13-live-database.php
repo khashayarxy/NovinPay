@@ -27,13 +27,13 @@ umask(0077);
 $phase = 'identity';
 try {
     need(PHP_SAPI === 'cli' && PHP_VERSION_ID >= 80401 && posix_geteuid() === 1321 && count($argv) === 4, 'live_child_scope');
-    need(! (bool) ini_get('opcache.enable_cli') && ! (bool) ini_get('opcache.file_cache_only') && ini_get('opcache.file_cache') === '', 'live_child_release_opcode_cache_must_be_off');
+    NovinPay\Release\Pr13\verifyReleaseOpcodeCacheOff('live_child_release_opcode_cache_must_be_off');
     $text = privateRead($argv[1]);
     need(hash_equals($argv[2], hash('sha256', $text)), 'manifest_pin');
     $m = json_decode($text, true, flags: JSON_THROW_ON_ERROR);
     $kit = '/home/novinpay/novinpay-release-pipeline-v1';
-    need($kit.'/pr13-activation-72h-v3' === __DIR__, 'live_child_tool_directory');
-    $journal = $kit.'/pipeline-pr13-activation-r3';
+    need($kit.'/pr13-activation-72h-v4' === __DIR__, 'live_child_tool_directory');
+    $journal = $kit.'/pipeline-pr13-activation-r4';
     $permit = json_decode(privateRead($journal.'/child-permit.json'), true, flags: JSON_THROW_ON_ERROR);
     need($permit['parentPid'] === posix_getppid() && $permit['manifest'] === $argv[2]
         && hash_equals($permit['ticketSha256'], hash('sha256', getenv('NOVINPAY_PR13_TICKET') ?: '')),
@@ -42,7 +42,7 @@ try {
         && is_file('/home/novinpay/novinpay/storage/framework/down'), 'both_fences_required');
     $migration = $argv[3] === 'migrate';
     need($migration || $argv[3] === 'ready', 'live_child_action');
-    $root = $migration ? $kit.'/pr13-activation-app-r3' : '/home/novinpay/novinpay';
+    $root = $migration ? $kit.'/pr13-activation-app-r4' : '/home/novinpay/novinpay';
     need(realpath($root) === $root && ! is_link($root), 'live_child_root');
     if ($migration) {
         need(is_file($journal.'/ddl.started.json') && ! file_exists($journal.'/ddl.complete.json'), 'ddl_single_use');

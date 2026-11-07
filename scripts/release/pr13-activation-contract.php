@@ -14,6 +14,36 @@ function need(bool $ok, string $check): void
     }
 }
 
+/** Missing directives are safe only when there is no OPcache engine/API. */
+function releaseOpcodeCacheIsOff(string|false $cli, string|false $fileOnly, string|false $cache, bool $loaded, bool $api): bool
+{
+    if ($cli === false && $fileOnly === false && $cache === false) {
+        return ! $loaded && ! $api;
+    }
+    $off = static fn ($value) => is_string($value) && in_array(strtolower(trim($value)), ['', '0', 'off', 'false', 'no', 'none'], true);
+
+    return $off($cli) && $off($fileOnly) && $cache === '';
+}
+
+function verifyReleaseOpcodeCacheOff(string $check = 'cli_release_opcode_cache_must_be_off'): array
+{
+    $cli = ini_get('opcache.enable_cli');
+    $fileOnly = ini_get('opcache.file_cache_only');
+    $cache = ini_get('opcache.file_cache');
+    $loaded = extension_loaded('Zend OPcache');
+    $api = function_exists('opcache_get_status');
+    $runtime = ['phpVersion' => PHP_VERSION, 'sapi' => PHP_SAPI, 'opcacheLoaded' => $loaded, 'opcacheApiAvailable' => $api,
+        'cliDirectiveAvailable' => $cli !== false, 'fileOnlyDirectiveAvailable' => $fileOnly !== false,
+        'fileCacheDirectiveAvailable' => $cache !== false, 'fileCacheConfigured' => is_string($cache) && $cache !== '',
+        'engineAbsent' => ! $loaded && ! $api && $cli === false && $fileOnly === false && $cache === false];
+    if (! releaseOpcodeCacheIsOff($cli, $fileOnly, $cache, $loaded, $api)) {
+        throw new GateFailure($check, 'OPcache absent, or registered CLI/file-only caches off and empty file-cache path', $runtime,
+            'Preserve evidence; inspect the typed runtime facts. Never allow active caches or change global PHP settings.');
+    }
+
+    return $runtime;
+}
+
 /** Resolve before children change cwd; never follow an operator-supplied symlink. */
 function manifestPath(string $input, string $tools): string
 {
