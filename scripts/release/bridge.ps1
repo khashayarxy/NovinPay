@@ -4,13 +4,16 @@ param(
  [Parameter(Mandatory)][string]$UploadHelper,
  [Parameter(Mandatory)][string]$PrivateRoot,
  [Parameter(Mandatory)][string]$StatusPath,
- [ValidateRange(1,24)][int]$Hours=24
+ [ValidateRange(1,24)][int]$Hours=24,
+ [switch]$QuotaOnly
 )
 $ErrorActionPreference='Stop'
 $m=Get-Content -LiteralPath $ManifestPath -Raw|ConvertFrom-Json
 $pin=(Get-FileHash -LiteralPath $ManifestPath).Hash.ToLowerInvariant()
 $package='/home/novinpay/novinpay-release-pipeline-v1'
-if($m.stateDirectory -cne "$package/pipeline-pr12" -or $m.backup.directory -cne '/home/novinpay/novinpay-private-backups/maintenance-pr12-v2'){throw 'Bridge manifest scope mismatch'}
+$legacyScope=!$QuotaOnly -and $m.stateDirectory -ceq "$package/pipeline-pr12" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr12-v2'
+$pr13Scope=$QuotaOnly -and $m.stateDirectory -ceq "$package/pipeline-pr13" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1' -and $m.backup.restoreDatabase -ceq 'novinpay_restore13r1' -and $m.baseline -ceq '1f39bb476fd31880600564e58599c4488622c4c0'
+if(!$legacyScope -and !$pr13Scope){throw 'Bridge manifest scope mismatch'}
 $deadline=[DateTimeOffset]::UtcNow.AddHours($Hours)
 function Status([string]$state){[IO.File]::WriteAllText($StatusPath,(@{result=$state;pid=$PID;atUtc=[DateTimeOffset]::UtcNow.ToString('o');manifestSha256=$pin}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))}
 function OpenAccess {
@@ -71,6 +74,12 @@ try {
    $check='quota_reply_upload';$hash=UploadNewPrivate ($base+'-reply.json') $bytes $package
    $null=UploadNewPrivate ($base+'-ready.json') ([Text.Encoding]::UTF8.GetBytes((@{sha256=$hash}|ConvertTo-Json -Compress))) $package
    $done[$base]=$true;Status ('QUOTA_'+$q.phase.ToUpperInvariant())
+  }
+  if($QuotaOnly){
+   if(@($entries|Where-Object {$_.file -ceq 'pipeline-pr13' -and $_.type -ceq 'dir'}).Count){
+    if(@(Get-Entries $m.stateDirectory|Where-Object file -ceq 'backup.complete.json').Count){Status 'BACKUP_COMPLETE_TRANSFER_PENDING';exit 0}
+   }
+   Start-Sleep -Seconds 5;continue
   }
   $dirs=@(Get-Entries '/home/novinpay/novinpay-private-backups')
   if(@($dirs|Where-Object file -ceq 'maintenance-pr12-v2').Count){

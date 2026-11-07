@@ -30,6 +30,16 @@ The old presentation-only pipeline is incompatible: it explicitly assumes14 migr
 
 ## Execution access
 
+### Recovery preparation after successful hosted inventory
+
+Owner reported `PR13_READONLY_INVENTORY_COMPLETE` for baseline1f39bb4/candidate ded4e16:14 existing/eight pending migrations, five observed triggers, PHP8.4.27 and no writes. All four CI jobs for ded4e16 passed. API quota subsequently showed4718.94MiB free; refresh again at consumption, retaining the2GiB reserve. The three old restore databases contain retained evidence. Owner explicitly authorized `novinpay_restore13r1`; API created it and verified exactly SELECT, INSERT, CREATE, ALTER and TRIGGER for the retained migrator, with no live privilege change.
+
+`pr13-recovery.php` prepares a new `maintenance-pr13-v1` encrypted backup using the existing algorithm, then rehearses only the eight reviewed migrations against that isolated restore. It does not activate, fence traffic or migrate production. Trigger contracts are pinned to SQL emitted by the actual migrations; reject altered bodies/definers/events/tables/timing. Rehearsal compares every original table's original-column values/row counts, all14 original migration records/batches and every original FK, then requires22 migrations/13 triggers. New backup/restore/rehearsal and independent off-host evidence are pending until the real command completes; local tests do not establish them.
+
+The old updater/rollback remain unsuitable. Before traffic, a code-only recovery can be considered only after complete upgrade/data-preservation rehearsal, retaining the expanded schema and patched vendor. Partial DDL or any post-admission activity is fail-closed for explicit reconciliation/forward repair; never run `down()` or automatically restore the old live snapshot. Baseline compatibility and the request-drain/activation procedure still require validation before an activation command is issued. Preserve new enum/history/state and customer data. Composer need not be installed on hosting: a no-dev runtime artifact is built locally from the unchanged lock; verify its platform/dependency/file inventory on the host.
+
+Quota-only bridge mode is narrowly bound to this backup/restore scope and serves authenticated fresh API evidence without moving credentials to hosting. The existing transfer/decrypt tools accept only a pinned PR13 recovery manifest in addition to their unchanged legacy default; no plaintext backup is written to Windows disk. No staging or old activation is involved.
+
 ### Migrator privilege STOP investigation (2026-11-07)
 
 The owner ran the inventory once; all seven integrity checks passed, then `migrator_schema_privileges` stopped before writes. Authenticated cPanel `Mysql/get_privileges_on_database` reports SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES and TRIGGER for the retained migrator on the live schema. No permission change is justified by this evidence. It does not prove the representation returned by MariaDB's SQL metadata view to that account.
