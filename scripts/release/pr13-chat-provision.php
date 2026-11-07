@@ -10,7 +10,7 @@ function pr13ProvisionChat(Application $app, string $journal): void
     $need = 'NovinPay\\Release\\Pr13\\need';
     $root = '/home/novinpay/novinpay';
     $need(PHP_SAPI === 'cli' && $app->basePath() === $root && $app->environment('production')
-        && $journal === '/home/novinpay/novinpay-release-pipeline-v1/pipeline-pr13-activation-r2'
+        && $journal === '/home/novinpay/novinpay-release-pipeline-v1/pipeline-pr13-activation-r3'
         && is_file($journal.'/ddl.complete.json') && is_file($root.'/storage/framework/down'), 'chat_provision_release_scope');
     foreach (['flock', 'fsync', 'imagewebp', 'finfo_open'] as $function) {
         $need(function_exists($function), 'chat_runtime_prerequisite');

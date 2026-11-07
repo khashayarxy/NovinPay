@@ -20,11 +20,15 @@ require_once __DIR__.'/pr13-schema-contract.php';
 
 const APP = '/home/novinpay/novinpay';
 const KIT = '/home/novinpay/novinpay-release-pipeline-v1';
-const STATE = KIT.'/pipeline-pr13-activation-r2';
+const STATE = KIT.'/pipeline-pr13-activation-r3';
 const TOOLS = __DIR__;
 
 function run(array $args, string $cwd = APP, int $seconds = 120): string
 {
+    if ($args[0] === PHP_BINARY) {
+        // Private release children must execute verified bytes, not cached CLI code.
+        array_splice($args, 1, 0, ['-d', 'opcache.enable_cli=0', '-d', 'opcache.file_cache_only=0', '-d', 'opcache.file_cache=']);
+    }
     $operation = $args[0] === 'git' ? match ($args[1] ?? '') {
         'fetch' => 'git_fetch_reviewed_candidate', 'merge' => 'git_source_fast_forward', 'merge-base' => 'git_candidate_ancestry',
         'status' => 'git_preserved_worktree', 'diff' => 'git_staged_identity', 'show' => 'git_original_entry', default => 'git_commit_identity',
@@ -151,8 +155,8 @@ register_shutdown_function(static function () use (&$finished, &$phase, &$armed)
 });
 try {
     need(PHP_SAPI === 'cli' && PHP_VERSION_ID >= 80401 && function_exists('posix_geteuid') && posix_geteuid() === 1321
-        && KIT.'/pr13-activation-72h-v2' === __DIR__ && count($argv) === 3, 'activation_scope');
-    need(! (bool) ini_get('opcache.enable_cli') || ini_get('opcache.file_cache') === '', 'cli_persistent_opcode_cache_unsupported');
+        && KIT.'/pr13-activation-72h-v3' === __DIR__ && count($argv) === 3, 'activation_scope');
+    need(! (bool) ini_get('opcache.enable_cli') && ! (bool) ini_get('opcache.file_cache_only') && ini_get('opcache.file_cache') === '', 'cli_release_opcode_cache_must_be_off');
     need(! is_link(TOOLS) && realpath(TOOLS) === TOOLS && fileowner(TOOLS) === 1321 && (fileperms(TOOLS) & 0777) === 0700, 'private_tool_directory');
     $argv[1] = manifestPath($argv[1], TOOLS);
     $text = privateRead($argv[1]);
@@ -167,6 +171,11 @@ try {
         && $m['backup']['restoreDatabase'] === 'novinpay_restore13r1', 'activation_manifest_scope');
     foreach ($m['tools'] as $file => $sha) {
         need(preg_match('/\A[a-z0-9-]+\.php\z/D', $file) === 1 && hash_equals($sha, hash('sha256', privateRead(TOOLS.'/'.$file))), 'activation_tool_hash');
+    }
+    need(($m['priorInspection']['file'] ?? null) === KIT.'/pr13-silent-observation-v1/inspection.stdout'
+        && hash_equals($m['priorInspection']['sha256'], hash('sha256', privateRead($m['priorInspection']['file']))), 'prior_silent_inspection_pin');
+    foreach (['pipeline-pr13-activation-r2', 'pr13-activation-app-r2', 'pr13-activation-build-r2'] as $oldPath) {
+        need(! file_exists(KIT.'/'.$oldPath) && ! is_link(KIT.'/'.$oldPath), 'previous_silent_attempt_changed');
     }
     need(($m['previousAttempt']['directory'] ?? null) === KIT.'/pipeline-pr13-activation-r1'
         && ($m['previousAttempt']['manifestSha256'] ?? null) === 'b88136c620ae33702105fdaeee6ed2d25dec1fbb60cfad29ae48b1b6670d675c', 'previous_attempt_scope');
@@ -269,20 +278,20 @@ try {
     writeNew(STATE.'/activation.started.json', ['manifest' => $argv[2], 'parentPid' => getmypid(), 'startedUtc' => gmdate('c')]);
     require TOOLS.'/pr13-recovery-v3.php'; // imports only the reviewed safe extractor
     $phase = 'stage_verified_artifacts';
-    \pr13ExtractPrivate(KIT.'/'.$m['sourceArchive']['name'], KIT.'/pr13-activation-app-r2');
-    \pr13ExtractPrivate(KIT.'/'.$m['vendorArchive']['name'], KIT.'/pr13-activation-app-r2/vendor');
-    \pr13ExtractPrivate(KIT.'/'.$m['frontendArchive']['name'], KIT.'/pr13-activation-build-r2');
+    \pr13ExtractPrivate(KIT.'/'.$m['sourceArchive']['name'], KIT.'/pr13-activation-app-r3');
+    \pr13ExtractPrivate(KIT.'/'.$m['vendorArchive']['name'], KIT.'/pr13-activation-app-r3/vendor');
+    \pr13ExtractPrivate(KIT.'/'.$m['frontendArchive']['name'], KIT.'/pr13-activation-build-r3');
     foreach ($m['changedRuntimeFiles'] as $file => $sha) {
-        need(! is_link(KIT.'/pr13-activation-app-r2/'.$file) && hash_equals($sha, hash_file('sha256', KIT.'/pr13-activation-app-r2/'.$file)), 'staged_source_integrity');
+        need(! is_link(KIT.'/pr13-activation-app-r3/'.$file) && hash_equals($sha, hash_file('sha256', KIT.'/pr13-activation-app-r3/'.$file)), 'staged_source_integrity');
     }
-    foreach (['vendorFiles' => '/pr13-activation-app-r2/vendor/', 'frontendFiles' => '/pr13-activation-build-r2/'] as $key => $prefix) {
+    foreach (['vendorFiles' => '/pr13-activation-app-r3/vendor/', 'frontendFiles' => '/pr13-activation-build-r3/'] as $key => $prefix) {
         foreach ($m[$key] as $file => $sha) {
             need(! is_link(KIT.$prefix.$file) && hash_equals($sha, hash_file('sha256', KIT.$prefix.$file)), 'staged_dependency_asset_integrity');
         }
     }
     foreach (['storage/app', 'storage/framework/cache/data', 'storage/framework/sessions', 'storage/framework/views', 'storage/logs', 'bootstrap/cache'] as $dir) {
-        if (! is_dir(KIT.'/pr13-activation-app-r2/'.$dir)) {
-            need(mkdir(KIT.'/pr13-activation-app-r2/'.$dir, 0700, true), 'private_candidate_storage');
+        if (! is_dir(KIT.'/pr13-activation-app-r3/'.$dir)) {
+            need(mkdir(KIT.'/pr13-activation-app-r3/'.$dir, 0700, true), 'private_candidate_storage');
         }
     }
     $originalArtisan = file_get_contents(APP.'/artisan');
@@ -307,7 +316,7 @@ try {
     need(str_contains($headers['cache-control'] ?? '', 'no-store') && ($headers['retry-after'] ?? '') === '60', 'actual_https_fence_headers');
     [, $body] = https('/', [503], true);
     need($body === '', 'fenced_head_body');
-    $cli = command([PHP_BINARY, APP.'/artisan', 'list'], APP, 'cli_fence', 30);
+    $cli = command([PHP_BINARY, '-d', 'opcache.enable_cli=0', '-d', 'opcache.file_cache_only=0', '-d', 'opcache.file_cache=', APP.'/artisan', 'list'], APP, 'cli_fence', 30);
     need($cli['exit'] === 75, 'actual_cli_fence');
     $sample = static function () use ($runtime, $observer): array {
         $connections = 0;
@@ -334,7 +343,7 @@ try {
     putenv('NOVINPAY_PR13_TICKET='.$ticket);
     writeNew(STATE.'/child-permit.json', ['parentPid' => getmypid(), 'manifest' => $argv[2], 'ticketSha256' => hash('sha256', $ticket)]);
     $overrides = ['APP_ENV' => 'production', 'APP_DEBUG' => 'false', 'APP_URL' => 'https://novinpaypos.com', 'APP_KEY' => $env['APP_KEY'],
-        'APP_BASE_PATH' => KIT.'/pr13-activation-app-r2', 'LARAVEL_STORAGE_PATH' => KIT.'/pr13-activation-app-r2/storage', 'APP_CONFIG_CACHE' => KIT.'/pr13-activation-app-r2/bootstrap/cache/release-config.php',
+        'APP_BASE_PATH' => KIT.'/pr13-activation-app-r3', 'LARAVEL_STORAGE_PATH' => KIT.'/pr13-activation-app-r3/storage', 'APP_CONFIG_CACHE' => KIT.'/pr13-activation-app-r3/bootstrap/cache/release-config.php',
         'DB_CONNECTION' => 'mariadb', 'DB_HOST' => 'localhost', 'DB_PORT' => '3306', 'DB_DATABASE' => 'novinpay_live1', 'DB_USERNAME' => $mig['user'], 'DB_PASSWORD' => $mig['password'], 'DB_SOCKET' => '',
         'DB_URL' => 'mariadb://localhost/novinpay_live1?timezone=%2B00%3A00', 'CACHE_STORE' => 'file', 'SESSION_DRIVER' => 'file', 'QUEUE_CONNECTION' => 'sync', 'MAIL_MAILER' => 'log',
         'ZIBAL_ENABLED' => 'false', 'ZIBAL_LIVE_REQUESTS' => 'false', 'SMSIR_ENABLED' => 'false', 'SMSIR_NOTIFICATIONS_ENABLED' => 'false', 'POSTEX_QUOTES_ENABLED' => 'false', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'false'];
@@ -353,13 +362,13 @@ try {
     foreach ($m['changedRuntimeFiles'] as $file => $sha) {
         need(! is_link(APP.'/'.$file) && hash_equals($sha, hash_file('sha256', APP.'/'.$file)), 'installed_candidate_integrity');
     }
-    need(stat(APP.'/vendor')['dev'] === stat(KIT.'/pr13-activation-app-r2/vendor')['dev'], 'atomic_vendor_filesystem');
-    need(rename(APP.'/vendor', STATE.'/baseline-vendor') && rename(KIT.'/pr13-activation-app-r2/vendor', APP.'/vendor'), 'vendor_switch_preserve_fence');
-    foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(KIT.'/pr13-activation-build-r2', \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST) as $entry) {
+    need(stat(APP.'/vendor')['dev'] === stat(KIT.'/pr13-activation-app-r3/vendor')['dev'], 'atomic_vendor_filesystem');
+    need(rename(APP.'/vendor', STATE.'/baseline-vendor') && rename(KIT.'/pr13-activation-app-r3/vendor', APP.'/vendor'), 'vendor_switch_preserve_fence');
+    foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(KIT.'/pr13-activation-build-r3', \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST) as $entry) {
         need(! $entry->isLink() && chmod($entry->getPathname(), $entry->isDir() ? 0755 : 0644), 'public_asset_permissions');
     }
-    need(chmod(KIT.'/pr13-activation-build-r2', 0755), 'public_build_permissions');
-    need(rename(APP.'/public/build', STATE.'/baseline-build') && rename(KIT.'/pr13-activation-build-r2', APP.'/public/build'), 'assets_switch_preserve_fence');
+    need(chmod(KIT.'/pr13-activation-build-r3', 0755), 'public_build_permissions');
+    need(rename(APP.'/public/build', STATE.'/baseline-build') && rename(KIT.'/pr13-activation-build-r3', APP.'/public/build'), 'assets_switch_preserve_fence');
     // Only the one non-secret feature flag changes; credentials/provider values stay byte-for-byte.
     $oldEnv = privateRead(APP.'/.env');
     replaceOwned(APP.'/.env', hash('sha256', $oldEnv), enabledChatEnvironment($oldEnv));
