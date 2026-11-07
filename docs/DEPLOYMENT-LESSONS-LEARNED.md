@@ -45,6 +45,8 @@ The presentation updater did not establish request draining; maintenance alone n
 
 The application's chat initialization command intentionally accepts staging/testing only. Production activation uses a private parent-authorized provisioner with the same reviewed defaults; no environment impersonation and no change to that application guard. External SMS/push/recovery delivery stays disabled. These are preventive source-reviewed checks, not a claim that hosted activation ran.
 
+Linux CI caught `drain_executable_unreadable` with the original real-UID selector. `/proc/status` lists real/effective/saved/filesystem UIDs; selection must use the effective UID, matching the verified web hosting identity. A root-effective setuid helper can retain the account's real UID without being an account PHP worker; the exact failed CI process was not logged, so that process identity remains unconfirmed. Same-effective-UID processes with unreadable executable identity still fail closed. Effective-UID parsing and a real blocked PHP subprocess are regression-tested; no signal/kill is used.
+
 ### Six checks before offering a command
 
 1. Pin branch/HEAD/runtime diff, the executing helper version, its actual manifest path and all payload hashes. Reconcile any partial upload first; an archive prepared is not an operation executed.

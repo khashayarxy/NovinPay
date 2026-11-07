@@ -8,6 +8,7 @@ use RuntimeException;
 use function NovinPay\Release\Pr13\backupMetadata;
 use function NovinPay\Release\Pr13\cliFence;
 use function NovinPay\Release\Pr13\cronIsFenced;
+use function NovinPay\Release\Pr13\effectiveProcessUid;
 use function NovinPay\Release\Pr13\enabledChatEnvironment;
 use function NovinPay\Release\Pr13\phpProcesses;
 use function NovinPay\Release\Pr13\processStartTicks;
@@ -86,6 +87,14 @@ final class ProductionActivationTest extends TestCase
         $this->assertSame('123456', processStartTicks('42 (php (worker)) '.implode(' ', $suffix)));
         $this->expectExceptionMessage('process_start_metadata');
         processStartTicks('42 invalid');
+    }
+
+    public function test_process_identity_uses_effective_uid_not_a_setuid_helpers_real_uid(): void
+    {
+        $this->assertSame(0, effectiveProcessUid("Name:\tsudo\nUid:\t1321\t0\t0\t0\n"));
+        $this->assertSame(1321, effectiveProcessUid("Name:\tlsphp\nUid:\t1321\t1321\t1321\t1321\n"));
+        $this->expectExceptionMessage('drain_process_uid');
+        effectiveProcessUid("Uid:\t1321\n");
     }
 
     public function test_authenticated_backup_metadata_is_read_in_memory_and_duplicate_members_are_rejected(): void

@@ -47,8 +47,7 @@ function phpProcesses(string $proc, int $uid, int $self): int
 
             continue; // A process exited between enumeration and inspection.
         }
-        need(preg_match('/^Uid:\s+(\d+)/m', $status, $match) === 1, 'drain_process_uid');
-        if ((int) $match[1] !== $uid) {
+        if (effectiveProcessUid($status) !== $uid) {
             continue;
         }
         $exe = @readlink($entry.'/exe');
@@ -65,6 +64,15 @@ function phpProcesses(string $proc, int $uid, int $self): int
     }
 
     return $count;
+}
+
+function effectiveProcessUid(string $status): int
+{
+    // /proc exposes real/effective/saved/fs UIDs. A setuid system helper may
+    // retain our real UID while executing as root; it is not an account worker.
+    need(preg_match('/^Uid:\s+\d+\s+(\d+)\s+\d+\s+\d+/m', $status, $match) === 1, 'drain_process_uid');
+
+    return (int) $match[1];
 }
 
 function processStartTicks(string $stat): string
