@@ -1,9 +1,8 @@
 import {mobileTable} from './mobile-table.js?v=mobile2';
 // Support Team Management module for ZizoLearn Operator Admin Panel V3
 export function teamView({host,api,currentOperator,warn}){
- let accounts=[],loading=false,canManageTeam=false;
+ let accounts=[],loading=false;
 
- function ownerPassword(){return new Promise(resolve=>{const dialog=document.createElement('dialog'),form=document.createElement('form'),label=document.createElement('label'),input=document.createElement('input'),confirm=document.createElement('button'),cancel=document.createElement('button');label.textContent='گذرواژهٔ فعلی مدیر کل';input.type='password';input.autocomplete='current-password';input.required=true;confirm.textContent='تأیید';cancel.textContent='انصراف';cancel.type='button';label.append(input);form.append(label,confirm,cancel);dialog.append(form);host.append(dialog);let done=false;const finish=value=>{if(done)return;done=true;input.value='';dialog.close();dialog.remove();resolve(value);};cancel.onclick=()=>finish(null);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});form.onsubmit=event=>{event.preventDefault();finish(input.value);};dialog.showModal();input.focus();});}
  function buildUI(){
   host.replaceChildren();
 
@@ -48,7 +47,7 @@ export function teamView({host,api,currentOperator,warn}){
   layout.append(tableCol);
 
   // Right: Add Account Form (if admin)
-  if(canManageTeam){
+  if(currentOperator()?.role==='administrator'){
    const formCol=document.createElement('div');
    formCol.className='team-form-col';
    const formCard=document.createElement('div');
@@ -59,19 +58,17 @@ export function teamView({host,api,currentOperator,warn}){
    form.innerHTML=`
     <h3>افزودن عضو جدید</h3>
     <label>
-     <span>ایمیل ورود همکار</span>
-     <input type="email" id="newOpUsername" required maxlength="255" autocomplete="off" placeholder="name@example.com">
+     <span>نام کاربری (حداکثر ۸۰ نویسه انگلیسی)</span>
+     <input type="text" id="newOpUsername" required maxlength="80" autocomplete="off" placeholder="مثال: sara_support">
     </label>
     <label>
      <span>نام نمایشی (فارسی)</span>
-     <input type="text" id="newOpName" required maxlength="100" placeholder="مثال: سارا محمدی">
+     <input type="text" id="newOpName" required maxlength="200" placeholder="مثال: سارا محمدی">
     </label>
     <label>
      <span>رمز عبور (حداقل ۱۲ نویسه)</span>
      <input type="password" id="newOpPassword" required minlength="12" maxlength="200" autocomplete="new-password">
     </label>
-    <label><span>تکرار گذرواژهٔ همکار</span><input type="password" id="newOpPasswordConfirmation" required autocomplete="new-password"></label>
-    <label><span>گذرواژهٔ فعلی مدیر کل</span><input type="password" id="teamOwnerPassword" required autocomplete="current-password"></label>
     <label>
      <span>نقش دسترسی</span>
      <select id="newOpRole">
@@ -94,7 +91,7 @@ export function teamView({host,api,currentOperator,warn}){
      const p=form.querySelector('#newOpPassword').value;
      const r=form.querySelector('#newOpRole').value;
 
-     await api('account_add',{username:u,name:n,password:p,password_confirmation:form.querySelector('#newOpPasswordConfirmation').value,current_password:form.querySelector('#teamOwnerPassword').value,role:r});
+     await api('account_add',{username:u,name:n,password:p,role:r});
      form.reset();
      showNotice('حساب کاربری جدید با موفقیت ساخته شد.');
      await loadAccounts();
@@ -120,7 +117,6 @@ export function teamView({host,api,currentOperator,warn}){
   try{
    const res=await api('accounts');
    accounts=res.accounts||[];
-   if(canManageTeam!==!!res.can_manage_accounts){canManageTeam=!!res.can_manage_accounts;buildUI();}
    renderTable();
   }catch(e){
    warn(e);
@@ -153,7 +149,7 @@ export function teamView({host,api,currentOperator,warn}){
   tbl.append(thead);
 
   const tbody=document.createElement('tbody');
-  const isAdmin=canManageTeam;
+  const isAdmin=currentOperator()?.role==='administrator';
   const myId=currentOperator()?.id;
 
   for(const a of accounts){
@@ -205,8 +201,7 @@ export function teamView({host,api,currentOperator,warn}){
      if(!confirm(`آیا مطمئن هستید که می‌خواهید دسترسی حساب «${name}» را لغو کنید؟`))return;
      revokeBtn.disabled=true;
      try{
-      const password=await ownerPassword();if(password===null)return;
-      await api('account_revoke',{id:a.id,current_password:password});
+      await api('account_revoke',{id:a.id});
       showNotice('دسترسی حساب با موفقیت لغو شد.');
       await loadAccounts();
      }catch(err){

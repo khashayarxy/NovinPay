@@ -2,8 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\SupportTeamAdministration;
-use App\Support\AdminAccess;
+use App\Support\Chat\ChatAssets;
 use App\Support\Chat\ChatBridge;
 use App\Support\Chat\LegacyResponse;
 use Illuminate\Http\Request;
@@ -40,19 +39,6 @@ class SupportChatController extends Controller
         abort_unless(config('support_chat.enabled'), 404);
         abort_unless($request->isSecure() && preg_match('~\A[a-zA-Z0-9_./-]*\z~D', $path) && ! str_contains($path, '..') && ! str_starts_with($path, '/'), 404);
         $operatorPage = in_array($path, ['operator', 'operator/', 'operator/index.html'], true);
-        if ($operatorPage && ! auth()->check()) {
-            $request->session()->put('support_return_after_login', true);
-
-            return redirect()->route('admin.login');
-        }
-        if (str_starts_with($path, 'operator/') || $path === 'operator') {
-            abort_unless(auth()->check() && auth()->user()->can('support.view'), 403);
-            $grant = AdminAccess::account(auth()->user());
-            abort_unless($grant && ! $grant->must_change_password && $request->session()->get('admin_session_version') === $grant->session_version, 403);
-        }
-        if ($operatorPage && (! is_string($request->session()->get('support_authentication_nonce')) || time() - (int) $request->session()->get('support_authenticated_at', 0) >= 8 * 3600 || ($request->session()->has('support_chat_window') && time() - (int) $request->session()->get('support_chat_window.interactive_at', 0) > 1800))) {
-            return redirect()->route('admin.support.confirm');
-        }
         if ($operatorPage && (! $request->routeIs('support.panel') || $request->getPathInfo() !== '/support')) {
             return redirect('/support', 302);
         }
@@ -69,6 +55,10 @@ class SupportChatController extends Controller
             $content = file_get_contents($file);
             if ($operatorPage) {
                 $content = str_replace('<base href="../">', '<base href="/support-chat/">', $content);
+            }
+
+            if ($operatorPage) {
+                $content = app(ChatAssets::class)->html($content);
             }
 
             return response($content, 200, ['Content-Type' => $mime.(in_array(pathinfo($file, PATHINFO_EXTENSION), ['js', 'css', 'html', 'json', 'svg'], true) ? '; charset=utf-8' : ''), 'X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'no-store, private']);
@@ -105,38 +95,6 @@ class SupportChatController extends Controller
             http_response_code(200);
             self::loadModule(resource_path('support-chat/support/bootstrap.php'), true);
             self::loadModule(resource_path('support-chat/support/operators.php'), true);
-            if (in_array($path, ['operator-api.php', 'support-content-admin.php'], true)) {
-                $bridge->operator();
-                if ($path === 'operator-api.php' && in_array($request->input('action'), ['account_add', 'account_revoke'], true)) {
-                    \support_request_method('POST');
-                    $operator = \support_operator();
-                    \support_csrf($operator);
-                    \support_ops_admin($operator);
-                    app(SupportTeamAdministration::class)->apply($request->user(), $request->input('action'), $request->all());
-                    $bridge->syncOperators();
-                    throw new LegacyResponse(['status' => 'success']);
-                }
-                if ($path === 'operator-api.php' && $request->input('action') === 'accounts' && $request->isMethod('GET')) {
-                    $operator = \support_operator();
-                    $accounts = \support_ops_store(fn (array &$state) => array_values(array_map(fn ($account) => $operator['operator_role'] === 'administrator' ? \support_ops_public($account) : array_intersect_key($account, array_flip(['id', 'name', 'active'])), $state['accounts'])));
-                    throw new LegacyResponse(['status' => 'success', 'accounts' => $accounts, 'can_manage_accounts' => $request->user()->can('staff.manage')]);
-                }
-                if ($request->input('action') === 'account_update') {
-                    self::loadModule(resource_path('support-chat/support/operator-profile.php'), true);
-                    $operator = \support_operator();
-                    \support_csrf($operator);
-                    \support_ops_admin($operator);
-                    $target = \support_profile_target($operator, $request->input('id'));
-                    $account = \support_ops_store(fn (array &$state) => $state['accounts'][$target] ?? null);
-                    if (! $account || $request->input('role') !== $account['role'] || $request->input('active') !== ($account['active'] ? '1' : '0')) {
-                        \support_failure(409, 'native_account_management');
-                    }
-                    $_POST['action'] = 'profile_save';
-                }
-                if (in_array($request->input('action'), ['login', 'account_add', 'account_revoke', 'account_password', 'profile_password'], true)) {
-                    \support_failure(409, 'native_account_management');
-                }
-            }
             self::loadModule($file);
         } catch (LegacyResponse $ready) {
             $payload = $ready->payload;
@@ -180,6 +138,9 @@ class SupportChatController extends Controller
             $content = '';
             $status = 503;
             $payload = ['status' => 'error', 'code' => 'service_unavailable'];
+        }
+        if ($path === 'support-widget.php' && $payload === null && $status === 200) {
+            $content = app(ChatAssets::class)->html($content);
         }
         $response = $payload !== null ? response()->json($payload, $status, [], JSON_UNESCAPED_UNICODE) : response($content, $status);
         foreach ($outHeaders as $header) {

@@ -187,3 +187,115 @@ Staging controller hotfix uploaded through cPanel with exact old-file fingerprin
 ## Current follow-up
 
 The original team table/filter/add/revoke UI is restored locally, with native email login, password confirmation and protected-owner current-password verification. Roles grant support permissions only; revocation preserves unrelated staff access and increments native session version. Newly provisioned staff remain subject to password rotation. Native profile password/role editing is still an explicit integration difference; full hosted parity is not established. Customer light default/manual persistence is an owner-requested integration difference. Hosted disclosure verification passed all 11 endpoints (owner result); customer initialization and two-operator acceptance remain separate gates.
+
+
+## Owner archive comparison and independent operator revision (2026-11-08)
+
+This section supersedes the earlier Laravel-staff coupling requirement above. PR #13 is merged; the next changes are on `codex/independent-support-performance`. Production remains at `ebc9c4d` until separately verified deployment.
+
+Reference: owner-supplied `operator.zip`, SHA-256 `d52b6b72cf24244539dac504cd6155a01136c3e051ebdf4648b5f153ed410713`. It contains 82 files (86 entries): operator/customer frontend, icons and one PHP PWA manifest. It does **not** contain the chat API, storage/authentication PHP backend, widget PHP entry point, database schema or background jobs. The import baseline remains GitHub commit `7d6f6ddcfbde4fd3fb1857f62504d230e4c43bb5`; the ZIP has no verifiable source commit. Backend parity with the latest live ZizoLearn cannot be established from this archive alone.
+
+File comparison after restoration: 53 identical, 28 integration-modified, 1 intentionally uninstalled server directive. No functional frontend file is absent.
+
+| Reference file | Current status | Difference / justification |
+| --- | --- | --- |
+| `operator/.htaccess` | missing | Not copied: archive only disables caching; Laravel protects dynamic HTML/API and versioned public assets use separate caching. |
+| `operator/analytics.js` | identical | Exact after line-ending normalization. |
+| `operator/app.css` | identical | Exact after line-ending normalization. |
+| `operator/app.js` | identical | Exact after line-ending normalization. |
+| `operator/auth-lifecycle.js` | identical | Exact after line-ending normalization. |
+| `operator/drafts.js` | identical | Exact after line-ending normalization. |
+| `operator/faq-settings.js` | identical | Exact after line-ending normalization. |
+| `operator/health.js` | identical | Exact after line-ending normalization. |
+| `operator/icons/apple-touch-icon.png` | modified | NovinPay branding/icons only. |
+| `operator/icons/icon-192.png` | modified | NovinPay branding/icons only. |
+| `operator/icons/icon-512.png` | modified | NovinPay branding/icons only. |
+| `operator/icons/maskable-512.png` | modified | NovinPay branding/icons only. |
+| `operator/icons/operator-mark.svg` | identical | Exact after line-ending normalization. |
+| `operator/index.html` | modified | NovinPay branding, canonical base, CSP and restored original independent login/team controls. |
+| `operator/manifest.php` | modified | NovinPay branding and /support PWA scope; dynamic response stays private. |
+| `operator/mobile.css` | identical | Exact after line-ending normalization. |
+| `operator/mobile.js` | identical | Exact after line-ending normalization. |
+| `operator/modules/analytics.js` | modified | NovinPay branding/icons only. |
+| `operator/modules/contacts.js` | modified | NovinPay branding/icons only. |
+| `operator/modules/dashboard.js` | modified | NovinPay branding/icons only. |
+| `operator/modules/health.js` | modified | NovinPay branding/icons only. |
+| `operator/modules/icons.js` | modified | NovinPay branding/icons only. |
+| `operator/modules/knowledge.js` | modified | NovinPay branding/icons only. |
+| `operator/modules/mobile-table.js` | identical | Exact after line-ending normalization. |
+| `operator/modules/router.js` | modified | NovinPay branding/icons only. |
+| `operator/modules/settings.js` | modified | NovinPay branding/icons only. |
+| `operator/modules/team.js` | identical | Exact after line-ending normalization. |
+| `operator/modules/replies.js` | identical | Exact after line-ending normalization. |
+| `operator/overlays.js` | identical | Exact after line-ending normalization. |
+| `operator/productivity.js` | identical | Exact after line-ending normalization. |
+| `operator/profile.js` | identical | Exact after line-ending normalization. |
+| `operator/pwa.js` | modified | Canonical /support worker scope; no access to unrelated pages. |
+| `operator/readiness.js` | identical | Exact after line-ending normalization. |
+| `operator/sw.js` | modified | Canonical /support navigation and customer/operator notification isolation. |
+| `operator/widget-settings.js` | identical | Exact after line-ending normalization. |
+| `operator/workspace.css` | modified | NovinPay navigation label/RTL styling; original dashboard structure retained. |
+| `operator/emoji.js` | identical | Exact after line-ending normalization. |
+| `operator/quick-reply-editor.js` | identical | Exact after line-ending normalization. |
+| `support-client/attachments.js` | identical | Exact after line-ending normalization. |
+| `support-client/attention-store.js` | identical | Exact after line-ending normalization. |
+| `support-client/attention.js` | identical | Exact after line-ending normalization. |
+| `support-client/bplus.css` | identical | Exact after line-ending normalization. |
+| `support-client/bplus.js` | identical | Exact after line-ending normalization. |
+| `support-client/chat.css` | identical | Exact after line-ending normalization. |
+| `support-client/customer-entry.js` | identical | Exact after line-ending normalization. |
+| `support-client/customer-faq.js` | identical | Exact after line-ending normalization. |
+| `support-client/customer-layout.css` | modified | NovinPay source-page launcher placement/typography. |
+| `support-client/customer-shell.js` | identical | Exact after line-ending normalization. |
+| `support-client/customer-sw.js` | identical | Exact after line-ending normalization. |
+| `support-client/customer-v2-renderer.js` | modified | NovinPay team/brand fallback; original rendering retained. |
+| `support-client/customer-v2-tools.js` | modified | NovinPay fallback labels; original controls retained. |
+| `support-client/customer-v2.css` | identical | Exact after line-ending normalization. |
+| `support-client/customer-v2.js` | modified | NovinPay brand fallback. |
+| `support-client/customer.js` | modified | Existing combined bootstrap, reconnect and message-queue handling; no feature removal. |
+| `support-client/design-tokens.css` | modified | Local NovinPay fonts and theme tokens. |
+| `support-client/engine.js` | modified | Existing tested single-use startup bootstrap, fresh-send optimization, replay-safe cursor reconciliation; protocol guarantees retained. |
+| `support-client/interaction.css` | identical | Exact after line-ending normalization. |
+| `support-client/issuance.js` | identical | Exact after line-ending normalization. |
+| `support-client/launcher.css` | identical | Exact after line-ending normalization. |
+| `support-client/menu.js` | identical | Exact after line-ending normalization. |
+| `support-client/message-groups.js` | identical | Exact after line-ending normalization. |
+| `support-client/network.js` | modified | Existing combined bootstrap, bounded redacted timings and strict response/cursor validation. |
+| `support-client/outbox.js` | identical | Exact after line-ending normalization. |
+| `support-client/persian-date.js` | identical | Exact after line-ending normalization. |
+| `support-client/phone.js` | identical | Exact after line-ending normalization. |
+| `support-client/recovery.js` | identical | Exact after line-ending normalization. |
+| `support-client/reply.js` | identical | Exact after line-ending normalization. |
+| `support-client/satisfaction.js` | identical | Exact after line-ending normalization. |
+| `support-client/selection-toast.js` | identical | Exact after line-ending normalization. |
+| `support-client/send-cooldown.js` | identical | Exact after line-ending normalization. |
+| `support-client/theme-init.js` | modified | Owner-approved customer light default with persistent manual light/dark preference. |
+| `support-client/theme.js` | identical | Exact after line-ending normalization. |
+| `support-client/typing.js` | identical | Exact after line-ending normalization. |
+| `support-client/unread-jump.js` | identical | Exact after line-ending normalization. |
+| `support-client/widget.css` | identical | Exact after line-ending normalization. |
+| `support-client/widget.html` | modified | NovinPay branding and local font loading. |
+| `support-client/widget.js` | identical | Exact after line-ending normalization. |
+| `support-client/icons.js` | identical | Exact after line-ending normalization. |
+| `support-client/critical-shell.html` | modified | Existing safe loading/retry diagnostic and selected-theme handling. |
+| `support-client/composer-size.js` | identical | Exact after line-ending normalization. |
+| `support-client/message-edit.js` | identical | Exact after line-ending normalization. |
+| `support-client/compat-bootstrap.js` | identical | Exact after line-ending normalization. |
+
+### Feature and trust-boundary result
+
+- Original operator app/login, native team creation/revocation, per-account roles/passwords/profile management restored from the archive; `app.js`, `profile.js`, `modules/team.js` are exact reference matches. Operator/customer dashboards, inbox, drafts, replies/macros, history, ACK/outbox, read/typing/presence, attachments, recovery, lifecycle, satisfaction, analytics, settings and PWA modules remain.
+- Previous coupling came from `ChatBridge` mapping Laravel staff/grants on every operator request, controller interception of native account actions, and frontend redirects to admin login/password/staff screens. These mappings/interceptions and unused confirmation/team adapters are removed.
+- Native operator sessions/credentials/CSRF/roles now stand alone. Laravel customer-to-conversation ownership remains unchanged. Public operator UI assets contain no account/session data; APIs remain authenticated and no-store. Admin login/logout cannot authenticate/logout support and vice versa (focused tests).
+- Transition: one explicit console enrollment preserves operator IDs/names/profiles/history and a hash-pinned private preimage of the authority. It invalidates prior sessions and push subscriptions, disables Laravel-generated mapped accounts except the explicitly enrolled existing support administrator, and preserves other native account passwords. No admin password hash is imported. No SQL migration, permission grant or provider activation is needed. Enrollment cannot replay silently; existing data is never reset.
+- The owner must privately select the new independent support password. Before enrollment, inherited sessions fail closed and the native login reports setup required. Production must not be switched without arranging this enrollment. Old coupled code is incompatible with the new authority contract; after enrollment use forward recovery, not automatic coupled-code rollback.
+- Static build publishes an allowlisted, content-versioned tree under `public/build/support-chat/`; PHP/config/runtime/HTML are excluded. Relative module versions are canonicalized so preloads/imports share URLs. LiteSpeed cache headers apply only within this public tree; dynamic HTML, API, tokens and conversations remain no-store. Original four-second polling is unchanged.
+- SMS/push/email issuance, Zibal and postal billing remain disabled; no provider delivery or latest upstream backend parity is claimed.
+
+### Measured evidence (local browser, not production acceptance)
+
+- Production baseline HTTP engine.js fetches before deployment: 448.3/397.6/446.6 ms, no-store/private (three samples from this workstation; network-inclusive). Launcher samples were 4925.2/1530.1/424.5 ms and are not a stable benchmark.
+- Same local browser, same engine payload: Laravel endpoint 72.5/93.4/50.5 ms (median 72.5); versioned static endpoint 3.0/2.6/2.3 ms (median 2.6). These are asset-fetch timings, **not message ACK latency**. Herd does not apply Apache `.htaccess`, so production immutable headers still require hosted verification.
+- Five local iframe reload-to-enabled-composer samples: 728/409/494/482/463 ms (median 482, empirical p95=max 728 with only five samples); a final 642 ms check verified zero duplicate JS resources after canonical imports and SVG-icon module deduplication. Earlier startup instrumentation mistakenly waited for removal of a deliberately hidden loading mask; it did not indicate an application failure.
+- Browser confirms the composer initializes, public modules use static paths, no legacy module requests remain, no console errors were observed. Cold full-widget before/after, send ACK and hosted two-way measurements remain pending; do not extrapolate asset improvements into unmeasured message latency.
+- Focused tests cover native login/CSRF, session/logout separation, native roles, password revocation, safe enrollment/replay rejection, customer identity, rapid/lost-ACK sends, replay/order/isolation, reply/read/lifecycle/CSAT/analytics, image-only submission and public-asset publication boundaries. See current test output/CI for exact revision results.

@@ -5,8 +5,7 @@ namespace Tests\Feature;
 use App\Models\AdminAccount;
 use App\Models\CustomerAccount;
 use App\Models\User;
-use App\Services\SupportTeamAdministration;
-use App\Support\AdminAccess;
+use App\Services\IndependentSupportOperators;
 use App\Support\Chat\ChatBridge;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,8 +31,9 @@ class SupportChatTest extends TestCase
         parent::setUp();
         $this->private = sys_get_temp_dir().'/novinpay-chat-test-'.bin2hex(random_bytes(12));
         config(['support_chat.enabled' => true, 'support_chat.directory' => $this->private]);
-        $this->actingAs(User::factory()->superAdmin()->create());
+        User::factory()->superAdmin()->create();
         app(ChatBridge::class)->initialize();
+        app(IndependentSupportOperators::class)->enroll('owner', 'IndependentSupport12!');
         auth()->forgetGuards();
     }
 
@@ -87,38 +87,28 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/support-client/engine.js')->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
     }
 
-    public function test_session_expiry_shell_keeps_its_button_style_without_protected_stylesheets(): void
+    public function test_independent_login_shell_is_available_without_admin_authentication(): void
     {
-        $this->actingAs(User::query()->sole())->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
-        $this->get('https://localhost/support')->assertOk()
-            ->assertSee('<style id="support-login-button-style">', false)
-            ->assertSee('id="support-login"', false)
-            ->assertSee('class="primary support-login-button" href="/support"', false)
-            ->assertSee('background:#0866ff;color:#fff', false)
-            ->assertSee('.support-login-button:focus-visible', false)
-            ->assertSee('.support-login-button:active', false);
-        $this->withSession(['support_authenticated_at' => time() - 8 * 3600 - 1]);
-        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertUnauthorized();
-        $this->get('https://localhost/support')->assertRedirect('/admin/support/confirm');
+        $this->get('https://localhost/support')->assertOk()->assertSee('id="username"', false)->assertSee('id="password"', false)->assertDontSee('/admin/support/confirm');
+        $this->get('https://localhost/support-chat/operator/app.js')->assertOk()->assertDontSee('/admin/support/confirm');
     }
 
-    public function test_operator_login_returns_only_to_the_fixed_authorized_support_destination(): void
+    public function test_admin_login_does_not_authenticate_support(): void
     {
         $owner = User::query()->sole();
-        $this->get('https://localhost/support')->assertRedirect('/admin/login')->assertSessionHas('support_return_after_login', true);
-        $this->post('https://localhost/admin/login', ['email' => $owner->email, 'password' => 'password', 'return_to' => 'https://invalid.example/'])->assertRedirect('/support');
-        $this->assertFalse(session()->has('support_return_after_login'));
-        $this->get('https://localhost/support')->assertOk();
+        $this->post('https://localhost/admin/login', ['email' => $owner->email, 'password' => 'password'])->assertRedirect();
+        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->assertJsonPath('authenticated', false);
+        $this->get('https://localhost/support-chat/operator-api.php?action=inbox')->assertUnauthorized();
     }
 
-    public function test_support_return_does_not_bypass_staff_permissions_or_password_rotation(): void
+    public function test_support_login_and_logout_leave_admin_authentication_unchanged(): void
     {
-        $staff = User::factory()->staff(['products.view'])->create();
-        $this->withSession(['support_return_after_login' => true])->post('https://localhost/admin/login', ['email' => $staff->email, 'password' => 'password'])->assertRedirect(route('admin.products.index'));
-        $this->get('https://localhost/support')->assertForbidden();
-        $this->post('https://localhost/admin/logout')->assertRedirect('/admin/login');
-        $rotating = User::factory()->staff(['support.view'], mustChangePassword: true)->create();
-        $this->withSession(['support_return_after_login' => true])->post('https://localhost/admin/login', ['email' => $rotating->email, 'password' => 'password'])->assertRedirect(route('admin.password.edit'));
+        $owner = User::query()->sole();
+        $this->actingAs($owner)->withSession(['admin_session_version' => 1]);
+        $token = $this->loginOperator();
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'logout', 'csrf_token' => $token])->assertOk();
+        $this->assertAuthenticatedAs($owner, 'web');
+        $this->get('https://localhost/admin/repairs')->assertOk();
     }
 
     public function test_public_chat_assets_do_not_depend_on_database_sessions(): void
@@ -144,11 +134,11 @@ class SupportChatTest extends TestCase
 
     public function test_stateless_asset_route_keeps_private_operator_and_transport_boundaries(): void
     {
-        $this->get('https://localhost/support')->assertRedirect('/admin/login');
-        $this->get('https://localhost/support/sw.js')->assertForbidden();
+        $this->get('https://localhost/support')->assertOk();
+        $this->get('https://localhost/support/sw.js')->assertOk();
         $this->get('http://localhost/support-chat/support-client/engine.js')->assertNotFound();
-        $this->get('https://localhost/support-chat/operator/modules/team.js')->assertForbidden();
-        $this->get('https://localhost/support-chat/operator-api.php')->assertUnauthorized();
+        $this->get('https://localhost/support-chat/operator/modules/team.js')->assertOk();
+        $this->get('https://localhost/support-chat/operator-api.php?action=inbox')->assertUnauthorized();
         $this->get('https://localhost/support-chat/support/bootstrap.php')->assertNotFound();
         config(['support_chat.enabled' => false]);
         $this->get('https://localhost/support-chat/support-client/engine.js')->assertNotFound();
@@ -218,16 +208,15 @@ class SupportChatTest extends TestCase
         }
     }
 
-    public function test_operator_requires_current_laravel_grant_and_recent_authentication(): void
+    public function test_operator_requires_native_credentials_and_csrf(): void
     {
-        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertUnauthorized();
-        $user = User::query()->sole();
-        $this->actingAs($user)->withSession(['admin_session_version' => AdminAccess::account($user)->session_version]);
-        $this->get('https://localhost/support-chat/operator/')->assertRedirect(route('admin.support.confirm'));
-        $this->withSession(['support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
-        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->assertJsonPath('authenticated', true);
-        $this->withSession(['support_chat_window' => ['nonce' => session('support_authentication_nonce'), 'interactive_at' => time() - 1801]]);
-        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertUnauthorized();
+        $boot = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->assertJsonPath('authenticated', false);
+        $this->withCookie(session_name(), session_id());
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'login', 'username' => 'owner', 'password' => 'IndependentSupport12!', 'csrf_token' => 'invalid'])->assertForbidden();
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'login', 'username' => 'owner', 'password' => 'password', 'csrf_token' => $boot->json('token')])->assertUnauthorized();
+        $this->loginOperator();
+        $this->get('https://localhost/support-chat/operator-api.php?action=inbox')->assertOk();
+        $this->assertGuest('web');
     }
 
     public function test_non_tls_and_disabled_chat_do_not_initialize_a_public_session(): void
@@ -237,49 +226,26 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertNotFound();
     }
 
-    public function test_native_team_creation_and_revocation_preserve_staff_security(): void
+    public function test_native_team_management_never_creates_or_changes_laravel_accounts(): void
     {
-        $owner = User::query()->sole();
-        $this->actingAs($owner)->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
-        $boot = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk();
-        $this->withCookie(session_name(), session_id());
-        $data = ['action' => 'account_add', 'username' => 'support-test@example.test', 'name' => 'Test Support', 'password' => 'SafeTestPassword12', 'password_confirmation' => 'SafeTestPassword12', 'current_password' => 'password', 'role' => 'administrator', 'csrf_token' => $boot->json('token')];
+        $token = $this->loginOperator();
+        $before = [User::count(), AdminAccount::count()];
+        $data = ['action' => 'account_add', 'username' => 'native_support', 'name' => 'Synthetic Support', 'password' => 'NativeSupportPassword12!', 'role' => 'support', 'csrf_token' => $token];
         $this->post('https://localhost/support-chat/operator-api.php', array_replace($data, ['csrf_token' => 'invalid']))->assertForbidden();
-        $this->post('https://localhost/support-chat/operator-api.php', array_replace($data, ['current_password' => 'wrong']))->assertStatus(422);
-        $this->post('https://localhost/support-chat/operator-api.php', array_replace($data, ['password_confirmation' => 'wrong']))->assertStatus(422);
-        $this->assertDatabaseMissing('users', ['email' => $data['username']]);
-        $this->post('https://localhost/support-chat/operator-api.php', $data)->assertOk();
-        $staff = User::where('email', $data['username'])->sole();
-        $grant = AdminAccount::where('user_id', $staff->id)->sole();
-        $this->assertSame('staff', $grant->role);
-        $this->assertSame(['support.view', 'support.manage'], $grant->permissions);
-        $this->assertTrue($grant->must_change_password);
-        $this->get('https://localhost/support-chat/operator-api.php?action=accounts')->assertOk()->assertJsonPath('can_manage_accounts', true);
-        // Removing chat access must not deactivate staff or remove unrelated grants.
-        $grant->forceFill(['permissions' => ['support.view', 'support.manage', 'products.view']])->save();
-        $id = substr(hash_hmac('sha256', 'chat-operator:'.$staff->id, config('app.key')), 0, 32);
-        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_revoke', 'id' => $id, 'current_password' => 'password', 'csrf_token' => $boot->json('token')])->assertOk();
-        $grant->refresh();
-        $this->assertTrue($grant->is_active);
-        $this->assertSame(['products.view'], $grant->permissions);
-        $this->assertSame(2, $grant->session_version);
-        $ownerId = substr(hash_hmac('sha256', 'chat-operator:'.$owner->id, config('app.key')), 0, 32);
-        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_revoke', 'id' => $ownerId, 'current_password' => 'password', 'csrf_token' => $boot->json('token')])->assertForbidden();
+        $id = $this->post('https://localhost/support-chat/operator-api.php', $data)->assertOk()->json('account.id');
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_revoke', 'id' => $id, 'csrf_token' => $token])->assertOk();
+        $this->assertSame($before, [User::count(), AdminAccount::count()]);
+        $accounts = $this->get('https://localhost/support-chat/operator-api.php?action=accounts')->assertOk()->json('accounts');
+        $this->assertFalse(collect($accounts)->firstWhere('id', $id)['active']);
     }
 
-    public function test_support_manager_cannot_provision_staff_or_bypass_password_rotation(): void
+    public function test_native_support_role_cannot_manage_accounts(): void
     {
-        $owner = User::query()->sole();
-        app(SupportTeamAdministration::class)->apply($owner, 'account_add', ['username' => 'manager-test@example.test', 'name' => 'Manager', 'password' => 'SafeTestPassword12', 'password_confirmation' => 'SafeTestPassword12', 'current_password' => 'password', 'role' => 'administrator']);
-        $staff = User::where('email', 'manager-test@example.test')->sole();
-        $grant = AdminAccount::where('user_id', $staff->id)->sole();
-        $this->actingAs($staff)->withSession(['admin_session_version' => $grant->session_version, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
-        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertForbidden();
-        $grant->forceFill(['must_change_password' => false])->save();
-        $boot = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk();
-        $this->withCookie(session_name(), session_id());
-        $this->get('https://localhost/support-chat/operator-api.php?action=accounts')->assertOk()->assertJsonPath('can_manage_accounts', false);
-        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'csrf_token' => $boot->json('token')])->assertForbidden();
+        $token = $this->loginOperator();
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'username' => 'native_support', 'name' => 'Support', 'password' => 'NativeSupportPassword12!', 'role' => 'support', 'csrf_token' => $token])->assertOk();
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'logout', 'csrf_token' => $token])->assertOk();
+        $token = $this->loginOperator('native_support', 'NativeSupportPassword12!');
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'username' => 'forbidden', 'name' => 'Forbidden', 'password' => 'NativeSupportPassword12!', 'role' => 'administrator', 'csrf_token' => $token])->assertForbidden();
     }
 
     private function customerContext(): array
@@ -364,44 +330,29 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/api.php?get_session=1')->assertUnauthorized();
     }
 
-    public function test_admin_revocation_cannot_reuse_an_authenticated_native_chat_cookie(): void
+    public function test_admin_logout_and_revocation_do_not_end_independent_support_session(): void
     {
-        $user = User::query()->sole();
-        $this->actingAs($user)->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
-        $token = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->json('token');
-        $_COOKIE[session_name()] = session_id();
-        $this->withCookie(session_name(), session_id());
-        AdminAccount::query()->where('user_id', $user->id)->update(['session_version' => 2]);
-        $this->post('https://localhost/support-chat/api.php', ['action' => 'send_reply', 'csrf_token' => $token, 'protocol_version' => '2', 'user_id' => 'invalid', 'reply' => 'synthetic rejected reply', 'client_message_id' => (string) Str::uuid()])->assertForbidden();
-        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertForbidden();
-        $this->get('https://localhost/support-chat/operator/')->assertForbidden();
-        $this->get('https://localhost/support-chat/operator/app.js')->assertForbidden();
-        $this->get('https://localhost/support')->assertForbidden();
-        $this->get('https://localhost/support/sw.js')->assertForbidden();
+        $owner = User::query()->sole();
+        $this->actingAs($owner)->withSession(['admin_session_version' => 1]);
+        $this->loginOperator();
+        $this->post('https://localhost/admin/logout')->assertRedirect('/admin/login');
+        AdminAccount::query()->where('user_id', $owner->id)->update(['session_version' => 2]);
+        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->assertJsonPath('authenticated', true);
+        $this->assertGuest('web');
     }
 
-    public function test_unchanged_operator_sync_avoids_private_rewrite_but_persists_revocation(): void
+    public function test_native_authority_read_does_not_rewrite_or_resynchronize_admins(): void
     {
-        $bridge = app(ChatBridge::class);
         $path = $this->private.'/runtime/operators/authority.json';
         $before = file_get_contents($path);
-        $stamp = time() - 120;
-        touch($path, $stamp);
+        $bridge = app(ChatBridge::class);
         $bridge->begin();
         try {
-            $bridge->syncOperators();
-            clearstatcache(true, $path);
-            $this->assertSame($before, file_get_contents($path));
-            $this->assertSame($stamp, filemtime($path), 'An unchanged operator sync must not replace the authority file.');
-            $owner = User::query()->sole();
-            AdminAccount::query()->where('user_id', $owner->id)->update(['session_version' => 2]);
-            $bridge->syncOperators();
-            clearstatcache(true, $path);
-            $this->assertNotSame($before, file_get_contents($path));
-            $this->assertGreaterThan($stamp, filemtime($path));
+            support_ops_store(static fn (array &$state) => null);
         } finally {
             $bridge->finish();
         }
+        $this->assertSame($before, file_get_contents($path));
     }
 
     public function test_operator_noop_optimization_still_persists_expired_metadata_cleanup(): void
@@ -420,7 +371,7 @@ class SupportChatTest extends TestCase
             $this->assertNotEmpty($before['subscriptions']);
             support_ops_store(static fn (array &$state) => null, true);
             $after = json_decode(file_get_contents($path), true);
-            $this->assertSame([], $after['events']);
+            $this->assertSame(['independent_authentication_enrolled'], array_column($after['events'], 'event'));
             $this->assertSame([], $after['subscriptions']);
         } finally {
             $bridge->finish();
@@ -433,7 +384,7 @@ class SupportChatTest extends TestCase
         $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $id, 'message' => 'synthetic question', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $customerToken])->assertOk();
         $user = User::query()->sole();
         $this->actingAs($user)->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
-        $operatorToken = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->json('token');
+        $operatorToken = $this->loginOperator();
         $_COOKIE[session_name()] = session_id();
         $this->withCookie(session_name(), session_id());
         $this->get('https://localhost/support-chat/operator-api.php?action=inbox')->assertOk()->assertJsonCount(1, 'conversations');
@@ -446,14 +397,15 @@ class SupportChatTest extends TestCase
         $this->post('https://localhost/support-chat/api.php', $vote)->assertOk()->assertJsonPath('replayed', true);
         $this->get('https://localhost/support-chat/operator-api.php?action=analytics')->assertOk()->assertJsonStructure(['stats']);
         $this->post('https://localhost/support-chat/api.php', ['lifecycle' => 'reopen', 'user_id' => $id, 'csrf_token' => $customerToken])->assertOk()->assertJsonPath('lifecycle.resolved', false);
-        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'csrf_token' => $operatorToken])->assertStatus(422);
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'csrf_token' => $operatorToken])->assertStatus(400);
     }
 
     public function test_corrupt_private_authority_fails_closed_without_disclosing_paths(): void
     {
+        $this->loginOperator();
         file_put_contents($this->private.'/runtime/operators/authority.json', 'not json');
         $this->actingAs(User::query()->sole())->withSession(['admin_session_version' => 1, 'support_authentication_nonce' => bin2hex(random_bytes(16)), 'support_authenticated_at' => time()]);
-        $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertStatus(503)->assertDontSee($this->private);
+        $this->get('https://localhost/support-chat/operator-api.php?action=inbox')->assertStatus(503)->assertDontSee($this->private);
         if (! is_dir($this->private.'/data')) {
             mkdir($this->private.'/data', 0700);
         }
@@ -464,17 +416,15 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/api.php?get_session=1')->assertStatus(503)->assertDontSee($this->private);
     }
 
-    public function test_support_reauthentication_requires_native_csrf_and_actual_current_password(): void
+    public function test_independent_password_change_requires_current_native_password_and_revokes_old_session(): void
     {
-        $user = User::query()->sole();
-        $this->actingAs($user)->withSession(['admin_session_version' => 1]);
-        $this->get('/admin/support/confirm')->assertOk();
-        $this->post('/admin/support/confirm', ['current_password' => 'wrong'])->assertSessionHasErrors('current_password');
-        $this->assertNull(session('support_authentication_nonce'));
-        $this->post('/admin/support/confirm', ['current_password' => 'password'])->assertRedirect('/support');
-        $this->assertMatchesRegularExpression('/\A[a-f0-9]{32}\z/D', session('support_authentication_nonce'));
-        $this->app->detectEnvironment(fn () => 'local');
-        $this->post('/admin/support/confirm', ['current_password' => 'password'])->assertStatus(419);
+        $token = $this->loginOperator();
+        $data = ['action' => 'profile_password', 'current_password' => 'wrong', 'password' => 'NewNativePassword12!', 'csrf_token' => $token];
+        $this->post('https://localhost/support-chat/operator-api.php', $data)->assertForbidden();
+        $data['current_password'] = 'IndependentSupport12!';
+        $this->post('https://localhost/support-chat/operator-api.php', $data)->assertOk();
+        $this->get('https://localhost/support-chat/operator-api.php?action=inbox')->assertUnauthorized();
+        $this->assertGuest('web');
     }
 
     public function test_cli_working_directory_is_not_mistaken_for_the_public_document_root(): void
@@ -532,5 +482,27 @@ class SupportChatTest extends TestCase
         $this->defaultCookies = [];
         $this->customerContext();
         $this->get('https://localhost/support-chat/support-attachment.php?id='.$id)->assertNotFound();
+    }
+
+    public function test_operator_bootstrap_does_not_query_laravel_accounts_or_database_sessions(): void
+    {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        try {
+            $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->assertJsonPath('authenticated', false);
+            $this->assertSame([], DB::getQueryLog());
+        } finally {
+            DB::disableQueryLog();
+        }
+    }
+
+    private function loginOperator(string $username = 'owner', string $password = 'IndependentSupport12!'): string
+    {
+        $boot = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk();
+        $this->withCookie(session_name(), session_id());
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'login', 'username' => $username, 'password' => $password, 'csrf_token' => $boot->json('token')])->assertOk();
+        $this->withCookie(session_name(), session_id());
+
+        return $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->assertJsonPath('authenticated', true)->json('token');
     }
 }

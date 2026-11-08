@@ -1,9 +1,9 @@
 (()=>{
 // Same-origin iframe adapter: no remote widget service and no cross-origin API.
-const source=new URL(document.currentScript.src),root=new URL('./',source);
+const source=new URL(document.currentScript.src),assets=new URL('./',source),root=new URL('/support-chat/',location.origin);
 if(root.origin!==location.origin)throw new Error('Support widget requires a same-origin installation');
 if(!document.querySelector('[data-support-launcher]')){
-const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('support-client/launcher.css?v='+encodeURIComponent(source.searchParams.get('v')||'0.1.0-ui4'),root);document.head.append(style);
+const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('support-client/launcher.css?v='+encodeURIComponent(source.searchParams.get('v')||'0.1.0-ui4'),assets);document.head.append(style);
 const button=document.createElement('button');button.type='button';button.dataset.supportLauncher='';button.setAttribute('aria-label','پشتیبانی');button.setAttribute('aria-expanded','false');
 const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');path.setAttribute('d','M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z');svg.append(path);button.append(svg);
 const frame=document.createElement('iframe');frame.title='پشتیبانی';frame.src=new URL('support-widget.php',root);frame.hidden=true;frame.setAttribute('allow','clipboard-write');

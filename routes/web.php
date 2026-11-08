@@ -15,7 +15,6 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\RepairCaseController;
 use App\Http\Controllers\Admin\RepairOverviewController;
 use App\Http\Controllers\Admin\StaffController;
-use App\Http\Controllers\Admin\SupportAccessController;
 use App\Http\Controllers\ArticleController as PublicArticleController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ConsultationController;
@@ -50,13 +49,24 @@ Route::get('/support-chat/{path}', SupportChatController::class)
         PreventRequestForgery::class,
     ])->name('support.chat.asset');
 
-Route::get('/support', [SupportChatController::class, 'operatorPanel'])->middleware('throttle:600,1')->name('support.panel');
+Route::get('/support', [SupportChatController::class, 'operatorPanel'])
+    ->withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+    ->middleware('throttle:600,1')->name('support.panel');
 Route::get('/support/sw.js', [SupportChatController::class, 'operatorWorker'])->middleware('throttle:600,1')->name('support.panel.worker');
 
 Route::get('/support-chat/operator/{asset}', [SupportChatController::class, 'operatorAsset'])
     ->where('asset', '[a-zA-Z0-9_./-]+\.(?:js|css|json|woff2|png|svg)')
     ->middleware('throttle:600,1')
+    ->withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
     ->name('support.chat.operator.asset');
+
+// Operator API owns its native secure cookie, CSRF and session lifecycle.
+foreach (['operator-api.php', 'support-content-admin.php'] as $operatorEndpoint) {
+    Route::match(['GET', 'POST'], '/support-chat/'.$operatorEndpoint, SupportChatController::class)
+        ->defaults('path', $operatorEndpoint)
+        ->withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+        ->middleware('throttle:600,1')->name('support.chat.operator.'.str_replace('.php', '', $operatorEndpoint));
+}
 
 Route::match(['GET', 'POST'], '/support-chat/{path?}', SupportChatController::class)
     ->where('path', '[a-zA-Z0-9_./-]*')
@@ -139,8 +149,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
 
     Route::middleware([EnsureAdminSession::class, 'can:access-admin'])->group(function (): void {
         Route::get('support', fn () => redirect('/support'))->middleware('can:support.view')->name('support.index');
-        Route::get('support/confirm', [SupportAccessController::class, 'confirm'])->middleware('can:support.view')->name('support.confirm');
-        Route::post('support/confirm', [SupportAccessController::class, 'authenticate'])->middleware(['can:support.view', 'throttle:5,1'])->name('support.authenticate');
+        Route::get('support/confirm', fn () => redirect('/support'))->middleware('can:support.view')->name('support.confirm');
         Route::get('deliveries', [DeliveryController::class, 'admin'])->middleware(['can:finance.view', 'can:finance.details'])->name('deliveries.index');
         Route::post('deliveries/{plan}/confirm', [DeliveryController::class, 'confirm'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:15,1'])->name('deliveries.confirm');
         Route::post('deliveries/{plan}/dispatch', [DeliveryController::class, 'dispatch'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('deliveries.dispatch');

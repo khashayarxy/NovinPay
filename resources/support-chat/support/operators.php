@@ -16,7 +16,8 @@ function support_ops_store(callable $operation,bool $write=false,bool $initializ
         if($initialize&&!is_file($path)&&file_exists($marker))support_failure(503,'operator_authority_missing');
         $s=['version'=>1,'accounts'=>[],'replies'=>[],'events'=>[],'subscriptions'=>[],'preferences'=>[]];$originalBytes=null;
         if(is_file($path)){if(filesize($path)>2097152)support_failure(503,'operator_capacity');try{$originalBytes=(string)file_get_contents($path);$s=json_decode($originalBytes,true,32,JSON_THROW_ON_ERROR);}catch(Throwable $e){support_failure(503,'operator_state_invalid');}}
-        if(!is_array($s)||($s['version']??null)!==1||array_diff(array_keys($s),['version','accounts','replies','events','subscriptions','preferences']))support_failure(503,'operator_state_invalid');
+        if(!is_array($s)||($s['version']??null)!==1||array_diff(array_keys($s),['version','accounts','replies','events','subscriptions','preferences','authentication']))support_failure(503,'operator_state_invalid');
+        if(isset($s['authentication'])&&$s['authentication']!=='independent-v1')support_failure(503,'operator_state_invalid');
         foreach(['accounts'=>100,'replies'=>100,'events'=>4000,'subscriptions'=>200,'preferences'=>100] as $key=>$max)if(!is_array($s[$key]??null)||count($s[$key])>$max)support_failure(503,'operator_capacity');
         foreach($s['accounts'] as $id=>$a)if(!is_array($a)||($a['id']??null)!==$id||!preg_match('/^[a-f0-9]{32}$/D',(string)$id)||!preg_match('/^[a-zA-Z0-9_.-]{3,80}$/D',$a['username']??'')||!is_string($a['name']??null)||strlen($a['name'])>200||!is_string($a['password']??null)||!(password_get_info($a['password'])['algo']??null)||!in_array($a['role']??null,['administrator','support'],true)||!is_bool($a['active']??null)||!preg_match('/^[a-f0-9]{32}$/D',$a['epoch']??''))support_failure(503,'operator_state_invalid');
         foreach($s['accounts'] as $a)if(isset($a['public_profile'])||isset($a['avatar_receipts'])||isset($a['sender_aliases'])){require_once __DIR__.'/operator-profile.php';support_profile_validate($a);}
@@ -33,7 +34,7 @@ function support_ops_account(string $username,string $name,string $password,stri
     return ['id'=>bin2hex(random_bytes(16)),'username'=>$username,'name'=>support_string($name,200),'password'=>password_hash($password,PASSWORD_DEFAULT),'role'=>$role,'active'=>true,'epoch'=>bin2hex(random_bytes(16))];
 }
 function support_ops_authenticate(string $username,string $password): array {
-    support_login_reserve($username);$account=support_ops_store(function(array &$s)use($username){foreach($s['accounts'] as $a)if(hash_equals($a['username'],$username))return $a;return null;});
+    support_login_reserve($username);$account=support_ops_store(function(array &$s)use($username){if(($s['authentication']??null)!=='independent-v1')support_failure(503,'operator_setup_required');foreach($s['accounts'] as $a)if(hash_equals($a['username'],$username))return $a;return null;});
     $hash=$account['password']??'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
     $valid=password_verify($password,$hash)&&$account&&$account['active'];support_login_result((bool)$valid,$username);if(!$valid)support_failure(401,'operator_login_failed');
     // Recheck and audit in the authority before issuing any session.
@@ -41,7 +42,7 @@ function support_ops_authenticate(string $username,string $password): array {
 }
 function support_ops_session(array $context): ?array {
     $id=$context['operator_id']??null;if(!is_string($id))return null;
-    return support_ops_store(function(array &$s)use($id,$context){$a=$s['accounts'][$id]??null;
+    return support_ops_store(function(array &$s)use($id,$context){if(($s['authentication']??null)!=='independent-v1')return null;$a=$s['accounts'][$id]??null;
         if(!$a||!$a['active']||!hash_equals(support_ops_version($a),$context['credential_version']??''))return null;
         return $context+['operator_role'=>$a['role'],'operator_name'=>$a['name']];
     });

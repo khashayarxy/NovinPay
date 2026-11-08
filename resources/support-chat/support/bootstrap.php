@@ -140,7 +140,7 @@ function support_session(string $role, bool $initialize): array {
     return app(\App\Support\Chat\ChatBridge::class)->session($role, $context);
 }
 function support_operator(bool $required=true): ?array {
-    if (!isset($_COOKIE[support_session_name('operator')]) && !auth()->check()) {
+    if (!isset($_COOKIE[support_session_name('operator')])) {
         if ($required) support_failure(401,'session_expired');
         return null;
     }
@@ -183,10 +183,8 @@ function support_destroy_session(string $role): void {
     $params=session_get_cookie_params();
     setcookie(session_name(),'', ['expires'=>time()-3600,'path'=>'/','secure'=>$params['secure'],'httponly'=>true,'samesite'=>'Strict']);
     if (!session_destroy()) support_failure(503,'session_unavailable');
-    if ($role === 'operator') app(\App\Support\Chat\ChatBridge::class)->endOperator();
 }
 function support_interaction(): void {
-    app(\App\Support\Chat\ChatBridge::class)->touchOperator();
     $context=null;
     support_change_operator(function()use(&$context) {
         $now=time();
