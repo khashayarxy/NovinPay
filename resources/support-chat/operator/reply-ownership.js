@@ -1,7 +1,7 @@
 // Display-only deadlines use elapsed time, never the device's wall clock.
 // The server remains authoritative for every send and attachment submission.
 export class ReplyOwnership {
- constructor({now=()=>performance.now(),changed=()=>{},timer=setTimeout,cancel=clearTimeout}={}){
+ constructor({now=()=>performance.now(),changed=()=>{},timer=(...args)=>globalThis.setTimeout(...args),cancel=handle=>globalThis.clearTimeout(handle)}={}){
   Object.assign(this,{now,changed,timer,cancel});this.states=new Map();this.current=null;
  }
  update(id,snapshot){
