@@ -192,17 +192,17 @@ export function teamView({host,api,currentOperator,warn}){
    tdStatus.append(statusBadge);
 
    const actionCell=document.createElement('td');
-   if(isAdmin&&a.active&&a.id!==myId){
+   if(isAdmin&&a.id!==myId){
     const revokeBtn=document.createElement('button');
     revokeBtn.type='button';
     revokeBtn.className='compact-btn danger-btn';
-    revokeBtn.textContent='لغو دسترسی';
+    revokeBtn.textContent=a.active?'لغو دسترسی':'حذف کاربر';
     revokeBtn.onclick=async()=>{
-     if(!confirm(`آیا مطمئن هستید که می‌خواهید دسترسی حساب «${name}» را لغو کنید؟`))return;
+     if(!confirm(a.active?`آیا مطمئن هستید که می‌خواهید دسترسی حساب «${name}» را لغو کنید؟`:`حساب «${name}» حذف شود؟ پیام‌ها و سوابق گفتگو حفظ می‌شوند.`))return;
      revokeBtn.disabled=true;
      try{
-      await api('account_revoke',{id:a.id});
-      showNotice('دسترسی حساب با موفقیت لغو شد.');
+      await api(a.active?'account_revoke':'account_delete',{id:a.id});
+      showNotice(a.active?'دسترسی حساب با موفقیت لغو شد.':'کاربر حذف شد.');
       await loadAccounts();
      }catch(err){
       warn(err);

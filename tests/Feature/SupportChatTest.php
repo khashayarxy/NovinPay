@@ -496,6 +496,67 @@ class SupportChatTest extends TestCase
         }
     }
 
+    public function test_operator_soft_deletion_preserves_history_attribution_and_rejects_reactivation(): void
+    {
+        [$customerToken, $conversation] = $this->customerContext();
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $conversation, 'message' => 'synthetic question', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $customerToken])->assertOk();
+        $ownerToken = $this->loginOperator();
+        $id = $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'username' => 'historical_support', 'name' => 'Historical Operator', 'password' => 'NativeSupportPassword12!', 'role' => 'support', 'csrf_token' => $ownerToken])->assertOk()->json('account.id');
+        $operatorToken = $this->loginOperator('historical_support', 'NativeSupportPassword12!');
+        $this->post('https://localhost/support-chat/api.php', ['action' => 'send_reply', 'user_id' => $conversation, 'reply' => 'historical response', 'sender_name' => 'Forged Client Name', 'operator_id' => str_repeat('f', 32), 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $operatorToken])->assertOk();
+        $ownerToken = $this->loginOperator();
+        $data = ['action' => 'account_delete', 'id' => $id, 'csrf_token' => $ownerToken];
+        $this->post('https://localhost/support-chat/operator-api.php', $data)->assertConflict()->assertJsonPath('code', 'operator_must_be_inactive');
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_revoke', 'id' => $id, 'csrf_token' => $ownerToken])->assertOk();
+        $authorityPath = $this->private.'/runtime/operators/authority.json';
+        $beforeAccount = json_decode(file_get_contents($authorityPath), true)['accounts'][$id];
+        $conversationPath = $this->private.'/data/chat_conversations.json';
+        $conversationBefore = file_get_contents($conversationPath);
+        $this->post('https://localhost/support-chat/operator-api.php', array_replace($data, ['csrf_token' => 'invalid']))->assertForbidden();
+        $this->post('https://localhost/support-chat/operator-api.php', $data)->assertOk()->assertJsonPath('replayed', false);
+        $this->post('https://localhost/support-chat/operator-api.php', $data)->assertOk()->assertJsonPath('replayed', true);
+        $this->assertSame($conversationBefore, file_get_contents($conversationPath));
+        $afterState = json_decode(file_get_contents($authorityPath), true);
+        $after = $afterState['accounts'][$id];
+        $this->assertSame('Historical Operator', $after['name']);
+        $this->assertFalse($after['active']);
+        $this->assertIsInt($after['deleted_at']);
+        $this->assertNotSame($beforeAccount['epoch'], $after['epoch']);
+        $this->assertFalse(password_verify('NativeSupportPassword12!', $after['password']));
+        $this->assertContains('account_deleted', array_column($afterState['events'], 'event'));
+        foreach (['accounts', 'operator_accounts'] as $action) {
+            $accounts = $this->get('https://localhost/support-chat/operator-api.php?action='.$action)->assertOk()->json('accounts');
+            $this->assertNotContains($id, array_column($accounts, 'id'));
+        }
+        $page = $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=operator&user_id='.$conversation)->assertOk();
+        $reply = collect($page->json('messages'))->firstWhere('type', 'admin');
+        $this->assertSame('Historical Operator', $reply['sender']['name']);
+        $this->assertSame('historical response', $reply['text']);
+        $customerPage = $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=customer&user_id='.$conversation)->assertOk();
+        $this->assertNull(collect($customerPage->json('messages'))->firstWhere('type', 'admin')['sender']);
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_update', 'id' => $id, 'name' => 'Restore', 'role' => 'support', 'active' => '1', 'csrf_token' => $ownerToken])->assertNotFound();
+        $bridge = app(ChatBridge::class);
+        $bridge->begin();
+        try {
+            $this->assertNull(support_ops_session(['operator_id' => $id, 'credential_version' => support_ops_version($beforeAccount)]));
+        } finally {
+            $bridge->finish();
+        }
+    }
+
+    public function test_operator_deletion_permissions_self_and_foreign_account_guards(): void
+    {
+        $token = $this->loginOperator();
+        $ownerId = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk()->json('operator.id');
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_delete', 'id' => $ownerId, 'csrf_token' => $token])->assertForbidden()->assertJsonPath('code', 'self_deletion_forbidden');
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_revoke', 'id' => $ownerId, 'csrf_token' => $token])->assertConflict()->assertJsonPath('code', 'last_administrator');
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_delete', 'id' => str_repeat('f', 32), 'csrf_token' => $token])->assertNotFound();
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_delete', 'id' => '../unrelated', 'csrf_token' => $token])->assertStatus(400);
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'username' => 'restricted_support', 'name' => 'Restricted', 'password' => 'NativeSupportPassword12!', 'role' => 'support', 'csrf_token' => $token])->assertOk();
+        $token = $this->loginOperator('restricted_support', 'NativeSupportPassword12!');
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_delete', 'id' => $ownerId, 'csrf_token' => $token])->assertForbidden();
+    }
+
     private function loginOperator(string $username = 'owner', string $password = 'IndependentSupport12!'): string
     {
         $boot = $this->get('https://localhost/support-chat/operator-api.php?action=bootstrap')->assertOk();

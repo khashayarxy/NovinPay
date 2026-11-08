@@ -5,6 +5,7 @@ function support_multi_operator(): bool {return getenv('SUPPORT_MULTI_OPERATOR_E
 function support_ops_password(mixed $password): string {if(!is_string($password)||$password===''||strlen($password)>72||!mb_check_encoding($password,'UTF-8'))support_failure(400,'invalid_operator');return $password;}
 function support_ops_version(array $a): string {return hash('sha256',$a['password']."\0".$a['epoch']."\0".(int)$a['active']);}
 function support_ops_public(array $a): array {return array_intersect_key($a,array_flip(['id','username','name','role','active']));}
+function support_ops_visible_accounts(array $state): array {return array_values(array_filter($state['accounts'],fn($a)=>!isset($a['deleted_at'])));}
 function support_ops_store(callable $operation,bool $write=false,bool $initialize=false): mixed {
     if($initialize&&PHP_SAPI!=='cli')support_failure(403,'forbidden');
     if($initialize)support_security_key();
@@ -20,7 +21,7 @@ function support_ops_store(callable $operation,bool $write=false,bool $initializ
         if(isset($s['authentication'])&&$s['authentication']!=='independent-v1')support_failure(503,'operator_state_invalid');
         foreach(['accounts'=>100,'replies'=>100,'events'=>4000,'subscriptions'=>200,'preferences'=>100] as $key=>$max)if(!is_array($s[$key]??null)||count($s[$key])>$max)support_failure(503,'operator_capacity');
         foreach($s['accounts'] as $id=>$a)if(!is_array($a)||($a['id']??null)!==$id||!preg_match('/^[a-f0-9]{32}$/D',(string)$id)||!preg_match('/^[a-zA-Z0-9_.-]{3,80}$/D',$a['username']??'')||!is_string($a['name']??null)||strlen($a['name'])>200||!is_string($a['password']??null)||!(password_get_info($a['password'])['algo']??null)||!in_array($a['role']??null,['administrator','support'],true)||!is_bool($a['active']??null)||!preg_match('/^[a-f0-9]{32}$/D',$a['epoch']??''))support_failure(503,'operator_state_invalid');
-        foreach($s['accounts'] as $a)if(isset($a['public_profile'])||isset($a['avatar_receipts'])||isset($a['sender_aliases'])){require_once __DIR__.'/operator-profile.php';support_profile_validate($a);}
+        foreach($s['accounts'] as $a){if(array_key_exists('deleted_at',$a)&&(!is_int($a['deleted_at'])||$a['deleted_at']<1||$a['active']))support_failure(503,'operator_state_invalid');if(isset($a['public_profile'])||isset($a['avatar_receipts'])||isset($a['sender_aliases'])){require_once __DIR__.'/operator-profile.php';support_profile_validate($a);}}
         $s['events']=array_values(array_filter($s['events'],fn($e)=>is_array($e)&&is_int($e['at']??null)&&$e['at']>time()-604800));
         foreach($s['subscriptions'] as $id=>$sub){if(!preg_match('/^[a-f0-9]{32}$/D',(string)$id)||!is_array($sub)||!isset($s['accounts'][$sub['operator']??''])||!is_string($sub['sealed']??null)||strlen($sub['sealed'])>4096||!is_int($sub['expires']??null)||!is_int($sub['session_expires']??null))support_failure(503,'operator_state_invalid');if($write&&$sub['expires']<=time())unset($s['subscriptions'][$id]);}
         $result=$operation($s);
@@ -48,6 +49,25 @@ function support_ops_session(array $context): ?array {
     });
 }
 function support_ops_admin(array $context): void {if(($context['operator_role']??null)!=='administrator')support_failure(403,'operator_permission_denied');}
+function support_ops_delete(array $context,string $id): array {
+    support_ops_admin($context);
+    return support_ops_store(function(array &$state)use($context,$id){
+        support_ops_recheck($state,$context);
+        if($id===$context['operator_id'])support_failure(403,'self_deletion_forbidden');
+        if(!isset($state['accounts'][$id]))support_failure(404,'operator_unavailable');
+        $account=&$state['accounts'][$id];
+        if($account['active']&&$account['role']==='administrator'&&count(array_filter($state['accounts'],fn($a)=>$a['active']&&$a['role']==='administrator'))<=1)support_failure(409,'last_administrator');
+        if($account['active'])support_failure(409,'operator_must_be_inactive');
+        if(isset($account['deleted_at']))return ['status'=>'success','replayed'=>true];
+        require_once __DIR__.'/operator-profile.php';
+        support_profile_invalidate($state,$account);
+        $account['password']=password_hash(bin2hex(random_bytes(32)),PASSWORD_DEFAULT);
+        $account['deleted_at']=time();
+        unset($state['preferences'][$id]);
+        support_profile_audit($state,$context,'account_deleted',$id);
+        return ['status'=>'success','replayed'=>false];
+    },true);
+}
 // An explicit private local allowlist filters disposable test records from inbox
 // presentation. It never deletes data or changes conversation authorization.
 function support_development_conversations(): array {

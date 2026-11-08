@@ -1,13 +1,13 @@
 import {messageEdit} from './message-edit.js?v=team1';
 import {messageText} from './bplus.js?v=bplus1';
-import {messageGroups} from './message-groups.js?v=ux1';
+import {messageGroups,operatorSenderName,supportSide} from './message-groups.js?v=ux1';
 import {openImagePreview} from './engine.js?v=team1';
 const node=(tag,cls,text)=>{const e=document.createElement(tag);e.className=cls;if(text!==undefined)e.textContent=text;return e;};
 const action=(label,run,cls='')=>{const b=node('button',cls,label);b.type='button';b.onclick=run;return b;};
 const senderLabels=new WeakMap(),latestViews=new WeakMap(),pendingTimers=new WeakMap(),motionHeads=new WeakMap();
 // Normalized engine data in, keyed presentation out. No listeners, polling or state store.
-export function renderCustomerV2(host,messages,{engine,follow=true,operator=false,ownGroup=null,older=false,animate=false}={}){
- latestViews.set(host,[messages,{engine,follow,operator,ownGroup}]);clearTimeout(pendingTimers.get(host));let nextPending=Infinity;
+export function renderCustomerV2(host,messages,{engine,follow=true,operator=false,ownGroup=null,operatorName=null,older=false,animate=false}={}){
+ latestViews.set(host,[messages,{engine,follow,operator,ownGroup,operatorName}]);clearTimeout(pendingTimers.get(host));let nextPending=Infinity;
  const scrollHost=operator?host.closest('#messageStream')||host:host;const atBottom=scrollHost.scrollHeight-scrollHost.scrollTop-scrollHost.clientHeight<80;
  const multiple=new Set(messages.filter(m=>m.type==='admin').map(m=>m.sender_group||m.sender?.name).filter(Boolean)).size>1;
  const labels=senderLabels.get(host)||new Map();senderLabels.set(host,labels);for(const m of messages)if(m.sender_group&&!labels.has(m.sender_group))labels.set(m.sender_group,labels.size+1);
@@ -25,7 +25,7 @@ export function renderCustomerV2(host,messages,{engine,follow=true,operator=fals
   const grace=pending&&!late&&['pending','sending'].includes(m._row.state)&&globalThis.navigator?.onLine!==false&&Date.now()-m._row.created<(engine?.pendingGrace?.()??300);if(grace)nextPending=Math.min(nextPending,m._row.created+(engine?.pendingGrace?.()??300)-Date.now());
   const grouped=!group.first;
   const automatic=m.type==='system'&&m.origin==='faq_auto';
-  const signature=JSON.stringify([automatic,multiple,operator,outgoing,grouped,group.last,group.label,m.text,m.revision,m.edited_at,m.attachments,m.reference,m.reply_to,m.sender,m.time,m.accepted_at,m.read_receipt,m._ack,m._row?.state,m._row?.error,grace,late,late&&!!engine?.sendWait?.(m._row.conversation)]);
+  const signature=JSON.stringify([automatic,multiple,operator,operatorName,outgoing,grouped,group.last,group.label,m.text,m.revision,m.edited_at,m.attachments,m.reference,m.reply_to,m.sender,m.time,m.accepted_at,m.read_receipt,m._ack,m._row?.state,m._row?.error,grace,late,late&&!!engine?.sendWait?.(m._row.conversation)]);
   if(row.dataset.content!==signature){
    const editForm=row.querySelector('.support-message-editor'),editFocus=editForm?.contains(document.activeElement)?document.activeElement:null,editSelection=editFocus?[editFocus.selectionStart,editFocus.selectionEnd]:null;const focused=row.contains(document.activeElement)?document.activeElement.getAttribute('aria-label'):null;
    const oldBubble=row.querySelector('.v2-bubble'),bubbleSignature=JSON.stringify([m.text,m.attachments||[],m.reply_to||null,m.reference||null,!!m.attachments?.length&&pending]);const keepBubble=oldBubble&&row.dataset.bubbleContent===bubbleSignature;row.dataset.bubbleContent=bubbleSignature;
@@ -33,8 +33,8 @@ export function renderCustomerV2(host,messages,{engine,follow=true,operator=fals
    row.className='chat-msg '+(m.type==='user'?'user':'admin')+(operator?(m.type==='admin'||automatic?' message-admin':' message-user'):'')+(outgoing?' outgoing':' incoming')+(pending?' support-pending':'')+(grouped?' v2-grouped':'');
    if(automatic)row.dataset.origin='faq_auto';else delete row.dataset.origin;
    row.dataset.messageId=String(m.id);row.dataset.incoming=String(operator?m.type==='user':m.type==='admin');row.dataset.groupStart=String(group.first);row.dataset.groupEnd=String(group.last);row.setAttribute('aria-label',group.full+(group.state?' · '+({sent:'ارسال شد',read:'خوانده شد',pending:'در انتظار تأیید',failed:'ارسال تأیید نشد',legacy:'سابقهٔ قدیمی'}[group.state]):''));if(pending)row.dataset.uuid=m._row.uuid;else delete row.dataset.uuid;
-   if(!outgoing&&!grouped&&multiple&&m.type==='admin'){
-    const identity=node('div','v2-identity'),avatar=node('span','support-sender-avatar'),name=node('span','v2-sender-name',m.type==='user'?(engine?.sync?.userName||'مهمان'):(m.type==='system'?'پاسخ خودکار':m.sender?.name||(multiple&&m.sender_group?'پشتیبان '+labels.get(m.sender_group).toLocaleString('fa-IR'):'پشتیبانی '+(globalThis.SupportWidgetConfig?.name||'نوین‌پی'))));avatar.setAttribute('aria-hidden','true');
+   if(operator&&supportSide(m)||!operator&&!outgoing&&!grouped&&multiple&&m.type==='admin'){
+    const identity=node('div','v2-identity'),avatar=node('span','support-sender-avatar'),name=node('span','v2-sender-name',operator?operatorSenderName(m,operatorName):m.type==='user'?(engine?.sync?.userName||'مهمان'):(m.type==='system'?'پاسخ خودکار':m.sender?.name||(multiple&&m.sender_group?'پشتیبان '+labels.get(m.sender_group).toLocaleString('fa-IR'):'پشتیبانی '+(globalThis.SupportWidgetConfig?.name||'نوین‌پی'))));avatar.setAttribute('aria-hidden','true');
     if(/^(?:support-avatar|operator-avatar)\.php\?id=[a-f0-9]{32}$/.test(m.sender?.avatar||'')){const img=node('img','');img.src=m.sender.avatar;img.alt='';img.onerror=()=>avatar.replaceChildren(node('span','support-icon','support_agent'));avatar.append(img);}else if(m.type==='user')avatar.textContent=name.textContent.trim().slice(0,1);else avatar.append(node('span','support-icon',m.type==='system'?'auto_awesome':'support_agent'));
     identity.append(avatar,name);row.append(identity);
    }

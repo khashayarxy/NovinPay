@@ -1,6 +1,12 @@
 import {persianDate,tehranDay,messageDate} from './persian-date.js?v=ux1';
 // Presentation only: no mutation of records, receipts, identity or timestamps.
 export const messageStamp=messageDate;
+export const supportSide=m=>m.type==='admin'||m.type==='system'&&m.origin==='faq_auto';
+export function operatorSenderName(m,currentName=null){
+ if(m.type==='system'&&m.origin==='faq_auto')return 'پاسخ خودکار';
+ const name=typeof m.sender?.name==='string'?m.sender.name.trim():'';
+ return name||((m._row&&!m._ack&&typeof currentName==='string')?currentName.trim():'')||'پشتیبان';
+}
 export const deliveryState=m=>m._row&&!m._ack?(Date.now()-m._row.created>=10000||['needs_action','cancelled'].includes(m._row.state)?'failed':'pending'):m.read_receipt?'read':m.accepted_at||m._ack?'sent':'legacy';
 export function messageGroups(messages,{operator=false,ownGroup=null,conversation=null,now=new Date()}={}){
  const today=tehranDay(now),ownGroups=Array.isArray(ownGroup)?ownGroup:[ownGroup].filter(Boolean);
@@ -9,9 +15,9 @@ export function messageGroups(messages,{operator=false,ownGroup=null,conversatio
  const rows=messages.map(m=>{
   const stamp=messageStamp(m),valid=!Number.isNaN(stamp.getTime()),day=valid?tehranDay(stamp):null;
   const automatic=m.type==='system'&&m.origin==='faq_auto';
-  const pending=!!m._row&&!m._ack,outgoing=operator?automatic||m.type==='admin'&&(!!m._row||!!ownGroup&&(Array.isArray(ownGroup)?ownGroup.includes(m.sender_group):m.sender_group===ownGroup)):m.type==='user';
+  const pending=!!m._row&&!m._ack,outgoing=operator?supportSide(m):m.type==='user';
   const state=outgoing&&!automatic?deliveryState(m):null;
-  const participant=automatic?'faq:'+m.id:m.type==='user'?'customer':m.sender?.id?'operator:'+m.sender.id:operator&&outgoing?'operator:'+(ownSender||ownGroups[0]||'own'):m.sender_group?'operator:'+m.sender_group:null;
+  const participant=automatic?'faq:'+m.id:m.type==='user'?'customer':m.sender?.id?'operator:'+m.sender.id:operator&&pending?'operator:'+(ownSender||ownGroups[0]||'own'):m.sender_group?'operator:'+m.sender_group:null;
   const exception=m.type==='system'||!!m.episode_boundary;
   const formatted=persianDate(stamp,now);
   return {conversation:m.conversation_id||m._row?.conversation||conversation||null,m,stamp,day,outgoing,state,participant,exception,...formatted,first:true,last:true};
