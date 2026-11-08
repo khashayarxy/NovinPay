@@ -1,7 +1,7 @@
 import {uuid} from './outbox.js?v=team1';
 import {selectionToast} from './selection-toast.js?v=release1';
 // Selected binaries stay in memory; only accepted opaque IDs enter the scoped outbox.
-export function attachmentComposer({host,input,current,conversation,role='customer',changed=()=>{},refocus=false,warn,unauthenticated=()=>{}}){
+export function attachmentComposer({host,input,current,conversation,role='customer',changed=()=>{},refocus=false,canSubmit=()=>true,ownershipConflict=()=>{},warn,unauthenticated=()=>{}}){
  const box=document.createElement('section');box.className='support-attachment-draft';box.setAttribute('aria-label','تصاویر آماده ارسال');
  const errorEl=document.createElement('div');errorEl.className='support-attachment-error';errorEl.setAttribute('role','alert');errorEl.hidden=true;
  const picker=document.createElement('input');picker.type='file';picker.accept='image/jpeg,image/png,image/webp';picker.multiple=true;picker.hidden=true;
@@ -21,9 +21,9 @@ export function attachmentComposer({host,input,current,conversation,role='custom
   stage.hidden=!items.length;stage.textContent=items.some(x=>x.state==='failed')?'بارگذاری تصویر انجام نشد؛ دوباره ارسال کنید.':items.some(x=>x.state==='uploading')?'در حال بارگذاری تصویر…':items.some(x=>x.state==='preparing')?'در حال آماده‌سازی تصویر…':items.every(x=>x.id)?'در انتظار تأیید ارسال…':'تصویر آمادهٔ ارسال است.';
  };
 
- const add=files=>{if(!enabled||active)return;clearError();for(const file of files){if(items.length>=limit){showError('حداکثر سه تصویر در هر پیام مجاز است.',true);break;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){showError('تصویر JPEG، PNG یا WebP تا پنج مگابایت انتخاب کنید.',true);continue;}let url=null;try{url=URL.createObjectURL(file);}catch{}items.push({file,operation:uuid(),id:null,url,state:'preparing',node:null});}if(items.length)mark(true);render();changed();};
+ const add=files=>{if(!enabled||active||!canSubmit())return;clearError();for(const file of files){if(items.length>=limit){showError('حداکثر سه تصویر در هر پیام مجاز است.',true);break;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){showError('تصویر JPEG، PNG یا WebP تا پنج مگابایت انتخاب کنید.',true);continue;}let url=null;try{url=URL.createObjectURL(file);}catch{}items.push({file,operation:uuid(),id:null,url,state:'preparing',node:null});}if(items.length)mark(true);render();changed();};
  // No capture override: mobile browsers may offer their native camera/gallery chooser.
- button.onclick=()=>picker.click();picker.onchange=()=>{add(picker.files);picker.value='';if(refocus)input.focus();};
+ button.onclick=()=>{if(canSubmit())picker.click();};picker.onchange=()=>{add(picker.files);picker.value='';if(refocus)input.focus();};
  const pasted=event=>{const files=[...(event.clipboardData?.items||[])].filter(x=>x.kind==='file').map(x=>x.getAsFile()).filter(Boolean);if(files.length&&enabled){event.preventDefault();add(files);}};
  const dragged=event=>{if(enabled&&[...(event.dataTransfer?.types||[])].includes('Files'))event.preventDefault();};
  const dropped=event=>{if(enabled&&event.dataTransfer?.files.length){event.preventDefault();add(event.dataTransfer.files);}};
@@ -34,13 +34,14 @@ export function attachmentComposer({host,input,current,conversation,role='custom
  const consume=ids=>{const used=new Set(ids);for(const item of items)if(used.has(item.id))if(item.url)URL.revokeObjectURL(item.url);items=items.filter(item=>!used.has(item.id));if(!items.length)mark(false);clearError();render();};
  async function upload(){
   if(active){showError('بارگذاری قبلی هنوز تمام نشده است؛ پیش‌نویس حفظ شده است.');throw Error('بارگذاری قبلی هنوز تمام نشده است؛ پیش‌نویس حفظ شده است.');}
+  if(!canSubmit())throw Error('ارسال در این گفتگو اکنون ممکن نیست؛ متن و تصویر حفظ شدند.');
   const version=generation,target=conversation(),scope=current()?.scope_id;
-  for(const item of items){if(item.id)continue;if(!target||!scope){showError('نشست معتبر نیست؛ پیش‌نویس حفظ شده است.');throw Error('نشست معتبر نیست؛ پیش‌نویس حفظ شده است.');}
+  for(const item of items){if(!canSubmit())throw Error('ارسال در این گفتگو اکنون ممکن نیست؛ متن و تصویر حفظ شدند.');if(item.id)continue;if(!target||!scope){showError('نشست معتبر نیست؛ پیش‌نویس حفظ شده است.');throw Error('نشست معتبر نیست؛ پیش‌نویس حفظ شده است.');}
    item.state='uploading';render();const data=new FormData();data.append('scope',role);data.append('user_id',target);data.append('upload_id',item.operation);data.append('image',item.file);data.append('csrf_token',current().csrf_token||'');
    try{
     await new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();active=xhr;xhr.open('POST','support-attachment.php');xhr.withCredentials=true;xhr.timeout=30000;xhr.setRequestHeader('X-CSRF-Token',current().csrf_token||'');progress.hidden=true;progress.removeAttribute('value');cancel.hidden=false;
      xhr.upload.onprogress=e=>{if(e.lengthComputable&&e.total>0){progress.hidden=false;progress.value=e.loaded/e.total*100;}};xhr.onerror=xhr.ontimeout=xhr.onabort=()=>reject(Error('بارگذاری کامل نشد؛ تصویر و متن حفظ شده‌اند.'));
-     xhr.onload=()=>{if(xhr.status===401&&role==='operator'){unauthenticated();return reject(Error('نشست شما پایان یافته است. دوباره وارد شوید.'));}if(version!==generation||target!==conversation()||scope!==current()?.scope_id)return reject(Error('هویت گفتگو تغییر کرده است.'));try{const r=JSON.parse(xhr.responseText);if(xhr.status!==200||!/^([a-f0-9]{32})$/.test(r.id))throw Error();item.id=r.id;item.state='uploaded';render();resolve();}catch{reject(Error('تصویر پذیرفته نشد؛ محدودیت یا دسترسی را بررسی و دوباره تلاش کنید.'));}};xhr.send(data);
+     xhr.onload=()=>{if(xhr.status===401&&role==='operator'){unauthenticated();return reject(Error('نشست شما پایان یافته است. دوباره وارد شوید.'));}if(version!==generation||target!==conversation()||scope!==current()?.scope_id)return reject(Error('هویت گفتگو تغییر کرده است.'));try{const r=JSON.parse(xhr.responseText);if(role==='operator'&&r.code==='conversation_owned'){ownershipConflict(target,r.reply_ownership);reject(Error(r.message||'این گفتگو در اختیار پشتیبان دیگری است.'));return;}if(xhr.status!==200||!/^([a-f0-9]{32})$/.test(r.id))throw Error();item.id=r.id;item.state='uploaded';render();resolve();}catch{reject(Error('تصویر پذیرفته نشد؛ محدودیت یا دسترسی را بررسی و دوباره تلاش کنید.'));}};xhr.send(data);
     }).finally(()=>{active=null;progress.hidden=cancel.hidden=true;});
    }catch(err){
     item.state='failed';render();

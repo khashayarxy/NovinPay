@@ -76,7 +76,7 @@ function support_accept_message(array $context,string $role,string $id,string $u
         $c=support_conversation($state,$id,$role==='customer'?$context:null,$role==='operator');
         foreach(array_merge($c['messages'],$c['retained_receipts']??[]) as $message) if(($message['client_message_id']??null)===$uuid && ($message['sender_principal']??null)===$sender) {
             if(!hash_equals($message['payload_digest'],$digest)) support_failure(409,'idempotency_conflict');
-            return support_message_ack($message,$id,true)+support_attention_snapshot($state['conversations'][$id],$state['store_epoch'],$role==='operator'?$context:null);
+            return support_message_ack($message,$id,true)+($role==='operator'?['reply_ownership'=>support_reply_ownership($c,$context)]:[])+support_attention_snapshot($state['conversations'][$id],$state['store_epoch'],$role==='operator'?$context:null);
         }
         if($teamThrough!==null&&$teamThrough>max([0,...array_column($c['messages'],'id')]))support_failure(409,'invalid_reply_context');
         $faq=null;if($faqArticle!==null){require_once __DIR__.'/knowledge.php';$faq=support_content_public('article',['id'=>$faqArticle])['article'];$available=support_content_public('faq',[])['questions'];if(!in_array($faqArticle,array_column($available,'id'),true)||$raw!==$faq['title'])support_failure(409,'faq_changed');$digestFAQ=hash('sha256',$faq['title']."\0".$faq['body']);foreach(support_episode_messages($c) as $prior)if(($prior['faq_id']??null)===$faqArticle&&($prior['faq_digest']??null)===$digestFAQ)support_failure(409,'faq_already_answered');support_throttle('faq-answer:'.$context['owner_id'],30,300);if(count(array_filter($c['messages'],fn($m)=>($m['faq_at']??0)>time()-300))>=15){header('Retry-After: 300');support_failure(429,'faq_limited');}}
@@ -87,6 +87,7 @@ function support_accept_message(array $context,string $role,string $id,string $u
         if(support_conversation_retired($c))support_failure(409,'conversation_retired');
         if($role==='customer'&&support_workflow($c)['status']==='resolved')support_failure(409,'conversation_resolved');
         if($role==='operator'&&support_workflow($c)['status']==='resolved')support_failure(409,'conversation_resolved');
+        if($role==='operator')support_reply_require($c,$context);
         // Replay lookup above must succeed even when new submissions are cooling down.
         if($role==='customer'){support_customer_cooldown($context);$wait=support_customer_send_wait($state,$c,$text,$attachments,time());if($wait) support_customer_cooldown($context,$wait);}
         if($role==='customer')support_source_capture($state['conversations'][$id],$sourcePath);
@@ -99,16 +100,18 @@ function support_accept_message(array $context,string $role,string $id,string $u
         $requests[]=time();$rates[$sender]=$requests;$state['conversations'][$id]['rate_senders']=$rates;
         support_add_message($state,$id,$role==='customer'?'user':'admin',$text);
         $message=&$state['conversations'][$id]['messages'][array_key_last($state['conversations'][$id]['messages'])];
-        $message+=['protocol_version'=>2,'client_message_id'=>$uuid,'sender_principal'=>$sender,'payload_digest'=>$digest,'accepted_at'=>gmdate('Y-m-d\TH:i:s\Z')];
+        $acceptedAt=time();
+        $message+=['protocol_version'=>2,'client_message_id'=>$uuid,'sender_principal'=>$sender,'payload_digest'=>$digest,'accepted_at'=>gmdate('Y-m-d\TH:i:s\Z',$acceptedAt)];
         if($teamThrough!==null)$message['team_reply_protocol']=1;
         if($role==='operator'){$message['team_reply_through']=$teamThrough??max([0,...array_column(array_filter($state['conversations'][$id]['messages'],fn($m)=>$m['type']==='user'&&($m['read']??false)===true),'id')]);}
         if($role==='operator'){$message['customer_read']=false;if(isset($context['operator_id']))$message['operator_id']=$context['operator_id'];}
         if($replyTo)$message['reply_to']=$replyTo;
         if($attachments)$message['attachments']=$attachments;
+        if($role==='operator'&&isset($context['operator_id']))$state['conversations'][$id]['reply_ownership']=['operator_id'=>$context['operator_id'],'credential_version'=>$context['credential_version'],'last_reply_at'=>$acceptedAt,'episode'=>$c['episode']??1];
         require_once __DIR__.'/operators.php';support_workflow_message($state,$id,$role,$message['id'],$context['operator_id']??$role);
         if($faqArticle===null&&$role==='customer'&&support_notification_enabled())$message['notification']=support_notification_intent($state);
         $state['conversations'][$id]['unread_count']=support_team_unread($state['conversations'][$id]);
-        $ack=support_message_ack($message,$id,false)+support_attention_snapshot($state['conversations'][$id],$state['store_epoch'],$role==='operator'?$context:null);
+        $ack=support_message_ack($message,$id,false)+($role==='operator'?['reply_ownership'=>support_reply_ownership($state['conversations'][$id],$context)]:[])+support_attention_snapshot($state['conversations'][$id],$state['store_epoch'],$role==='operator'?$context:null);
         if($faq!==null){$questionId=$message['id'];$message['faq_question_id']=$faqArticle;$message['faq_protocol']=1;support_add_message($state,$id,'system',htmlspecialchars($faq['body'],ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'));$answer=&$state['conversations'][$id]['messages'][array_key_last($state['conversations'][$id]['messages'])];$answer+=['faq_id'=>$faqArticle,'faq_digest'=>hash('sha256',$faq['title']."\0".$faq['body']),'faq_at'=>time(),'question_message_id'=>$questionId,'faq_answer_only'=>true,'origin'=>'faq_auto'];$used=$state['conversations'][$id]['used_faqs']??[];if(!in_array($faqArticle,$used,true))$used[]=$faqArticle;$state['conversations'][$id]['used_faqs']=$used;}
         $changed=true;return $ack;
     },true);
@@ -140,7 +143,7 @@ function support_message_page(array $state,array $conversation,array $query,bool
     if($around!==null){$position=array_search($around,array_column($eligible,'id'),true);if($position===false)support_failure(404,'message_unavailable');$slice=array_slice($eligible,max(0,$position-intdiv($limit,2)),$limit);}
     else $slice=$after!==null?array_slice($eligible,0,$limit):array_slice($eligible,-$limit);
     require_once __DIR__.'/operator-profile.php';$senders=support_profile_sender_map($operator!==null);$live=array_column($messages,null,'id');$wire=array_map(function($m)use($live,$senders,$conversation,$operator,$customerActor){$out=support_wire_message($m);if($operator!==null&&$m['type']==='user'){$out['read']=support_operator_message_read($conversation,$m,$operator);$out['read_receipt']=$out['read'];}$out['sender']=($operator!==null&&$m['type']==='admin'?($senders['account:'.($m['operator_id']??'')]??null):null)??$senders[$m['sender_principal']??'']??null;$out['reference']=support_reply_preview($m,$live);return $out+support_edit_public($m,$operator??$customerActor??[], $operator!==null?'operator':'customer');},$slice);
-    return ['assigned_operator'=>support_profile_assigned($conversation),'public_agents'=>array_values(array_column(array_values($senders),null,'id')),'status'=>'success','protocol_version'=>2,'conversation_id'=>$conversation['user_id'],'user_name'=>$conversation['user_name'],'user_email'=>$conversation['user_email'],
+    return ($operator!==null?['reply_ownership'=>support_reply_ownership($conversation,$operator)]:[])+['assigned_operator'=>support_profile_assigned($conversation),'public_agents'=>array_values(array_column(array_values($senders),null,'id')),'status'=>'success','protocol_version'=>2,'conversation_id'=>$conversation['user_id'],'user_name'=>$conversation['user_name'],'user_email'=>$conversation['user_email'],
         'store_epoch'=>$state['store_epoch'],'high_watermark'=>$through,'head_sequence'=>$head,'has_more'=>count($eligible)>count($slice),
         'next_after'=>$slice?end($slice)['id']:($after??$head),'before_sequence'=>$slice?$slice[0]['id']:0,'messages'=>$wire,'focus_sequence'=>$around,'has_older'=>$slice&&$slice[0]['id']>($messages[0]['id']??0),'has_newer'=>$slice&&end($slice)['id']<$head,'read_message_ids'=>array_values(array_column(array_filter(array_slice($messages,-500),fn($m)=>$operator!==null&&$m['type']==='user'?support_operator_message_read($conversation,$m,$operator):($m['read_visible']??false)===true),'id')),'history_removed_through'=>max([$conversation['history_system_through']??0,...array_column($conversation['retained_receipts']??[],'id')]),
         ...support_attention_snapshot($conversation,$state['store_epoch'],$operator),

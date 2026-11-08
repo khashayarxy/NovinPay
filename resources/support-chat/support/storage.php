@@ -39,7 +39,7 @@ function support_validate_store(array &$state): bool {
             if(!is_array($conversation['secret_recovery']))support_failure(503,'storage_invalid');
             support_recovery_validate($conversation['secret_recovery']);
         }
-        require_once __DIR__.'/productivity.php';support_productivity_validate($conversation);
+        require_once __DIR__.'/productivity.php';support_productivity_validate($conversation);support_reply_ownership_validate($conversation);
         require_once __DIR__.'/context.php';support_source_validate($conversation);
         require_once __DIR__.'/satisfaction.php';support_satisfaction_validate($conversation);
         if(isset($conversation['last_activity_at'])&&(!is_int($conversation['last_activity_at'])||$conversation['last_activity_at']<0))support_failure(503,'storage_invalid');

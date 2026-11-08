@@ -22,10 +22,19 @@ test('operator transcript uses the support side for every operator and automated
 test('server sender names survive other/deactivated identities and never fall back to the viewer',()=>{
  assert.deepEqual(rows.slice(1).map(m=>operatorSenderName(m,'اپراتور فعلی')),['اپراتور اول','اپراتور دوم','پاسخ خودکار','اپراتور سابق','پشتیبان']);
  assert.equal(operatorSenderName({type:'admin',_row:{},sender:null},'اپراتور فعلی'),'اپراتور فعلی');
- assert.equal(operatorSenderName({type:'admin',_row:{},_ack:true,sender:null},'اپراتور فعلی'),'پشتیبان');
+ assert.equal(operatorSenderName({type:'admin',_row:{},_ack:true,sender:null},'اپراتور فعلی'),'اپراتور فعلی');
+ assert.equal(operatorSenderName({type:'admin',_row:{},sender:null}), '');
 });
 test('customer-side direction and stored message data remain unchanged',()=>{
  const before=structuredClone(rows);
  assert.deepEqual(messageGroups(rows,{operator:false}).map(r=>r.outgoing),[true,false,false,false,false,false]);
  assert.deepEqual(rows,before);
+});
+
+test('consecutive operator and automatic groups survive interruptions without sharing identities',()=>{
+ const messages=[rows[1],{...rows[1],id:7,text:'second'},rows[2],rows[0],{...rows[1],id:8},rows[3],{...rows[3],id:9}];
+ const groups=messageGroups(messages.map(m=>({...m,accepted_at:time})),{operator:true,ownGroup:'own'});
+ assert.deepEqual(groups.map(g=>g.first),[true,false,true,true,true,true,false]);
+ assert.equal(groups[5].participant,groups[6].participant);
+ assert.notEqual(groups[1].participant,groups[2].participant);
 });

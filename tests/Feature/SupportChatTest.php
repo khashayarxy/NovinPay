@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 #[RunTestsInSeparateProcesses]
@@ -555,6 +556,156 @@ class SupportChatTest extends TestCase
         $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'username' => 'restricted_support', 'name' => 'Restricted', 'password' => 'NativeSupportPassword12!', 'role' => 'support', 'csrf_token' => $token])->assertOk();
         $token = $this->loginOperator('restricted_support', 'NativeSupportPassword12!');
         $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_delete', 'id' => $ownerId, 'csrf_token' => $token])->assertForbidden();
+    }
+
+    public function test_reply_ownership_acceptance_replay_expiry_and_customer_messages(): void
+    {
+        [$customerToken, $id] = $this->customerContext();
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $id, 'message' => 'ownership question', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $customerToken])->assertOk();
+        $ownerToken = $this->loginOperator();
+        $other = $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'username' => 'reply_operator', 'name' => 'Other Operator', 'password' => 'NativeSupportPassword12!', 'role' => 'support', 'csrf_token' => $ownerToken])->assertOk()->json('account.id');
+        $data = ['action' => 'send_reply', 'user_id' => $id, 'reply' => 'first accepted reply', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $ownerToken];
+        $first = $this->post('https://localhost/support-chat/api.php', $data)->assertOk()->assertJsonPath('reply_ownership.is_owner', true);
+        $this->assertSame(300, $first->json('reply_ownership.expires_at') - $first->json('reply_ownership.server_now'));
+        $path = $this->private.'/data/chat_conversations.json';
+        $lease = json_decode(file_get_contents($path), true)['conversations'][$id]['reply_ownership'];
+        $this->post('https://localhost/support-chat/api.php', $data)->assertOk()->assertJsonPath('replayed', true);
+        $this->assertSame($lease, json_decode(file_get_contents($path), true)['conversations'][$id]['reply_ownership']);
+        $otherToken = $this->loginOperator('reply_operator', 'NativeSupportPassword12!');
+        $page = $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=operator&user_id='.$id)->assertOk()->assertJsonPath('reply_ownership.is_owner', false);
+        $this->assertSame($first->json('reply_ownership.operator_id'), $page->json('reply_ownership.operator_id'));
+        $conflict = array_replace($data, ['client_message_id' => (string) Str::uuid(), 'csrf_token' => $otherToken, 'owner_id' => $other, 'expires_at' => 0]);
+        $this->post('https://localhost/support-chat/api.php', $conflict)->assertConflict()->assertJsonPath('code', 'conversation_owned');
+        $this->post('https://localhost/support-chat/api.php', array_replace($conflict, ['attachments' => json_encode([str_repeat('a', 32)])]))->assertConflict()->assertJsonPath('code', 'conversation_owned');
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $id, 'message' => 'customer still allowed', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $customerToken])->assertOk();
+        $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=customer&user_id='.$id)->assertOk()->assertJsonMissingPath('reply_ownership');
+        $this->assertSame($lease, json_decode(file_get_contents($path), true)['conversations'][$id]['reply_ownership']);
+        $bridge = app(ChatBridge::class);
+        $bridge->begin();
+        try {
+            support_store(function (array &$state, bool &$changed) use ($id): void {
+                $state['conversations'][$id]['reply_ownership']['last_reply_at'] = time() - 300;
+                $changed = true;
+            }, true);
+        } finally {
+            $bridge->finish();
+        }
+        $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=operator&user_id='.$id)->assertOk()->assertJsonPath('reply_ownership.operator_id', null);
+        $second = $this->post('https://localhost/support-chat/api.php', $conflict)->assertOk()->assertJsonPath('reply_ownership.operator_id', $other);
+        $ownerToken = $this->loginOperator();
+        $this->post('https://localhost/support-chat/api.php', array_replace($data, ['csrf_token' => $ownerToken]))->assertOk()->assertJsonPath('replayed', true)->assertJsonPath('reply_ownership.operator_id', $other);
+        $this->post('https://localhost/support-chat/api.php', array_replace($data, ['client_message_id' => (string) Str::uuid(), 'csrf_token' => $ownerToken]))->assertConflict();
+        $this->assertSame($second->json('reply_ownership.expires_at'), json_decode(file_get_contents($path), true)['conversations'][$id]['reply_ownership']['last_reply_at'] + 300);
+    }
+
+    public function test_reply_ownership_releases_on_close_revocation_deletion_and_handoff(): void
+    {
+        [$customerToken, $id] = $this->customerContext();
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $id, 'message' => 'release question', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $customerToken])->assertOk();
+        $token = $this->loginOperator();
+        $other = $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'username' => 'lease_owner', 'name' => 'Lease Owner', 'password' => 'NativeSupportPassword12!', 'role' => 'support', 'csrf_token' => $token])->assertOk()->json('account.id');
+        $otherToken = $this->loginOperator('lease_owner', 'NativeSupportPassword12!');
+        $this->post('https://localhost/support-chat/api.php', ['action' => 'send_reply', 'user_id' => $id, 'reply' => 'held', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $otherToken])->assertOk();
+        $token = $this->loginOperator();
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'workflow', 'operation' => 'assign', 'value' => $other, 'user_id' => $id, 'csrf_token' => $token])->assertOk();
+        $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=operator&user_id='.$id)->assertOk()->assertJsonPath('reply_ownership.operator_id', null);
+        $otherToken = $this->loginOperator('lease_owner', 'NativeSupportPassword12!');
+        $this->post('https://localhost/support-chat/api.php', ['action' => 'send_reply', 'user_id' => $id, 'reply' => 'held again', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $otherToken])->assertOk();
+        $token = $this->loginOperator();
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'workflow', 'operation' => 'status', 'value' => 'resolved', 'user_id' => $id, 'csrf_token' => $token])->assertOk();
+        $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=operator&user_id='.$id)->assertOk()->assertJsonPath('reply_ownership.operator_id', null);
+        $this->post('https://localhost/support-chat/api.php', ['lifecycle' => 'reopen', 'user_id' => $id, 'csrf_token' => $customerToken])->assertOk();
+        $otherToken = $this->loginOperator('lease_owner', 'NativeSupportPassword12!');
+        $this->post('https://localhost/support-chat/api.php', ['action' => 'send_reply', 'user_id' => $id, 'reply' => 'new lease', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $otherToken])->assertOk();
+        $token = $this->loginOperator();
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_revoke', 'id' => $other, 'csrf_token' => $token])->assertOk();
+        $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=operator&user_id='.$id)->assertOk()->assertJsonPath('reply_ownership.operator_id', null);
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_delete', 'id' => $other, 'csrf_token' => $token])->assertOk();
+        $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=operator&user_id='.$id)->assertOk()->assertJsonPath('reply_ownership.operator_id', null);
+    }
+
+    public function test_reply_ownership_renews_only_for_new_human_replies_not_reads_or_automation(): void
+    {
+        [$customerToken, $id] = $this->customerContext();
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $id, 'message' => 'ownership renewal', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $customerToken])->assertOk();
+        $token = $this->loginOperator();
+        $data = ['action' => 'send_reply', 'user_id' => $id, 'reply' => 'human reply', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $token];
+        $this->post('https://localhost/support-chat/api.php', $data)->assertOk();
+        $article = str_repeat('a', 32);
+        $this->post('https://localhost/support-chat/support-content-admin.php', ['action' => 'article_save', 'revision' => '0', 'id' => $article, 'title' => 'Synthetic question', 'body' => 'Synthetic automatic answer', 'published' => '1', 'suggested' => '1', 'csrf_token' => $token])->assertOk();
+        $bridge = app(ChatBridge::class);
+        $bridge->begin();
+        try {
+            support_store(function (array &$state, bool &$changed) use ($id): void {
+                $state['conversations'][$id]['reply_ownership']['last_reply_at'] = time() - 60;
+                $changed = true;
+            }, true);
+        } finally {
+            $bridge->finish();
+        }
+        $path = $this->private.'/data/chat_conversations.json';
+        $lease = json_decode(file_get_contents($path), true)['conversations'][$id]['reply_ownership'];
+        $this->get('https://localhost/support-chat/api.php?get_conversation=1&scope=operator&user_id='.$id)->assertOk()->assertJsonPath('reply_ownership.is_owner', true);
+        $this->post('https://localhost/support-chat/api.php', ['operator_activity' => '1', 'csrf_token' => $token])->assertOk();
+        $this->post('https://localhost/support-chat/support-typing.php', ['scope' => 'operator', 'user_id' => $id, 'typing' => '1', 'csrf_token' => $token])->assertOk();
+        $this->post('https://localhost/support-chat/api.php', ['action' => 'faq_answer', 'user_id' => $id, 'article_id' => $article, 'csrf_token' => $customerToken])->assertOk();
+        $this->assertSame($lease, json_decode(file_get_contents($path), true)['conversations'][$id]['reply_ownership']);
+        $this->post('https://localhost/support-chat/api.php', array_replace($data, ['client_message_id' => (string) Str::uuid()]))->assertOk()->assertJsonPath('reply_ownership.is_owner', true);
+        $renewed = json_decode(file_get_contents($path), true)['conversations'][$id]['reply_ownership'];
+        $this->assertGreaterThan($lease['last_reply_at'], $renewed['last_reply_at']);
+        $this->assertSame($lease['operator_id'], $renewed['operator_id']);
+        $this->assertEqualsWithDelta(time(), $renewed['last_reply_at'], 1);
+    }
+
+    public function test_reply_ownership_is_atomic_between_two_real_competing_php_processes(): void
+    {
+        [$customerToken, $id] = $this->customerContext();
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $id, 'message' => 'race fixture', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $customerToken])->assertOk();
+        $token = $this->loginOperator();
+        $this->post('https://localhost/support-chat/operator-api.php', ['action' => 'account_add', 'username' => 'concurrent_operator', 'name' => 'Concurrent Operator', 'password' => 'NativeSupportPassword12!', 'role' => 'support', 'csrf_token' => $token])->assertOk();
+        $bridge = app(ChatBridge::class);
+        $bridge->begin();
+        try {
+            $actors = support_ops_store(function (array &$state): array {
+                return array_map(fn ($account) => ['uuid' => (string) Str::uuid(), 'context' => ['role' => 'operator', 'operator_id' => $account['id'], 'operator_name' => $account['name'], 'operator_role' => $account['role'], 'credential_version' => support_ops_version($account), 'auth_epoch' => bin2hex(random_bytes(16))]], array_values($state['accounts']));
+            });
+            file_put_contents($this->private.'/ownership-race.json', json_encode(['conversation' => $id, 'actors' => $actors], JSON_THROW_ON_ERROR));
+        } finally {
+            $bridge->finish();
+        }
+        $processes = [];
+        try {
+            foreach ([0, 1] as $index) {
+                $process = new Process([PHP_BINARY, base_path('tests/SupportChatOwnership/submit.php'), $this->private, (string) $index], base_path(), timeout: 15);
+                $process->start();
+                $processes[] = $process;
+            }
+            $deadline = microtime(true) + 8;
+            while (! is_file($this->private.'/ownership-ready-0') || ! is_file($this->private.'/ownership-ready-1')) {
+                if (microtime(true) > $deadline) {
+                    $this->fail('Competing test workers did not reach the barrier.');
+                }
+                usleep(1000);
+            }
+            file_put_contents($this->private.'/ownership-start', '1');
+            $results = [];
+            foreach ($processes as $process) {
+                $this->assertSame(0, $process->wait(), $process->getErrorOutput());
+                $results[] = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR)['status'];
+            }
+            sort($results);
+            $this->assertSame(['accepted', 'conversation_owned'], $results);
+            $conversation = json_decode(file_get_contents($this->private.'/data/chat_conversations.json'), true)['conversations'][$id];
+            $replies = array_values(array_filter($conversation['messages'], fn ($message) => $message['type'] === 'admin'));
+            $this->assertCount(1, $replies);
+            $this->assertSame($replies[0]['operator_id'], $conversation['reply_ownership']['operator_id']);
+        } finally {
+            foreach ($processes as $process) {
+                if ($process->isRunning()) {
+                    $process->stop();
+                }
+            }
+        }
     }
 
     private function loginOperator(string $username = 'owner', string $password = 'IndependentSupport12!'): string

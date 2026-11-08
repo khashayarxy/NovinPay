@@ -47,6 +47,7 @@ function support_attachment_upload(array $context,string $role,string $conversat
     support_store(function(array &$s,bool &$changed)use($conversation,$context,$role){
         if($role==='customer'&&!isset($s['conversations'][$conversation])){support_draft_conversation($conversation,$context);return;}
         $c=support_conversation($s,$conversation,$role==='customer'?$context:null,$role==='operator');
+        if($role==='operator')support_reply_require($c,$context);
         if($role==='customer'&&($c['workflow']['status']??'')==='resolved')support_failure(409,'conversation_resolved');
     });
     $dir=support_attachment_dir();$slot=null;
@@ -64,6 +65,7 @@ function support_attachment_upload(array $context,string $role,string $conversat
         if(!$ok||!is_string($safe)||strlen($safe)>5242880)support_failure(400,'invalid_attachment');
         $id=substr(hash_hmac('sha256','upload-v1'.support_principal($context,$role).$context['auth_epoch'].$operation,support_security_key()),0,32);$path=support_attachment_path($id);
             support_store(function(array &$s,bool &$changed)use($id,$conversation,$context,$role,$safe,$info,$path){
+                if($role==='operator')support_reply_require(support_conversation($s,$conversation,null,true),$context);
                 if(isset($s['uploads'][$id])){if($s['uploads'][$id]['sha256']!==hash('sha256',$safe)||$s['uploads'][$id]['conversation']!==$conversation)support_failure(409,'attachment_conflict');return;}
                 $rows=$s['uploads']??[];$total=array_sum(array_column($rows,'bytes'));$day=0;$conv=0;
                 foreach($rows as $r){if($r['created']>time()-86400)$day+=$r['bytes'];if($r['conversation']===$conversation)$conv+=$r['bytes'];}
