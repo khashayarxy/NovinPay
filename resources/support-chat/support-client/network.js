@@ -45,7 +45,7 @@ export class Transport {
             if(Number.isFinite(server)&&(!this.serverClock||server>=this.presentationTime(received)))this.serverClock={server,local:received};
             let body;try{body=await response.json();}catch{throw new RequestError('پاسخ سرور کامل نبود؛ نتیجه نامعلوم است.',response.ok?0:response.status,'invalid_response',retryAfter(response.headers.get('Retry-After'),this.now()));}
             if(body.code==='customer_send_limited')body.message='ارسال زیاد است؛ '+Math.ceil(retryAfter(response.headers.get('Retry-After'),this.now())/1000)+' ثانیه صبر کنید. لطفاً پرسش‌هایتان را در یک پیام کامل بنویسید.';
-            if(!response.ok || body.status==='error')throw new RequestError(typeof body.message==='string'?body.message.slice(0,400):'درخواست انجام نشد؛ متن حفظ شده است.',response.status,body.code||'',retryAfter(response.headers.get('Retry-After'),this.now()));
+            if(!response.ok || body.status==='error'){const failure=new RequestError(typeof body.message==='string'?body.message.slice(0,400):'درخواست انجام نشد؛ متن حفظ شده است.',response.status,body.code||'',retryAfter(response.headers.get('Retry-After'),this.now()));if(this.role==='operator'&&body.code==='conversation_owned')failure.replyOwnership=body.reply_ownership;throw failure;}
             outcome='ok';if(observed)apiHealth.finish(ticket);return body;
         }catch(error){const failure=error instanceof RequestError?error:new RequestError('ارتباط قطع یا انتظار تمام شد؛ نتیجه هنوز مشخص نیست.');outcome=/^[a-z_]{1,64}$/.test(failure.code)?failure.code:'unavailable';if(observed&&!signal?.aborted)apiHealth.finish(ticket,failure);throw failure;}
         finally{clearTimeout(timer);if(signal&&abort)signal.removeEventListener('abort',abort);

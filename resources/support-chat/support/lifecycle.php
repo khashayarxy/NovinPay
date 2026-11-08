@@ -12,6 +12,7 @@ function support_lifecycle_transition(array &$w,string $status,string $actor): b
     return true;
 }
 function support_resolve_conversation(array &$conversation,array &$workflow,string $actor,bool &$changed): bool {
+    unset($conversation['reply_ownership']);
     $transitioned=support_lifecycle_transition($workflow,'resolved',$actor);
     // Handling status is independent of every operator's read progress.
     if($transitioned){
@@ -56,6 +57,7 @@ function support_customer_lifecycle(array $context,string $id,string $operation)
         unset($s['conversations'][$id]['contact_prompt_state']);
         $s['conversations'][$id]['last_message']='گفتگوی جدید';$s['conversations'][$id]['last_time']=$boundary['time'];
         $s['conversations'][$id]['unread_count']=0;
+        unset($s['conversations'][$id]['reply_ownership']);
         $w['status']='new';$w['last_customer']=0;$w['last_operator']=0;$w['customer_at']=0;$w['reopened_pending']=false;
         $w['snoozed_until']=0;$w['snoozed_at']=0;unset($w['reopened_at'],$w['closed_by'],$w['closed_at'],$w['resolution_event'],$w['resolution_at']);
         support_workflow_event($w,'customer','episode_started');

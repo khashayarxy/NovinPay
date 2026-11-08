@@ -48,7 +48,7 @@ function support_profile_action(array $op,string $action,array $input): array {
     else support_throttle('profile-change:'.$op['operator_id'],30,3600);
     return support_ops_store(function(array &$s)use($op,$id,$action,$input){
         support_ops_recheck($s,$op);
-        if(!isset($s['accounts'][$id]))support_failure(404,'operator_unavailable');
+        if(!isset($s['accounts'][$id])||isset($s['accounts'][$id]['deleted_at']))support_failure(404,'operator_unavailable');
         $a=&$s['accounts'][$id];
         if($action==='profile_password'||$action==='account_password'){
             if($action==='profile_password'&&($id!==$op['operator_id']||!password_verify(support_ops_password($input['current_password']??null),$a['password'])))support_failure(403,'current_password_required');
@@ -81,7 +81,7 @@ function support_profile_avatar(array $op,array $input,?array $file): array {
     if(!$remove&&!support_valid_uuid($operation))support_failure(400,'invalid_message_id');
     if(!$remove){require_once __DIR__.'/profile-images.php';$encoded=support_profile_image_encode($file??[],true);}
     return support_ops_store(function(array &$s)use($op,$id,$remove,$operation,$encoded){
-        support_ops_recheck($s,$op);if(!isset($s['accounts'][$id]))support_failure(404,'operator_unavailable');$a=&$s['accounts'][$id];
+        support_ops_recheck($s,$op);if(!isset($s['accounts'][$id])||isset($s['accounts'][$id]['deleted_at']))support_failure(404,'operator_unavailable');$a=&$s['accounts'][$id];
         $p=$a['public_profile']??['name'=>mb_strcut($a['name'],0,120,'UTF-8'),'enabled'=>false,'avatar'=>null];
         if($remove){$p['avatar']=null;}else{
             $receipts=$a['avatar_receipts']??[];foreach($receipts as $key=>$r)if($r['expires']<=time())unset($receipts[$key]);
@@ -100,11 +100,11 @@ function support_profile_avatar(array $op,array $input,?array $file): array {
         return ['status'=>'success','profile'=>support_profile_public($a)];
     },true);
 }
-function support_profile_sender_map(): array {
+function support_profile_sender_map(bool $operator=false): array {
     if(!support_multi_operator())return [];
-    try{return support_ops_store(function(array &$s){$map=[];foreach($s['accounts'] as $a){$p=$a['public_profile']??null;if(!$a['active']||!$p||!$p['enabled'])continue;
+    try{return support_ops_store(function(array &$s)use($operator){$map=[];foreach($s['accounts'] as $a){$p=$a['public_profile']??null;if(!$operator&&(!$a['active']||!$p||!$p['enabled']))continue;
         $principal='operator:'.hash('sha256',support_installation_id()."\0".$a['id']."\0".support_ops_version($a));
-        $sender=['id'=>substr(hash_hmac('sha256','public-profile:'.$a['id'],support_security_key()),0,32),'name'=>$p['name'],'avatar'=>$p['avatar']?'operator-avatar.php?id='.$p['avatar']['id']:null];foreach(array_merge([$principal],$a['sender_aliases']??[]) as $alias)$map[$alias]=$sender;
+        $sender=['id'=>substr(hash_hmac('sha256','public-profile:'.$a['id'],support_security_key()),0,32),'name'=>$operator?mb_strcut($a['name'],0,120,'UTF-8'):$p['name'],'avatar'=>$a['active']&&($p['enabled']??false)&&$p['avatar']?'operator-avatar.php?id='.$p['avatar']['id']:null];if($operator)$map['account:'.$a['id']]=$sender;foreach(array_merge([$principal],$a['sender_aliases']??[]) as $alias)$map[$alias]=$sender;
     }return $map;});}catch(SupportFailure $e){$dir=support_runtime_dir().'/operators';if($e->reason==='operator_not_initialized'&&!file_exists($dir.'/initialized')&&!file_exists($dir.'/authority.json'))return [];throw $e;}
 }
 

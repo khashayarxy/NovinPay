@@ -26,3 +26,15 @@ test('a lost ACK retains the draft and reconciles without a second send',async()
  await f.engine.drain();assert.equal(f.row.state,'unknown');assert.equal(f.row.text,'synthetic draft');assert.equal(f.engine.freshSubmissions.size,0);
  f.engine.transport.receipt=async()=>{f.calls.push('receipt');return f.ack;};await f.engine.drain();assert.equal(sends,1);assert.equal(f.row.state,'accepted');assert.ok(f.calls.includes('identity'));assert.ok(f.calls.includes('receipt'));
 });
+
+test('another operator ownership stops new submission and retries without losing the queued draft',async()=>{
+ const f=fixture({role:'operator'});f.engine.hooks.canSend=()=>false;
+ await f.engine.drain();assert.deepEqual(f.calls,[]);assert.equal(f.row.state,'pending');assert.equal(f.row.text,'synthetic draft');
+ await assert.rejects(f.engine.retry(f.row));assert.deepEqual(f.calls,[]);
+});
+
+test('an accepted lost ACK can still reconcile while a different operator owns the conversation',async()=>{
+ const f=fixture({role:'operator',attempts:1});f.engine.hooks.canSend=()=>false;
+ f.engine.transport.receipt=async()=>{f.calls.push('receipt');return f.ack;};
+ await f.engine.drain();assert.deepEqual(f.calls,['identity','receipt']);assert.equal(f.row.state,'accepted');assert.equal(f.row.attempts,1);
+});

@@ -79,6 +79,7 @@ export class ChatEngine {
     }
     assertSendAllowed(conversation=this.sync.id){const wait=this.sendWait(conversation);if(wait)throw new RequestError('ارسال پیام موقتاً محدود شده است؛ پیش‌نویس حفظ شده است.',429,'send_cooldown',wait);}
     handleError(error,conversation=null) {
+        if(this.role==='operator'&&error.code==='conversation_owned'){this.hooks.ownership?.(conversation,error.replyOwnership);this.hooks.warning?.(error.message,'chat');return;}
         const restricted=this.restrictSend(conversation,error);
         if(error.retryAfter>0&&!restricted&&conversation)this.senderNotBefore=Math.max(this.senderNotBefore||0,Date.now()+error.retryAfter);
         this.hooks.connection?.(error.status===429?'در انتظار سهمیهٔ سرور':'ارتباط تأیید نشده؛ متن‌های صف حفظ شده‌اند');
@@ -112,7 +113,7 @@ export class ChatEngine {
     async enqueue(text,attachments=[],replyTo=null,faqArticle=null,teamThrough=null) {
         if(this.frozen||this.paused||!this.sync.id)throw new Error('ابتدا هویت و گفتگوی معتبر را برقرار کنید؛ متن حفظ شده است.');
         this.assertSendAllowed();
-        if(this.hooks.canSend?.(this.sync.id)===false)throw new Error('این گفتگو پایان یافته است؛ پیش‌نویس حفظ شد.');
+        if(this.hooks.canSend?.(this.sync.id)===false)throw new Error(this.hooks.sendBlockReason?.(this.sync.id)||'این گفتگو پایان یافته است؛ پیش‌نویس حفظ شد.');
         const row=await this.box.enqueue(this.context,this.sync.id,text,{attachments,replyTo,faqArticle,teamThrough:this.role==='operator'?(teamThrough??Math.max(0,...this.sync.values().filter(m=>m.type==='user'&&Number.isSafeInteger(m.id)).map(m=>m.id))):null,sourcePath:this.role==='customer'?(Object.hasOwn(globalThis,'SupportSourcePath')?globalThis.SupportSourcePath:location.pathname):null});
         this.freshSubmissions.add(row.key);
         if(this.box.temporaryUnavailable&&!this.box.persistent)this.hooks.warning?.('بازیابی صف موقت در این مرورگر در دسترس نیست؛ پیش از تازه‌سازی منتظر تأیید پیام بمانید.','storage');this.hooks.queued?.(row);await this.renderQueue();this.scheduleSender(0);return row;
@@ -155,6 +156,7 @@ export class ChatEngine {
                     const receipt=await this.transport.receipt(row);
                     if(receipt){await this.accept(row,receipt);progressed=true;continue;}
                 }
+                if(this.hooks.canSend?.(row.conversation)===false)continue;
                 if(this.sendWait(row.conversation))continue;
                 const reason=blockedReason(row,this.box.now());
                 if(reason && row.state!=='needs_action' && row.state!=='cancelled'){await this.box.update(row.key,r=>({...r,state:'needs_action',error:reason}));continue;}
@@ -185,6 +187,7 @@ export class ChatEngine {
         finally{this.sending=false;await this.renderQueue().catch(e=>this.hooks.warning?.(e.message));this.scheduleSender(document.hidden?45000:progressed?0:2000);}
     }
     async retry(row) {
+        if(this.hooks.canSend?.(row.conversation)===false)throw new Error(this.hooks.sendBlockReason?.(row.conversation)||'ارسال در این گفتگو اکنون ممکن نیست؛ متن حفظ شد.');
         this.freshSubmissions.delete(row.key);
         if(this.frozen)throw new Error('هویت قبلی بسته شده است.');
         await this.auth();
@@ -279,7 +282,7 @@ export function conversationView(host,engine,{scroll=null,renderer=renderTranscr
     const render=(older=false,animate=false)=>{
         const seen=new Set(messages.filter(m=>m.client_message_id).map(m=>m.type+':'+m.client_message_id));
         for(const [key,row] of pending)if(seen.has((row.role==='operator'?'admin':'user')+':'+row.uuid)){pending.delete(key);presentationTimes.delete(key);}
-        const optimistic=[...pending.values()].sort((a,b)=>a.ordinal-b.ordinal).map(row=>{const ack=engine.knownAcks.get(row.key);if(!presentationTimes.has(row.key))presentationTimes.set(row.key,engine.transport?.presentationTime?.(row.created)??row.created);return {_presentation_at:presentationTimes.get(row.key),id:ack?.message_id||'pending-'+row.uuid,accepted_at:ack?.accepted_at,client_message_id:row.uuid,type:engine.role==='operator'?'admin':'user',text:row.text,attachments:row.attachments,reply_to:row.replyTo,_row:row,_ack:!!ack};});
+        const optimistic=[...pending.values()].sort((a,b)=>a.ordinal-b.ordinal).map(row=>{const ack=engine.knownAcks.get(row.key);if(!presentationTimes.has(row.key))presentationTimes.set(row.key,engine.transport?.presentationTime?.(row.created)??row.created);return {_presentation_at:presentationTimes.get(row.key),id:ack?.message_id||'pending-'+row.uuid,accepted_at:ack?.accepted_at,client_message_id:row.uuid,type:engine.role==='operator'?'admin':'user',...(engine.role==='operator'?{sender:engine.operatorSender||null,sender_group:engine.operatorSenderGroup||null}:{}),text:row.text,attachments:row.attachments,reply_to:row.replyTo,_row:row,_ack:!!ack};});
         const anchor=scroll?.before(older);
         const ordered=[...messages,...optimistic];const confirmed=ordered.filter(m=>Number.isSafeInteger(m.id)).sort((a,b)=>a.id-b.id),unconfirmed=ordered.filter(m=>!Number.isSafeInteger(m.id));renderer(host,[...confirmed,...unconfirmed],{compact:true,older,animate,engine,follow:scroll?.follow()??true});
         if(anchor)scroll.after(anchor,older);

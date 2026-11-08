@@ -7,7 +7,7 @@ try{
     if(($_SERVER['CONTENT_LENGTH']??0)>16384)support_failure(400,'invalid_input');
     $method=$_SERVER['REQUEST_METHOD']??'';if(!in_array($method,['GET','POST'],true))support_failure(405,'method_not_allowed');
     $action=support_string($_POST['action']??$_GET['action']??'bootstrap',32);
-    if($action==='bootstrap'&&$method==='GET'){$base=support_session('operator',true);$op=support_operator(false);support_json(['status'=>'success','token'=>$base['csrf_token'],'authenticated'=>$op!==null,'operator'=>$op?['id'=>$op['operator_id'],'name'=>$op['operator_name'],'role'=>$op['operator_role'],'sender_groups'=>support_profile_groups($op),'sender_group'=>substr(hash_hmac('sha256','sender-group:'.support_principal($op,'operator'),support_security_key()),0,32)]:null,'config'=>support_widget_config()]);}
+    if($action==='bootstrap'&&$method==='GET'){$base=support_session('operator',true);$op=support_operator(false);support_json(['status'=>'success','token'=>$base['csrf_token'],'authenticated'=>$op!==null,'operator'=>$op?['id'=>$op['operator_id'],'name'=>$op['operator_name'],'role'=>$op['operator_role'],'sender'=>['id'=>substr(hash_hmac('sha256','public-profile:'.$op['operator_id'],support_security_key()),0,32),'name'=>mb_strcut($op['operator_name'],0,120,'UTF-8'),'avatar'=>null],'sender_groups'=>support_profile_groups($op),'sender_group'=>substr(hash_hmac('sha256','sender-group:'.support_principal($op,'operator'),support_security_key()),0,32)]:null,'config'=>support_widget_config()]);}
     if($action==='login'&&$method==='POST'){
         $base=support_session('operator',true);support_csrf($base);$a=support_ops_authenticate(support_string($_POST['username']??null,80),support_ops_password($_POST['password']??null));
         support_change_operator(function()use($a){if(!session_regenerate_id(true))support_failure(503,'session_unavailable');$now=time();$_SESSION=['role'=>'operator','authenticated'=>true,'operator_id'=>$a['id'],'credential_version'=>support_ops_version($a),'csrf_token'=>bin2hex(random_bytes(32)),'auth_epoch'=>bin2hex(random_bytes(16)),'issued_at'=>$now,'last_seen'=>$now,'interactive_at'=>$now];});support_json(['status'=>'success']);
@@ -48,7 +48,7 @@ try{
     if($action==='public_profiles'&&$method==='GET'){require_once support_core_path('branding.php');support_json(support_brand_profiles($op));}
     if($action==='public_profile_save'&&$method==='POST'){require_once support_core_path('branding.php');support_json(support_brand_profile($op,$_POST));}
     if($action==='profile'&&$method==='GET')support_json(support_ops_store(function(array &$s)use($op){support_ops_recheck($s,$op);return ['status'=>'success','profile'=>support_profile_public($s['accounts'][$op['operator_id']])];}));
-    if($action==='operator_accounts'&&$method==='GET'){support_ops_admin($op);support_json(support_ops_store(function(array &$s)use($op){support_ops_recheck($s,$op);return ['status'=>'success','accounts'=>array_values(array_map('support_profile_public',$s['accounts']))];}));}
+    if($action==='operator_accounts'&&$method==='GET'){support_ops_admin($op);support_json(support_ops_store(function(array &$s)use($op){support_ops_recheck($s,$op);return ['status'=>'success','accounts'=>array_values(array_map('support_profile_public',support_ops_visible_accounts($s)))];}));}
     if(in_array($action,['profile_save','profile_password','account_update','account_password'],true)&&$method==='POST')support_json(support_profile_action($op,$action,$_POST));
     if(in_array($action,['analytics','analytics_csv','operations_settings','operations_save'],true)){
         require_once support_core_path('analytics.php');support_ops_admin($op);support_throttle('reports:'.support_principal($op,'operator'),20);
@@ -134,15 +134,16 @@ try{
     if($action==='macro_preview'&&$method==='POST'){require_once support_core_path('productivity.php');support_json(support_macro_preview($op,support_string($_POST['user_id']??null,100),support_string($_POST['reply_id']??null,32)));}
     if($action==='macro_apply'&&$method==='POST'){require_once support_core_path('productivity.php');support_json(support_macro_apply($op,support_string($_POST['plan']??null,2048)));}
     if($action==='workflow'&&$method==='POST')support_json(support_workflow_change($op,support_string($_POST['user_id']??null,100),$_POST));
-    if($action==='accounts'&&$method==='GET')support_json(support_ops_store(fn(array &$s)=>['status'=>'success','accounts'=>array_map(fn($a)=>$op['operator_role']==='administrator'?support_ops_public($a):array_intersect_key($a,array_flip(['id','name','active'])),array_values($s['accounts']))]));
+    if($action==='accounts'&&$method==='GET')support_json(support_ops_store(fn(array &$s)=>['status'=>'success','accounts'=>array_map(fn($a)=>$op['operator_role']==='administrator'?support_ops_public($a):array_intersect_key($a,array_flip(['id','name','active'])),support_ops_visible_accounts($s))]));
     if($action==='account_add'&&$method==='POST'){
         support_ops_admin($op);support_throttle('account-create:'.$op['operator_id'],20,3600);$a=support_ops_account(support_string($_POST['username']??null,80),support_profile_name($_POST['name']??null),support_ops_password($_POST['password']??null),support_string($_POST['role']??null,20));
         support_json(support_ops_store(function(array &$s)use($a,$op){support_ops_recheck($s,$op);foreach($s['accounts'] as $old)if(strtolower($old['username'])===strtolower($a['username']))support_failure(409,'operator_exists');$s['accounts'][$a['id']]=$a;support_ops_audit($s,$op['operator_id'],'account_added');return ['status'=>'success','account'=>support_ops_public($a)];},true));
     }
+    if($action==='account_delete'&&$method==='POST')support_json(support_ops_delete($op,support_profile_id($_POST['id']??null)));
     if($action==='account_revoke'&&$method==='POST'){
         support_ops_admin($op);$id=support_string($_POST['id']??null,32);support_json(support_ops_store(function(array &$s)use($id,$op){support_ops_recheck($s,$op);if(!isset($s['accounts'][$id]))support_failure(404,'operator_unavailable');$a=&$s['accounts'][$id];
             if($a['role']==='administrator'&&count(array_filter($s['accounts'],fn($x)=>$x['active']&&$x['role']==='administrator'))<2)support_failure(409,'last_administrator');
-            $a['active']=false;$a['epoch']=bin2hex(random_bytes(16));foreach($s['subscriptions'] as $key=>$sub)if(($sub['operator']??null)===$id)unset($s['subscriptions'][$key]);support_ops_audit($s,$op['operator_id'],'account_revoked');return ['status'=>'success'];},true));
+            if(isset($a['deleted_at']))support_failure(404,'operator_unavailable');support_profile_invalidate($s,$a);$a['active']=false;support_ops_audit($s,$op['operator_id'],'account_revoked');return ['status'=>'success'];},true));
     }
     if($action==='replies'&&$method==='GET')support_json(support_ops_store(fn(array &$s)=>['status'=>'success','replies'=>array_values($s['replies'])]));
     if($action==='reply_save'&&$method==='POST'){

@@ -5,6 +5,7 @@ function support_multi_operator(): bool {return getenv('SUPPORT_MULTI_OPERATOR_E
 function support_ops_password(mixed $password): string {if(!is_string($password)||$password===''||strlen($password)>72||!mb_check_encoding($password,'UTF-8'))support_failure(400,'invalid_operator');return $password;}
 function support_ops_version(array $a): string {return hash('sha256',$a['password']."\0".$a['epoch']."\0".(int)$a['active']);}
 function support_ops_public(array $a): array {return array_intersect_key($a,array_flip(['id','username','name','role','active']));}
+function support_ops_visible_accounts(array $state): array {return array_values(array_filter($state['accounts'],fn($a)=>!isset($a['deleted_at'])));}
 function support_ops_store(callable $operation,bool $write=false,bool $initialize=false): mixed {
     if($initialize&&PHP_SAPI!=='cli')support_failure(403,'forbidden');
     if($initialize)support_security_key();
@@ -20,7 +21,7 @@ function support_ops_store(callable $operation,bool $write=false,bool $initializ
         if(isset($s['authentication'])&&$s['authentication']!=='independent-v1')support_failure(503,'operator_state_invalid');
         foreach(['accounts'=>100,'replies'=>100,'events'=>4000,'subscriptions'=>200,'preferences'=>100] as $key=>$max)if(!is_array($s[$key]??null)||count($s[$key])>$max)support_failure(503,'operator_capacity');
         foreach($s['accounts'] as $id=>$a)if(!is_array($a)||($a['id']??null)!==$id||!preg_match('/^[a-f0-9]{32}$/D',(string)$id)||!preg_match('/^[a-zA-Z0-9_.-]{3,80}$/D',$a['username']??'')||!is_string($a['name']??null)||strlen($a['name'])>200||!is_string($a['password']??null)||!(password_get_info($a['password'])['algo']??null)||!in_array($a['role']??null,['administrator','support'],true)||!is_bool($a['active']??null)||!preg_match('/^[a-f0-9]{32}$/D',$a['epoch']??''))support_failure(503,'operator_state_invalid');
-        foreach($s['accounts'] as $a)if(isset($a['public_profile'])||isset($a['avatar_receipts'])||isset($a['sender_aliases'])){require_once __DIR__.'/operator-profile.php';support_profile_validate($a);}
+        foreach($s['accounts'] as $a){if(array_key_exists('deleted_at',$a)&&(!is_int($a['deleted_at'])||$a['deleted_at']<1||$a['active']))support_failure(503,'operator_state_invalid');if(isset($a['public_profile'])||isset($a['avatar_receipts'])||isset($a['sender_aliases'])){require_once __DIR__.'/operator-profile.php';support_profile_validate($a);}}
         $s['events']=array_values(array_filter($s['events'],fn($e)=>is_array($e)&&is_int($e['at']??null)&&$e['at']>time()-604800));
         foreach($s['subscriptions'] as $id=>$sub){if(!preg_match('/^[a-f0-9]{32}$/D',(string)$id)||!is_array($sub)||!isset($s['accounts'][$sub['operator']??''])||!is_string($sub['sealed']??null)||strlen($sub['sealed'])>4096||!is_int($sub['expires']??null)||!is_int($sub['session_expires']??null))support_failure(503,'operator_state_invalid');if($write&&$sub['expires']<=time())unset($s['subscriptions'][$id]);}
         $result=$operation($s);
@@ -48,6 +49,46 @@ function support_ops_session(array $context): ?array {
     });
 }
 function support_ops_admin(array $context): void {if(($context['operator_role']??null)!=='administrator')support_failure(403,'operator_permission_denied');}
+// Called under the existing conversation-store lock. No separate lock service or cron.
+function support_reply_ownership_validate(array $conversation): void {
+    if(!array_key_exists('reply_ownership',$conversation))return;
+    $lease=$conversation['reply_ownership'];
+    if(!is_array($lease)||array_diff(array_keys($lease),['operator_id','credential_version','last_reply_at','episode'])||!preg_match('/^[a-f0-9]{32}$/D',$lease['operator_id']??'')||!preg_match('/^[a-f0-9]{64}$/D',$lease['credential_version']??'')||!is_int($lease['last_reply_at']??null)||$lease['last_reply_at']<1||!is_int($lease['episode']??null)||$lease['episode']<1)support_failure(503,'storage_invalid');
+}
+function support_reply_ownership(array $conversation,array $actor,?int $now=null): array {
+    support_reply_ownership_validate($conversation);$now=$now??time();$lease=$conversation['reply_ownership']??null;$empty=['operator_id'=>null,'name'=>null,'expires_at'=>null,'server_now'=>$now,'checked_at'=>(int)floor(microtime(true)*1000),'is_owner'=>false];
+    if(!support_multi_operator())return $empty;
+    return support_ops_store(function(array &$state)use($conversation,$actor,$now,$lease,$empty){
+        support_ops_recheck($state,$actor);
+        if(!$lease||($conversation['workflow']['status']??'')==='resolved'||!empty($conversation['retired_at'])||$lease['episode']!==($conversation['episode']??1)||$now>=$lease['last_reply_at']+300)return $empty;
+        $account=$state['accounts'][$lease['operator_id']]??null;
+        if(!$account||!$account['active']||isset($account['deleted_at'])||!hash_equals(support_ops_version($account),$lease['credential_version']))return $empty;
+        return ['operator_id'=>$account['id'],'name'=>mb_strcut($account['name'],0,120,'UTF-8'),'expires_at'=>$lease['last_reply_at']+300,'server_now'=>$now,'checked_at'=>$empty['checked_at'],'is_owner'=>$account['id']===$actor['operator_id']];
+    });
+}
+function support_reply_require(array $conversation,array $actor): void {
+    $ownership=support_reply_ownership($conversation,$actor);
+    if($ownership['operator_id']!==null&&!$ownership['is_owner'])support_json(['status'=>'error','code'=>'conversation_owned','message'=>$ownership['name'].' در حال پاسخگویی به این گفتگو است.','reply_ownership'=>$ownership],409);
+}
+function support_ops_delete(array $context,string $id): array {
+    support_ops_admin($context);
+    return support_ops_store(function(array &$state)use($context,$id){
+        support_ops_recheck($state,$context);
+        if($id===$context['operator_id'])support_failure(403,'self_deletion_forbidden');
+        if(!isset($state['accounts'][$id]))support_failure(404,'operator_unavailable');
+        $account=&$state['accounts'][$id];
+        if($account['active']&&$account['role']==='administrator'&&count(array_filter($state['accounts'],fn($a)=>$a['active']&&$a['role']==='administrator'))<=1)support_failure(409,'last_administrator');
+        if($account['active'])support_failure(409,'operator_must_be_inactive');
+        if(isset($account['deleted_at']))return ['status'=>'success','replayed'=>true];
+        require_once __DIR__.'/operator-profile.php';
+        support_profile_invalidate($state,$account);
+        $account['password']=password_hash(bin2hex(random_bytes(32)),PASSWORD_DEFAULT);
+        $account['deleted_at']=time();
+        unset($state['preferences'][$id]);
+        support_profile_audit($state,$context,'account_deleted',$id);
+        return ['status'=>'success','replayed'=>false];
+    },true);
+}
 // An explicit private local allowlist filters disposable test records from inbox
 // presentation. It never deletes data or changes conversation authorization.
 function support_development_conversations(): array {
@@ -85,7 +126,7 @@ function support_workflow_change(array $context,string $id,array $fields): array
         if($action==='status'){if(($fields['value']??null)!=='resolved')support_failure(400,'status_is_automatic');require_once __DIR__.'/lifecycle.php';if(!support_resolve_conversation($s['conversations'][$id],$w,$context['operator_id'],$changed))return ['status'=>'success','workflow'=>$w,'replayed'=>true];}
         elseif($action==='priority'){if(!in_array($fields['value']??null,['normal','urgent'],true))support_failure(400,'invalid_input');$w['priority']=$fields['value'];}
         elseif($action==='snooze'){$w['snoozed_until']=support_snooze_value($fields['value']??null);$w['snoozed_at']=$w['snoozed_until']?time():0;}
-        elseif($action==='assign'){$value=support_string($fields['value']??'',32,true);if($value!=='')support_ops_store(function(array &$ops)use($value){if(!isset($ops['accounts'][$value])||!$ops['accounts'][$value]['active'])support_failure(400,'invalid_input');});$w['assigned']=$value===''?null:$value;}
+        elseif($action==='assign'){$value=support_string($fields['value']??'',32,true);if($value!=='')support_ops_store(function(array &$ops)use($value){if(!isset($ops['accounts'][$value])||!$ops['accounts'][$value]['active'])support_failure(400,'invalid_input');});$owner=support_reply_ownership($c,$context);if($owner['operator_id']!==null&&!$owner['is_owner']&&($context['operator_role']??null)!=='administrator')support_failure(403,'handoff_forbidden');if(($w['assigned']??null)!==($value===''?null:$value))unset($s['conversations'][$id]['reply_ownership']);$w['assigned']=$value===''?null:$value;}
         elseif($action==='labels'){$labels=json_decode(support_string($fields['value']??'[]',1500),true);if(!is_array($labels)||!array_is_list($labels)||count($labels)>20)support_failure(400,'invalid_input');$w['labels']=array_values(array_unique(array_map(fn($v)=>support_string($v,60),$labels)));}
         elseif($action==='note'){
             if(count($w['notes'])>=100)support_failure(429,'operator_capacity');$w['notes'][]=['id'=>bin2hex(random_bytes(16)),'author'=>$context['operator_id'],'at'=>time(),'text'=>support_string($fields['value']??null,2000)];
