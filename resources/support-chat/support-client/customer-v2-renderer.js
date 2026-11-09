@@ -11,11 +11,15 @@ export function renderCustomerV2(host,messages,{engine,follow=true,operator=fals
  const scrollHost=operator?host.closest('#messageStream')||host:host;const atBottom=scrollHost.scrollHeight-scrollHost.scrollTop-scrollHost.clientHeight<80;
  const prior=motionHeads.get(host),conversation=engine?.sync?.id??null,head=host.childElementCount&&prior?.conversation===conversation?prior.head:0;motionHeads.set(host,{conversation,head:Math.max(head,...messages.map(m=>Number.isSafeInteger(m.id)?m.id:0))});
  const keys=new Set();let position=0,unreadMarked=false;
- for(const group of messageGroups(messages,{operator,ownGroup,conversation:engine?.sync?.id})){
+ const groups=messageGroups(messages,{operator,ownGroup,conversation:engine?.sync?.id});
+ const unreadIndex=operator?-1:groups.findIndex(({m})=>m.type==='admin'&&m.customer_read===false);
+ let unreadGroupStart=unreadIndex;
+ while(unreadGroupStart>0&&!groups[unreadGroupStart].first)unreadGroupStart--;
+ for(const [index,group] of groups.entries()){
   const {m,outgoing}=group;
   if(m.episode_boundary){const key='episode:'+m.id;keys.add(key);let marker=[...host.children].find(e=>e.dataset.messageKey===key);if(!marker){marker=node('div','support-episode-marker','گفتگوی جدید');marker.dataset.messageKey=key;marker.setAttribute('role','separator');}if(host.children[position]!==marker)host.insertBefore(marker,host.children[position]||null);position++;continue;}
   if(group.separator){const key='day:'+group.day+':'+m.id;keys.add(key);let marker=[...host.children].find(e=>e.dataset.messageKey===key);if(!marker){marker=node('div','support-day-marker',group.date);marker.dataset.messageKey=key;marker.setAttribute('role','separator');}marker.textContent=group.date;if(host.children[position]!==marker)host.insertBefore(marker,host.children[position]||null);position++;}
-  if(!unreadMarked&&m.type===(operator?'user':'admin')&&m[operator?'read':'customer_read']===false){const key='unread:'+m.id;keys.add(key);let marker=[...host.children].find(e=>e.dataset.messageKey===key);if(!marker){marker=node('div','support-new-separator','پیام‌های جدید');marker.dataset.messageKey=key;marker.setAttribute('role','separator');}if(host.children[position]!==marker)host.insertBefore(marker,host.children[position]||null);position++;unreadMarked=true;}
+  if(operator?!unreadMarked&&m.type==='user'&&m.read===false:index===unreadGroupStart){const key='unread:'+(operator?m.id:groups[unreadIndex].m.id);keys.add(key);let marker=[...host.children].find(e=>e.dataset.messageKey===key);if(!marker){marker=node('div','support-new-separator','پیام‌های جدید');marker.dataset.messageKey=key;marker.setAttribute('role','separator');}if(host.children[position]!==marker)host.insertBefore(marker,host.children[position]||null);position++;unreadMarked=true;}
   const key=m.client_message_id?m.type+':'+m.client_message_id:'message:'+m.id;keys.add(key);
   let row=[...host.children].find(e=>e.dataset.messageKey===key);
   const inserted=!row;if(!row){row=node('article','');row.dataset.messageKey=key;}
@@ -35,7 +39,7 @@ export function renderCustomerV2(host,messages,{engine,follow=true,operator=fals
     const identity=node('div','v2-identity'),name=node('span','v2-sender-name',operatorSenderName(m,operatorName));
     identity.append(name);row.append(identity);
    }
-   if(automatic&&!operator)row.append(node('small','support-auto-label','پیام خودکار'));
+   if(automatic&&!operator&&group.first)row.append(node('small','support-auto-label','پیام خودکار'));
    const wrap=node('div','v2-bubble-wrap'),bubble=node('div','v2-bubble');bubble.title=row.getAttribute('aria-label');wrap.append(bubble);
    if(m.reply_to){const ref=m.reference||engine?.sync?.messages?.get(m.reply_to);const available=m.reference?ref.available===true:!!ref;const quote=action(available?(ref.text||'تصویر پیوست'):'پیام مرجع در دسترس نیست',()=>host.dispatchEvent(new CustomEvent('support-reference',{bubbles:true,detail:{id:m.reply_to}})),'support-reply-reference');quote.disabled=!available;quote.setAttribute('aria-label','رفتن به پیام مرجع');bubble.append(quote);}
    if(m.text){const text=node('span','support-message-text');messageText(text,m.text);bubble.append(text);}

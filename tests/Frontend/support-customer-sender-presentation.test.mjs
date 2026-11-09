@@ -16,7 +16,8 @@ test('customer transcript hides human operator identity and labels only automate
  const directory=mkdtempSync(path.join(tmpdir(),'novinpay-customer-renderer-'));
  try{
   const renderer=pathToFileURL(fileURLToPath(new URL('../../resources/support-chat/support-client/customer-v2-renderer.js',import.meta.url))).href;
-  const html=`<!doctype html><meta charset="utf-8"><body><div id="messages"></div><script type="module">
+  const css=new URL('../../resources/support-chat/support-client/customer-v2.css',import.meta.url).href;
+  const html=`<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="${css}"><body><div id="messages" class="chat-messages"></div><script type="module">
    try {
     const {renderCustomerV2}=await import(${JSON.stringify(renderer)});
     const host=document.querySelector('#messages'),time='2026-11-08T08:00:00Z';
@@ -43,6 +44,25 @@ test('customer transcript hides human operator identity and labels only automate
     renderCustomerV2(host,messages,{engine:operatorEngine,operator:true,operatorName:'اپراتور فعلی',follow:false});
     const operatorNames=[...host.querySelectorAll('.v2-sender-name')].map(node=>node.textContent);
     assert(operatorNames.includes('اپراتور اول')&&operatorNames.includes('اپراتور دوم'),'Operator transcript retains trusted human sender names');
+    const first={...messages[0],sender_group:'same',customer_read:true};
+    const second={...first,id:2,accepted_at:'2026-11-08T08:01:00Z',sender:null,customer_read:false};
+    renderCustomerV2(host,[first],{engine,follow:false});
+    const firstBubble=host.querySelector('.v2-bubble');
+    renderCustomerV2(host,[first,second],{engine,follow:false});
+    const [a,b]=host.querySelectorAll('article');
+    const gap=b.querySelector('.v2-bubble').getBoundingClientRect().top-firstBubble.getBoundingClientRect().bottom;
+    assert(a.querySelector('.v2-bubble')===firstBubble,'New reply retains the existing bubble');
+    assert(a.previousElementSibling?.classList.contains('support-new-separator')&&a.nextElementSibling===b,'Unread separator stays outside the group');
+    assert(gap>=4&&gap<=6,'In-group bubble spacing is 4–6px, measured '+gap);
+    assert(a.querySelector('.v2-meta-collapsed time').dateTime===time.replace('Z','.000Z'),'Earlier timestamp is retained');
+    assert(!b.querySelector('.v2-meta-collapsed'),'Final timestamp stays visible');
+    const pending={id:'pending',type:'user',client_message_id:'test-retry',text:'retry',_row:{uuid:'test-retry',state:'sending',created:Date.now()},_presentation_at:Date.parse(time)+60000};
+    const customer={id:5,type:'user',text:'sent',accepted_at:time};
+    renderCustomerV2(host,[customer,pending],{engine,follow:false});
+    const retryRow=host.querySelector('[data-message-key="user:test-retry"]');
+    renderCustomerV2(host,[customer,{...pending,id:6,_ack:true,accepted_at:'2026-11-08T08:01:00Z',read_receipt:true}],{engine,follow:false});
+    assert(retryRow===host.querySelector('[data-message-id="6"]')&&retryRow.classList.contains('v2-grouped'),'ACK retains keyed grouped retry');
+    assert(retryRow.querySelector('.support-read-state[data-state="read"]'),'Final receipt is visible');
     document.body.dataset.result='CUSTOMER_SENDER_PRESENTATION_PASS';
    } catch(error) { document.body.dataset.result='CUSTOMER_SENDER_PRESENTATION_FAIL'; document.body.dataset.error=error.stack||error.message; }
   </script>`;

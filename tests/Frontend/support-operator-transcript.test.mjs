@@ -38,3 +38,25 @@ test('consecutive operator and automatic groups survive interruptions without sh
  assert.equal(groups[5].participant,groups[6].participant);
  assert.notEqual(groups[1].participant,groups[2].participant);
 });
+
+test('customer groups use adjacent times, Tehran days, and stable sender identity',()=>{
+ const support=(id,accepted_at,extra={})=>({id,type:'admin',accepted_at,sender_group:'a',...extra});
+ const messages=[
+  support(1,'2026-11-08T20:21:00Z',{sender:{id:'profile-a'}}),
+  support(2,'2026-11-08T20:22:00Z',{edited_at:'2026-11-09T06:00:00Z'}),
+  support(3,'2026-11-08T20:27:00Z'),
+  support(4,'2026-11-08T20:27:00Z',{sender_group:'b'}),
+  support(5,'2026-11-08T20:29:59Z'),
+  support(6,'2026-11-08T20:30:00Z'),
+  support(7,'2026-11-08T20:35:01Z'),
+  support(8,'2026-11-08T20:35:01Z',{type:'system',origin:'faq_auto'}),
+  support(9,'2026-11-08T20:36:01Z',{type:'system',origin:'faq_auto'}),
+  support(10,'2026-11-08T20:36:01Z',{type:'user'}),
+  support(11,'2026-11-08T20:36:02Z',{sender_group:null}),
+  support(12,'2026-11-08T20:36:03Z',{sender_group:null}),
+ ];
+ const groups=messageGroups(messages);
+ assert.deepEqual(groups.map(g=>g.first),[true,false,false,true,true,true,true,true,false,true,true,true]);
+ assert.deepEqual(groups.map(g=>g.last),[false,false,true,true,true,true,true,false,true,true,true,true]);
+ assert.notEqual(groups[4].day,groups[5].day);
+});
