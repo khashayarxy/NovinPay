@@ -97,9 +97,9 @@ class MobileNavigationTest extends TestCase
 
         $menu = $xpath->query('//nav[@id="mobile-navigation"]')->item(0);
         $links = $xpath->query('./a', $menu);
-        $this->assertSame(['پیگیری تعمیرات', 'مقالات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(['حساب کاربری', 'پیگیری تعمیرات', 'مقالات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
         $this->assertSame(0, $xpath->query('//a[normalize-space(.)="تعمیرگاه" or normalize-space(.)="خدمات و تعمیرات"]')->length);
-        $this->assertSame(array_map(fn ($name) => route($name), ['repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
+        $this->assertSame(array_map(fn ($name) => route($name), ['account.index', 'repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
         $this->assertSame(0, $xpath->query('./a[normalize-space(.)="صفحه اصلی" or normalize-space(.)="خرید کارتخوان" or normalize-space(.)="تعمیرات"]', $menu)->length);
         $active = $xpath->query('./a[@aria-current="page"]', $menu);
         $verticalCurrent = in_array($current, ['repair.track', 'articles.index', 'contact'], true) ? $current : null;
@@ -112,9 +112,15 @@ class MobileNavigationTest extends TestCase
         // adds aria-expanded at runtime rather than leaving a stale false value.
         $this->assertSame(1, $xpath->query('//summary[@aria-controls="mobile-navigation" and not(@aria-expanded)]')->length);
         $this->assertSame(0, $xpath->query('//header//*[@role="menu" or @role="menuitem"]')->length);
-        $this->assertSame(0, $xpath->query('//header//a[contains(@href,"/account") or contains(@href,"/login") or @href="#"]')->length);
+        $this->assertSame(2, $xpath->query('//header//a[@href="'.route('account.index').'"]')->length);
+        $this->assertSame(0, $xpath->query('//header//a[contains(@href,"/login") or @href="#"]')->length);
         foreach ($links as $link) {
-            $this->get($link->getAttribute('href'))->assertOk();
+            $href = $link->getAttribute('href');
+            if ($href === route('account.index')) {
+                $this->get($href)->assertRedirect(route('account.login'));
+            } else {
+                $this->get($href)->assertOk();
+            }
         }
     }
 }

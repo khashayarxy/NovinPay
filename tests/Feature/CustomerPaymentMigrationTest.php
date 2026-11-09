@@ -21,7 +21,7 @@ class CustomerPaymentMigrationTest extends TestCase
 
     public function test_upgrade_from_existing_schema_preserves_populated_financial_history(): void
     {
-        $paths = array_merge(glob(database_path('migrations/2026_11_03_*.php')), glob(database_path('migrations/2026_11_04_*.php')));
+        $paths = $this->extensionMigrations();
         foreach (array_reverse($paths) as $path) {
             (require $path)->down();
         }
@@ -61,7 +61,7 @@ class CustomerPaymentMigrationTest extends TestCase
             $this->markTestSkipped('SQLite table-rebuild preservation test; MySQL/MariaDB require their migration harness.');
         }
         $before = $triggers();
-        $paths = array_merge(glob(database_path('migrations/2026_11_03_*.php')), glob(database_path('migrations/2026_11_04_*.php')));
+        $paths = $this->extensionMigrations();
         foreach (array_reverse($paths) as $path) {
             (require $path)->down();
         }
@@ -71,5 +71,15 @@ class CustomerPaymentMigrationTest extends TestCase
         }
         $this->assertSame($before, $triggers());
         $this->assertTrue(Schema::hasColumn('financial_entries', 'payment_transaction_id'));
+        $this->assertTrue(Schema::hasColumn('customer_accounts', 'password'));
+    }
+
+    private function extensionMigrations(): array
+    {
+        return array_merge(
+            glob(database_path('migrations/2026_11_03_*.php')),
+            glob(database_path('migrations/2026_11_04_*.php')),
+            [database_path('migrations/2026_11_09_000001_add_customer_password.php')],
+        );
     }
 }
