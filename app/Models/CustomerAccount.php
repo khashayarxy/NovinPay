@@ -8,7 +8,7 @@ class CustomerAccount extends Authenticatable
 {
     protected $guarded = ['*'];
 
-    protected $hidden = ['phone', 'phone_digest', 'name'];
+    protected $hidden = ['phone', 'phone_digest', 'name', 'password'];
 
     protected function casts(): array
     {

@@ -38,7 +38,11 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('customer-otp', fn ($request) => [
             Limit::perMinute(5)->by('otp-ip:'.hash('sha256', $request->ip())),
-            Limit::perDay(10)->by('otp-phone:'.RepairIdentity::digest('otp-throttle', RepairIdentity::phone($request->input('phone')))),
+            Limit::perDay(10)->by('otp-phone:'.RepairIdentity::digest('otp-throttle', RepairIdentity::phone($request->routeIs('account.start') ? $request->input('phone') : ($request->session()->get('customer_login_phone') ?? $request->input('phone'))))),
+        ]);
+        RateLimiter::for('customer-password', fn ($request) => [
+            Limit::perMinute(8)->by('customer-password-ip:'.hash('sha256', $request->ip())),
+            Limit::perMinute(5)->by('customer-password-phone:'.RepairIdentity::digest('password-throttle', (string) $request->session()->get('customer_login_phone'))),
         ]);
         Gate::define('access-admin', fn (User $user): bool => AdminAccess::account($user) !== null);
         Gate::define('staff.manage', fn (User $user): bool => AdminAccess::account($user)?->isSuperAdmin() ?? false);

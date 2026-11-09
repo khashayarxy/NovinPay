@@ -8,9 +8,11 @@ use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
 use App\Models\FinancialEntry;
 use App\Models\SalesOrder;
+use App\Models\SalesOrderEvent;
 use App\Models\User;
 use App\Services\FinancialOperations;
 use App\Services\RepairOperations;
+use App\Support\CustomerTimeline;
 use App\Support\RepairIdentity;
 use App\Support\RepairTime;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,12 +55,43 @@ class CustomerScreensTest extends TestCase
         $this->capture('repair-admin', '/admin/repairs/'.$case->public_id);
         $this->capture('payments-admin', '/admin/payments');
         $this->capture('delivery-admin', '/admin/deliveries');
+        $this->capture('customer-login', '/login');
         $this->actingAs($account->fresh(), 'customer')->withSession(['customer_session_version' => 1]);
-        $this->capture('customer-login', '/account/login');
         $this->capture('customer-account', '/account');
+        $this->capture('customer-profile', '/account?section=profile');
+        $this->capture('customer-addresses', '/account?section=addresses');
+        $this->capture('customer-order', '/account/orders/'.$order->public_id);
         $this->capture('customer-payment', '/account/documents/'.$document->public_id);
         $this->capture('customer-delivery', '/account/documents/'.$document->public_id.'/delivery');
         $this->capture('customer-repair', '/repair');
+        $other = new CustomerAccount;
+        $other->forceFill([
+            'public_id' => (string) Str::uuid(), 'phone' => '09000000001',
+            'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000001'), 'verified_at' => now(),
+        ])->save();
+        $this->actingAs($other->fresh(), 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get('/account/orders/'.$order->public_id)->assertNotFound();
+        $this->get('/account?section=orders')->assertOk()->assertDontSee($order->public_id);
+    }
+
+    public function test_order_timeline_marks_only_recorded_phases_and_does_not_invent_delivery(): void
+    {
+        $order = new SalesOrder;
+        $order->status = 'fulfilled';
+        $order->created_at = now()->subDay();
+        $order->fulfilled_at = now();
+        $event = new SalesOrderEvent;
+        $event->to_status = 'confirmed';
+        $event->created_at = now()->subHour();
+        $order->setRelation('events', collect([$event]));
+        $plan = new DeliveryPlan;
+        $plan->state = 'dispatched';
+        $steps = CustomerTimeline::order($order, $plan);
+        $this->assertSame(['complete', 'unrecorded', 'complete', 'current'], array_column($steps, 'state'));
+        $this->assertSame('ارسال به شرکت حمل ثبت شد', $steps[3]['label']);
+
+        $order->status = 'cancelled';
+        $this->assertSame(['سفارش ثبت شد', 'سفارش تأیید شد', 'سفارش لغو شد'], array_column(CustomerTimeline::order($order, null), 'label'));
     }
 
     private function capture(string $name, string $url): void

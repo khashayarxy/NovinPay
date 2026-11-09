@@ -1,12 +1,14 @@
 <?php
 
 use App\Models\PaymentAttempt;
+use App\Services\CustomerLogin;
 use App\Services\CustomerNotifications;
 use App\Services\IndependentSupportOperators;
 use App\Services\SmsIr;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
 use App\Support\Chat\ChatBridge;
+use App\Support\RepairIdentity;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +17,26 @@ use Illuminate\Support\Facades\Schedule;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('customers:test-code', function (CustomerLogin $login): int {
+    if (! defined('STDIN') || ! defined('STDOUT') || ! stream_isatty(STDIN) || ! stream_isatty(STDOUT)) {
+        $this->error('Use a private interactive terminal.');
+
+        return 1;
+    }
+
+    $phone = RepairIdentity::phone($this->secret('Allowlisted test mobile', false));
+    $code = $login->privateTestCode($phone);
+    if ($code === null) {
+        $this->error('No active test challenge.');
+
+        return 1;
+    }
+
+    $this->line($code);
+
+    return 0;
+})->purpose('Read an allowlisted customer test challenge in a private terminal');
 
 Artisan::command('payments:reconcile', function (ZibalPayments $payments, ZibalGateway $gateway): int {
     if (! $gateway->available()) {

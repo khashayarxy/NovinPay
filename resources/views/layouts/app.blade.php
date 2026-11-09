@@ -24,9 +24,9 @@
 </head>
 <body @class(['public-site flex min-h-screen flex-col', 'homepage' => request()->routeIs('home')])>
     <a class="skip-link" href="#main-content">پرش به محتوای اصلی</a>
-    <x-home.header />
+    @unless(View::hasSection('quiet-shell'))<x-home.header />@endunless
     <main id="main-content" class="flex-1" tabindex="-1">@yield('content')</main>
-    <x-home.footer />
+    @unless(View::hasSection('quiet-shell'))<x-home.footer />@endunless
 @if(config('support_chat.enabled'))<script src="{{ app(\App\Support\Chat\ChatAssets::class)->url('support-widget.js') }}" defer></script>@endif
 </body>
 </html>

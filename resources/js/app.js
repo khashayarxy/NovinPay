@@ -6,6 +6,31 @@ document.addEventListener('DOMContentLoaded', () => {
     initSimpleRepair();
     document.getElementById('error-summary')?.focus();
 
+    document.querySelectorAll('[data-account-password]').forEach((button) => {
+        const input = document.getElementById(button.dataset.accountPassword);
+        if (!(input instanceof HTMLInputElement)) return;
+        button.hidden = false;
+        button.addEventListener('click', () => {
+            const visible = input.type === 'password';
+            input.type = visible ? 'text' : 'password';
+            button.textContent = visible ? 'پنهان کردن' : 'نمایش';
+        });
+    });
+
+    const resend = document.querySelector('[data-account-resend]');
+    if (resend instanceof HTMLButtonElement && Number(resend.dataset.accountResend) > 0) {
+        const until = Date.now() + Number(resend.dataset.accountResend) * 1000;
+        const label = resend.textContent;
+        const format = new Intl.NumberFormat('fa-IR');
+        const update = () => {
+            const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+            resend.disabled = remaining > 0;
+            resend.textContent = remaining ? `ارسال دوباره پس از ${format.format(remaining)} ثانیه` : label;
+            if (remaining) window.setTimeout(update, 1000);
+        };
+        update();
+    }
+
     if (window.isSecureContext && navigator.clipboard?.writeText) {
         document.querySelectorAll('[data-copy-address]').forEach((button) => {
             button.hidden = false;

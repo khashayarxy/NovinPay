@@ -20,6 +20,8 @@ Private `development/recovery/installation.json` records the installed shared gu
 
 Focused validation: `./scripts/test.ps1 tests/Unit/LocalHerdEnvironmentTest.php tests/Feature/SupportChatTest.php tests/Feature/CustomerAccountTest.php`. See the latest deployment lessons for browser measurements and acceptance scope.
 
+Customer account acceptance uses `/login`. After the customer password migration is applied to an approved database, an owner can enable restricted OTP in its private environment with `CUSTOMER_TEST_OTP_ENABLED=true` and `CUSTOMER_TEST_OTP_PHONES` set to a comma-separated list of canonical synthetic mobiles. Keep `SMSIR_ENABLED=false`. Start at `/login`, then run `php artisan customers:test-code` in a private interactive terminal for that same deployment. Enter the mobile at the hidden prompt and use the current code within three minutes. Keep the code off shared terminals and transcripts. Test identities remain unverified, separate from real accounts, and cannot link to CRM history or place orders against the store’s real inventory. Turn off test OTP after acceptance. On Herd, use the guarded environment or isolated test runner, since the normal CLI does not inherit the web guard.
+
 Verified 2026-10-23 with Windows 11, Herd 2.0.3, Happ 4.5.6.627, and canonical `https://novinpaypos.test`. The project is `C:\Users\Khashayar\Documents\NovinPay`. Use the isolated Herd site, never an unguarded `artisan serve`, `artisan dev`, queue worker or migration against the original SQLite file.
 
 ## Reproduced cause and approved correction

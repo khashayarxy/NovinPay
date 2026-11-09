@@ -1,6 +1,6 @@
 @php
     $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما'], ['articles.index', 'articles.*', 'مقاله‌ها']];
-    $mobileNavigation = [['repair.track', 'repair.track*', 'پیگیری تعمیرات'], ['articles.index', 'articles.*', 'مقالات'], $navigation[3]];
+    $mobileNavigation = [['account.index', 'account.*', 'حساب کاربری'], ['repair.track', 'repair.track*', 'پیگیری تعمیرات'], ['articles.index', 'articles.*', 'مقالات'], $navigation[3]];
     $quickNavigation = match (true) {
         request()->routeIs('products.*') => [$navigation[0], $navigation[2]],
         request()->routeIs('repair', 'repair.*') && ! request()->routeIs('repair.track*') => [$navigation[0], $navigation[1]],
@@ -15,6 +15,7 @@
             @foreach ($navigation as [$route, $active, $label])
                 <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
             @endforeach
+            <a href="{{ route('account.index') }}" @if (request()->routeIs('account.*')) aria-current="page" @endif>حساب کاربری</a>
         </nav>
         <div class="np-header__actions">
             <details class="np-mobile-menu">

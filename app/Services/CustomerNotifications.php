@@ -40,7 +40,7 @@ class CustomerNotifications
                 continue;
             }
             $account = CustomerAccount::find($item->customer_account_id);
-            if (! $account || ! $account->is_active) {
+            if (! $account || ! $account->is_active || ! $account->verified_at) {
                 DB::table('customer_notifications')->where('id', $item->id)->update(['state' => 'cancelled']);
 
                 continue;
