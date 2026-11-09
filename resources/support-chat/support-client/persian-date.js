@@ -12,4 +12,11 @@ export function persianDate(date,now=new Date()){
 }
 // Existing polling/queue rendering calls this formatter again, including after
 // foreground resume. No independent midnight polling or timer is required.
-export function messageDate(m){return m.accepted_at?new Date(m.accepted_at):m._row?new Date(m._presentation_at??m._row.created):new Date(String(m.time).replace(' ','T')+'+03:30');}
+export function messageDate(m){
+ if(m.accepted_at)return new Date(m.accepted_at);
+ if(m._row)return new Date(m._presentation_at??m._row.created);
+ const time=String(m.time??'').replace(' ','T');
+ // Native chat history stored Tehran wall time, while exported ISO records
+ // can already carry an offset. Appending a second offset invalidates them.
+ return new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(time)?time:time+'+03:30');
+}

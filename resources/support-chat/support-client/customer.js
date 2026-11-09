@@ -54,7 +54,7 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
         d.area.querySelectorAll('textarea,input').forEach(el=>{el.disabled=composerLocked;});
         for(const el of d.area.querySelectorAll('.support-attach-button,.v2-emoji-toggle'))el.disabled=composerLocked;
         const send=d.win.querySelector('.chat-send');if(send)send.disabled=composerLocked||(engine?.sendWait()||0)>0;
-        if(composerLocked)d.input.blur();
+        if(composerLocked){typing?.stop();d.input.blur();}
     }
     const identity=(message,{keepMenu=false}={})=>{
         hasConversation=false;welcomeEpisode=null;welcomeHasMessages=false;welcome.hidden=false;typing?.reset?.();presentation?.reset?.();shell?.reset({keepMenu});rating?.clear();reply?.clear();navigation?.reset();transcript?.reset();d.messages.replaceChildren();region.style.display='flex';d.messages.style.display='flex';d.area.style.display='block';d.logout.style.display='none';
@@ -125,6 +125,7 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
 
     const activate=id=>{
         engine?.composerEdit?.close();
+        if(engine?.sync.id!==id)typing?.reset();
         engine.draftConversation=hasConversation?null:id;
         selection++;clearTimeout(historyTimer);d.win.dataset.historyState='loading';historyTimer=setTimeout(()=>{if(engine?.sync.id===id&&d.win.dataset.historyState!=='ready'){d.win.dataset.historyState='failed';initState('partial','history','timeout');}},10000);region.style.display='flex';d.messages.style.display='flex';d.area.style.display='block';d.logout.style.display='flex';
         d.error.style.display='none';engine.select(id);cooldown.refresh();startButton.disabled=!hasConversation;shell?.session();
@@ -135,7 +136,7 @@ d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(docu
     const send=async()=>{
         if(composerLocked)return;if(engine?.sendWait()){cooldown.refresh();return;}if(preparing||revision===lastQueuedRevision)return;preparing=true;
         const draft={text:d.input.value,revision,selection,reply:reply?.id||null};lastQueuedRevision=revision;
-        try{const images=await attachments.upload();await engine.enqueue(draft.text,images,draft.reply);typing?.stop();attachments.consume(images);if(draft.revision===revision&&draft.selection===selection&&d.input.value===draft.text){reply?.clear();d.input.value='';presentation?.queued?.();growth.resize();revision++;lastQueuedRevision=-1;}welcome.hidden=true;d.error.style.display='none';}
+        try{const images=await attachments.upload();await engine.enqueue(draft.text,images,draft.reply);attachments.consume(images);if(draft.revision===revision&&draft.selection===selection&&d.input.value===draft.text){typing?.stop();reply?.clear();d.input.value='';presentation?.queued?.();growth.resize();revision++;lastQueuedRevision=-1;}welcome.hidden=true;d.error.style.display='none';}
         catch(e){lastQueuedRevision=-1;if(e.code==='send_cooldown')cooldown.refresh();else warn(e.message);}
         finally{preparing=false;}
     };
@@ -162,7 +163,7 @@ d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(docu
     attachments=attachmentComposer({refocus:!!presentation,host:d.area,input:d.input,current:()=>({...engine?.context,csrf_token:engine?.transport.token}),conversation:()=>engine?.sync.id,changed:()=>{revision++;},warn});
     rating=satisfaction({host:d.area,stream:d.messages,engine:()=>engine,visible:shown,following:()=>navigation?.follow(),warn,hasDraft:()=>!!d.input.value||attachments.has(),lifecycle:state=>setComposerDisabled(!!state?.resolved),switchConversation:async id=>{reply?.clear();rating.clear();hasConversation=true;contactValues(await engine.transport.request('api.php?get_session=1'));activate(id);navigation.open();}});
     reply=replyControls({host:d.messages,composer:d.area,input:d.input,engine:()=>engine,warn,reading:navigation,changed:()=>revision++});
-    typing=typingIndicator({dots:!!presentation,host:presentation?region:d.area,input:d.input,visible:shown,current:()=>({csrf_token:engine?.transport.token}),conversation:()=>hasConversation?engine?.sync.id:null});
+    typing=typingIndicator({enabled:globalThis.SupportWidgetConfig?.typing===true,dots:!!presentation,host:presentation?region:d.area,input:d.input,visible:shown,current:()=>({csrf_token:engine?.transport.token}),conversation:()=>hasConversation?engine?.sync.id:null});
     d.input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229&&(presentation||!matchMedia('(pointer: coarse)').matches)){e.preventDefault();send();}});
     d.win.addEventListener('keydown',e=>{if(e.key==='Escape')window.closeChat();});
     d.win.addEventListener('keydown',e=>{if(e.key==='Tab')d.win.classList.add('support-keyboard');});

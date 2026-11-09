@@ -60,3 +60,20 @@ test('customer groups use adjacent times, Tehran days, and stable sender identit
  assert.deepEqual(groups.map(g=>g.last),[false,false,true,true,true,true,true,false,true,true,true,true]);
  assert.notEqual(groups[4].day,groups[5].day);
 });
+
+test('historical pages, aliases and current messages share customer grouping',()=>{
+ const account='a'.repeat(32),other='b'.repeat(32);
+ const records=[
+  {id:1,type:'admin',legacy:true,time:'2026-11-08 23:25:00',sender_account_group:account},
+  {id:2,type:'admin',time:'2026-11-08T23:26:00+03:30',sender_group:'previous',sender_account_group:account},
+  {id:3,type:'admin',accepted_at:'2026-11-08T19:57:00Z',sender_group:'current',sender_account_group:account},
+  {id:4,type:'admin',accepted_at:'2026-11-08T19:58:00Z',sender_group:'current',edited_at:'2026-11-10T00:00:00Z'},
+  {id:5,type:'admin',legacy:true,time:'2026-11-09 00:00:00',sender_account_group:account},
+  {id:6,type:'admin',accepted_at:'2026-11-08T20:31:00Z',sender_account_group:other},
+ ];
+ const initial=messageGroups(records.slice(2,5));
+ assert.deepEqual(initial.map(r=>r.first),[true,false,true]);
+ const paginated=messageGroups([...records.slice(0,2),...records.slice(2,5)]);
+ assert.deepEqual(paginated.map(r=>r.first),[true,false,false,false,true]);
+ assert.deepEqual(messageGroups(structuredClone(records)).map(r=>r.last),[false,false,false,true,true,true]);
+});

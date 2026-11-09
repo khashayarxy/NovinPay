@@ -34,7 +34,15 @@ let config=null,bootJob=null,mounted=false,tools=null;
 const allowed=path=>config?.source_paths?.includes(path)?path:null;
 addEventListener('message',event=>{if(parent===window||event.origin!==location.origin||event.source!==parent||event.data?.type!=='support-widget-visibility')return;globalThis.SupportSourcePath=allowed(event.data.source_path);globalThis.SupportWidgetHidden=!event.data.visible;dispatchEvent(new CustomEvent('support-widget-visibility',{detail:{visible:!!event.data.visible}}));if(event.data.visible&&matchMedia('(pointer:fine)').matches)document.getElementById('chatInput')?.focus({preventScroll:true});});
 const launch=()=>{if(bootJob)return bootJob;const retry=loading.querySelector('[data-init-retry]'),text=loading.querySelector('[data-init-text]');retry.disabled=true;retry.hidden=true;loading.hidden=false;text.textContent='در حال آماده‌سازی چت…';startup.dataset.initState='initializing';
- const job=(async()=>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{const r=await fetch('api.php?widget_config=1',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();config=await r.json();if(typeof config.name!=='string')throw Error();}finally{clearTimeout(timer);}
+ const job=(async()=>{
+  const embedded=document.getElementById('supportWidgetConfig');
+  if(embedded)config=JSON.parse(embedded.textContent);
+  else {
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+   try{const r=await fetch('api.php?widget_config=1',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();config=await r.json();}
+   finally{clearTimeout(timer);}
+  }
+  if(typeof config?.name!=='string')throw Error();
   globalThis.SupportWidgetConfig=config;window.SupportTheme?.configure(config);const requested=new URL(location.href).searchParams.get('source_path');let referring=null;try{const ref=new URL(document.referrer);if(ref.origin===location.origin)referring=ref.pathname;}catch{}globalThis.SupportSourcePath=allowed(requested)||allowed(referring);
   tools=customerTools();mounted=true;await mountCustomer({shellFactory:shell,transcriptRenderer:renderCustomerV2,presentation:tools,onClose:parent!==window?closeFrame:null});
   if(!startup.classList.contains('active'))window.toggleChat();if(parent!==window){globalThis.SupportWidgetHidden=true;parent.postMessage({type:'support-widget-ready'},location.origin);publishTheme();}

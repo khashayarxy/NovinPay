@@ -60,7 +60,7 @@ html[data-support-theme=dark] .support-send-cooldown small{color:#b8c5d8}#messag
 .v2-suggestions{display:flex;flex:0 0 auto;gap:8px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;padding:6px 12px;max-width:100%;overscroll-behavior-x:contain}.v2-suggestions button[hidden]{display:none}.v2-suggestions button{flex:0 0 auto;max-width:260px;overflow:hidden;text-overflow:ellipsis;min-height:36px;padding:4px 12px;border:1px solid #0866ff;border-radius:20px;background:transparent;color:#0866ff;font:inherit;font-size:12px;cursor:pointer}.v2-suggestions button:focus-visible,.v2-recovery:focus-visible{outline:2px solid #80acff;outline-offset:2px}.v2-contact-card [aria-invalid=true]{border-color:#c83636}.v2-contact-card label>small{display:block;color:#b32828;font-size:12px}.v2-recovery{align-self:flex-end;border:0;background:transparent;color:#0866ff;font:inherit;font-size:12px;min-height:36px}html[data-support-theme=dark] .v2-recovery{color:#79adff}html[data-support-theme=dark] .v2-contact-card label>small{color:#ffaaaa}
 
 /* Scroll stays inside the conversation instead of chaining to its host page. */
-html,body{overscroll-behavior-y:auto}.support-conversation,.chat-messages{overscroll-behavior-y:auto}
+html[data-support-surface=customer-v2],html[data-support-surface=customer-v2] body,.support-conversation,.chat-messages{overscroll-behavior-y:contain}
 
 .v2-faq-retry{align-self:center;border:0;background:transparent;color:var(--blue);padding:6px 12px;font:inherit;font-size:12px;min-height:36px}
 

@@ -17,6 +17,8 @@ test('customer transcript hides human operator identity and labels only automate
  try{
   const renderer=pathToFileURL(fileURLToPath(new URL('../../resources/support-chat/support-client/customer-v2-renderer.js',import.meta.url))).href;
   const css=new URL('../../resources/support-chat/support-client/customer-v2.css',import.meta.url).href;
+  const typingModule=new URL('../../resources/support-chat/support-client/typing.js',import.meta.url).href;
+  const navigationModule=new URL('../../resources/support-chat/support-client/unread-jump.js',import.meta.url).href;
   const html=`<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="${css}"><body><div id="messages" class="chat-messages"></div><script type="module">
    try {
     const {renderCustomerV2}=await import(${JSON.stringify(renderer)});
@@ -63,11 +65,49 @@ test('customer transcript hides human operator identity and labels only automate
     renderCustomerV2(host,[customer,{...pending,id:6,_ack:true,accepted_at:'2026-11-08T08:01:00Z',read_receipt:true}],{engine,follow:false});
     assert(retryRow===host.querySelector('[data-message-id="6"]')&&retryRow.classList.contains('v2-grouped'),'ACK retains keyed grouped retry');
     assert(retryRow.querySelector('.support-read-state[data-state="read"]'),'Final receipt is visible');
+    const {unreadJump}=await import(${JSON.stringify(navigationModule)});
+    const region=document.createElement('section'),history=document.createElement('div');
+    history.className='chat-messages';history.style.height='160px';region.append(history);document.body.append(region);
+    const navigation=unreadJump({host:history,region,restoreOlder:true});
+    const historyRows=Array.from({length:12},(_,i)=>({id:i+1,type:'admin',text:'row '+i,sender_account_group:'a'.repeat(32),
+     ...(i<4?{time:'2026-11-08 11:3'+i+':00'}:{accepted_at:new Date(Date.parse(time)+i*60000).toISOString()})}));
+    renderCustomerV2(history,historyRows.slice(4),{engine,follow:false});navigation.open();history.scrollTop=45;
+    const anchor=navigation.before(true);
+    renderCustomerV2(history,historyRows,{engine,older:true,follow:false});navigation.after(anchor,true);
+    const anchored=[...history.children].find(el=>el.dataset.messageKey===anchor.key);
+    assert(anchored&&Math.abs(anchored.getBoundingClientRect().top-history.getBoundingClientRect().top-anchor.offset)<1,'Prepending history preserves the reading anchor');
+    assert(history.querySelector('[data-message-id="5"]').classList.contains('v2-grouped'),'Legacy and current bubbles group across the page boundary');
+    navigation.destroy();region.remove();
+    const {typingIndicator}=await import(${JSON.stringify(typingModule)});
+    const activity=new Map();
+    window.fetch=async (url,options)=>{
+     const query=options.method==='POST'?options.body:new URL(url,'https://fixture.test').searchParams;
+     const scope=query.get('scope'),id=query.get('user_id'),key=id+':'+scope;
+     if(options.method==='POST')activity.set(key,query.get('typing')==='1');
+     return new Response(JSON.stringify({typing:activity.get(id+':'+(scope==='customer'?'operator':'customer'))===true,expires_in:30}));
+    };
+    let conversation='one';
+    const mountTyping=role=>{
+     const wrapper=document.createElement('div'),input=document.createElement('textarea');
+     wrapper.append(input);document.body.append(wrapper);
+     const ui=typingIndicator({host:wrapper,input,role,dots:true,enabled:true,current:()=>({csrf_token:'fixture'}),conversation:()=>conversation});
+     return {ui,input,label:wrapper.querySelector('[role=status]')};
+    };
+    const client=mountTyping('customer'),agent=mountTyping('operator');
+    const tick=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    const type=(view,text)=>{view.input.value=text;view.input.dispatchEvent(new Event('input'));};
+    type(client,'customer draft');await tick(3100);
+    assert(!agent.label.hidden&&client.label.hidden&&agent.label.querySelectorAll('i').length===3,'Customer typing is visible only to the operator');
+    type(client,'');type(agent,'operator draft');await tick(3000);
+    assert(agent.label.hidden&&!client.label.hidden,'Composer clear and reverse typing reach the opposite view');
+    agent.ui.reset();conversation='two';await tick(3000);
+    assert(client.label.hidden&&agent.label.hidden&&activity.get('one:operator')===false,'Conversation switch clears the previous binding');
+    client.ui.destroy();agent.ui.destroy();
     document.body.dataset.result='CUSTOMER_SENDER_PRESENTATION_PASS';
    } catch(error) { document.body.dataset.result='CUSTOMER_SENDER_PRESENTATION_FAIL'; document.body.dataset.error=error.stack||error.message; }
   </script>`;
   const fixture=path.join(directory,'fixture.html');writeFileSync(fixture,html);
-  const result=spawnSync(executable,['--headless=new','--disable-gpu','--disable-background-networking','--no-first-run','--allow-file-access-from-files','--user-data-dir='+path.join(directory,'profile'),'--virtual-time-budget=1500','--dump-dom',pathToFileURL(fixture).href],{encoding:'utf8',timeout:20000,maxBuffer:1024*1024,windowsHide:true});
+  const result=spawnSync(executable,['--headless=new','--disable-gpu','--disable-background-networking','--no-first-run','--allow-file-access-from-files','--user-data-dir='+path.join(directory,'profile'),'--virtual-time-budget=11500','--dump-dom',pathToFileURL(fixture).href],{encoding:'utf8',timeout:20000,maxBuffer:1024*1024,windowsHide:true});
   assert.ifError(result.error);assert.equal(result.status,0,'Disposable Chromium process failed');
   assert.match(result.stdout,/CUSTOMER_SENDER_PRESENTATION_PASS/,result.stdout.slice(-3000));
  } finally {
