@@ -1,0 +1,39 @@
+<div class="chat-window active support-composer-locked" id="chatWindow" data-support-stable-shell aria-busy="true" data-init-state="initializing">
+    <header class="chat-header">
+        <div class="chat-heading">
+            <span class="v2-brand support-icon" aria-hidden="true">support_agent</span>
+            <span class="v2-header-copy"><h4>پشتیبانی {{support-name}}</h4><span class="online-status" id="adminStatus">پاسخ در همین گفتگو</span></span>
+        </div>
+        <div class="chat-header-actions">
+            <button class="v2-bell support-icon" type="button" aria-label="اعلان‌های مرورگر" disabled>notifications_none</button>
+            <button class="support-quick-theme icon-button" type="button" aria-label="تغییر به حالت تیره" disabled><span class="support-icon" aria-hidden="true">dark_mode</span></button>
+            <button class="chat-logout" id="logoutBtn" type="button" onclick="logout()" title="خروج" hidden>خروج</button>
+            <button class="chat-close" type="button" onclick="closeChat()" aria-label="بستن گفتگو" title="بستن">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+    </header>
+    <div class="chat-initial" id="initialForm" hidden>
+        <input id="userName" type="text" aria-label="نام شما" placeholder="نام (اختیاری)" maxlength="200" autocomplete="name">
+        <input id="userEmail" type="email" aria-label="ایمیل (اختیاری)" placeholder="ایمیل (اختیاری)" aria-describedby="supportEmailHint" autocomplete="email" maxlength="254">
+        <input id="userPhone" type="tel" aria-label="شماره همراه (اختیاری)" placeholder="شماره همراه (اختیاری)" inputmode="tel" autocomplete="tel" maxlength="30">
+        <small id="supportEmailHint">برای شروع، تأیید ایمیل یا شماره همراه لازم نیست.</small>
+        <button class="btn-start-chat" type="button" onclick="startChat()">ذخیره اطلاعات</button>
+    </div>
+    <div class="error-msg" id="errorMsg" role="alert" aria-live="assertive" tabindex="-1" style="display:none"></div>
+    <section class="support-conversation" data-support-transcript>
+        <section id="supportInit" class="support-init-status" role="status" aria-live="polite">
+            <span class="support-init-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span data-init-text>در حال آماده‌سازی گفتگو...</span>
+            <button type="button" data-init-retry hidden>تلاش مجدد</button>
+            <small data-init-reference></small>
+        </section>
+        <div class="chat-messages" id="messages"></div>
+    </section>
+    <div class="chat-input-area" id="inputArea">
+        <div class="chat-input-row">
+            <textarea class="chat-input support-composer-input" id="chatInput" dir="auto" aria-label="متن پیام" rows="1" placeholder="پیام خود را اینجا بنویسید…" disabled></textarea>
+            <button class="chat-send" type="button" aria-label="ارسال پیام" onclick="sendMessage()" disabled><span class="support-icon" aria-hidden="true">arrow_upward</span></button>
+        </div>
+    </div>
+</div>

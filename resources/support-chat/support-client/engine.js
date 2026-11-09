@@ -14,7 +14,7 @@ export class ChatEngine {
             await this.presence();
             if(this.sync.hasNewer)await this.hooks.gap?.();
             this.hooks.recovered?.();this.hooks.connection?.('متصل؛ ثبت در سرور فقط با تأیید هر پیام');return changed;
-        },{visible:()=>!document.hidden&&this.hooks.visible?.()!==false,onerror:e=>this.handleError(e)});
+        },{visible:()=>!document.hidden&&this.hooks.visible?.()!==false,onerror:e=>{if(!this.hooks.pollError?.(e))this.handleError(e);}});
         this.box.onchange=event=>{
             if(event.type==='read'&&event.scope===this.scope&&event.tab!==this.box.tab)this.poller.wake();
             if(event.type==='logout'&&event.scope===this.scope){this.freeze();this.hooks.identity?.('از این هویت در تب دیگر خارج شده‌اید.');}

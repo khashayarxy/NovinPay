@@ -64,7 +64,23 @@ html[data-support-surface=customer-v2],html[data-support-surface=customer-v2] bo
 
 .v2-faq-retry{align-self:center;border:0;background:transparent;color:var(--blue);padding:6px 12px;font:inherit;font-size:12px;min-height:36px}
 
-.support-init-status{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 14px;color:var(--support-muted,var(--muted));background:var(--support-surface,var(--surface));font-size:12px;line-height:1.8}.support-init-status button{border:0;border-radius:9px;background:var(--support-hover,#edf3ff);color:var(--blue);padding:6px 12px;min-height:36px}.support-init-status small{font-size:10px;direction:ltr}[data-init-state=initializing] .support-init-status:before{content:'';width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:support-loading .8s linear infinite;flex:none}[data-history-state=loading] .chat-messages:empty:before{content:'در حال دریافت پیام‌ها…';padding:14px;border-radius:12px;background:var(--support-surface,var(--surface));color:var(--muted);font-size:12px;direction:rtl;min-height:54px}@keyframes support-loading{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){[data-init-state=initializing] .support-init-status:before{animation:none}}
+.support-init-status{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 14px;color:var(--support-muted,var(--muted));background:var(--support-surface,var(--surface));font-size:12px;line-height:1.8}.support-init-status button{border:0;border-radius:9px;background:var(--support-hover,#edf3ff);color:var(--blue);padding:6px 12px;min-height:36px}.support-init-status small{font-size:10px;direction:ltr}#chatWindow:not([data-support-stable-shell])[data-init-state=initializing] .support-init-status:before{content:'';width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:support-loading .8s linear infinite;flex:none}@keyframes support-loading{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){#chatWindow:not([data-support-stable-shell])[data-init-state=initializing] .support-init-status:before{animation:none}}
+[data-support-stable-shell] .support-init-status{
+ position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:center;align-items:center;
+ background:var(--canvas);text-align:center;direction:rtl;
+}
+[data-support-stable-shell]:not([data-init-state=ready]) .support-conversation>:not(.support-init-status){visibility:hidden}
+[data-support-stable-shell] #chatInput{min-height:44px;line-height:24px;padding-block:9px}
+.support-init-dots{display:flex;gap:6px;color:var(--blue)}
+.support-init-dots i{width:6px;height:6px;border-radius:50%;background:currentColor;animation:typing-dot 1.2s infinite}
+.support-init-dots i:nth-child(2){animation-delay:.15s}
+.support-init-dots i:nth-child(3){animation-delay:.3s}
+[data-init-state=failed] .support-init-dots{display:none}
+[data-support-stable-shell][data-init-state=ready] .support-transcript-viewport{animation:support-history-reveal 170ms ease-out}
+@keyframes support-history-reveal{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+ .support-init-dots i,[data-support-stable-shell][data-init-state=ready] .support-transcript-viewport{animation:none}
+}
 
 .support-image-slot{display:inline-block;position:relative;flex:none;width:54px;height:54px;border:1px solid var(--line);border-radius:6px;background:var(--support-elevated,var(--surface-secondary));overflow:hidden}.support-image-slot img{display:block;width:54px;height:54px;object-fit:cover}.support-image-slot[data-state=preparing]:before{content:'…';position:absolute;inset:0;display:grid;place-items:center;color:var(--muted)}.support-image-stage{display:block;min-height:20px;font-size:11px;line-height:1.8;color:var(--muted)}
 

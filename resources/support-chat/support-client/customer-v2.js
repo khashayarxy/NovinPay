@@ -8,14 +8,18 @@ const publishTheme=()=>{if(parent!==window)parent.postMessage({type:'support-wid
 addEventListener('support-theme-change',publishTheme);
 
 function shell({win,region,composer,menu,current,onView}){
- const heading=win.querySelector('.chat-heading h4');heading.textContent='پشتیبانی '+(globalThis.SupportWidgetConfig?.name||'نوین‌پی');
- const logo=document.createElement('span');logo.className='v2-brand support-icon';logo.setAttribute('aria-hidden','true');logo.textContent='support_agent';heading.parentElement.prepend(logo);
- menu.toggle.replaceWith(tools.bell);tools.bell.after(quickThemeToggle(win.querySelector('.chat-header-actions')));
+ if(win.hasAttribute('data-support-stable-shell')){
+  tools.bell.disabled=false;quickThemeToggle(win.querySelector('.chat-header-actions'));
+ }else{
+  const heading=win.querySelector('.chat-heading h4');heading.textContent='پشتیبانی '+(globalThis.SupportWidgetConfig?.name||'نوین‌پی');
+  const logo=document.createElement('span');logo.className='v2-brand support-icon';logo.setAttribute('aria-hidden','true');logo.textContent='support_agent';heading.parentElement.prepend(logo);
+  menu.toggle.replaceWith(tools.bell);tools.bell.after(quickThemeToggle(win.querySelector('.chat-header-actions')));
+  const caption=document.createElement('span');caption.className='v2-header-copy';heading.before(caption);caption.append(heading,win.querySelector('#adminStatus'));
+ }
  menu.body.querySelector('.support-theme-control')?.remove();
 
- const caption=document.createElement('span');caption.className='v2-header-copy';heading.before(caption);caption.append(heading,win.querySelector('#adminStatus'));
  win.querySelector('#chatInput').dir='auto';win.querySelector('#chatInput').style.textAlign='start';win.querySelector('#chatInput').placeholder='پیام خود را اینجا بنویسید…';
- const sendIcon=win.querySelector('.chat-send svg');sendIcon.replaceWith(Object.assign(document.createElement('span'),{className:'support-icon',textContent:'arrow_upward'}));win.querySelector('.chat-send .support-icon').setAttribute('aria-hidden','true');
+ const sendIcon=win.querySelector('.chat-send svg');sendIcon?.replaceWith(Object.assign(document.createElement('span'),{className:'support-icon',textContent:'arrow_upward'}));win.querySelector('.chat-send .support-icon').setAttribute('aria-hidden','true');
  const logout=win.querySelector('#logoutBtn');logout.textContent='پایان دسترسی این مرورگر';menu.body.append(logout);
  const start=document.createElement('button');start.hidden=true;win.append(start);
  const show=()=>{region.hidden=false;composer.hidden=false;onView?.({to:'chat',resume:false});};
@@ -34,7 +38,7 @@ startup.classList.add('active');startup.setAttribute('aria-busy','true');startup
 let config=null,bootJob=null,mounted=false,tools=null;
 const allowed=path=>config?.source_paths?.includes(path)?path:null;
 addEventListener('message',event=>{if(parent===window||event.origin!==location.origin||event.source!==parent||event.data?.type!=='support-widget-visibility')return;globalThis.SupportSourcePath=allowed(event.data.source_path);globalThis.SupportWidgetHidden=!event.data.visible;dispatchEvent(new CustomEvent('support-widget-visibility',{detail:{visible:!!event.data.visible}}));if(event.data.visible&&matchMedia('(pointer:fine)').matches)document.getElementById('chatInput')?.focus({preventScroll:true});});
-const launch=()=>{if(bootJob)return bootJob;const retry=loading.querySelector('[data-init-retry]'),text=loading.querySelector('[data-init-text]');retry.disabled=true;retry.hidden=true;loading.hidden=false;text.textContent='در حال آماده‌سازی چت…';startup.dataset.initState='initializing';
+const launch=()=>{if(bootJob)return bootJob;const retry=loading.querySelector('[data-init-retry]'),text=loading.querySelector('[data-init-text]');retry.disabled=true;retry.hidden=true;loading.hidden=false;text.textContent='در حال آماده‌سازی گفتگو...';startup.dataset.initState='initializing';
  const job=(async()=>{
   const embedded=document.getElementById('supportWidgetConfig');
   if(embedded)config=JSON.parse(embedded.textContent);

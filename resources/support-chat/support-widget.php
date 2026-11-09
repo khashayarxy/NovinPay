@@ -15,12 +15,43 @@ header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: no-referrer');
 
 if ($v2Enabled && (!$legacyRequested || !support_development_ui())) {
-    $criticalShell=explode('<!--SUPPORT_BOOT_BODY-->',(string)file_get_contents(__DIR__.'/support-client/critical-shell.html'),2);
+    $config=support_widget_config();
+    $criticalTheme=(string)file_get_contents(__DIR__.'/support-client/critical-shell.html');
+    $shell=str_replace('{{support-name}}',htmlspecialchars($config['name'],ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'),(string)file_get_contents(__DIR__.'/support-client/widget-v2.html'));
     header("Content-Security-Policy: default-src 'self'; frame-ancestors 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'");
-?><!doctype html><html lang="fa" dir="rtl" data-support-surface="customer-v2"><head><meta charset="utf-8"><?= $criticalShell[0] ?><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="modulepreload" href="support-client/customer-v2.js?v=team1"><link rel="modulepreload" href="support-client/customer.js?v=team1"><link rel="modulepreload" href="support-client/engine.js?v=team1"><link rel="modulepreload" href="support-client/network.js?v=team1"><link rel="modulepreload" href="support-client/outbox.js?v=team1"><script defer src="support-client/theme-init.js?v=0.1.0-r14"></script><title>پشتیبانی</title><link rel="stylesheet" href="assets/fonts/font-face.css?v=0.1.0-r14" media="print" fetchpriority="high" onload="this.media='all';this.dataset.visualState='ready';dispatchEvent(new Event('support-style-ready'));" onerror="this.dataset.visualState='error';dispatchEvent(new Event('support-style-ready'));"><link rel="stylesheet" href="support-client/customer-v2.css?v=team1" data-support-visual-sheet="" media="print" fetchpriority="high" onload="this.media='all';this.dataset.visualState='ready';dispatchEvent(new Event('support-style-ready'));" onerror="this.dataset.visualState='error';dispatchEvent(new Event('support-style-ready'));"><link rel="stylesheet" href="support-client/bplus.css?v=sidebar1" data-support-visual-sheet="" media="print" fetchpriority="high" onload="this.media='all';this.dataset.visualState='ready';dispatchEvent(new Event('support-style-ready'));" onerror="this.dataset.visualState='error';dispatchEvent(new Event('support-style-ready'));"><link rel="stylesheet" href="support-client/interaction.css?v=team1" data-support-visual-sheet="" media="print" fetchpriority="high" onload="this.media='all';this.dataset.visualState='ready';dispatchEvent(new Event('support-style-ready'));" onerror="this.dataset.visualState='error';dispatchEvent(new Event('support-style-ready'));"><script type="module" src="support-client/icons.js?v=permissions1" defer></script><script src="support-client/compat-bootstrap.js?v=compat1"></script></head><body><?= $criticalShell[1] ?>
-<?php echo str_replace(['class="chat-window"','aria-live="polite" hidden><span data-init-text','class="chat-send"'],['class="chat-window active" aria-busy="true" data-init-state="initializing"','aria-live="polite"><span data-init-text','class="chat-send" disabled'],(string)file_get_contents(__DIR__.'/support-client/widget.html')); ?>
-<script type="application/json" id="supportWidgetConfig"><?= json_encode(support_widget_config(),JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR) ?></script>
-<script type="module">window.closeChat=()=>{if(parent!==window)parent.postMessage('support-widget-close',location.origin);else document.getElementById('chatWindow').classList.remove('active');};const fail=()=>{const shell=document.getElementById('chatWindow'),notice=document.getElementById('supportInit');window.closeChat=()=>{if(parent!==window)parent.postMessage('support-widget-close',location.origin);else shell.classList.remove('active');};shell.classList.add('active');shell.dataset.initState='failed';shell.setAttribute('aria-busy','false');shell.querySelector('.chat-send').disabled=true;document.getElementById('chatInput').disabled=true;notice.hidden=false;notice.querySelector('[data-init-text]').textContent='بارگذاری چت انجام نشد.';const retry=notice.querySelector('[data-init-retry]');retry.hidden=false;retry.onclick=()=>location.reload();};const timer=setTimeout(()=>{if(!window.SupportBootStarted)fail();},12000);import('./support-client/customer-v2.js?v=team1').then(()=>clearTimeout(timer)).catch(()=>{clearTimeout(timer);fail();});</script></body></html><?php
+?><!doctype html>
+<html lang="fa" dir="rtl" data-support-surface="customer-v2">
+<head>
+<meta charset="utf-8"><?= $criticalTheme ?>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>پشتیبانی</title>
+<?php foreach (['customer-v2','customer','engine','network','outbox'] as $module): ?>
+<link rel="modulepreload" href="support-client/<?= $module ?>.js?v=team1">
+<?php endforeach; ?>
+<link rel="stylesheet" href="assets/fonts/font-face.css?v=0.1.0-r14">
+<?php foreach (['customer-v2','bplus','interaction'] as $style): ?>
+<link rel="stylesheet" href="support-client/<?= $style ?>.css?v=team1" data-support-visual-sheet onerror="this.dataset.visualState='error'">
+<?php endforeach; ?>
+<script defer src="support-client/theme-init.js?v=0.1.0-r14"></script>
+</head>
+<body>
+<?= $shell ?>
+<script type="application/json" id="supportWidgetConfig"><?= json_encode($config,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR) ?></script>
+<script>
+window.closeChat=function(){if(parent!==window)parent.postMessage('support-widget-close',location.origin);else document.getElementById('chatWindow').classList.remove('active');};
+window.supportShellFailure=function(){
+ const chat=document.getElementById('chatWindow'),notice=document.getElementById('supportInit'),retry=notice.querySelector('[data-init-retry]');
+ chat.dataset.initState='failed';chat.setAttribute('aria-busy','false');notice.hidden=false;
+ notice.querySelector('[data-init-text]').textContent='بارگذاری گفتگو انجام نشد.';
+ retry.hidden=false;retry.onclick=function(){location.reload();};
+};
+setTimeout(function(){if(!window.SupportBootStarted)window.supportShellFailure();},12000);
+</script>
+<script type="module">
+if(document.querySelector('[data-support-visual-sheet][data-visual-state="error"]'))window.supportShellFailure();
+else import('./support-client/customer-v2.js?v=team1').catch(window.supportShellFailure);
+</script>
+</body></html><?php
     throw new \App\Support\Chat\LegacyResponse(null, http_response_code() ?: 200);
 }
 
