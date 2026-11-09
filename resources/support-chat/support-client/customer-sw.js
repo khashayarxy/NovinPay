@@ -9,7 +9,7 @@ self.addEventListener('push',event=>event.waitUntil((async()=>{
     }catch{/* No unauthenticated fallback notification. */}
 })()));
 self.addEventListener('notificationclick',event=>{event.notification.close();event.waitUntil((async()=>{
-    const target=new URL('../?support_chat=1',self.registration.scope),windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-    const client=windows.find(c=>c.frameType!=='nested'&&new URL(c.url).origin===target.origin&&new URL(c.url).pathname.startsWith(new URL('../',self.registration.scope).pathname)&&!new URL(c.url).pathname.includes('/operator/'));
+    const target=new URL('/',self.registration.scope),windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    const client=windows.find(c=>{const url=new URL(c.url);return c.frameType!=='nested'&&url.origin===target.origin&&!/^\/(?:admin|support|support-chat)(?:\/|$)/.test(url.pathname);});
     if(client){await client.focus();client.postMessage({type:'support-customer-open'});}else await self.clients.openWindow(target.href);
 })());});

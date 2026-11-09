@@ -23,6 +23,7 @@ function shell({win,region,composer,menu,current,onView}){
 }
 // One boot job: module completion never waits indefinitely for a user retry.
 window.SupportBootStarted=true;
+if(parent!==window)globalThis.SupportWidgetHidden=true;
 const startup=document.getElementById('chatWindow'),loading=customerInitHost(startup);
 const diagnostics={release:'mobile-visual1',reference:crypto.getRandomValues(new Uint32Array(2)).join('-'),browser:/SamsungBrowser/.test(navigator.userAgent)?'Samsung Internet':/Edg/.test(navigator.userAgent)?'Edge':/Firefox/.test(navigator.userAgent)?'Firefox':/Chrome/.test(navigator.userAgent)?'Chrome':'other',capabilities:{indexedDB:!!globalThis.indexedDB,visualViewport:!!window.visualViewport,secure:isSecureContext},events:[]};globalThis.SupportInitDiagnostics=diagnostics;
 const closeFrame=()=>{globalThis.SupportWidgetHidden=true;dispatchEvent(new CustomEvent('support-widget-visibility',{detail:{visible:false}}));parent.postMessage('support-widget-close',location.origin);};
@@ -45,7 +46,7 @@ const launch=()=>{if(bootJob)return bootJob;const retry=loading.querySelector('[
   if(typeof config?.name!=='string')throw Error();
   globalThis.SupportWidgetConfig=config;window.SupportTheme?.configure(config);const requested=new URL(location.href).searchParams.get('source_path');let referring=null;try{const ref=new URL(document.referrer);if(ref.origin===location.origin)referring=ref.pathname;}catch{}globalThis.SupportSourcePath=allowed(requested)||allowed(referring);
   tools=customerTools();mounted=true;await mountCustomer({shellFactory:shell,transcriptRenderer:renderCustomerV2,presentation:tools,onClose:parent!==window?closeFrame:null});
-  if(!startup.classList.contains('active'))window.toggleChat();if(parent!==window){globalThis.SupportWidgetHidden=true;parent.postMessage({type:'support-widget-ready'},location.origin);publishTheme();}
+  if(!startup.classList.contains('active'))window.toggleChat();if(parent!==window){parent.postMessage({type:'support-widget-ready'},location.origin);publishTheme();}
  })().catch(()=>{startup.dataset.initState='failed';startup.setAttribute('aria-busy','false');loading.hidden=false;text.textContent='بارگذاری چت انجام نشد.';retry.hidden=false;retry.onclick=mounted?()=>location.reload():launch;loading.querySelector('[data-init-reference]').textContent='کد بررسی: '+diagnostics.reference;diagnostics.events.push({stage:mounted?'mount':'configuration',code:'unavailable',ms:Math.round(performance.now())});diagnostics.events=diagnostics.events.slice(-12);dispatchEvent(new Event('support-init-state'));})
  .finally(()=>{retry.disabled=false;if(bootJob===job)bootJob=null;});bootJob=job;return job;
 };launch();

@@ -9,6 +9,7 @@ export class ChatEngine {
         this.sendCooldowns=new Map();
         this.sync=new ConversationSync(this.transport,(...args)=>this.hooks.messages?.(...args));
         this.poller=new Poller(async()=>{
+            if(this.hooks.deferSync?.())return false;
             const changed=await this.sync.sync();
             await this.presence();
             if(this.sync.hasNewer)await this.hooks.gap?.();

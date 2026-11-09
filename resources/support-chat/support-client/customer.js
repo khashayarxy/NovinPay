@@ -44,6 +44,8 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
     const welcome=document.createElement('p');welcome.className='support-welcome';welcome.textContent=globalThis.SupportWidgetConfig?.welcome||'سلام! چطور می‌توانیم کمکتان کنیم؟';region.prepend(welcome);
     let welcomeEpisode=null,welcomeHasMessages=false;
     let transcript,reply=null,typing=null,rating=null,historyTimer=null;
+    let openedInPage=!onClose||globalThis.SupportWidgetHidden===false;
+    const deferDraftSync=()=>!openedInPage&&!hasConversation;
     const pageQueue=new Map();let recovery=null,phone=null,issuance=null,attachments=null;
     const cooldown=sendCooldown({host:d.area,button:d.win.querySelector('.chat-send'),current:()=>engine});
     // Only localized application messages reach the customer; raw exception
@@ -65,7 +67,7 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
     const create=async(withSession=false)=>{
         reads?.destroy();alerts?.destroy();notificationSection?.permissionCleanup?.();notificationSection?.remove();engine?.destroy();navigation?.reset();setUnread(0);unreadCount=0;
         engine=new ChatEngine('customer',{
-            queued:()=>navigation?.outgoing(),visible:()=>shown(),cooldown:()=>cooldown.refresh(),
+            queued:()=>navigation?.outgoing(),visible:()=>shown(),deferSync:deferDraftSync,cooldown:()=>cooldown.refresh(),
             gap:async()=>{let h=await engine.transport.request('customer-notifications.php?action=hint');if(h.attention?.scope!==engine.context.scope_id||h.attention?.epoch!==engine.context.session_epoch){engine.freeze();identity('نشست تغییر کرده است؛ صفحه را تازه کنید.');return;}h=engine.sync.mergeAttention(h);unreadCount=h.customer_unread??h.unread??0;setUnread(unreadCount);alerts?.update(h.sequence,h.store_epoch);},
             warning:(message,kind)=>{if(kind==='storage'){initState('partial','storage','unavailable');return;}warn(message,kind);},recovered:()=>{if(d.error.dataset.kind==='connectivity'){d.error.textContent='';d.error.style.display='none';}},identity,mode:value=>{ui.opt.checked=value;},stranded:count=>{ui.clearOld.hidden=count===0;},connection:message=>{ui.connection.textContent=message;},
             presence:data=>{d.status.textContent=data.admin_online===true?'آنلاین':data.admin_online===false?'آفلاین':'وضعیت حضور نامشخص';d.status.title='وضعیت فعالیت اخیر اپراتورها؛ زمان پاسخ تضمین نمی‌شود.';d.status.classList.toggle('online',data.admin_online===true);presentation?.presence?.(data);},
@@ -123,11 +125,18 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
     const receiveLatest=async()=>{const scope=engine.scope,id=engine.sync.id,deadline=Date.now()+15000;while(engine.sync.busy&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,20));if(engine.frozen||scope!==engine.scope||id!==engine.sync.id)return;if(engine.sync.busy)throw Error('دریافت پیام‌ها طول کشید؛ دوباره تلاش کنید.');if(engine.sync.hasNewer)await engine.sync.latest();};
     navigation=unreadJump({host:d.messages,region,compact:document.documentElement.dataset.supportSurface==='customer-v2',restoreOlder:true,latest:()=>receiveLatest().catch(e=>{warn(e.message);throw e;})});
 
+    const startHistory=id=>{
+        clearTimeout(historyTimer);
+        d.win.dataset.historyState='loading';
+        historyTimer=setTimeout(()=>{if(engine?.sync.id===id&&d.win.dataset.historyState!=='ready'){d.win.dataset.historyState='failed';initState('partial','history','timeout');}},10000);
+    };
     const activate=id=>{
         engine?.composerEdit?.close();
         if(engine?.sync.id!==id)typing?.reset();
         engine.draftConversation=hasConversation?null:id;
-        selection++;clearTimeout(historyTimer);d.win.dataset.historyState='loading';historyTimer=setTimeout(()=>{if(engine?.sync.id===id&&d.win.dataset.historyState!=='ready'){d.win.dataset.historyState='failed';initState('partial','history','timeout');}},10000);region.style.display='flex';d.messages.style.display='flex';d.area.style.display='block';d.logout.style.display='flex';
+        selection++;clearTimeout(historyTimer);
+        if(deferDraftSync())d.win.dataset.historyState='deferred';else startHistory(id);
+        region.style.display='flex';d.messages.style.display='flex';d.area.style.display='block';d.logout.style.display='flex';
         d.error.style.display='none';engine.select(id);cooldown.refresh();startButton.disabled=!hasConversation;shell?.session();
         recovery?.refresh();phone?.refresh();issuance?.refresh();
     };
@@ -157,7 +166,8 @@ d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(docu
         if(open){d.win.setAttribute('aria-hidden','false');shell?.open();if(shell?.chat)navigation?.open();rating?.refresh();if(engine?.sync.hasNewer)receiveLatest().catch(e=>warn(e.message));engine?.poller.wake();if(matchMedia('(pointer:fine)').matches){if(shell?.chat)d.input.focus({preventScroll:true});else shell?.start.focus({preventScroll:true});}}
         else{navigation?.close();rating?.refresh();menu.close();d.win.setAttribute('aria-hidden','true');document.querySelector('[aria-label="پشتیبانی"]')?.focus();}
     };
-    let widgetWasVisible=false;window.addEventListener('support-widget-visibility',event=>{const visible=!!event.detail?.visible;if(visible===widgetWasVisible)return;widgetWasVisible=visible;if(visible){engine?.poller.wake();shell?.open();if(shell?.chat)navigation?.open();rating?.refresh();if(engine?.sync.hasNewer)receiveLatest().catch(e=>warn(e.message));}else navigation?.close();});
+    let widgetWasVisible=false;window.addEventListener('support-widget-visibility',event=>{const visible=!!event.detail?.visible;if(visible===widgetWasVisible)return;widgetWasVisible=visible;if(visible){openedInPage=true;if(engine?.sync.id&&d.win.dataset.historyState==='deferred')startHistory(engine.sync.id);engine?.poller.wake();shell?.open();if(shell?.chat)navigation?.open();rating?.refresh();if(engine?.sync.hasNewer)receiveLatest().catch(e=>warn(e.message));}else navigation?.close();});
+    window.addEventListener('message',event=>{if(parent!==window&&event.origin===location.origin&&event.source===parent&&event.data?.type==='support-widget-attention')engine?.poller.wake();});
     window.closeChat=()=>{if(onClose){onClose();return;}if(d.win.classList.contains('active'))window.toggleChat();};
     const growth=composerSize(d.input);d.input.addEventListener('input',()=>{revision++;});
     attachments=attachmentComposer({refocus:!!presentation,host:d.area,input:d.input,current:()=>({...engine?.context,csrf_token:engine?.transport.token}),conversation:()=>engine?.sync.id,changed:()=>{revision++;},warn});
@@ -193,8 +203,7 @@ d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(docu
         .finally(()=>{d.win.setAttribute('aria-busy','false');startButton.disabled=!hasConversation;initRetry.disabled=false;shell?.ready();if(bootJob===job)bootJob=null;});bootJob=job;return job;
     };
     initRetry.onclick=boot;await boot();
-    if(new URL(location.href).searchParams.get('support_chat')==='1'&&!d.win.classList.contains('active'))window.toggleChat();
-    navigator.serviceWorker?.addEventListener('message',event=>{if(event.data?.type==='support-customer-push')engine?.poller.wake();if(event.data?.type==='support-customer-open'&&!d.win.classList.contains('active'))window.toggleChat();});
+    navigator.serviceWorker?.addEventListener('message',event=>{if(['support-customer-push','support-customer-open'].includes(event.data?.type))engine?.poller.wake();});
     return engine;
 }
 
