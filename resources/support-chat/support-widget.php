@@ -25,9 +25,11 @@ if ($v2Enabled && (!$legacyRequested || !support_development_ui())) {
 <meta charset="utf-8"><?= $criticalTheme ?>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>پشتیبانی</title>
-<?php foreach (['customer-v2','customer','engine','network','outbox'] as $module): ?>
-<link rel="modulepreload" href="support-client/<?= $module ?>.js?v=team1">
-<?php endforeach; ?>
+<link rel="modulepreload" href="support-client/customer-v2.js?v=team1">
+<link rel="modulepreload" href="support-client/customer.js?v=team1">
+<link rel="modulepreload" href="support-client/engine.js?v=team1">
+<link rel="modulepreload" href="support-client/network.js?v=team1">
+<link rel="modulepreload" href="support-client/outbox.js?v=team1">
 <link rel="stylesheet" href="assets/fonts/font-face.css?v=0.1.0-r14">
 <?php foreach (['customer-v2','bplus','interaction'] as $style): ?>
 <link rel="stylesheet" href="support-client/<?= $style ?>.css?v=team1" data-support-visual-sheet onerror="this.dataset.visualState='error'">
