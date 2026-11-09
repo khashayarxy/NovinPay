@@ -73,6 +73,8 @@ class SimpleRepairTest extends TestCase
         }
         $this->assertDatabaseCount('repair_record_revisions', 2);
         $this->assertStringNotContainsString('یادداشت خصوصی', DB::table('repair_record_revisions')->value('payload'));
+        $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000000'])
+            ->assertOk()->assertSee($case->status->label())->assertDontSee('یادداشت خصوصی')->assertDontSee('300000');
         $this->get(route('admin.repair-cases.show', $case))->assertOk()->assertSee('تسویه شد')->assertDontSee('technician_id')->assertDontSee('name="service_cost"', false);
     }
 

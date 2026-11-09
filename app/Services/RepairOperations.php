@@ -63,7 +63,8 @@ final class RepairOperations
                 $case = new RepairCase;
                 $case->public_id = (string) Str::uuid();
                 $case->repair_request_id = $source?->id;
-                $case->tracking_reference = $simple ? RepairTracking::reserve() : ($source?->tracking_reference ?? 'NP-'.strtoupper(bin2hex(random_bytes(16))));
+                $sourceCode = $source?->tracking_reference ?? '';
+                $case->tracking_reference = ! $simple && preg_match(RepairTracking::FORMAT, $sourceCode) ? $sourceCode : RepairTracking::reserve();
                 $case->tracking_digest = RepairIdentity::digest('tracking', $case->tracking_reference);
                 $case->intake_digest = RepairIdentity::digest('intake', $data['submission_token']);
                 $case->phone_digest = RepairIdentity::digest('phone', $data['contact_phone']);

@@ -7,6 +7,8 @@ use RuntimeException;
 
 final class RepairTracking
 {
+    public const FORMAT = '/\A[1-9][0-9]{7}\z/D';
+
     /** Reserve across online requests and physical cases, under the caller's transaction. */
     public static function reserve(): string
     {

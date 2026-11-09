@@ -125,7 +125,8 @@ class CustomerConsultationTest extends TestCase
         $this->assertSame($customer->id, (int) $after->customer_id);
         $this->get('/admin/repair-requests/'.$record->id)->assertOk()->assertSee($customer->public_id);
         $this->get('/admin/customers/'.$customer->public_id)->assertOk()->assertSee('درخواست آنلاین');
-        $this->post('/repair/track', ['tracking_reference' => $record->tracking_reference, 'contact_phone' => '09000000000'])->assertOk()->assertDontSee('PRIVATE-PROFILE');
+        $this->post('/repair/track', ['tracking_reference' => $record->tracking_reference, 'contact_phone' => '09000000000'])
+            ->assertRedirect(route('repair.track'))->assertSessionHasErrors('tracking_reference');
         $this->link($customer, 'request', (string) $record->id, ['unlink' => '1'])->assertRedirect();
         $this->assertNull($record->fresh()->customer_id);
     }

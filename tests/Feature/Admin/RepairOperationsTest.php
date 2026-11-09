@@ -15,6 +15,7 @@ use App\Services\FinancialOperations;
 use App\Support\OrderMoney;
 use App\Support\RepairIdentity;
 use App\Support\RepairTime;
+use App\Support\RepairTracking;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +43,7 @@ class RepairOperationsTest extends TestCase
         foreach (['customer_name' => 'PRIVATE-CUSTOMER', 'contact_phone' => '09000000000', 'device_brand' => 'PAX', 'device_model' => 'PRIVATE-MODEL', 'issue' => 'PRIVATE-ISSUE-TEXT'] as $key => $value) {
             $request->$key = $value;
         }
-        $request->tracking_reference = 'NP-'.strtoupper(bin2hex(random_bytes(16)));
+        $request->tracking_reference = RepairTracking::reserve();
         $request->submission_digest = bin2hex(random_bytes(32));
         $request->phone_digest = RepairIdentity::digest('phone', $request->contact_phone);
         $request->status = 'online_submitted';
@@ -406,7 +407,8 @@ class RepairOperationsTest extends TestCase
         $this->assertSame(['public_id', 'status'], array_keys($case->toArray()));
         $this->get('/admin/repairs/'.$case->public_id)->assertOk()->assertDontSee('<script>PRIVATE-CUSTOMER</script>', false)->assertSee(e($case->customer_name), false);
         $this->post('/admin/logout');
-        $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000000'])->assertOk()->assertSee('پروندهٔ خدمات برای این کد ثبت شده است')->assertDontSee('PRIVATE-CUSTOMER')->assertDontSee('SERIAL-001')->assertDontSee($case->tracking_reference);
+        $this->assertMatchesRegularExpression(RepairTracking::FORMAT, $case->tracking_reference);
+        $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000000'])->assertOk()->assertSee($case->status->label())->assertDontSee('PRIVATE-CUSTOMER')->assertDontSee('SERIAL-001')->assertDontSee($case->tracking_reference);
         $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000001'])->assertOk()->assertSee('اطلاعات واردشده قابل تأیید نیست');
         $events = DB::table('repair_events')->get()->toJson().DB::table('admin_activities')->get()->toJson();
         foreach (['PRIVATE-CUSTOMER', '09000000000', 'PRIVATE-MODEL', 'PRIVATE-ISSUE', $case->tracking_reference] as $secret) {
