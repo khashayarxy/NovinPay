@@ -41,6 +41,8 @@ enum AdminAction: string
     case CustomerReconciled = 'customer.reconciled';
     case CustomerNote = 'customer.note';
     case CustomerViewed = 'customer.contact_viewed';
+    case TestCustomerReset = 'customer.test_reset';
+    case TestCustomerResetBlocked = 'customer.test_reset_blocked';
     case ConsultationViewed = 'consultation.contact_viewed';
     case ConsultationAssigned = 'consultation.assigned';
     case ConsultationTransition = 'consultation.transition';
@@ -56,6 +58,8 @@ enum AdminAction: string
     public function label(): string
     {
         return match ($this) {
+            self::TestCustomerReset => 'بازنشانی حساب آزمایشی مشتری',
+            self::TestCustomerResetBlocked => 'رد بازنشانی حساب آزمایشی مشتری',
             self::MaintenanceEnabled => 'فعال‌سازی نگهداری عمومی سایت',
             self::MaintenanceDisabled => 'غیرفعال‌سازی نگهداری عمومی سایت',
             self::ArticleDraftSaved => 'ذخیرهٔ نسخهٔ پیش‌نویس مقاله',

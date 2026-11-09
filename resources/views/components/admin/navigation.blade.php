@@ -11,6 +11,7 @@
         @if($navigationAllows('orders.view'))<a href="{{ route('admin.orders.index') }}" @if(request()->routeIs('admin.orders.*')) aria-current="page" @endif><x-home.icon name="shopping-bag"/><span>سفارش‌ها</span></a>@endif
         @if($navigationAllows('inventory.view'))<a href="{{ route('admin.inventory.index') }}" @if(request()->routeIs('admin.inventory.*')) aria-current="page" @endif><x-home.icon name="settings"/><span>موجودی کالا</span></a>@endif
         @if($navigationAllows('customers.view'))<a href="{{ route('admin.customers.index') }}" @if(request()->routeIs('admin.customers.*')) aria-current="page" @endif><x-home.icon name="user"/><span>مشتریان</span></a>@endif
+        @if($navigationAllows('staff.manage'))<a href="{{ route('admin.test-customers.index') }}" @if(request()->routeIs('admin.test-customers.*')) aria-current="page" @endif><x-home.icon name="user"/><span>مدیریت حساب‌های آزمایشی</span></a>@endif
     @endif
     @if(!$pendingPasswordChange) @if($navigationAllows('repairs.view'))<a href="{{ route('admin.repair-cases.index') }}" @if(request()->routeIs('admin.repair-cases.*')) aria-current="page" @endif><x-home.icon name="tool"/><span>تعمیرات</span></a>@endif @endif
     <details class="admin-nav-more"><summary>مدیریت سایت</summary>

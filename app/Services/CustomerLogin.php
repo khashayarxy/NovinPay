@@ -15,9 +15,19 @@ class CustomerLogin
 {
     public function testAllowed(string $phone): bool
     {
+        return in_array($phone, $this->testPhones(), true);
+    }
+
+    public function testPhones(): array
+    {
         return config('customer.test_otp_enabled')
-            && preg_match('/\A09[0-9]{9}\z/D', $phone)
-            && in_array($phone, array_map('trim', config('customer.test_otp_phones')), true);
+            ? array_values(array_unique(array_filter(array_map('trim', config('customer.test_otp_phones')), fn ($phone) => preg_match('/\A09[0-9]{9}\z/D', $phone))))
+            : [];
+    }
+
+    public function testDigest(string $phone): string
+    {
+        return $this->digest($phone, true);
     }
 
     private function digest(string $phone, bool $test): string

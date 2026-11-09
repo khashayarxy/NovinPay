@@ -27,6 +27,11 @@
     @unless(View::hasSection('quiet-shell'))<x-home.header />@endunless
     <main id="main-content" class="flex-1" tabindex="-1">@yield('content')</main>
     @unless(View::hasSection('quiet-shell'))<x-home.footer />@endunless
-@if(config('support_chat.enabled'))<script src="{{ app(\App\Support\Chat\ChatAssets::class)->url('support-widget.js') }}" defer></script>@endif
+@if(config('support_chat.enabled') && !View::hasSection('quiet-shell'))
+    @php($chatAccount = auth('customer')->user())
+    @if(!$chatAccount || $chatAccount->verified_at)
+        <script src="{{ app(\App\Support\Chat\ChatAssets::class)->url('support-widget.js') }}" defer></script>
+    @endif
+@endif
 </body>
 </html>

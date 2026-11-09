@@ -12,6 +12,6 @@ class CustomerAccount extends Authenticatable
 
     protected function casts(): array
     {
-        return ['phone' => 'encrypted', 'name' => 'encrypted', 'verified_at' => 'datetime', 'is_active' => 'boolean', 'session_version' => 'integer'];
+        return ['phone' => 'encrypted', 'name' => 'encrypted', 'verified_at' => 'datetime', 'last_login_at' => 'datetime', 'is_active' => 'boolean', 'session_version' => 'integer'];
     }
 }

@@ -135,6 +135,11 @@ class CustomerAccountController extends Controller
 
     private function authenticated(Request $request, CustomerAccount $account, bool $otp)
     {
+        $updated = CustomerAccount::query()->whereKey($account->id)->where('session_version', $account->session_version)
+            ->where('is_active', true)->update(['last_login_at' => now()]);
+        if (! $updated && ! CustomerAccount::query()->whereKey($account->id)->where('session_version', $account->session_version)->where('is_active', true)->exists()) {
+            return redirect()->route('account.login')->withErrors(['code' => 'نشست معتبر نیست. دوباره وارد شوید.']);
+        }
         Auth::guard('customer')->login($account);
         $request->session()->regenerate(true);
         $request->session()->forget(['customer_login_phone', 'customer_challenge', 'customer_resend_at', 'customer_otp_at', 'customer_password_offer']);

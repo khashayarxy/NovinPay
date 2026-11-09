@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\RepairCaseController;
 use App\Http\Controllers\Admin\RepairOverviewController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\TestCustomerAccountController;
 use App\Http\Controllers\ArticleController as PublicArticleController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ConsultationController;
@@ -158,6 +159,12 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::middleware([EnsureAdminSession::class, 'can:access-admin'])->group(function (): void {
+        Route::middleware('can:staff.manage')->prefix('test-customers')->name('test-customers.')->group(function (): void {
+            $controller = TestCustomerAccountController::class;
+            Route::get('/', [$controller, 'index'])->name('index');
+            Route::post('{key}/code', [$controller, 'reveal'])->where('key', '[a-f0-9]{64}')->middleware('throttle:10,1')->name('code');
+            Route::post('{record}/reset', [$controller, 'reset'])->whereUuid('record')->middleware('throttle:10,1')->name('reset');
+        });
         Route::get('support', fn () => redirect('/support'))->middleware('can:support.view')->name('support.index');
         Route::get('support/confirm', fn () => redirect('/support'))->middleware('can:support.view')->name('support.confirm');
         Route::get('deliveries', [DeliveryController::class, 'admin'])->middleware(['can:finance.view', 'can:finance.details'])->name('deliveries.index');

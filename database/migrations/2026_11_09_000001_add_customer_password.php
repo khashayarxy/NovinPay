@@ -11,6 +11,7 @@ return new class extends Migration
     {
         Schema::table('customer_accounts', function (Blueprint $table): void {
             $table->string('password')->nullable();
+            $table->timestamp('last_login_at')->nullable();
             $table->timestamp('verified_at')->nullable()->change();
         });
     }
@@ -22,7 +23,7 @@ return new class extends Migration
         }
 
         Schema::table('customer_accounts', function (Blueprint $table): void {
-            $table->dropColumn('password');
+            $table->dropColumn(['password', 'last_login_at']);
             $table->timestamp('verified_at')->nullable(false)->change();
         });
     }

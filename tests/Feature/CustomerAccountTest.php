@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AdminAction;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
 use App\Models\CustomerAddress;
@@ -60,7 +61,8 @@ class CustomerAccountTest extends TestCase
         config(['customer.sms_enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
         Http::fake();
         $this->get('/account/login')->assertRedirect('/login');
-        $this->get('/login')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        config(['support_chat.enabled' => true]);
+        $this->get('/login')->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertDontSee('support-widget.js');
         $this->post('/account/start', ['phone' => '09000000001'])->assertRedirect('/login')->assertSessionHasErrors('code');
         $this->assertNull(app(CustomerLogin::class)->privateTestCode('09000000001'));
         $this->post('/account/start', ['phone' => '۰۹۰۰۰۰۰۰۰۰۰'])->assertRedirect('/login');
@@ -71,6 +73,7 @@ class CustomerAccountTest extends TestCase
         $test = Auth::guard('customer')->user();
         $this->assertNotSame($real->id, $test->id);
         $this->assertNull($test->verified_at);
+        $this->get('/account')->assertOk()->assertDontSee('support-widget.js');
         $this->assertNull(app(CustomerLogin::class)->privateTestCode($phone));
         $this->post('/account/profile', ['name' => 'Synthetic tester'])->assertRedirect();
         $this->assertNull($test->fresh()->customer_id);
@@ -117,6 +120,75 @@ class CustomerAccountTest extends TestCase
         $this->post('/account/password', ['password' => $original, 'password_confirmation' => $original])->assertRedirect('/account?section=security');
         $this->assertTrue(Hash::check($original, $account->fresh()->password));
         $this->assertSame(4, $account->fresh()->session_version);
+    }
+
+    public function test_admin_can_repeat_registration_and_reset_three_times_without_reusing_sessions(): void
+    {
+        $phone = '09000000000';
+        config(['customer.sms_enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
+        Http::fake();
+        $owner = User::factory()->superAdmin()->create();
+        $login = app(CustomerLogin::class);
+        $admin = '/admin/test-customers';
+        $reveal = $admin.'/'.$login->testDigest($phone).'/code';
+        $this->get($admin)->assertRedirect('/admin/login');
+        $staff = User::factory()->staff(['customers.view', 'customers.contact'])->create();
+        $this->actingAs($staff, 'web')->withSession(['admin_session_version' => 1]);
+        $this->get($admin)->assertForbidden();
+        $this->post($reveal, ['current_password' => 'password'])->assertForbidden();
+        $this->actingAs($owner, 'web')->withSession(['admin_session_version' => 1]);
+        $previousIds = [];
+        for ($cycle = 0; $cycle < 3; $cycle++) {
+            $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+            $code = $login->privateTestCode($phone);
+            $this->assertNotNull($code);
+            $this->get($admin)->assertOk()->assertDontSee($phone)->assertDontSee('کد تأیید آزمایشی');
+            $this->post($reveal, ['current_password' => 'wrong'])->assertSessionHasErrors('current_password');
+            $this->post($reveal, ['current_password' => 'password'])->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertSee($code);
+            $this->post('/account/verify', ['code' => $code])->assertRedirect('/account?section=security');
+            $account = Auth::guard('customer')->user();
+            $this->assertNotContains($account->id, $previousIds);
+            $previousIds[] = $account->id;
+            $this->assertNotNull($account->fresh()->last_login_at);
+            if ($cycle === 0) {
+                $this->post('/account/password', ['password' => 'synthetic-only', 'password_confirmation' => 'synthetic-only'])->assertRedirect('/account');
+            } else {
+                $this->post('/account/password-skip')->assertRedirect('/account');
+            }
+            $this->travel(1)->minutes();
+            $stale = $login->issue($phone);
+            $staleCode = $login->privateTestCode($phone);
+            $reset = $admin.'/'.$account->public_id.'/reset';
+            $this->post($reset, ['current_password' => 'password', 'confirm' => 1])->assertRedirect($admin)->assertSessionHas('success');
+            $this->assertNull($account->fresh());
+            $this->assertNull($login->privateTestCode($phone));
+            Auth::guard('customer')->forgetUser();
+            $this->get('/account')->assertRedirect('/login');
+            $this->withSession(['customer_challenge' => $stale])->post('/account/verify', ['code' => $staleCode])->assertSessionHasErrors('code');
+            $this->post($reset, ['current_password' => 'password', 'confirm' => 1])->assertRedirect($admin);
+        }
+        $this->assertDatabaseCount('customer_accounts', 0);
+        $this->assertSame(3, DB::table('admin_activities')->where('action', AdminAction::TestCustomerReset->value)->count());
+        Http::assertNothingSent();
+    }
+
+    public function test_reset_refuses_verified_accounts_and_test_accounts_with_repair_records(): void
+    {
+        [$challenge, $code] = $this->otp();
+        $real = app(CustomerLogin::class)->verify($challenge, $code);
+        config(['customer.sms_enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => ['09000000000']]);
+        $login = app(CustomerLogin::class);
+        $test = $login->verify($login->issue('09000000000'), $login->privateTestCode('09000000000'));
+        $this->actingAs($test, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get('/repair')->assertOk();
+        $this->post('/repair', ['submission_token' => session('repair_submission_token'), 'customer_name' => 'Synthetic Customer', 'device_brand' => 'PAX', 'device_model' => 'SYNTHETIC', 'issue' => 'Synthetic repair request'])->assertRedirect();
+        $owner = User::factory()->superAdmin()->create();
+        $this->actingAs($owner, 'web')->withSession(['admin_session_version' => 1]);
+        foreach ([$real, $test] as $account) {
+            $this->post('/admin/test-customers/'.$account->public_id.'/reset', ['current_password' => 'password', 'confirm' => 1])->assertSessionHasErrors('reset');
+            $this->assertNotNull($account->fresh());
+        }
+        $this->assertDatabaseHas('repair_requests', ['customer_account_id' => $test->id]);
     }
 
     public function test_malformed_otp_input_is_rejected_without_provider_requests(): void
