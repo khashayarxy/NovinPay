@@ -14,9 +14,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminNavigation = document.querySelector('[data-admin-navigation]');
     if (adminNavigation instanceof HTMLDetailsElement) {
         const desktop = window.matchMedia('(min-width: 801px)');
-        const updateNavigation = () => { adminNavigation.open = desktop.matches; };
+        const sidebar = adminNavigation.closest('.admin-sidebar');
+        const toggle = document.querySelector('[data-admin-sidebar-toggle]');
+        const updateNavigation = () => {
+            adminNavigation.open = desktop.matches;
+            if (sidebar instanceof HTMLElement) sidebar.hidden = false;
+            if (toggle instanceof HTMLButtonElement) {
+                toggle.hidden = !desktop.matches;
+                toggle.setAttribute('aria-expanded', 'true');
+            }
+        };
         updateNavigation();
         desktop.addEventListener('change', updateNavigation);
+        if (sidebar instanceof HTMLElement && toggle instanceof HTMLButtonElement) {
+            toggle.addEventListener('click', () => {
+                if (!desktop.matches) return;
+                sidebar.hidden = !sidebar.hidden;
+                toggle.setAttribute('aria-expanded', String(!sidebar.hidden));
+            });
+        }
         adminNavigation.addEventListener('keydown', (event) => {
             if (event.key !== 'Escape' || desktop.matches || !adminNavigation.open) return;
             adminNavigation.open = false;

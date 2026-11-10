@@ -2,7 +2,7 @@
 @section('title', 'صندوق مشاوره')
 @section('content')
 <header class="admin-page-heading"><div><h1>صندوق درخواست‌های مشاوره</h1><p>پیگیری انسانی پرسش‌ها؛ بدون ارسال خودکار پیام.</p></div><a class="admin-text-link" href="{{ route('consultation') }}">مشاهدهٔ فرم عمومی ←</a></header>
-<div class="crm-summary"><span>جدید <strong>{{ \App\Support\FaNumber::digits($newCount) }}</strong></span><span>باز <strong>{{ \App\Support\FaNumber::digits($openCount) }}</strong></span><p>هیچ زمان پاسخی به مشتری وعده داده نشده است.</p></div><x-admin.errors/>
+<div class="crm-summary"><dl><div><dt>جدید</dt><dd>{{ \App\Support\FaNumber::digits($newCount) }}</dd></div><div><dt>باز</dt><dd>{{ \App\Support\FaNumber::digits($openCount) }}</dd></div></dl><p>هیچ زمان پاسخی به مشتری وعده داده نشده است.</p></div><x-admin.errors/>
 <section class="admin-panel"><form class="crm-filters" method="post" action="{{ route('admin.consultations.search') }}">@csrf
 @if($contact)<x-operation-field name="q" label="جستجوی دقیق شمارهٔ همراه" :required="false" type="tel" :maxlength="64"/>@endif
 <div><label for="consult-status" class="label">مرحله</label><select id="consult-status" name="status" class="input"><option value="">همه</option>@foreach(\App\Models\Consultation::STATUSES as $value=>$label)<option value="{{ $value }}" @selected(($criteria['status'] ?? '') === $value)>{{ $label }}</option>@endforeach</select></div>

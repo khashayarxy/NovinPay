@@ -7,9 +7,11 @@
     @php($account = $row['account'])
     @php($scope = $row['scope'])
     <section class="admin-panel mb-3">
-        <h2><bdi dir="ltr">{{ \App\Support\FaNumber::digits($row['masked']) }}</bdi></h2>
-        <dl class="mt-3 grid gap-2 sm:grid-cols-2">
-            <div><dt>وضعیت ثبت‌نام</dt><dd>{{ $account ? 'ثبت شده' : 'آمادهٔ ثبت‌نام' }}</dd></div>
+        <div class="admin-panel-heading">
+            <h2><bdi dir="ltr">{{ \App\Support\FaNumber::digits($row['masked']) }}</bdi></h2>
+            <x-admin.status :tone="$account ? 'info' : 'neutral'">{{ $account ? 'ثبت شده' : 'آمادهٔ ثبت‌نام' }}</x-admin.status>
+        </div>
+        <dl class="admin-record-facts mt-3">
             <div><dt>رمز عبور</dt><dd>{{ $account?->password ? 'تنظیم شده' : 'تنظیم نشده' }}</dd></div>
             <div><dt>آخرین ثبت‌نام یا ورود</dt><dd>{{ \App\Support\FinanceTime::display($account?->last_login_at ?? $account?->created_at) }}</dd></div>
             @if($scope)
@@ -42,6 +44,6 @@
         </div>
     </section>
 @empty
-    <section class="admin-panel"><p>ورود آزمایشی فعال نیست یا شماره‌ای برای آزمایش تعریف نشده است.</p></section>
+    <section class="admin-panel"><x-admin.empty-state title="حساب آزمایشی در دسترس نیست" icon="shield-check">ورود آزمایشی فعال نیست یا شماره‌ای برای آزمایش تعریف نشده است.</x-admin.empty-state></section>
 @endforelse
 @endsection

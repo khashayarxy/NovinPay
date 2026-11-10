@@ -4,8 +4,8 @@
         || (\App\Enums\AdminPermission::tryFrom($ability) !== null && in_array($ability, $account->permissions ?? [], true)));
     $groups = [
         'تعمیرات' => [
-            ['repairs.view', 'admin.repair-cases.index', 'admin.repair-cases.*', 'تعمیرات'],
-            ['repairs.view', 'admin.repairs.index', 'admin.repairs.*', 'درخواست‌های تعمیر'],
+            ['repairs.view', 'admin.repair-cases.index', 'admin.repair-cases.*', 'پرونده‌های تعمیر'],
+            ['repairs.view', 'admin.repairs.index', 'admin.repairs.*', 'درخواست‌های آنلاین'],
         ],
         'فروش و انبار' => [
             ['orders.view', 'admin.orders.index', 'admin.orders.*', 'سفارش‌ها'],
@@ -37,12 +37,13 @@
 <nav aria-label="ناوبری مدیریت" class="admin-nav">
     @unless($account->must_change_password)
         @if($allows('dashboard.view'))
-            <a href="{{ route('admin.dashboard') }}" @if(request()->routeIs('admin.dashboard')) aria-current="page" @endif><x-home.icon name="building-bank" />نمای کلی</a>
+            <a href="{{ route('admin.dashboard') }}" @if(request()->routeIs('admin.dashboard')) aria-current="page" @endif><x-home.icon name="diamond" />نمای کلی</a>
         @endif
         @foreach($groups as $label => $links)
             @php($visible = array_filter($links, fn ($link) => $allows($link[0])))
             @if($visible)
-                <details class="admin-nav-group" name="admin-module" @if(collect($visible)->contains(fn ($link) => request()->routeIs($link[2]))) open @endif>
+                @php($current = collect($visible)->contains(fn ($link) => request()->routeIs($link[2])))
+                <details @class(['admin-nav-group', 'admin-nav-current' => $current]) name="admin-module" @if($current) open @endif>
                     <summary><x-home.icon :name="$icons[$loop->index]" /><span>{{ $label }}</span></summary>
                     <div class="admin-nav-children">
                         @foreach($visible as [$ability, $route, $active, $text])

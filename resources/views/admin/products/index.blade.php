@@ -8,9 +8,9 @@
         @can('products.manage')<a href="{{ route('admin.products.create') }}" class="btn btn-primary">افزودن محصول</a>@endcan
     </header>
     @if ($products->isEmpty())
-        <p class="admin-panel admin-hint">هنوز محصولی ثبت نشده است.</p>
+        <section class="admin-panel"><x-admin.empty-state title="هنوز محصولی ثبت نشده است" icon="shopping-bag">محصولات کاتالوگ پس از ثبت در این فهرست نمایش داده می‌شوند.</x-admin.empty-state></section>
     @else
-        <div class="admin-panel admin-table-wrap" role="region" aria-label="محصولات" tabindex="0">
+        <div class="admin-panel admin-collection admin-table-wrap" role="region" aria-label="محصولات" tabindex="0">
             <table class="admin-table">
                 <thead>
                     <tr class="border-b border-slate-200 text-right">

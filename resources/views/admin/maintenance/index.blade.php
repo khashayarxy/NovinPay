@@ -5,7 +5,10 @@
 <x-admin.errors />
 @if(session('maintenance_warning'))<div class="admin-notice" role="alert">{{ session('maintenance_warning') }}</div>@endif
 <section class="admin-panel admin-form-surface" aria-labelledby="maintenance-state-title">
-    <h2 id="maintenance-state-title">وضعیت فعلی: {{ $fault ? 'خطای خواندن وضعیت؛ دسترسی عمومی بسته است' : ($current['enabled'] ? 'فعال' : 'غیرفعال') }}</h2>
+    <div class="admin-panel-heading">
+        <h2 id="maintenance-state-title">وضعیت فعلی: {{ $fault ? 'خطای خواندن وضعیت؛ دسترسی عمومی بسته است' : ($current['enabled'] ? 'فعال' : 'غیرفعال') }}</h2>
+        <span @class(['admin-state-dot', 'admin-state-dot--attention' => $fault || $current['enabled']]) aria-hidden="true"></span>
+    </div>
     <p class="admin-hint">با فعال‌سازی، بازدیدکنندگان صفحهٔ نگهداری را می‌بینند. درخواست‌های قبلی و کارهای پس‌زمینه ممکن است ادامه پیدا کنند.</p>
     @if($fault)
         <div class="admin-notice" role="alert">وضعیت سایت قابل خواندن نیست. از راهنمای بازیابی اضطراری استفاده کنید؛ تا رفع خطا امکان تغییر از این فرم وجود ندارد.</div>
@@ -16,8 +19,8 @@
             @csrf
             <input type="hidden" name="version" value="{{ $current['version'] }}">
             <div><label class="label" for="current_password">گذرواژهٔ فعلی شما</label><input class="input" type="password" name="current_password" id="current_password" required autocomplete="current-password" maxlength="255"></div>
-            <label class="admin-hint" style="display:flex;align-items:center;gap:8px;min-height:44px"><input type="checkbox" name="confirm" value="1" required> تأیید می‌کنم که حالت نگهداری سایت {{ $current['enabled'] ? 'غیرفعال' : 'فعال' }} شود.</label>
-            <button class="btn btn-primary" type="submit">{{ $current['enabled'] ? 'غیرفعال‌سازی نگهداری و بازکردن سایت' : 'فعال‌سازی حالت نگهداری' }}</button>
+            <label class="admin-checkbox"><input type="checkbox" name="confirm" value="1" required> تأیید می‌کنم که حالت نگهداری سایت {{ $current['enabled'] ? 'غیرفعال' : 'فعال' }} شود.</label>
+            <div class="admin-form-footer"><button class="btn btn-primary" type="submit">{{ $current['enabled'] ? 'غیرفعال‌سازی نگهداری و بازکردن سایت' : 'فعال‌سازی حالت نگهداری' }}</button></div>
         </form>
         @else<p class="admin-hint">این حساب فقط اجازهٔ مشاهده و پیش‌نمایش دارد.</p>@endcan
     @endif

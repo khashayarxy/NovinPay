@@ -13,7 +13,7 @@
     @php($adminAccount = auth()->check() ? \App\Support\AdminAccess::account(auth()->user()) : null)
     @if($adminAccount)
         <div class="admin-shell">
-            <aside class="admin-sidebar" aria-label="منوی مدیریت">
+            <aside id="admin-sidebar" class="admin-sidebar" aria-label="منوی مدیریت">
                 <a class="admin-brand" href="{{ \App\Support\AdminAccess::landingUrl(auth()->user()) }}"><x-brand-logo /><span><strong>{{ config('business.name') }}</strong><small>پنل مدیریت</small></span></a>
                 <details class="admin-navigation" data-admin-navigation open>
                     <summary>فهرست مدیریت <x-home.icon name="settings" /></summary>
@@ -22,11 +22,18 @@
             </aside>
             <div class="admin-workspace">
                 <header class="admin-topbar">
-                    <div class="admin-topbar-title"><strong>پنل مدیریت</strong></div>
+                    <div class="admin-topbar-title">
+                        <button type="button" class="admin-sidebar-toggle" data-admin-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="true" aria-label="نمایش یا پنهان‌کردن منوی مدیریت" hidden>
+                            <span class="admin-sidebar-glyph" aria-hidden="true"></span>
+                        </button>
+                        <span class="admin-topbar-root">مدیریت</span>
+                        <span class="admin-topbar-divider" aria-hidden="true"></span>
+                        <strong>@yield('title', 'نمای کلی')</strong>
+                    </div>
                     <div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : 'کارمند' }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج <x-home.icon name="arrow-left" /></button></form></div>
                 </header>
                 <main id="main-content" class="admin-main" tabindex="-1">
-                    @if(session('success'))<div class="admin-notice admin-notice--success" role="status">{{ session('success') }}</div>@endif
+                    @if(session('success'))<div class="admin-notice admin-notice--success" role="status"><x-home.icon name="check" />{{ session('success') }}</div>@endif
                     @yield('content')
                 </main>
             </div>
