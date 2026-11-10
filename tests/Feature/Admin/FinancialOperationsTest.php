@@ -15,6 +15,7 @@ use App\Services\FinancialReporting;
 use App\Services\RepairOperations;
 use App\Support\FinanceMoney;
 use App\Support\RepairTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -300,7 +301,7 @@ class FinancialOperationsTest extends TestCase
         $timestamps = ['2026-03-20 20:29:59', '2026-03-20 20:30:00', '2026-03-21 20:29:59', '2026-03-21 20:30:00'];
         $entries = [];
         foreach ($timestamps as $index => $timestamp) {
-            $this->travelTo(\Carbon\CarbonImmutable::parse($timestamp, 'UTC'));
+            $this->travelTo(CarbonImmutable::parse($timestamp, 'UTC'));
             $entries[] = $this->command('expense', ['amount' => '1.00', 'category' => 'parts', 'reference' => 'EXP-BOUNDARY-'.$index, 'method' => 'cash']);
         }
         $this->travelBack();
