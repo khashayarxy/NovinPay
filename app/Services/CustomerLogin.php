@@ -18,6 +18,12 @@ class CustomerLogin
         return in_array($phone, $this->testPhones(), true);
     }
 
+    public function isTestAccount(CustomerAccount $account): bool
+    {
+        return $account->verified_at === null && $this->testAllowed($account->phone)
+            && hash_equals($this->testDigest($account->phone), $account->phone_digest);
+    }
+
     public function testPhones(): array
     {
         return config('customer.test_otp_enabled')

@@ -10,6 +10,9 @@ use App\Models\RepairRequest;
 use App\Models\User;
 use App\Services\CustomerAccountLink;
 use App\Services\CustomerLogin;
+use App\Services\CustomerNotifications;
+use App\Services\RepairOperations;
+use App\Services\TestCustomerReset;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -152,27 +155,48 @@ class CustomerAccountTest extends TestCase
             $this->assertNotNull($account->fresh()->last_login_at);
             if ($cycle === 0) {
                 $this->post('/account/password', ['password' => 'synthetic-only', 'password_confirmation' => 'synthetic-only'])->assertRedirect('/account');
+                Auth::guard('customer')->forgetUser();
+                $account->refresh();
             } else {
                 $this->post('/account/password-skip')->assertRedirect('/account');
             }
+            $resetService = app(TestCustomerReset::class);
+            $staleScope = $resetService->scope($account)['pin'];
+            $this->get('/repair')->assertOk();
+            $this->post('/repair', ['submission_token' => session('repair_submission_token'), 'customer_name' => 'Synthetic Customer', 'device_brand' => 'PAX', 'device_model' => 'SYNTHETIC', 'issue' => 'Synthetic repair request'])->assertRedirect(route('repair.confirmation'))->assertSessionHasNoErrors();
+            $repair = RepairRequest::query()->sole();
+            $this->get('/account/repairs/requests/'.$repair->tracking_reference)->assertOk();
+            $this->post('/repair/track', ['tracking_reference' => $repair->tracking_reference, 'contact_phone' => $phone])->assertOk()->assertSee('دریافت فیزیکی تأیید نشده است');
+            $this->assertDatabaseCount('customer_notifications', 0);
+            if ($cycle === 0) {
+                app(CustomerNotifications::class)->record($account->id, 'repair_registered', $repair->tracking_reference);
+                $this->post($admin.'/'.$account->public_id.'/reset', ['current_password' => 'password', 'confirm' => 1, 'scope' => $staleScope])->assertSessionHasErrors('reset');
+                $this->assertNotNull($repair->fresh());
+            }
+            $scope = $resetService->scope($account);
+            $this->get($admin)->assertOk()->assertSee('۱ درخواست تعمیر');
             $this->travel(1)->minutes();
             $stale = $login->issue($phone);
             $staleCode = $login->privateTestCode($phone);
             $reset = $admin.'/'.$account->public_id.'/reset';
-            $this->post($reset, ['current_password' => 'password', 'confirm' => 1])->assertRedirect($admin)->assertSessionHas('success');
+            $form = ['current_password' => 'password', 'confirm' => 1, 'scope' => $scope['pin']];
+            $this->post($reset, $form)->assertRedirect($admin)->assertSessionHas('success');
             $this->assertNull($account->fresh());
+            $this->assertNull($repair->fresh());
+            $this->assertDatabaseCount('customer_notifications', 0);
+            $this->assertDatabaseHas('repair_tracking_codes', ['code' => $repair->tracking_reference]);
             $this->assertNull($login->privateTestCode($phone));
             Auth::guard('customer')->forgetUser();
             $this->get('/account')->assertRedirect('/login');
             $this->withSession(['customer_challenge' => $stale])->post('/account/verify', ['code' => $staleCode])->assertSessionHasErrors('code');
-            $this->post($reset, ['current_password' => 'password', 'confirm' => 1])->assertRedirect($admin);
+            $this->post($reset, $form)->assertRedirect($admin);
         }
         $this->assertDatabaseCount('customer_accounts', 0);
         $this->assertSame(3, DB::table('admin_activities')->where('action', AdminAction::TestCustomerReset->value)->count());
         Http::assertNothingSent();
     }
 
-    public function test_reset_refuses_verified_accounts_and_test_accounts_with_repair_records(): void
+    public function test_reset_refuses_verified_accounts_and_test_accounts_with_physical_repairs(): void
     {
         [$challenge, $code] = $this->otp();
         $real = app(CustomerLogin::class)->verify($challenge, $code);
@@ -184,11 +208,19 @@ class CustomerAccountTest extends TestCase
         $this->post('/repair', ['submission_token' => session('repair_submission_token'), 'customer_name' => 'Synthetic Customer', 'device_brand' => 'PAX', 'device_model' => 'SYNTHETIC', 'issue' => 'Synthetic repair request'])->assertRedirect();
         $owner = User::factory()->superAdmin()->create();
         $this->actingAs($owner, 'web')->withSession(['admin_session_version' => 1]);
+        $record = RepairRequest::query()->sole();
+        $scope = app(TestCustomerReset::class)->scope($test)['pin'];
+        $case = app(RepairOperations::class)->intake($owner, [
+            'submission_token' => bin2hex(random_bytes(32)), 'simple_intake' => 1, 'repair_request_id' => $record->id,
+            'customer_name' => 'Synthetic Customer', 'contact_phone' => '09000000000', 'device_model' => 'Synthetic',
+            'issue' => 'Synthetic repair', 'physical_condition' => 'Synthetic condition',
+        ]);
         foreach ([$real, $test] as $account) {
-            $this->post('/admin/test-customers/'.$account->public_id.'/reset', ['current_password' => 'password', 'confirm' => 1])->assertSessionHasErrors('reset');
+            $this->post('/admin/test-customers/'.$account->public_id.'/reset', ['current_password' => 'password', 'confirm' => 1, 'scope' => $scope])->assertSessionHasErrors('reset');
             $this->assertNotNull($account->fresh());
         }
         $this->assertDatabaseHas('repair_requests', ['customer_account_id' => $test->id]);
+        $this->assertDatabaseHas('repair_cases', ['id' => $case->id]);
     }
 
     public function test_malformed_otp_input_is_rejected_without_provider_requests(): void
