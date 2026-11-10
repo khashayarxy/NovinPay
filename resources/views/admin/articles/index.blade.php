@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title','مقاله‌ها و پیش‌نویس‌ها')
 @section('content')
-<header class="admin-page-heading"><div><p class="admin-eyebrow">محتوای سایت</p><h1>مقاله‌ها و پیش‌نویس‌ها</h1><p>ویرایش پیش‌نویس، نسخهٔ منتشرشده را تغییر نمی‌دهد.</p></div><div class="admin-actions">@if($articleAllows('articles.manage'))<a class="btn btn-primary" href="{{ route('admin.articles.create') }}">مقالهٔ جدید</a>@endif @if($articleAllows('article_categories.manage'))<a class="btn btn-secondary" href="{{ route('admin.article-categories.index') }}">مدیریت دسته‌ها</a>@endif</div></header>
+<header class="admin-page-heading"><div><h1>مقاله‌ها و پیش‌نویس‌ها</h1><p>ویرایش پیش‌نویس، نسخهٔ منتشرشده را تغییر نمی‌دهد.</p></div><div class="admin-actions">@if($articleAllows('articles.manage'))<a class="btn btn-primary" href="{{ route('admin.articles.create') }}">مقالهٔ جدید</a>@endif @if($articleAllows('article_categories.manage'))<a class="btn btn-secondary" href="{{ route('admin.article-categories.index') }}">مدیریت دسته‌ها</a>@endif</div></header>
 <x-admin.errors/>
 <section class="admin-panel">
 <form method="get" class="commerce-filters article-form">

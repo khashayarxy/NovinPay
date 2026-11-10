@@ -295,6 +295,22 @@ class FinancialOperationsTest extends TestCase
         $this->get('/admin/finance/reports?category=parts')->assertOk()->assertSee('گزارش مالی و تطبیق');
     }
 
+    public function test_finance_date_filter_uses_inclusive_tehran_days_without_changing_utc_records(): void
+    {
+        $timestamps = ['2026-03-20 20:29:59', '2026-03-20 20:30:00', '2026-03-21 20:29:59', '2026-03-21 20:30:00'];
+        $entries = [];
+        foreach ($timestamps as $index => $timestamp) {
+            $this->travelTo(\Carbon\CarbonImmutable::parse($timestamp, 'UTC'));
+            $entries[] = $this->command('expense', ['amount' => '1.00', 'category' => 'parts', 'reference' => 'EXP-BOUNDARY-'.$index, 'method' => 'cash']);
+        }
+        $this->travelBack();
+
+        $response = $this->get('/admin/finance/reports?from=2026-03-21&to=2026-03-21')->assertOk();
+        $this->assertSame([$entries[2]->id, $entries[1]->id], $response->viewData('entries')->pluck('id')->all());
+        $this->assertSame('200', $response->viewData('summary')['expenses']);
+        $this->assertSame($timestamps[1], $entries[1]->fresh()->created_at->utc()->toDateTimeString());
+    }
+
     public function test_customer_reconciliation_never_moves_financial_history_or_combines_debts(): void
     {
         $document = $this->issue();

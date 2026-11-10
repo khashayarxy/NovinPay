@@ -7,7 +7,7 @@
     $specRowIndex = 0;
 @endphp
 
-<form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="space-y-6">
+<form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="admin-panel admin-form-surface space-y-4" autocomplete="off">
     @csrf
     @if ($method !== 'POST')
         @method($method)
@@ -24,7 +24,7 @@
         </div>
     @endif
 
-    <div class="card space-y-5 p-5 sm:p-6">
+    <div class="admin-section space-y-3">
         <h2 class="text-base font-semibold">اطلاعات اصلی</h2>
 
         <div>
@@ -69,7 +69,7 @@
         </div>
     </div>
 
-    <div class="card space-y-5 p-5 sm:p-6">
+    <div class="admin-section space-y-3">
         <h2 class="text-base font-semibold">دسته‌بندی و وضعیت</h2>
 
         <div class="grid gap-5 sm:grid-cols-2">
@@ -149,7 +149,7 @@
         </div>
     </div>
 
-    <div class="card space-y-5 p-5 sm:p-6">
+    <div class="admin-section space-y-3">
         <h2 class="text-base font-semibold">مشخصات فنی</h2>
         <p class="text-xs leading-6 text-slate-500">هر ردیف یک «برچسب و مقدار» است؛ ردیف‌های خالی نادیده گرفته
             می‌شوند.</p>
@@ -222,7 +222,7 @@
         <button type="button" class="btn btn-secondary" data-add-spec-row>افزودن ردیف مشخصات</button>
     </div>
 
-    <div class="card space-y-4 p-5 sm:p-6">
+    <div class="admin-section space-y-3">
         <h2 class="text-base font-semibold">تصویر محصول</h2>
 
         @if ($product->image_path)

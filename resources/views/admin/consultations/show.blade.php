@@ -2,7 +2,7 @@
 @section('title', 'جزئیات مشاوره')
 @section('content')
 <header class="admin-page-heading"><div><p class="admin-eyebrow">درخواست مشاوره · نسخهٔ {{ \App\Support\FaNumber::digits($consultation->version) }}</p><h1>{{ \App\Models\Consultation::TOPICS[$consultation->topic] }}</h1><p class="crm-code">{{ $consultation->public_id }}</p></div><a class="admin-text-link" href="{{ route('admin.consultations.index') }}">صندوق مشاوره ←</a></header><x-admin.errors/>
-<div class="repair-status-banner"><div><span class="admin-eyebrow">مرحلهٔ فعلی</span><h2>{{ \App\Models\Consultation::STATUSES[$consultation->status] }}</h2><p>ثبت: {{ \App\Support\RepairTime::display($consultation->created_at) }}</p></div><p>همکار مسئول: <strong>{{ $consultation->assignee?->name ?? 'تخصیص نیافته' }}</strong></p></div>
+<div class="repair-status-banner"><div><span class="admin-eyebrow">مرحلهٔ فعلی</span><h2>{{ \App\Models\Consultation::STATUSES[$consultation->status] }}</h2><p>ثبت: {{ \App\Support\FinanceTime::display($consultation->created_at) }}</p></div><p>همکار مسئول: <strong>{{ $consultation->assignee?->name ?? 'تخصیص نیافته' }}</strong></p></div>
 <x-customer-association :record="$consultation"/>
 <nav class="admin-actions repair-jump-links" aria-label="میانبرهای مشاوره"><a class="admin-text-link" href="#consultation-details">اطلاعات درخواست ↓</a>@if($history)<a class="admin-text-link" href="#consultation-history">سابقهٔ تماس ↓</a>@endif @can('consultations.manage')<a class="admin-text-link" href="#consultation-actions">عملیات مشاوره ↓</a>@endcan</nav>
 <div class="crm-two-column mt-6"><div class="repair-main-stack"><section class="admin-panel" id="consultation-details"><h2>پرسش و اطلاعات اعلام‌شده</h2>
@@ -10,7 +10,7 @@
 </section>
 @if($history)<section class="admin-panel" id="consultation-history"><h2>یادداشت‌ها و سابقهٔ واقعی تماس</h2>@forelse($history as $entry)<article class="crm-history"><strong>{{ ['contact'=>'تلاش تماس', 'note'=>'یادداشت داخلی', 'event'=>'رویداد مدیریتی'][$entry->kind] }}</strong>
 @if($entry->kind === 'contact')<p>{{ ['phone'=>'تلفن', 'in_person'=>'حضوری', 'external_message'=>'پیام خارج از سامانه'][$entry->channel] }} · {{ ['answered'=>'ارتباط برقرار شد', 'no_answer'=>'بدون پاسخ', 'unreachable'=>'در دسترس نبود'][$entry->outcome] }}</p>@endif
-<p class="whitespace-pre-line">{{ $entry->body }}</p><small>{{ $entry->actor->name }} · {{ \App\Support\RepairTime::display($entry->created_at) }}</small></article>@empty<p class="admin-hint">هنوز یادداشت یا تلاشی ثبت نشده است.</p>@endforelse {{ $history->links() }}</section>@endif
+<p class="whitespace-pre-line">{{ $entry->body }}</p><small>{{ $entry->actor->name }} · {{ \App\Support\FinanceTime::display($entry->created_at) }}</small></article>@empty<p class="admin-hint">هنوز یادداشت یا تلاشی ثبت نشده است.</p>@endforelse {{ $history->links() }}</section>@endif
 </div><aside class="repair-main-stack" id="consultation-actions">
 @if($consultation->status !== 'closed') @can('consultations.manage')
 <x-crm-operation :action="route('admin.consultations.assign', $consultation)" :version="$consultation->version" title="تخصیص همکار مسئول"><div><label for="assign-consultation" class="label">همکار فعال و مجاز</label><select class="input" id="assign-consultation" name="assigned_to" required><option value="">انتخاب همکار</option>@foreach($staff as $user)<option value="{{ $user->id }}">{{ $user->name }}</option>@endforeach</select></div><button class="btn btn-secondary" type="submit">ثبت تخصیص</button></x-crm-operation>

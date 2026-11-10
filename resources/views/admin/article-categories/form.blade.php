@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 @section('title',$category?'ویرایش دسته':'دستهٔ جدید')
 @section('content')
-<header class="admin-page-heading"><div><h1>{{ $category?'ویرایش دستهٔ مقاله':'دستهٔ جدید مقاله' }}</h1><p>دستهٔ دارای مقالهٔ منتشرشده را نمی‌توان غیرفعال کرد.</p></div><a class="btn btn-secondary" href="{{ route('admin.article-categories.index') }}">فهرست دسته‌ها</a></header><x-admin.errors/>
-<section class="admin-panel"><form class="admin-form article-form" method="post" action="{{ $category?route('admin.article-categories.update',$category):route('admin.article-categories.store') }}">@csrf
+<header class="admin-page-heading"><div><h1>{{ $category?'ویرایش دستهٔ مقاله':'دستهٔ جدید مقاله' }}</h1><p>دستهٔ دارای مقالهٔ منتشرشده فعال می‌ماند.</p></div><a class="btn btn-secondary" href="{{ route('admin.article-categories.index') }}">فهرست دسته‌ها</a></header><x-admin.errors/>
+<section class="admin-panel admin-form-surface"><form class="admin-form article-form" method="post" action="{{ $category?route('admin.article-categories.update',$category):route('admin.article-categories.store') }}">@csrf
 @if($category) @method('PUT')<input type="hidden" name="version" value="{{ $category->version }}">@endif
 <x-finance-field direction="rtl" name="name" label="نام دسته" :value="$category?->name??''" :maxlength="120"/>
 <x-finance-field name="slug" label="نامک یکتا؛ حروف، عدد و خط تیره" :value="$category?->slug??''" :maxlength="120"/>

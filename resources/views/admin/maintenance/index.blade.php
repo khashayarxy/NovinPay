@@ -1,16 +1,16 @@
 @extends('layouts.admin')
 @section('title', 'حالت نگهداری سایت')
 @section('content')
-<header class="admin-page-heading"><div><p class="admin-eyebrow">کنترل وضعیت سایت</p><h1>حالت نگهداری سایت</h1><p>دسترسی بازدیدکنندگان را مدیریت کنید؛ ورود مدیران مجاز همچنان امکان‌پذیر است.</p></div><a class="btn btn-secondary" href="{{ route('admin.maintenance.preview') }}">پیش‌نمایش صفحهٔ نگهداری</a></header>
+<header class="admin-page-heading"><div><h1>حالت نگهداری سایت</h1></div><a class="btn btn-secondary" href="{{ route('admin.maintenance.preview') }}">پیش‌نمایش صفحهٔ نگهداری</a></header>
 <x-admin.errors />
 @if(session('maintenance_warning'))<div class="admin-notice" role="alert">{{ session('maintenance_warning') }}</div>@endif
-<section class="admin-panel" aria-labelledby="maintenance-state-title">
+<section class="admin-panel admin-form-surface" aria-labelledby="maintenance-state-title">
     <h2 id="maintenance-state-title">وضعیت فعلی: {{ $fault ? 'خطای خواندن وضعیت؛ دسترسی عمومی بسته است' : ($current['enabled'] ? 'فعال' : 'غیرفعال') }}</h2>
     <p class="admin-hint">با فعال‌سازی، بازدیدکنندگان صفحهٔ نگهداری را می‌بینند. درخواست‌های قبلی و کارهای پس‌زمینه ممکن است ادامه پیدا کنند.</p>
     @if($fault)
         <div class="admin-notice" role="alert">وضعیت سایت قابل خواندن نیست. از راهنمای بازیابی اضطراری استفاده کنید؛ تا رفع خطا امکان تغییر از این فرم وجود ندارد.</div>
     @else
-        @if($current['updated_at'])<p class="admin-hint">آخرین تغییر: {{ \App\Support\RepairTime::display(\Carbon\Carbon::parse($current['updated_at'])) }}</p>@endif
+        @if($current['updated_at'])<p class="admin-hint">آخرین تغییر: {{ \App\Support\FinanceTime::display(\Carbon\Carbon::parse($current['updated_at'])) }}</p>@endif
         @can('maintenance.manage')
         <form class="admin-form admin-password-form" method="post" action="{{ route($current['enabled'] ? 'admin.maintenance.disable' : 'admin.maintenance.enable') }}">
             @csrf
@@ -22,5 +22,5 @@
         @else<p class="admin-hint">این حساب فقط اجازهٔ مشاهده و پیش‌نمایش دارد.</p>@endcan
     @endif
 </section>
-<div class="admin-notice"><h2>نگهداری هنگام به‌روزرسانی جداگانه کنترل می‌شود</h2><p>این کنترل، نگهداری هنگام به‌روزرسانی را لغو نمی‌کند. اگر ورود به مدیریت امکان‌پذیر نباشد، از راهنمای بازیابی اضطراری استفاده کنید.</p></div>
+<details class="admin-panel admin-form-surface mt-3"><summary>نگهداری هنگام به‌روزرسانی</summary><p class="admin-hint">این کنترل، نگهداری هنگام به‌روزرسانی را لغو نمی‌کند. در صورت قطع دسترسی مدیریت، از راهنمای بازیابی اضطراری استفاده کنید.</p></details>
 @endsection

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'امنیت حساب من')
 @section('content')
-<header class="admin-page-heading"><div><p class="admin-eyebrow">حساب کاربری</p><h1>امنیت حساب من</h1><p>گذرواژهٔ شخصی خود را تغییر دهید؛ نشست‌های قبلی پس از ذخیره لغو می‌شوند.</p></div></header>
+<header class="admin-page-heading"><div><h1>امنیت حساب من</h1><p>گذرواژهٔ شخصی خود را تغییر دهید؛ نشست‌های قبلی پس از ذخیره لغو می‌شوند.</p></div></header>
 @if($account->must_change_password)<div class="admin-notice"><h2>پیش از ادامه، گذرواژهٔ اولیه را تغییر دهید</h2><p>برای دسترسی به بخش‌های مجاز، ابتدا گذرواژهٔ شخصی تازه تعیین کنید.</p></div>@endif
 <x-admin.errors />
 <form class="admin-panel admin-form admin-password-form" method="post" action="{{ route('admin.password.update') }}">@csrf @method('PUT')

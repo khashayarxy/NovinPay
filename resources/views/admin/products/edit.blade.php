@@ -3,14 +3,14 @@
 @section('title', 'ویرایش محصول')
 
 @section('content')
-    <div class="mx-auto max-w-3xl">
-        <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div class="admin-form-surface">
+        <header class="admin-page-heading">
             <div>
-                <h1 class="text-xl font-bold">ویرایش محصول</h1>
+                <h1>ویرایش محصول</h1>
                 <p class="mt-1 text-sm text-slate-600">{{ $product->name }}</p>
             </div>
-            <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">بازگشت به فهرست</a>
-        </div>
+            <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">فهرست محصولات</a>
+        </header>
 
         @include('admin.products._form', [
             'action' => route('admin.products.update', $product),

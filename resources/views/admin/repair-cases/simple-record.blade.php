@@ -11,7 +11,6 @@
 @endphp
 <header class="admin-page-heading"><h1>پرونده تعمیر <bdi>{{ \App\Support\FaNumber::digits($case->tracking_reference) }}</bdi></h1><a class="admin-text-link" href="{{ route('admin.repair-cases.index') }}">پرونده‌های تعمیر</a></header>
 <x-admin.errors />
-@if(session('success'))<p role="status">{{ session('success') }}</p>@endif
 @if($customer)
 @can('customers.view')
 @if($case->customer_id)<a class="admin-text-link" href="{{ route('admin.customers.show', $case->customer) }}">پرونده مشتری</a>
@@ -21,11 +20,11 @@
 <div><dt>مشتری</dt><dd>{{ $case->customer_name }} · <bdi>{{ \App\Support\FaNumber::digits($case->contact_phone) }}</bdi></dd></div>
 <div><dt>دستگاه</dt><dd>{{ $case->device_model }} @if($case->device_serial)· <bdi>{{ $case->device_serial }}</bdi>@endif</dd></div>
 <div><dt>مشکل اعلام‌شده</dt><dd>{{ $case->issue }}</dd></div><div><dt>وضعیت ظاهری</dt><dd>{{ $case->physical_condition }}</dd></div>
-<div><dt>زمان پذیرش</dt><dd>{{ \App\Support\RepairTime::display($case->received_at) }}</dd></div><div><dt>وضعیت</dt><dd>{{ $case->status->label() }}</dd></div>
+<div><dt>زمان پذیرش</dt><dd>{{ \App\Support\FinanceTime::display($case->received_at) }}</dd></div><div><dt>وضعیت</dt><dd>{{ $case->status->label() }}</dd></div>
 </dl></section>
 @unless($case->status->closed())
 @can('repairs.transition')
-<form method="post" action="{{ route('admin.repair-cases.record', $case) }}" class="admin-panel admin-form mt-5" data-simple-repair>@csrf
+<form method="post" action="{{ route('admin.repair-cases.record', $case) }}" class="admin-panel admin-form admin-form-surface mt-3" data-simple-repair>@csrf
 <input type="hidden" name="version" value="{{ $case->version }}">
 <div class="admin-form-grid"><div><label class="label" for="repair-status">وضعیت تعمیر</label><select class="input" id="repair-status" name="status">
 @foreach(['received'=>'پذیرش‌شده','repairing'=>'در حال تعمیر','ready'=>'آماده تحویل','delivered'=>'تحویل‌شده','return_pending'=>'تعمیرنشده / لغوشده'] as $value=>$label)<option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>@endforeach
@@ -43,11 +42,11 @@
 </form>
 @endcan
 @endunless
-<nav class="admin-actions mt-5" aria-label="اسناد تعمیر">
+<nav class="admin-actions mt-3" aria-label="اسناد تعمیر">
 @can('operate', [$case, 'print'])<a class="btn btn-secondary" href="{{ route('admin.repair-cases.document', [$case, 'intake']) }}">رسید پذیرش</a><a class="btn btn-secondary" href="{{ route('admin.repair-cases.document', [$case, 'summary']) }}">صورتحساب تعمیر</a>@endcan
 @can('finance.view')<a class="btn btn-secondary" href="{{ route('admin.finance.sources.show', ['type'=>'repair','reference'=>$case->public_id]) }}">سند مالی</a>@endcan
 </nav>
-<details class="admin-panel mt-5"><summary>سوابق پرونده</summary>@foreach($events as $event)<p>{{ \App\Support\RepairTime::display($event->created_at) }} · {{ $event->actor?->name }} · {{ \App\Enums\RepairStage::from($event->to_status)->label() }}</p>@endforeach{{ $events->links() }}</details>
+<details class="admin-panel mt-3"><summary>سوابق پرونده</summary>@foreach($events as $event)<p>{{ \App\Support\FinanceTime::display($event->created_at) }} · {{ $event->actor?->name }} · {{ \App\Enums\RepairStage::from($event->to_status)->label() }}</p>@endforeach{{ $events->links() }}</details>
 @else
 <p>برای مشاهده اطلاعات مشتری، دسترسی لازم است.</p>
 @endif

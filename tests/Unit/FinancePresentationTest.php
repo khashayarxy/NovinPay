@@ -31,6 +31,8 @@ class FinancePresentationTest extends TestCase
         $after = $before->addMinute();
         $this->assertSame('۱۴۰۴/۱۲/۲۹ ۲۳:۵۹ (شمسی، تهران)', FinanceTime::display($before));
         $this->assertSame('۱۴۰۵/۰۱/۰۱ ۰۰:۰۰ (شمسی، تهران)', FinanceTime::display($after));
+        $this->assertSame('2026-03-21', FinanceTime::startOfMonth($after->addDays(12))->toDateString());
+        $this->assertSame('۱۴۰۵/۰۱/۰۱', FinanceTime::display($after, withTime: false, withZone: false));
         $this->assertSame('2026-03-20 20:29:00 +00:00', $before->format('Y-m-d H:i:s P'));
         $this->assertSame('—', FinanceTime::display(null));
     }

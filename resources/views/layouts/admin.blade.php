@@ -22,14 +22,13 @@
             </aside>
             <div class="admin-workspace">
                 <header class="admin-topbar">
-                    <div class="admin-topbar-title"><span class="admin-icon"><x-home.icon name="building-bank" /></span><strong>@yield('title', 'مدیریت')</strong></div>
+                    <div class="admin-topbar-title"><strong>پنل مدیریت</strong></div>
                     <div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : 'کارمند' }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج <x-home.icon name="arrow-left" /></button></form></div>
                 </header>
                 <main id="main-content" class="admin-main" tabindex="-1">
                     @if(session('success'))<div class="admin-notice admin-notice--success" role="status">{{ session('success') }}</div>@endif
                     @yield('content')
                 </main>
-                <footer class="admin-footer">{{ config('business.name') }}</footer>
             </div>
         </div>
     @else

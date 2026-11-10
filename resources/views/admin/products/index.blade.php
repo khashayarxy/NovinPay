@@ -3,43 +3,34 @@
 @section('title', 'مدیریت محصولات')
 
 @section('content')
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <h1 class="text-xl font-bold">مدیریت محصولات</h1>
-            <p class="mt-1 text-sm text-slate-600">
-                محصولات منتشرشده در وب‌سایت عمومی نمایش داده می‌شوند.
-            </p>
-        </div>
+    <header class="admin-page-heading">
+        <h1>محصولات</h1>
         @can('products.manage')<a href="{{ route('admin.products.create') }}" class="btn btn-primary">افزودن محصول</a>@endcan
-    </div>
-
+    </header>
     @if ($products->isEmpty())
-        <div class="card mt-6 p-8 text-center">
-            <p class="text-sm text-slate-600">هنوز محصولی ثبت نشده است.</p>
-            @can('products.manage')<a href="{{ route('admin.products.create') }}" class="btn btn-primary mt-4">افزودن اولین محصول</a>@endcan
-        </div>
+        <p class="admin-panel admin-hint">هنوز محصولی ثبت نشده است.</p>
     @else
-        <div class="card mt-6 overflow-x-auto">
-            <table class="w-full min-w-[46rem] text-sm">
+        <div class="admin-panel admin-table-wrap" role="region" aria-label="محصولات" tabindex="0">
+            <table class="admin-table">
                 <thead>
                     <tr class="border-b border-slate-200 text-right">
-                        <th scope="col" class="px-4 py-3 font-semibold text-slate-700">محصول</th>
-                        <th scope="col" class="px-4 py-3 font-semibold text-slate-700">دسته‌بندی</th>
-                        <th scope="col" class="px-4 py-3 font-semibold text-slate-700">قیمت</th>
-                        <th scope="col" class="px-4 py-3 font-semibold text-slate-700">وضعیت</th>
-                        <th scope="col" class="px-4 py-3 font-semibold text-slate-700"><span
+                        <th scope="col">محصول</th>
+                        <th scope="col">دسته‌بندی</th>
+                        <th scope="col">قیمت</th>
+                        <th scope="col">وضعیت</th>
+                        <th scope="col"><span
                                 class="sr-only">عملیات</span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @foreach ($products as $product)
                         <tr>
-                            <td class="px-4 py-3">
+                            <td>
                                 <p class="font-medium text-slate-900 break-words">{{ $product->name }}</p>
                                 <p class="mt-0.5 text-xs text-slate-500" dir="ltr">{{ $product->slug }}</p>
                             </td>
-                            <td class="px-4 py-3 text-slate-600">{{ $product->category->label() }}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-slate-600">
+                            <td>{{ $product->category->label() }}</td>
+                            <td>
                                 @if ($product->price !== null)
                                     {{ \App\Support\FaNumber::digits(number_format($product->price)) }}
                                     <span class="text-xs text-slate-500">تومان</span>
@@ -47,7 +38,7 @@
                                     <span class="text-xs text-slate-500">تماس بگیرید</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3">
+                            <td>
                                 <div class="flex flex-wrap gap-1.5">
                                     @if ($product->is_published)
                                         <span class="badge badge-success">منتشرشده</span>
@@ -59,16 +50,17 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="px-4 py-3">
+                            <td>
                                 @can('products.manage')<div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('admin.products.edit', $product) }}"
                                         class="font-medium text-brand-700 hover:underline">ویرایش</a>
+                                    <details class="admin-row-actions"><summary>بیشتر</summary>
                                     <form method="POST" action="{{ route('admin.products.destroy', $product) }}"
                                         data-confirm="محصول «{{ $product->name }}» حذف شود؟ این عملیات قابل بازگشت نیست.">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="font-medium text-red-600 hover:underline">حذف</button>
-                                    </form>
+                                    </form></details>
                                 </div>@else<span class="text-xs text-slate-500">فقط مشاهده</span>@endcan
                             </td>
                         </tr>

@@ -1,9 +1,16 @@
 import { initSimpleRepair } from './admin-simple-repair';
 import { initMobileNavigation } from './mobile-navigation';
+import { initAdminCalendar } from './admin-calendar';
+import { initAdminDigits } from './admin-digits';
 
 document.addEventListener('DOMContentLoaded', () => {
     initMobileNavigation();
     initSimpleRepair();
+    const admin = document.querySelector('.admin-site #main-content');
+    if (admin) {
+        initAdminCalendar(admin);
+        initAdminDigits(admin);
+    }
     const adminNavigation = document.querySelector('[data-admin-navigation]');
     if (adminNavigation instanceof HTMLDetailsElement) {
         const desktop = window.matchMedia('(min-width: 801px)');
@@ -84,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
             container.append(fragment);
+            if (admin) initAdminDigits(container);
             container.dataset.nextIndex = String(next + 1);
             container.lastElementChild?.querySelector('input')?.focus();
             return;

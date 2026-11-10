@@ -276,15 +276,11 @@ class AdminFoundationTest extends TestCase
 
     public function test_dashboard_counts_are_real_and_scoped_to_permissions(): void
     {
-        $this->product();
         $this->repair();
-        User::factory()->staff()->create();
-        User::factory()->staff([], false)->create();
         $this->actingAs($this->owner())->get('/admin')->assertOk()
-            ->assertViewHas('productCount', 1)->assertViewHas('publishedCount', 0)
-            ->assertViewHas('repairCount', 1)->assertViewHas('staffCount', 1)->assertDontSee('PRIVATE-CUSTOMER');
+            ->assertViewHas('repairCount', 1)->assertSee('کارهای جاری')->assertDontSee('PRIVATE-CUSTOMER');
         $this->actingAs(User::factory()->staff(['dashboard.view'])->create())->get('/admin')->assertOk()
-            ->assertViewHas('productCount', null)->assertViewHas('repairCount', null)->assertViewHas('staffCount', null)
+            ->assertViewHas('repairCount', null)->assertDontSee('کارهای جاری')
             ->assertDontSee('PRIVATE-CUSTOMER')->assertSee('دسترسی به درخواست‌ها ندارید');
     }
 
