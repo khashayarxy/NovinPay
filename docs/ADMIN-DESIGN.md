@@ -27,7 +27,7 @@ At db30250, the NovinPay dashboard counts sat far from their labels, the repair 
 
 ## Design system
 
-- **Surfaces.** Ink rail #142337, canvas #f2f5f8, white work surface, and pale blue selection #edf4ff. Use #dce3ec for separators and a darker #a7b4c5 for controls. Use a small panel shadow on raised work surfaces and a deeper shadow for overlays.
+- **Surfaces.** Ink rail #142337, canvas #f2f5f8, white work surface, and pale blue selection #edf4ff. Use #dce3ec for separators and #8291a4 for control outlines (3.21:1 against white). Use a small panel shadow on raised work surfaces and a deeper shadow for overlays.
 - **Type.** Use the existing Vazirmatn files. Page headings use 22–30px, section headings use 15–17px, labels and content use 13–14px, and secondary metadata uses 11–12px. Isolate mixed-direction identifiers. The existing Persian digit and Jalali adapters continue to send canonical values.
 - **Spacing and shape.** Use a 4px rhythm for related items, 8–16px between controls, and 16–24px between content groups. Inputs and buttons use an 8px radius, panels use 14px, and states use pills. Give mobile buttons and inputs a 44px minimum height.
 - **Actions and states.** Blue fills identify primary submissions. Bordered buttons identify secondary actions. Existing Tabler icons provide a consistent weight. Pills combine color and text. Form errors stay adjacent to the original controls. Destructive actions retain their confirmation and authorization.
