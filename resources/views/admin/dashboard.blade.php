@@ -51,6 +51,11 @@
             @can('products.manage')<a class="btn btn-secondary" href="{{ route('admin.products.create') }}">افزودن محصول</a>@endcan
             @can('customers.view')<a class="btn btn-secondary" href="{{ route('admin.customers.index') }}">مشتریان</a>@endcan
             @can('staff.manage')<a class="btn btn-secondary" href="{{ route('admin.staff.create') }}">تعریف همکار</a>@endcan
+            @if (config('support_chat.enabled'))
+                @can('support.view')
+                    <a class="btn btn-secondary" href="{{ route('support.panel') }}" target="_blank" rel="nofollow noopener noreferrer">ورود به پشتیبانی آنلاین</a>
+                @endcan
+            @endif
             <a class="btn btn-secondary" href="{{ route('admin.password.edit') }}">امنیت حساب من</a>
         </div>
     </section>

@@ -79,6 +79,24 @@ class AdminFoundationTest extends TestCase
         }
     }
 
+    public function test_support_shortcut_is_dashboard_only_and_requires_chat_and_permission(): void
+    {
+        config(['support_chat.enabled' => true]);
+        $this->actingAs($this->owner());
+        $this->get('/admin')->assertOk()
+            ->assertSee('href="'.route('support.panel').'" target="_blank" rel="nofollow noopener noreferrer"', false)
+            ->assertDontSee(route('admin.support.index'), false);
+        $this->get('/admin/products')->assertOk()->assertDontSee('ورود به پشتیبانی آنلاین')
+            ->assertDontSee(route('admin.support.index'), false);
+
+        config(['support_chat.enabled' => false]);
+        $this->get('/admin')->assertOk()->assertDontSee('ورود به پشتیبانی آنلاین');
+
+        config(['support_chat.enabled' => true]);
+        $staff = User::factory()->staff(['dashboard.view'])->create();
+        $this->actingAs($staff)->get('/admin')->assertOk()->assertDontSee('ورود به پشتیبانی آنلاین');
+    }
+
     public function test_owner_cannot_be_edited_deactivated_demoted_or_deleted_through_staff_routes(): void
     {
         $owner = $this->owner();

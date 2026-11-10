@@ -14,7 +14,6 @@
         'مشتریان و امور مالی' => [
             ['customers.view', 'admin.customers.index', 'admin.customers.*', 'مشتریان', 'user'],
             ['consultations.view', 'admin.consultations.index', 'admin.consultations.*', 'مشاوره‌ها', 'headphones'],
-            ['support.view', 'admin.support.index', 'admin.support.*', 'پشتیبانی مشتریان', 'headphones'],
             ['finance.view', 'admin.payments.index', 'admin.payments.*', 'پرداخت‌ها و رسیدها', 'building-bank'],
             ['finance.view', 'admin.finance.index', 'admin.finance.*', 'عملیات و گزارش مالی', 'building-bank'],
             [['finance.view', 'finance.details'], 'admin.deliveries.index', 'admin.deliveries.*', 'ارسال و تحویل', 'shopping-bag'],
@@ -32,7 +31,7 @@
 <nav aria-label="ناوبری مدیریت" class="admin-nav">
     @unless($account->must_change_password)
         @foreach($groups as $label => $links)
-            @php($visible = array_filter($links, fn ($link) => $allows($link[0]) && ($link[1] !== 'admin.support.index' || config('support_chat.enabled'))))
+            @php($visible = array_filter($links, fn ($link) => $allows($link[0])))
             @if($visible)
                 <div class="admin-nav-group">
                     <p class="admin-sidebar-label">{{ $label }}</p>

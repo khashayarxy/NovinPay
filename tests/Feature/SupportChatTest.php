@@ -155,7 +155,8 @@ class SupportChatTest extends TestCase
 
     public function test_independent_login_shell_is_available_without_admin_authentication(): void
     {
-        $this->get('https://localhost/support')->assertOk()->assertSee('id="username"', false)->assertSee('id="password"', false)->assertDontSee('/admin/support/confirm');
+        $this->get('https://localhost/support')->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow')
+            ->assertSee('id="username"', false)->assertSee('id="password"', false)->assertDontSee('/admin/support/confirm');
         $this->get('https://localhost/support-chat/operator/app.js')->assertOk()->assertDontSee('/admin/support/confirm');
     }
 
