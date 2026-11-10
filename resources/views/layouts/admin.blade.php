@@ -14,13 +14,17 @@
     @if($adminAccount)
         <div class="admin-shell">
             <aside class="admin-sidebar" aria-label="منوی مدیریت">
-                <a class="admin-brand" href="{{ \App\Support\AdminAccess::landingUrl(auth()->user()) }}"><x-brand-logo variant="white" /><span><strong>{{ config('business.name') }}</strong><small>مدیریت کسب‌وکار</small></span></a>
-                <x-admin.navigation />
-
+                <a class="admin-brand" href="{{ \App\Support\AdminAccess::landingUrl(auth()->user()) }}"><x-brand-logo /><span><strong>{{ config('business.name') }}</strong><small>پنل مدیریت</small></span></a>
+                <details class="admin-navigation" data-admin-navigation open>
+                    <summary>فهرست مدیریت <x-home.icon name="settings" /></summary>
+                    <x-admin.navigation :account="$adminAccount" />
+                </details>
             </aside>
             <div class="admin-workspace">
-                <header class="admin-topbar"><div class="admin-topbar-title"><a class="admin-mobile-logo" href="{{ \App\Support\AdminAccess::landingUrl(auth()->user()) }}" aria-label="پیشخوان {{ config('business.name') }}"><x-brand-logo /></a><span class="admin-icon"><x-home.icon name="building-bank" /></span><div><strong>پنل مدیریت نوین‌پی</strong><p>فروش و خدمات کارتخوان</p></div></div><div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : 'کارمند' }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج <x-home.icon name="arrow-left" /></button></form></div></header>
-                <details class="admin-mobile-navigation"><summary>فهرست مدیریت <x-home.icon name="settings" /></summary><x-admin.navigation /></details>
+                <header class="admin-topbar">
+                    <div class="admin-topbar-title"><span class="admin-icon"><x-home.icon name="building-bank" /></span><strong>@yield('title', 'مدیریت')</strong></div>
+                    <div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : 'کارمند' }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج <x-home.icon name="arrow-left" /></button></form></div>
+                </header>
                 <main id="main-content" class="admin-main" tabindex="-1">
                     @if(session('success'))<div class="admin-notice admin-notice--success" role="status">{{ session('success') }}</div>@endif
                     @yield('content')

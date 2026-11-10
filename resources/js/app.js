@@ -4,6 +4,18 @@ import { initMobileNavigation } from './mobile-navigation';
 document.addEventListener('DOMContentLoaded', () => {
     initMobileNavigation();
     initSimpleRepair();
+    const adminNavigation = document.querySelector('[data-admin-navigation]');
+    if (adminNavigation instanceof HTMLDetailsElement) {
+        const desktop = window.matchMedia('(min-width: 801px)');
+        const updateNavigation = () => { adminNavigation.open = desktop.matches; };
+        updateNavigation();
+        desktop.addEventListener('change', updateNavigation);
+        adminNavigation.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape' || desktop.matches || !adminNavigation.open) return;
+            adminNavigation.open = false;
+            adminNavigation.querySelector('summary')?.focus();
+        });
+    }
     document.getElementById('error-summary')?.focus();
 
     document.querySelectorAll('[data-account-password]').forEach((button) => {
