@@ -6,6 +6,7 @@ use App\Enums\ProductCondition;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 class HomePageTest extends TestCase
@@ -25,13 +26,14 @@ class HomePageTest extends TestCase
             $links = $xpath->query('//'.$selector);
             $this->assertCount(1, $links);
             $this->assertCount(1, $xpath->query('//footer//div[contains(@class,"np-footer__brand")]//'.$selector));
-            $this->assertCount(1, $xpath->query('//img[starts-with(@src,"https://trustseal.enamad.ir/")]'));
+            $this->assertCount(0, $xpath->query('//img[starts-with(@src,"https://trustseal.enamad.ir/")]'));
+            $this->assertCount(1, $xpath->query('//img[@src="'.asset('brand/trust/enamad-8644634.png').'"]'));
 
             $link = $links->item(0);
             $image = $xpath->query('./img', $link)->item(0);
             $this->assertNotNull($image);
             $this->assertSame('https://trustseal.enamad.ir/?'.$query, $link->getAttribute('href'));
-            $this->assertSame('https://trustseal.enamad.ir/logo.aspx?'.$query, $image->getAttribute('src'));
+            $this->assertSame(asset('brand/trust/enamad-8644634.png'), $image->getAttribute('src'));
             $this->assertSame($code, $image->getAttribute('code'));
             $this->assertSame('origin', $link->getAttribute('referrerpolicy'));
             $this->assertSame('origin', $image->getAttribute('referrerpolicy'));
@@ -48,6 +50,17 @@ class HomePageTest extends TestCase
             }
             $this->assertFalse($fallback->hasAttribute('rel'));
         }
+    }
+
+    public function test_enamad_can_render_the_original_provider_image_on_request(): void
+    {
+        $markup = Blade::render('<x-home.enamad :use-provider-image="true" />');
+
+        $this->assertStringContainsString(
+            'src="https://trustseal.enamad.ir/logo.aspx?id=8644634&amp;Code=bkoTwmLFJ1lp9goDGHf1cuve1Tgw8t6n"',
+            $markup,
+        );
+        $this->assertStringNotContainsString('enamad-8644634.png', $markup);
     }
 
     public function test_homepage_presents_all_approved_sections_and_seven_service_links(): void
