@@ -267,18 +267,14 @@
 
 .homepage .np-hero__art::after { content: ""; position: absolute; z-index: -1; width: 65%; height: 6%; bottom: 0; left: 18%; background: radial-gradient(ellipse, #173b6530, transparent 70%); filter: blur(3px); }
 
-.np-enamad { display: inline-flex; }
-.np-enamad a { display: inline-flex; background: #fff; color: #102B45; border-radius: 8px; }
-.np-enamad img { width: 76px; height: 76px; object-fit: contain; font-size: 11px; }
-.np-enamad a:focus-visible { outline: 2px solid #075ac7; outline-offset: 4px; }
-.np-trust__seal { grid-column: 1 / -1; justify-self: center; margin-block-start: 8px; }
-.np-footer .np-enamad { margin-block-start: 12px; }
-
 /* Minimal three-column RTL footer; the public page composition is unchanged. */
 .np-footer { background: #102B45; color: #f6faff; padding-top: 32px; }
 .np-footer__grid { display: grid; grid-template-columns: 1.1fr .7fr 1.2fr; gap: 48px; padding-bottom: 28px; }
 .np-footer__brand .np-wordmark { display: block; width: 174px; height: auto; max-width: 100%; }
 .np-footer__brand p { max-width: 280px; margin-top: 14px; }
+.np-footer__brand .np-enamad { width: fit-content; margin-block-start: 14px; }
+.np-enamad a { display: block; }
+.np-enamad img { display: block; width: 76px; height: 76px; object-fit: contain; font-size: 11px; }
 .np-footer h2 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
 .np-footer p, .np-footer address { color: #c5d5e4; font-size: 13px; line-height: 2; }
 .np-footer nav { display: flex; flex-direction: column; align-items: start; }

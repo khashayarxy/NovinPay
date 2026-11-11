@@ -22,7 +22,6 @@
         @foreach ([['tag', 'مشاوره تخصصی خرید', 'انتخاب کارتخوان متناسب با نیاز و بودجه شما'], ['shield-check', 'استعلام آنلاین وضعیت تعمیرات', 'با استفاده از کد پیگیری'], ['truck', 'ارسال و تحویل به تمام نقاط', 'در سریع‌ترین زمان ممکن'], ['headphones', 'تعمیرات تخصصی کارتخوان', 'رسیدگی به مشکلات فنی دستگاه']] as [$icon, $title, $text])
             <div class="np-trust__item"><span class="np-trust__icon"><x-home.icon :name="$icon" /></span><h2>{{ $title }}</h2><p>{{ $text }}</p></div>
         @endforeach
-        <x-home.enamad class="np-trust__seal" />
     </section>
 
     <section class="np-container np-services" aria-labelledby="popular-services-title">
