@@ -1,6 +1,6 @@
 <div tabindex="0" role="region" aria-label="تاریخچهٔ مالی؛ جدول در نمایشگر بزرگ و کارت در موبایل" class="admin-table-wrap finance-table-wrap">
     <table class="admin-table commerce-table finance-table" role="table">
-        <caption class="sr-only">رویدادهای مالی؛ تمام مبالغ به تومان با دو رقم اعشار؛ زمان نمایش شمسی تهران، فیلتر میلادی UTC</caption>
+        <caption class="sr-only">رویدادهای مالی؛ تمام مبالغ به تومان با دو رقم اعشار؛ زمان ثبت به وقت تهران</caption>
         <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">رویداد و دسته</th><th scope="col" role="columnheader">تغییر مطالبه</th><th scope="col" role="columnheader">دریافت</th><th scope="col" role="columnheader">هزینه</th><th scope="col" role="columnheader">ثبت‌کننده و زمان</th><th scope="col" role="columnheader">مدرک</th></tr></thead>
         <tbody role="rowgroup">
         @forelse($entries as $entry)

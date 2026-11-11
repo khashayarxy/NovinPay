@@ -15,6 +15,7 @@ use App\Support\AdminAccess;
 use App\Support\FinanceAccess;
 use App\Support\FinanceInput;
 use App\Support\FinanceMoney;
+use App\Support\FinanceTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -36,12 +37,14 @@ class FinanceController extends Controller
     public function index(Request $request, FinancialReporting $reporting)
     {
         $filters = $request->validate(['from' => ['nullable', 'date_format:Y-m-d'], 'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'], 'category' => ['nullable', Rule::in(array_keys(FinanceInput::CATEGORIES))]]);
-        $filters['from'] = $filters['from'] ?? now()->startOfMonth()->format('Y-m-d');
-        $filters['to'] = $filters['to'] ?? now()->format('Y-m-d');
+        $today = now('Asia/Tehran');
+        $filters['to'] = $filters['to'] ?? $today->toDateString();
+        $filters['from'] = $filters['from'] ?? FinanceTime::startOfMonth(CarbonImmutable::parse($filters['to'], 'Asia/Tehran'))->toDateString();
         abort_unless($filters['from'] <= $filters['to'] && CarbonImmutable::parse($filters['from'])->diffInDays($filters['to']) <= 366, 422, 'بازهٔ گزارش باید حداکثر ۳۶۶ روز باشد.');
 
         $isReport = $request->routeIs('admin.finance.reports');
-        $data = ['filters' => $filters, 'summary' => $reporting->summary($filters), 'entries' => $reporting->entries($filters)->latest('id')->paginate(25, ['id', 'public_id', 'financial_document_id', 'kind', 'category', 'charge_delta', 'receipt_delta', 'expense_delta', 'actor_id', 'created_at'])->appends($filters)];
+        $period = $filters + ['timezone' => 'Asia/Tehran'];
+        $data = ['filters' => $filters, 'summary' => $reporting->summary($period), 'entries' => $reporting->entries($period)->latest('id')->paginate(25, ['id', 'public_id', 'financial_document_id', 'kind', 'category', 'charge_delta', 'receipt_delta', 'expense_delta', 'actor_id', 'created_at'])->appends($filters)];
         if (! $isReport) {
             $data['documents'] = FinancialDocument::query()->latest('id')->paginate(20, ['*'], 'documents_page');
         }

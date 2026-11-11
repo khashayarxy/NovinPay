@@ -14,6 +14,7 @@ use App\Support\FaNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -28,8 +29,22 @@ class ProductController extends Controller
 
     public function index(): View
     {
+        $products = Product::query()->latest()->paginate(15);
+        $stockByProduct = null;
+
+        if (Gate::allows('inventory.view')) {
+            $stockByProduct = InventoryItem::query()
+                ->whereIn('product_id', $products->modelKeys())
+                ->select('product_id')
+                ->selectRaw('SUM(on_hand) AS physical, SUM(reserved) AS reserved, MAX(is_low_stock) AS low')
+                ->groupBy('product_id')
+                ->get()
+                ->keyBy('product_id');
+        }
+
         return view('admin.products.index', [
-            'products' => Product::query()->latest()->paginate(15),
+            'products' => $products,
+            'stockByProduct' => $stockByProduct,
         ]);
     }
 

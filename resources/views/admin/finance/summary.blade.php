@@ -1,6 +1,18 @@
-<div class="finance-metrics">
-@foreach(['charges'=>'خالص مطالبات ثبت‌شدهٔ دوره','receipts'=>'خالص دریافت دستی دوره','expenses'=>'خالص هزینهٔ ثبت‌شدهٔ دوره','gross_sales_documents'=>'ناخالص اسناد فروش صادرشدهٔ دوره','outstanding'=>'مطالبات باقی‌ماندهٔ فعلی'] as $key=>$label)
-<section class="admin-panel"><p class="admin-eyebrow">{{ $label }}</p><strong class="finance-amount"><bdi>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display($summary[$key])) }}</bdi></strong><p class="admin-hint">تومان</p></section>
-@endforeach
-</div>
-<section class="admin-panel mt-4"><h2>کنترل مانده‌ها</h2><p>سفارش‌های دارای سند: {{ \App\Support\FaNumber::digits($summary['settled_orders']) }} تسویهٔ ثبت‌شده · {{ \App\Support\FaNumber::digits($summary['unsettled_orders']) }} دارای مانده</p><p>{{ \App\Support\FaNumber::digits($summary['settled']) }} سند با تسویهٔ ثبت‌شده · {{ \App\Support\FaNumber::digits($summary['unsettled']) }} سند دارای مانده</p><p class="{{ $summary['discrepancies'] ? 'finance-alert' : 'admin-hint' }}">{{ $summary['discrepancies'] ? 'مغایرت دفتر و مانده: '.\App\Support\FaNumber::digits($summary['discrepancies']).' سند؛ توقف و بررسی مدیر کل لازم است.' : 'جمع دفتر و ماندهٔ همهٔ اسناد تطبیق دارد.' }}</p><p class="admin-hint">ناخالص اسناد فروش از مبلغ اولیهٔ سند است و مستقل از فیلتر دسته نمایش داده می‌شود. دریافت نقدی با فروش تفاوت دارد. هزینه‌های ثبت‌نشده، مالیات و بهای تمام‌شده فرض نشده‌اند؛ این اعداد سود خالص نیستند.</p></section>
+<section class="admin-panel">
+    <h2>خلاصهٔ مالی <small class="admin-muted">تومان</small></h2>
+    <dl class="admin-finance-summary">
+        @foreach(['charges'=>'خالص مطالبات دوره','receipts'=>'خالص دریافت دستی','expenses'=>'خالص هزینه‌ها','gross_sales_documents'=>'ناخالص اسناد فروش','outstanding'=>'ماندهٔ فعلی'] as $key=>$label)
+            <div><dt>{{ $label }}</dt><dd><bdi>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display($summary[$key])) }}</bdi></dd></div>
+        @endforeach
+    </dl>
+    @if($summary['discrepancies'])
+        <p class="finance-alert">مغایرت دفتر و مانده: {{ \App\Support\FaNumber::digits($summary['discrepancies']) }} سند؛ توقف و بررسی مدیر کل لازم است.</p>
+    @endif
+    <details class="admin-section mt-3">
+        <summary>تطبیق و جزئیات مانده</summary>
+        <p>سفارش‌های دارای سند: {{ \App\Support\FaNumber::digits($summary['settled_orders']) }} تسویه‌شده، {{ \App\Support\FaNumber::digits($summary['unsettled_orders']) }} دارای مانده</p>
+        <p>همهٔ اسناد: {{ \App\Support\FaNumber::digits($summary['settled']) }} تسویه‌شده، {{ \App\Support\FaNumber::digits($summary['unsettled']) }} دارای مانده</p>
+        @unless($summary['discrepancies'])<p>جمع دفتر و ماندهٔ اسناد تطبیق دارد.</p>@endunless
+        <p class="admin-hint">ناخالص اسناد فروش مستقل از دستهٔ انتخابی است. این اعداد سود خالص نیستند.</p>
+    </details>
+</section>

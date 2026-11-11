@@ -79,6 +79,44 @@ class AdminFoundationTest extends TestCase
         }
     }
 
+    public function test_support_shortcut_is_dashboard_only_and_requires_chat_and_permission(): void
+    {
+        config(['support_chat.enabled' => true]);
+        $this->actingAs($this->owner());
+        $this->get('/admin')->assertOk()
+            ->assertSee('href="'.route('support.panel').'" target="_blank" rel="nofollow noopener noreferrer"', false)
+            ->assertDontSee(route('admin.support.index'), false);
+        $this->get('/admin/products')->assertOk()->assertDontSee('ورود به پشتیبانی آنلاین')
+            ->assertDontSee(route('admin.support.index'), false);
+
+        config(['support_chat.enabled' => false]);
+        $this->get('/admin')->assertOk()->assertDontSee('ورود به پشتیبانی آنلاین');
+
+        config(['support_chat.enabled' => true]);
+        $staff = User::factory()->staff(['dashboard.view'])->create();
+        $this->actingAs($staff)->get('/admin')->assertOk()->assertDontSee('ورود به پشتیبانی آنلاین');
+    }
+
+    public function test_sidebar_groups_link_to_first_permitted_route_and_website_is_in_brand(): void
+    {
+        $this->actingAs($this->owner())->get('/admin')->assertOk()
+            ->assertSee('href="'.route('home').'" target="_blank" rel="nofollow noopener noreferrer" aria-label="مشاهده وب‌سایت" title="مشاهده وب‌سایت"', false)
+            ->assertSeeInOrder(['داشبورد مدیریت', 'تعمیرات', 'سفارش‌ها و کالاها', 'مشتریان', 'پرداخت‌ها و مالی', 'ارسال و تحویل', 'مقالات', 'مدیریت سایت', 'دسترسی و سوابق', 'حساب من'])
+            ->assertSee('href="'.route('admin.orders.index').'" data-admin-category', false)
+            ->assertSee('href="'.route('admin.payments.index').'" data-admin-category', false)
+            ->assertSee('href="'.route('admin.deliveries.index').'" data-admin-category', false);
+
+        $staff = User::factory()->staff(['dashboard.view', 'inventory.view', 'consultations.view', 'finance.view'])->create();
+        $this->actingAs($staff)->get('/admin/inventory')->assertOk()
+            ->assertSee('href="'.route('admin.inventory.index').'" data-admin-category', false)
+            ->assertSee('href="'.route('admin.consultations.index').'" data-admin-category', false)
+            ->assertSee('href="'.route('admin.inventory.index').'"  aria-current="page"', false)
+            ->assertDontSee(route('admin.orders.index'), false)
+            ->assertDontSee(route('admin.products.index'), false)
+            ->assertDontSee(route('admin.customers.index'), false)
+            ->assertDontSee(route('admin.deliveries.index'), false);
+    }
+
     public function test_owner_cannot_be_edited_deactivated_demoted_or_deleted_through_staff_routes(): void
     {
         $owner = $this->owner();
@@ -258,15 +296,11 @@ class AdminFoundationTest extends TestCase
 
     public function test_dashboard_counts_are_real_and_scoped_to_permissions(): void
     {
-        $this->product();
         $this->repair();
-        User::factory()->staff()->create();
-        User::factory()->staff([], false)->create();
         $this->actingAs($this->owner())->get('/admin')->assertOk()
-            ->assertViewHas('productCount', 1)->assertViewHas('publishedCount', 0)
-            ->assertViewHas('repairCount', 1)->assertViewHas('staffCount', 1)->assertDontSee('PRIVATE-CUSTOMER');
+            ->assertViewHas('repairCount', 1)->assertSee('کارهای جاری')->assertDontSee('PRIVATE-CUSTOMER');
         $this->actingAs(User::factory()->staff(['dashboard.view'])->create())->get('/admin')->assertOk()
-            ->assertViewHas('productCount', null)->assertViewHas('repairCount', null)->assertViewHas('staffCount', null)
+            ->assertViewHas('repairCount', null)->assertDontSee('کارهای جاری')
             ->assertDontSee('PRIVATE-CUSTOMER')->assertSee('دسترسی به درخواست‌ها ندارید');
     }
 

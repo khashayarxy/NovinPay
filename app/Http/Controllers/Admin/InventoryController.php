@@ -18,8 +18,14 @@ class InventoryController extends Controller
 {
     public function index(Request $request)
     {
-        $filters = $request->validate(['q' => ['nullable', 'string', 'max:150'], 'condition' => ['nullable', Rule::in(['new', 'used'])], 'low' => ['nullable', Rule::in(['1'])], 'search' => ['nullable', Rule::in(['sku', 'serial', 'name'])]]);
+        $filters = $request->validate(['q' => ['nullable', 'string', 'max:150'], 'condition' => ['nullable', Rule::in(['new', 'used'])], 'low' => ['nullable', Rule::in(['1'])], 'search' => ['nullable', Rule::in(['sku', 'serial', 'name'])], 'product' => ['nullable', 'integer', 'min:1']]);
         $query = InventoryItem::query();
+        $product = null;
+        if (isset($filters['product'])) {
+            Gate::authorize('products.view');
+            $product = Product::query()->findOrFail($filters['product'], ['id', 'name']);
+            $query->whereBelongsTo($product);
+        }
         if (! empty($filters['q'])) {
             $term = $filters['q'];
             $pattern = strtr($term, ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
@@ -36,7 +42,7 @@ class InventoryController extends Controller
             $query->where('is_low_stock', true);
         }
 
-        return view('admin.inventory.index', ['items' => $query->latest('id')->paginate(20)->appends($filters), 'filters' => $filters]);
+        return view('admin.inventory.index', ['items' => $query->latest('id')->paginate(20)->appends($filters), 'filters' => $filters, 'product' => $product]);
     }
 
     public function create()

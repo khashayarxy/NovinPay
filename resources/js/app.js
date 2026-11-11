@@ -1,9 +1,69 @@
 import { initSimpleRepair } from './admin-simple-repair';
 import { initMobileNavigation } from './mobile-navigation';
+import { initAdminCalendar } from './admin-calendar';
+import { initAdminDigits } from './admin-digits';
 
 document.addEventListener('DOMContentLoaded', () => {
     initMobileNavigation();
     initSimpleRepair();
+    const admin = document.querySelector('.admin-site #main-content');
+    if (admin) {
+        initAdminCalendar(admin);
+        initAdminDigits(admin);
+    }
+    const adminNavigation = document.querySelector('[data-admin-navigation]');
+    if (adminNavigation instanceof HTMLDetailsElement) {
+        const desktop = window.matchMedia('(min-width: 801px)');
+        const sidebar = adminNavigation.closest('.admin-sidebar');
+        const toggle = document.querySelector('[data-admin-sidebar-toggle]');
+        const updateNavigation = () => {
+            adminNavigation.open = desktop.matches;
+            if (sidebar instanceof HTMLElement) sidebar.hidden = false;
+            if (toggle instanceof HTMLButtonElement) {
+                toggle.hidden = !desktop.matches;
+                toggle.setAttribute('aria-expanded', 'true');
+            }
+        };
+        updateNavigation();
+        desktop.addEventListener('change', updateNavigation);
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted && !desktop.matches) adminNavigation.open = false;
+        });
+        if (sidebar instanceof HTMLElement && toggle instanceof HTMLButtonElement) {
+            toggle.addEventListener('click', () => {
+                if (!desktop.matches) return;
+                sidebar.hidden = !sidebar.hidden;
+                toggle.setAttribute('aria-expanded', String(!sidebar.hidden));
+            });
+        }
+        adminNavigation.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape' || desktop.matches || !adminNavigation.open) return;
+            adminNavigation.open = false;
+            adminNavigation.querySelector('summary')?.focus();
+        });
+        const groups = [...adminNavigation.querySelectorAll('.admin-nav-group')];
+        const closeOtherGroups = (current) => {
+            groups.forEach((group) => {
+                if (group !== current && group.open) group.open = false;
+            });
+        };
+        groups.forEach((group) => group.addEventListener('toggle', () => {
+            if (group.open) closeOtherGroups(group);
+        }));
+        adminNavigation.addEventListener('click', (event) => {
+            if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            const link = event.target instanceof Element ? event.target.closest('.admin-nav a') : null;
+            if (!link) return;
+            if (link.hasAttribute('data-admin-category')) {
+                const group = link.nextElementSibling;
+                if (group instanceof HTMLDetailsElement) {
+                    closeOtherGroups(group);
+                    group.open = true;
+                }
+            }
+            if (!desktop.matches) adminNavigation.open = false;
+        });
+    }
     document.getElementById('error-summary')?.focus();
 
     document.querySelectorAll('[data-account-password]').forEach((button) => {
@@ -72,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
             container.append(fragment);
+            if (admin) initAdminDigits(container);
             container.dataset.nextIndex = String(next + 1);
             container.lastElementChild?.querySelector('input')?.focus();
             return;
