@@ -81,25 +81,33 @@ class CustomerLogin
     {
         abort_unless(preg_match('/\A09[0-9]{9}\z/D', $phone), 422);
         $test = $this->testAllowed($phone);
-        $sms = app(SmsIr::class);
-        abort_unless($test || (config('customer.sms_enabled') && $sms->ready(config('customer.otp_template'), config('customer.otp_parameter'))), 503, 'ورود پیامکی هنوز فعال نشده است.');
+        $sms = app(CustomerOtpSms::class);
+        abort_unless($test || ($sms->enabled() && $sms->configured()), 503, 'ورود پیامکی هنوز فعال نشده است.');
         $digest = $this->digest($phone, $test);
         $challenge = (string) Str::uuid();
-        $code = $test ? $this->testCode($challenge) : (string) random_int(100000, 999999);
+        $code = $test ? $this->testCode($challenge) : str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         DB::transaction(function () use ($digest, $phone, $code, $challenge): void {
             DB::table('customer_login_challenges')->insertOrIgnore(['phone_digest' => $digest, 'phone' => Crypt::encryptString($phone)]);
             $row = DB::table('customer_login_challenges')->where('phone_digest', $digest)->lockForUpdate()->first();
             abort_if($row->resend_at && now()->lt($row->resend_at), 429, 'برای ارسال دوباره، یک دقیقه صبر کنید.');
-            DB::table('customer_login_challenges')->where('id', $row->id)->update(['challenge_id' => $challenge, 'code_hash' => Hash::make($code), 'attempts' => 0, 'expires_at' => now()->addMinutes(3), 'resend_at' => now()->addMinute()]);
+            DB::table('customer_login_challenges')->where('id', $row->id)->update([
+                'challenge_id' => $challenge, 'code_hash' => 'v2:'.Hash::make($this->codeDigest($challenge, $code)),
+                'attempts' => 0, 'expires_at' => now()->addMinutes(2), 'resend_at' => now()->addMinute(),
+            ]);
         }, 3);
         // Never log the request, OTP, mobile, API response or transport exception.
-        $ok = $test || $sms->send($phone, config('customer.otp_template'), config('customer.otp_parameter'), $code, 'otp');
+        $ok = $test || $sms->send($phone, $code);
         if (! $ok) {
             DB::table('customer_login_challenges')->where('challenge_id', $challenge)->update(['code_hash' => null]);
             abort(503, 'کد ارسال نشد؛ پس از یک دقیقه دوباره تلاش کنید.');
         }
 
         return $challenge;
+    }
+
+    private function codeDigest(string $challenge, string $code): string
+    {
+        return RepairIdentity::digest('customer-otp-code', $challenge.':'.$code);
     }
 
     public function verify(string $challenge, string $code): CustomerAccount
@@ -113,7 +121,9 @@ class CustomerLogin
                 return null;
             }
             DB::table('customer_login_challenges')->where('id', $row->id)->increment('attempts');
-            if (! Hash::check($code, $row->code_hash)) {
+            // Keep challenges issued just before this release usable until they expire.
+            $keyed = str_starts_with($row->code_hash, 'v2:');
+            if (! Hash::check($keyed ? $this->codeDigest($challenge, $code) : $code, $keyed ? substr($row->code_hash, 3) : $row->code_hash)) {
                 return null;
             }
             $phone = Crypt::decryptString($row->phone);

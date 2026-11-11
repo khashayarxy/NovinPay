@@ -59,7 +59,7 @@
                                 @for($slot = 0; $slot < 6; $slot++)<span></span>@endfor
                             </div>
                         </div>
-                        <small id="code-expiry">کد تا سه دقیقه معتبر است.</small>
+                        <small id="code-expiry">کد تا دو دقیقه معتبر است.</small>
                         <button class="np-account-primary">{{ $recovery ? 'تأیید و انتخاب رمز' : 'تأیید و ورود' }}</button>
                         <small role="status" data-otp-pending hidden>در حال بررسی کد…</small>
                     </form>
