@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AdminAccount;
 use App\Models\CustomerAccount;
+use App\Models\CustomerAddress;
 use App\Models\User;
 use App\Services\IndependentSupportOperators;
 use App\Support\Chat\ChatBridge;
@@ -50,6 +51,46 @@ class SupportChatTest extends TestCase
             File::deleteDirectory($this->private);
         }
         parent::tearDown();
+    }
+
+    public function test_chat_api_requests_cannot_become_profile_form_redirect_targets(): void
+    {
+        $account = new CustomerAccount;
+        $account->public_id = (string) Str::uuid();
+        $account->phone = '09000000000';
+        $account->phone_digest = hash('sha256', 'synthetic profile fixture');
+        $account->verified_at = now();
+        $account->is_active = true;
+        $account->session_version = 1;
+        $account->save();
+        $this->actingAs($account, 'customer')->withSession(['customer_session_version' => 1]);
+        $profile = 'https://localhost/account?section=profile';
+        $addresses = 'https://localhost/account?section=addresses';
+        $chat = 'https://localhost/support-chat/api.php?get_session=1&bootstrap=1';
+
+        $this->get($profile)->assertOk();
+        $this->get($chat)->assertOk()->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSessionHas('_previous.url', $profile);
+        $this->get('https://localhost/support-chat/get_activity.php')->assertOk()
+            ->assertJsonPath('users', [])->assertSessionHas('_previous.url', $profile);
+        $this->get('https://localhost/support-chat/get_activity.php?scope=operator')->assertUnauthorized();
+
+        $this->withHeader('Referer', $chat);
+        $this->post('https://localhost/account/profile', ['name' => ''])->assertRedirect($profile)
+            ->assertSessionHasErrors('name');
+        $this->post('https://localhost/account/profile', ['name' => 'Synthetic Updated Name'])->assertRedirect($profile);
+        $this->assertSame('Synthetic Updated Name', $account->fresh()->name);
+
+        $this->post('https://localhost/account/addresses', [])->assertRedirect($addresses)
+            ->assertSessionHasErrors('address')->assertSessionMissing('_old_input.address');
+        $this->post('https://localhost/account/addresses', [
+            'recipient' => 'Synthetic Recipient', 'phone' => '09000000000', 'province' => 'تهران',
+            'city' => 'شهریار', 'address' => 'Synthetic private address', 'postal_code' => '1234567890',
+        ])->assertRedirect($addresses);
+        $address = CustomerAddress::query()->where('customer_account_id', $account->id)->sole();
+        $this->assertSame('Synthetic private address', $address->address);
+        $this->post('https://localhost/account/addresses/'.$address->public_id.'/remove')->assertRedirect($addresses);
+        $this->assertModelMissing($address);
     }
 
     public function test_anonymous_context_and_widget_have_no_external_dependencies(): void

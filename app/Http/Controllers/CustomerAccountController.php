@@ -29,11 +29,14 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CustomerAccountController extends Controller
 {
-    private function validatePrivate(Request $request, array $rules): array
+    private function validatePrivate(Request $request, array $rules, ?string $accountSection = null): array
     {
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
-            throw new HttpResponseException(back()->withErrors($validator));
+            $redirect = $accountSection === null
+                ? back()
+                : redirect()->route('account.index', ['section' => $accountSection]);
+            throw new HttpResponseException($redirect->withErrors($validator));
         }
 
         return $validator->validated();
@@ -310,7 +313,7 @@ class CustomerAccountController extends Controller
 
     public function profile(Request $request)
     {
-        $data = $this->validatePrivate($request, ['name' => ['required', 'string', 'min:2', 'max:100']]);
+        $data = $this->validatePrivate($request, ['name' => ['required', 'string', 'min:2', 'max:100']], 'profile');
         DB::transaction(function () use ($data, $request): void {
             $account = CustomerAccount::query()->lockForUpdate()->findOrFail(Auth::guard('customer')->id());
             abort_unless($account->is_active && $account->session_version === $request->session()->get('customer_session_version'), 403);
@@ -327,7 +330,7 @@ class CustomerAccountController extends Controller
             $account->save();
         }, 3);
 
-        return back()->with('success', 'اطلاعات شما ذخیره شد.');
+        return redirect()->route('account.index', ['section' => 'profile'])->with('success', 'اطلاعات شما ذخیره شد.');
     }
 
     public function address(Request $request, ?string $addressId = null)
@@ -335,7 +338,7 @@ class CustomerAccountController extends Controller
         $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
         $postal = $request->input('postal_code');
         $request->merge(['postal_code' => is_string($postal) ? FaNumber::normalizeDigits($postal) : '']);
-        $data = $this->validatePrivate($request, ['recipient' => ['required', 'string', 'max:100'], 'phone' => ['required', 'regex:/\A09[0-9]{9}\z/'], 'province' => ['required', 'string', 'max:100'], 'city' => ['required', 'string', 'max:100'], 'address' => ['required', 'string', 'min:10', 'max:1000'], 'postal_code' => ['required', 'regex:/\A[0-9]{10}\z/']]);
+        $data = $this->validatePrivate($request, ['recipient' => ['required', 'string', 'max:100'], 'phone' => ['required', 'regex:/\A09[0-9]{9}\z/'], 'province' => ['required', 'string', 'max:100'], 'city' => ['required', 'string', 'max:100'], 'address' => ['required', 'string', 'min:10', 'max:1000'], 'postal_code' => ['required', 'regex:/\A[0-9]{10}\z/']], 'addresses');
         DB::transaction(function () use ($request, $addressId, $data): void {
             $account = CustomerAccount::query()->lockForUpdate()->findOrFail(Auth::guard('customer')->id());
             abort_unless($account->is_active && $account->session_version === $request->session()->get('customer_session_version'), 403);
@@ -349,7 +352,7 @@ class CustomerAccountController extends Controller
             $address->save();
         }, 3);
 
-        return back()->with('success', 'آدرس ذخیره شد.');
+        return redirect()->route('account.index', ['section' => 'addresses'])->with('success', 'آدرس ذخیره شد.');
     }
 
     public function removeAddress(Request $request, string $addressId)
@@ -360,6 +363,6 @@ class CustomerAccountController extends Controller
             CustomerAddress::query()->where('public_id', $addressId)->where('customer_account_id', $account->id)->lockForUpdate()->firstOrFail()->delete();
         }, 3);
 
-        return back()->with('success', 'آدرس حذف شد؛ نشانی ثبت‌شده در ارسال‌های قبلی حفظ می‌شود.');
+        return redirect()->route('account.index', ['section' => 'addresses'])->with('success', 'آدرس حذف شد؛ نشانی ثبت‌شده در ارسال‌های قبلی حفظ می‌شود.');
     }
 }
