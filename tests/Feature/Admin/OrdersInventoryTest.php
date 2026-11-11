@@ -94,6 +94,43 @@ class OrdersInventoryTest extends TestCase
         $this->assertNull($new->product_id);
     }
 
+    public function test_catalog_stock_summary_and_linked_stock_filter_require_both_permissions(): void
+    {
+        $product = Product::create(['name' => 'Linked catalog product', 'slug' => 'linked-product', 'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'limited']);
+        foreach ([4, 1] as $index => $quantity) {
+            $item = InventoryItem::findOrFail($this->command('item.create', [
+                'sku' => 'LINKED-STOCK-'.$index, 'name' => 'Linked item '.$index, 'condition' => 'new',
+                'product_id' => $product->id, 'serialized' => false, 'low_stock_threshold' => 1, 'reason' => 'Synthetic linked inventory',
+            ]));
+            $this->receive($item, $quantity);
+        }
+        $order = $this->order($item);
+        $this->transition($order, 'reserve');
+        $unlinked = $this->item();
+        $stockUrl = route('admin.inventory.index', ['product' => $product->id]);
+
+        $this->get('/admin/products')->assertOk()
+            ->assertSee('موجودی محدود')
+            ->assertSee('آزاد <strong>۴</strong>', false)
+            ->assertSee('کل ۵')
+            ->assertSee('نیاز به تأمین')
+            ->assertSee($stockUrl, false);
+        $this->get($stockUrl)->assertOk()
+            ->assertSee('LINKED-STOCK-0')->assertSee('LINKED-STOCK-1')
+            ->assertDontSee($unlinked->sku);
+        $this->get($stockUrl.'&search=sku&q=LINKED-STOCK-1')->assertOk()
+            ->assertSee('Linked item 1')->assertDontSee('Linked item 0');
+        $this->get('/admin/inventory')->assertOk()->assertSee($unlinked->sku);
+
+        $this->actingAs(User::factory()->staff(['products.view'])->create())
+            ->get('/admin/products')->assertOk()->assertSee('موجودی محدود')
+            ->assertDontSee('موجودی فیزیکی')->assertDontSee($stockUrl, false);
+        $this->get($stockUrl)->assertForbidden();
+        $this->actingAs(User::factory()->staff(['inventory.view'])->create())
+            ->get('/admin/inventory')->assertOk()->assertSee('LINKED-STOCK-0')->assertDontSee('Linked catalog product');
+        $this->get($stockUrl)->assertForbidden();
+    }
+
     public function test_receive_adjust_and_threshold_are_versioned_and_audited(): void
     {
         $item = $this->item();

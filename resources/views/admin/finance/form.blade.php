@@ -1,9 +1,10 @@
 @extends('layouts.admin')
 @section('title','ثبت عملیات مالی')
 @section('content')
+<div class="admin-form-surface">
 @php($title=['issue'=>'صدور سند مطالبه','receipt'=>'ثبت دریافت دستی','expense'=>'ثبت هزینه','credit'=>'کاهش مستدل مطالبه','debit'=>'افزایش مستدل مطالبه','reverse'=>'برگشت جبرانی ثبت'][$action])
 @include('admin.finance.heading',['heading'=>$title])
-<div class="admin-form-surface"><section class="admin-panel"><form method="post" action="{{ route('admin.finance.'.$action.'.store') }}" class="finance-form">@csrf
+<section class="admin-panel"><form method="post" action="{{ route('admin.finance.'.$action.'.store') }}" class="finance-form">@csrf
 <input type="hidden" name="operation_key" value="{{ (string)\Illuminate\Support\Str::uuid() }}">
 @if($action==='issue')
 <div><label class="label" for="finance-source-type">نوع منبع تکمیل‌شده</label><select class="input" name="source_type" id="finance-source-type"><option value="order">سفارش تحویل‌شده</option><option value="repair">تعمیر تکمیل‌شده</option></select></div><x-finance-field name="source" label="شناسهٔ UUID منبع" :maxlength="36"/><x-finance-field name="source_version" label="نسخهٔ فعلی منبع" type="number"/>

@@ -97,6 +97,26 @@ class AdminFoundationTest extends TestCase
         $this->actingAs($staff)->get('/admin')->assertOk()->assertDontSee('ورود به پشتیبانی آنلاین');
     }
 
+    public function test_sidebar_groups_link_to_first_permitted_route_and_website_is_in_brand(): void
+    {
+        $this->actingAs($this->owner())->get('/admin')->assertOk()
+            ->assertSee('href="'.route('home').'" target="_blank" rel="nofollow noopener noreferrer" aria-label="مشاهده وب‌سایت" title="مشاهده وب‌سایت"', false)
+            ->assertSeeInOrder(['داشبورد مدیریت', 'تعمیرات', 'سفارش‌ها و کالاها', 'مشتریان', 'پرداخت‌ها و مالی', 'ارسال و تحویل', 'مقالات', 'مدیریت سایت', 'دسترسی و سوابق', 'حساب من'])
+            ->assertSee('href="'.route('admin.orders.index').'" data-admin-category', false)
+            ->assertSee('href="'.route('admin.payments.index').'" data-admin-category', false)
+            ->assertSee('href="'.route('admin.deliveries.index').'" data-admin-category', false);
+
+        $staff = User::factory()->staff(['dashboard.view', 'inventory.view', 'consultations.view', 'finance.view'])->create();
+        $this->actingAs($staff)->get('/admin/inventory')->assertOk()
+            ->assertSee('href="'.route('admin.inventory.index').'" data-admin-category', false)
+            ->assertSee('href="'.route('admin.consultations.index').'" data-admin-category', false)
+            ->assertSee('href="'.route('admin.inventory.index').'"  aria-current="page"', false)
+            ->assertDontSee(route('admin.orders.index'), false)
+            ->assertDontSee(route('admin.products.index'), false)
+            ->assertDontSee(route('admin.customers.index'), false)
+            ->assertDontSee(route('admin.deliveries.index'), false);
+    }
+
     public function test_owner_cannot_be_edited_deactivated_demoted_or_deleted_through_staff_routes(): void
     {
         $owner = $this->owner();

@@ -1,10 +1,11 @@
 @extends('layouts.admin')
-@section('title', 'حالت نگهداری سایت')
+@section('title', 'وضعیت و نگهداری سایت')
 @section('content')
-<header class="admin-page-heading"><div><h1>حالت نگهداری سایت</h1></div><a class="btn btn-secondary" href="{{ route('admin.maintenance.preview') }}">پیش‌نمایش صفحهٔ نگهداری</a></header>
+<div class="admin-form-surface">
+<header class="admin-page-heading"><div><h1>وضعیت و نگهداری سایت</h1></div><a class="btn btn-secondary" href="{{ route('admin.maintenance.preview') }}">پیش‌نمایش صفحهٔ نگهداری</a></header>
 <x-admin.errors />
 @if(session('maintenance_warning'))<div class="admin-notice" role="alert">{{ session('maintenance_warning') }}</div>@endif
-<section class="admin-panel admin-form-surface" aria-labelledby="maintenance-state-title">
+<section class="admin-panel" aria-labelledby="maintenance-state-title">
     <div class="admin-panel-heading">
         <h2 id="maintenance-state-title">وضعیت فعلی: {{ $fault ? 'خطای خواندن وضعیت؛ دسترسی عمومی بسته است' : ($current['enabled'] ? 'فعال' : 'غیرفعال') }}</h2>
         <span @class(['admin-state-dot', 'admin-state-dot--attention' => $fault || $current['enabled']]) aria-hidden="true"></span>
@@ -25,5 +26,6 @@
         @else<p class="admin-hint">این حساب فقط اجازهٔ مشاهده و پیش‌نمایش دارد.</p>@endcan
     @endif
 </section>
-<details class="admin-panel admin-form-surface mt-3"><summary>نگهداری هنگام به‌روزرسانی</summary><p class="admin-hint">این کنترل، نگهداری هنگام به‌روزرسانی را لغو نمی‌کند. در صورت قطع دسترسی مدیریت، از راهنمای بازیابی اضطراری استفاده کنید.</p></details>
+<details class="admin-panel mt-3"><summary>نگهداری هنگام به‌روزرسانی</summary><p class="admin-hint">این کنترل، نگهداری هنگام به‌روزرسانی را لغو نمی‌کند. در صورت قطع دسترسی مدیریت، از راهنمای بازیابی اضطراری استفاده کنید.</p></details>
+</div>
 @endsection

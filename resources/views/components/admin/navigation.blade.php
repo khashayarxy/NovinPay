@@ -2,63 +2,60 @@
 @php
     $allows = fn ($abilities) => collect((array) $abilities)->every(fn ($ability) => $account->isSuperAdmin()
         || (\App\Enums\AdminPermission::tryFrom($ability) !== null && in_array($ability, $account->permissions ?? [], true)));
-    $groups = [
-        'تعمیرات' => [
+    $canViewProducts = $allows('products.view');
+    $groups = $account->must_change_password ? [] : [
+        'تعمیرات' => ['tool', [
             ['repairs.view', 'admin.repair-cases.index', 'admin.repair-cases.*', 'پرونده‌های تعمیر'],
             ['repairs.view', 'admin.repairs.index', 'admin.repairs.*', 'درخواست‌های آنلاین'],
-        ],
-        'فروش و انبار' => [
-            ['orders.view', 'admin.orders.index', 'admin.orders.*', 'سفارش‌ها'],
-            ['products.view', 'admin.products.index', 'admin.products.*', 'محصولات'],
-            ['inventory.view', 'admin.inventory.index', 'admin.inventory.*', 'موجودی کالا'],
-        ],
-        'مشتریان' => [
-            ['customers.view', 'admin.customers.index', 'admin.customers.*', 'مشتریان'],
-            ['consultations.view', 'admin.consultations.index', 'admin.consultations.*', 'مشاوره‌ها'],
-        ],
-        'مالی و ارسال' => [
-            ['finance.view', 'admin.payments.index', 'admin.payments.*', 'پرداخت‌ها و رسیدها'],
-            ['finance.view', 'admin.finance.index', 'admin.finance.*', 'عملیات و گزارش مالی'],
-            [['finance.view', 'finance.details'], 'admin.deliveries.index', 'admin.deliveries.*', 'ارسال و تحویل'],
-        ],
-        'سایت' => [
-            ['articles.view', 'admin.articles.index', 'admin.articles.*', 'مقاله‌ها'],
-            ['article_categories.manage', 'admin.article-categories.index', 'admin.article-categories.*', 'دسته‌های مقاله'],
-            ['maintenance.view', 'admin.maintenance.index', 'admin.maintenance.*', 'وضعیت سایت'],
-        ],
-        'دسترسی و سوابق' => [
+        ]],
+        'سفارش‌ها و کالاها' => ['shopping-bag', [
+            ['orders.view', 'admin.orders.index', 'admin.orders.*', 'لیست سفارش‌ها'],
+            [$canViewProducts ? 'products.view' : 'inventory.view', $canViewProducts ? 'admin.products.index' : 'admin.inventory.index', ['admin.products.*', 'admin.inventory.*'], 'مدیریت محصولات و موجودی'],
+        ]],
+        'مشتریان' => ['user', [
+            ['customers.view', 'admin.customers.index', 'admin.customers.*', 'لیست مشتریان'],
+            ['consultations.view', 'admin.consultations.index', 'admin.consultations.*', 'لیست مشاوره‌ها'],
+        ]],
+        'پرداخت‌ها و مالی' => ['building-bank', [
+            ['finance.view', 'admin.payments.index', 'admin.payments.*', 'پرداختی‌ها'],
+            ['finance.view', 'admin.finance.index', 'admin.finance.*', 'تراکنش‌ها و گزارش‌ها'],
+        ]],
+        'ارسال و تحویل' => ['truck', [
+            [['finance.view', 'finance.details'], 'admin.deliveries.index', 'admin.deliveries.*', 'مدیریت ارسال و تحویل'],
+        ]],
+        'مقالات' => ['photo', [
+            ['articles.view', 'admin.articles.index', 'admin.articles.*', 'لیست مقالات'],
+            ['article_categories.manage', 'admin.article-categories.index', 'admin.article-categories.*', 'دسته‌بندی مقالات'],
+        ]],
+        'مدیریت سایت' => ['world', [
+            ['maintenance.view', 'admin.maintenance.index', 'admin.maintenance.*', 'وضعیت و نگهداری سایت'],
+        ]],
+        'دسترسی و سوابق' => ['shield-check', [
             ['staff.manage', 'admin.staff.index', 'admin.staff.*', 'دسترسی همکاران'],
             ['staff.manage', 'admin.test-customers.index', 'admin.test-customers.*', 'حساب‌های آزمایشی'],
             ['activity.view', 'admin.activities.index', 'admin.activities.*', 'سوابق فعالیت'],
-        ],
+        ]],
     ];
-    $icons = ['tool', 'shopping-bag', 'user', 'building-bank', 'photo', 'shield-check'];
+    $groups['حساب من'] = ['settings', [[null, 'admin.password.edit', 'admin.password.*', 'امنیت حساب من']]];
 @endphp
 <nav aria-label="ناوبری مدیریت" class="admin-nav">
-    @unless($account->must_change_password)
-        @if($allows('dashboard.view'))
-            <a href="{{ route('admin.dashboard') }}" @if(request()->routeIs('admin.dashboard')) aria-current="page" @endif><x-home.icon name="diamond" />نمای کلی</a>
-        @endif
-        @foreach($groups as $label => $links)
-            @php($visible = array_filter($links, fn ($link) => $allows($link[0])))
-            @if($visible)
-                @php($current = collect($visible)->contains(fn ($link) => request()->routeIs($link[2])))
-                <details @class(['admin-nav-group', 'admin-nav-current' => $current]) name="admin-module" @if($current) open @endif>
-                    <summary><x-home.icon :name="$icons[$loop->index]" /><span>{{ $label }}</span></summary>
-                    <div class="admin-nav-children">
-                        @foreach($visible as [$ability, $route, $active, $text])
-                            <a href="{{ route($route) }}" @if(request()->routeIs($active)) aria-current="page" @endif>{{ $text }}</a>
-                        @endforeach
-                    </div>
-                </details>
-            @endif
-        @endforeach
-    @endunless
-    <details class="admin-nav-group" name="admin-module" @if(request()->routeIs('admin.password.*')) open @endif>
-        <summary><x-home.icon name="settings" /><span>حساب من</span></summary>
-        <div class="admin-nav-children">
-        <a href="{{ route('admin.password.edit') }}" @if(request()->routeIs('admin.password.*')) aria-current="page" @endif><x-home.icon name="shield-check" /><span>امنیت حساب من</span></a>
-        <a href="{{ route('home') }}"><x-home.icon name="arrow-left" /><span>مشاهدهٔ وب‌سایت</span></a>
+    @if(!$account->must_change_password && $allows('dashboard.view'))
+        <a href="{{ route('admin.dashboard') }}" @if(request()->routeIs('admin.dashboard')) aria-current="page" @endif><x-home.icon name="layout-dashboard" />داشبورد مدیریت</a>
+    @endif
+    @foreach($groups as $label => [$icon, $links])
+        @php($visible = array_values(array_filter($links, fn ($link) => $link[0] === null || $allows($link[0]))))
+        @continue(!$visible)
+        @php($current = collect($visible)->contains(fn ($link) => request()->routeIs(...(array) $link[2])))
+        <div @class(['admin-nav-section', 'admin-nav-current' => $current])>
+            <a class="admin-nav-category" href="{{ route($visible[0][1]) }}" data-admin-category><x-home.icon :name="$icon" /><span>{{ $label }}</span></a>
+            <details class="admin-nav-group" name="admin-module" @if($current) open @endif>
+                <summary aria-label="باز یا بسته کردن {{ $label }}"><span class="admin-nav-chevron" aria-hidden="true"></span></summary>
+                <div class="admin-nav-children">
+                    @foreach($visible as [$ability, $route, $active, $text])
+                        <a href="{{ route($route) }}" @if(request()->routeIs(...(array) $active)) aria-current="page" @endif>{{ $text }}</a>
+                    @endforeach
+                </div>
+            </details>
         </div>
-    </details>
+    @endforeach
 </nav>

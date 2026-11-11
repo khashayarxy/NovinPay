@@ -1,9 +1,10 @@
 @extends('layouts.admin')
 @section('title', $customer ? 'ویرایش مشتری' : 'ثبت مشتری')
 @section('content')
+<div class="admin-form-surface">
 <header class="admin-page-heading"><div><h1>{{ $customer ? 'ویرایش اطلاعات جاری' : 'ثبت مشتری جدید' }}</h1><p>اطلاعات قبلی تعمیرات و مشاوره‌ها تغییر نمی‌کند.</p></div><a class="admin-text-link" href="{{ route('admin.customers.index') }}">بازگشت به مشتریان ←</a></header>
 <x-admin.errors/>
-<div class="admin-form-surface"><section class="admin-panel"><form class="admin-form" method="post" action="{{ $customer ? route('admin.customers.update', $customer) : route('admin.customers.store') }}">@csrf
+<section class="admin-panel"><form class="admin-form" method="post" action="{{ $customer ? route('admin.customers.update', $customer) : route('admin.customers.store') }}">@csrf
 @if($customer) @method('PUT')<input type="hidden" name="version" value="{{ $customer->version }}">@endif
 <x-operation-field retain name="name" label="نام و نام خانوادگی" :value="$customer?->name ?? ''" :maxlength="100"/>
 <x-operation-field retain name="contact_phone" label="شمارهٔ همراه ایرانی" type="tel" :value="$customer?->contact_phone ?? ''" :maxlength="40"/>

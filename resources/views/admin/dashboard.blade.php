@@ -1,9 +1,9 @@
 @extends('layouts.admin')
-@section('title', 'نمای کلی')
+@section('title', 'داشبورد مدیریت')
 @section('content')
     <header class="admin-page-heading admin-dashboard-heading">
         <div>
-            <h1>نمای کلی</h1>
+            <h1>داشبورد مدیریت</h1>
             <p>{{ \App\Support\FinanceTime::display(now(), withTime: false, withZone: false) }}</p>
         </div>
         <div class="admin-actions">

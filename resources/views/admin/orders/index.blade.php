@@ -1,8 +1,8 @@
 @extends('layouts.admin')
-@section('title', 'سفارش‌های داخلی')
+@section('title', 'لیست سفارش‌ها')
 @section('content')
-<header class="admin-page-heading"><div><h1>سفارش‌های داخلی</h1><p>ثبت توافق فروش و تحویل؛ پرداخت و حسابداری در این بخش انجام نمی‌شود.</p></div>@can('orders.create')<a class="btn btn-primary" href="{{ route('admin.orders.create') }}">سفارش جدید</a>@endcan</header><x-admin.errors/>
-<section class="admin-panel admin-collection"><div class="admin-collection-tools"><form class="commerce-filters" method="get"><x-operation-field name="reference" label="شناسهٔ کامل سفارش" :required="false" :maxlength="36" :value="$filters['reference'] ?? ''"/><div><label class="label" for="order-status">مرحلهٔ سفارش</label><select class="input" name="status" id="order-status"><option value="">همه</option>@foreach(\App\Models\SalesOrder::STATUSES as $value=>$label)<option value="{{ $value }}" @selected(($filters['status'] ?? '')===$value)>{{ $label }}</option>@endforeach</select></div><button class="btn btn-primary">اعمال فیلتر</button><a class="admin-text-link" href="{{ route('admin.orders.index') }}">پاک‌کردن</a></form></div>
+<header class="admin-page-heading"><div><h1>لیست سفارش‌ها</h1></div>@can('orders.create')<a class="btn btn-primary" href="{{ route('admin.orders.create') }}">سفارش جدید</a>@endcan</header><x-admin.errors/>
+<section class="admin-panel admin-collection"><div class="admin-collection-tools"><form class="commerce-filters" method="get"><x-operation-field name="reference" label="شناسهٔ کامل سفارش" :required="false" :maxlength="36" :value="$filters['reference'] ?? ''"/><div><label class="label" for="order-status">مرحلهٔ سفارش</label><select class="input" name="status" id="order-status"><option value="">همه</option>@foreach(\App\Models\SalesOrder::STATUSES as $value=>$label)<option value="{{ $value }}" @selected(($filters['status'] ?? '')===$value)>{{ $label }}</option>@endforeach</select></div><button class="btn btn-secondary">اعمال فیلتر</button><a class="admin-text-link" href="{{ route('admin.orders.index') }}">پاک‌کردن</a></form></div>
 @if($orders->isEmpty())
     <x-admin.empty-state title="سفارشی پیدا نشد" icon="shopping-bag">فیلترها را تغییر دهید تا دوباره جست‌وجو کنید.</x-admin.empty-state>
 @else

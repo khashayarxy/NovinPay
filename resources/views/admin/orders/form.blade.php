@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 @section('title', $order ? 'ویرایش پیش‌نویس' : 'سفارش جدید')
 @section('content')
+<div class="admin-form-surface">
 <header class="admin-page-heading"><div><h1>{{ $order ? 'ویرایش پیش‌نویس' : 'سفارش جدید' }}</h1></div><a class="admin-text-link" href="{{ route('admin.orders.index') }}">فهرست سفارش‌ها ←</a></header><x-admin.errors/>
 <section class="admin-panel"><form class="admin-form" method="post" action="{{ $order ? route('admin.orders.update',$order) : route('admin.orders.store') }}">@csrf @if($order) @method('PUT')<input type="hidden" name="version" value="{{ $order->version }}">@endif<input type="hidden" name="operation_key" value="{{ \Illuminate\Support\Str::uuid() }}">
 <x-operation-field name="customer" label="شناسهٔ مشتری" :value="$order?->customer?->public_id ?? $customerReference ?? ''" :maxlength="36"/><p class="admin-hint"><a class="admin-text-link" href="{{ route('admin.customers.index') }}" target="_blank" rel="noopener">یافتن مشتری در دفتر مشتریان (پنجرهٔ جدید)</a></p>
@@ -11,4 +12,5 @@
 <button class="btn btn-secondary" type="button" data-add-order-line>افزودن ردیف کالا</button>
 <x-operation-field name="reason" label="دلیل ثبت یا تغییر؛ بدون اطلاعات شخصی" kind="textarea" :maxlength="1000"/><button class="btn btn-primary" type="submit">ذخیرهٔ پیش‌نویس بدون رزرو</button>
 </form></section><template id="order-line-template">@include('admin.orders.line',['index'=>'__INDEX__','line'=>null])</template>
+</div>
 @endsection

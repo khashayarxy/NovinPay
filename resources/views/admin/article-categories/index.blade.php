@@ -1,7 +1,7 @@
 @extends('layouts.admin')
-@section('title','دسته‌های مقاله')
+@section('title','دسته‌بندی مقالات')
 @section('content')
-<header class="admin-page-heading"><h1>دسته‌های مقاله</h1><a class="btn btn-primary" href="{{ route('admin.article-categories.create') }}">دستهٔ جدید</a></header>
+<header class="admin-page-heading"><h1>دسته‌بندی مقالات</h1><a class="btn btn-primary" href="{{ route('admin.article-categories.create') }}">دستهٔ جدید</a></header>
 <x-admin.errors/>
 <section class="admin-panel">
     @forelse($categories as $category)

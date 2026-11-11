@@ -1,9 +1,10 @@
 @extends('layouts.admin')
 @section('title',$article?'ویرایش پیش‌نویس':'مقالهٔ جدید')
 @section('content')
+<div class="admin-form-surface">
 <header class="admin-page-heading"><div><h1>{{ $article?'ویرایش پیش‌نویس':'مقالهٔ جدید' }}</h1><p>ذخیره به معنی انتشار نیست. نامک پس از ایجاد ثابت می‌ماند.</p></div><a class="btn btn-secondary" href="{{ route('admin.articles.index') }}">فهرست مقاله‌ها</a></header>
 <x-admin.errors/>
-<div class="admin-form-surface"><section class="admin-panel"><form class="admin-form article-form" method="post" action="{{ $article?route('admin.articles.update',$article):route('admin.articles.store') }}">@csrf
+<section class="admin-panel"><form class="admin-form article-form" method="post" action="{{ $article?route('admin.articles.update',$article):route('admin.articles.store') }}">@csrf
 @if($article) @method('PUT')<input type="hidden" name="version" value="{{ $article->version }}"><p class="crm-code">{{ $article->slug }}</p>@else<x-finance-field name="slug" label="نامک یکتا؛ حروف، عدد و خط تیره" :maxlength="120"/>@endif
 <x-finance-field direction="rtl" name="title" label="عنوان مقاله" :value="$draft?->title??''" :maxlength="180"/>
 <div><label class="label" for="article-category">دستهٔ فعال</label><select class="input" id="article-category" name="category_id" required @error('category_id') aria-invalid="true" aria-describedby="article-category-error" @enderror><option value="">دسته را انتخاب کنید</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected($draft?->category_id==$category->id)>{{ $category->name }}</option>@endforeach</select>@error('category_id')<p class="finance-field-error" id="article-category-error">{{ $message }}</p>@enderror</div>

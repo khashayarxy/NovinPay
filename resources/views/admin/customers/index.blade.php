@@ -1,7 +1,7 @@
 @extends('layouts.admin')
-@section('title', 'مشتریان')
+@section('title', 'لیست مشتریان')
 @section('content')
-<header class="admin-page-heading"><div><h1>دفتر مشتریان</h1><p>پروفایل‌های بررسی‌شده؛ مستقل از درخواست آنلاین و پذیرش فیزیکی.</p></div>@can('customers.manage') @can('customers.contact')<a class="btn btn-primary" href="{{ route('admin.customers.create') }}"><x-home.icon name="user"/> ثبت مشتری</a>@endcan @endcan</header>
+<header class="admin-page-heading"><div><h1>لیست مشتریان</h1></div>@can('customers.manage') @can('customers.contact')<a class="btn btn-primary" href="{{ route('admin.customers.create') }}"><x-home.icon name="user"/> ثبت مشتری</a>@endcan @endcan</header>
 <div class="crm-summary"><dl><div><dt>همهٔ پروفایل‌ها</dt><dd>{{ \App\Support\FaNumber::digits($total) }}</dd></div><div><dt>فعال</dt><dd>{{ \App\Support\FaNumber::digits($active) }}</dd></div></dl><p>شمارهٔ مشترک به معنی هویت یکسان نیست.</p></div>
 <x-admin.errors/>
 <section class="admin-panel">

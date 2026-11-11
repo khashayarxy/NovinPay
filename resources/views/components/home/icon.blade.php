@@ -1,7 +1,7 @@
 @props(['name'])
 
 @php
-    $icons = ['arrow-left', 'arrow-up', 'shopping-bag', 'tool', 'headphones', 'truck', 'shield-check', 'tag', 'user', 'building-bank', 'printer', 'power', 'antenna-bars-5', 'battery-charging', 'settings', 'map-pin', 'check', 'diamond', 'photo', 'phone', 'search', 'clock'];
+    $icons = ['arrow-left', 'arrow-up', 'shopping-bag', 'tool', 'headphones', 'truck', 'shield-check', 'tag', 'user', 'building-bank', 'printer', 'power', 'antenna-bars-5', 'battery-charging', 'settings', 'map-pin', 'check', 'diamond', 'photo', 'phone', 'search', 'clock', 'world', 'layout-dashboard'];
     $name = in_array($name, $icons, true) ? $name : 'check';
 @endphp
 

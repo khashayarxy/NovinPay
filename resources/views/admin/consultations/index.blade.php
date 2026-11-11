@@ -1,7 +1,7 @@
 @extends('layouts.admin')
-@section('title', 'صندوق مشاوره')
+@section('title', 'لیست مشاوره‌ها')
 @section('content')
-<header class="admin-page-heading"><div><h1>صندوق درخواست‌های مشاوره</h1><p>پیگیری انسانی پرسش‌ها؛ بدون ارسال خودکار پیام.</p></div><a class="admin-text-link" href="{{ route('consultation') }}">مشاهدهٔ فرم عمومی ←</a></header>
+<header class="admin-page-heading"><div><h1>لیست مشاوره‌ها</h1></div><a class="admin-text-link" href="{{ route('consultation') }}">مشاهدهٔ فرم عمومی ←</a></header>
 <div class="crm-summary"><dl><div><dt>جدید</dt><dd>{{ \App\Support\FaNumber::digits($newCount) }}</dd></div><div><dt>باز</dt><dd>{{ \App\Support\FaNumber::digits($openCount) }}</dd></div></dl><p>هیچ زمان پاسخی به مشتری وعده داده نشده است.</p></div><x-admin.errors/>
 <section class="admin-panel"><form class="crm-filters" method="post" action="{{ route('admin.consultations.search') }}">@csrf
 @if($contact)<x-operation-field name="q" label="جستجوی دقیق شمارهٔ همراه" :required="false" type="tel" :maxlength="64"/>@endif

@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         updateNavigation();
         desktop.addEventListener('change', updateNavigation);
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted && !desktop.matches) adminNavigation.open = false;
+        });
         if (sidebar instanceof HTMLElement && toggle instanceof HTMLButtonElement) {
             toggle.addEventListener('click', () => {
                 if (!desktop.matches) return;
@@ -37,6 +40,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.key !== 'Escape' || desktop.matches || !adminNavigation.open) return;
             adminNavigation.open = false;
             adminNavigation.querySelector('summary')?.focus();
+        });
+        const groups = [...adminNavigation.querySelectorAll('.admin-nav-group')];
+        const closeOtherGroups = (current) => {
+            groups.forEach((group) => {
+                if (group !== current && group.open) group.open = false;
+            });
+        };
+        groups.forEach((group) => group.addEventListener('toggle', () => {
+            if (group.open) closeOtherGroups(group);
+        }));
+        adminNavigation.addEventListener('click', (event) => {
+            if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            const link = event.target instanceof Element ? event.target.closest('.admin-nav a') : null;
+            if (!link) return;
+            if (link.hasAttribute('data-admin-category')) {
+                const group = link.nextElementSibling;
+                if (group instanceof HTMLDetailsElement) {
+                    closeOtherGroups(group);
+                    group.open = true;
+                }
+            }
+            if (!desktop.matches) adminNavigation.open = false;
         });
     }
     document.getElementById('error-summary')?.focus();

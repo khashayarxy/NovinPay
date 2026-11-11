@@ -14,7 +14,10 @@
     @if($adminAccount)
         <div class="admin-shell">
             <aside id="admin-sidebar" class="admin-sidebar" aria-label="منوی مدیریت">
-                <a class="admin-brand" href="{{ \App\Support\AdminAccess::landingUrl(auth()->user()) }}"><x-brand-logo /><span><strong>{{ config('business.name') }}</strong><small>پنل مدیریت</small></span></a>
+                <div class="admin-brand-row">
+                    <a class="admin-brand" href="{{ \App\Support\AdminAccess::landingUrl(auth()->user()) }}"><x-brand-logo /><span><strong>{{ config('business.name') }}</strong><small>پنل مدیریت</small></span></a>
+                    <a class="admin-brand-site" href="{{ route('home') }}" target="_blank" rel="nofollow noopener noreferrer" aria-label="مشاهده وب‌سایت" title="مشاهده وب‌سایت"><x-home.icon name="world" /></a>
+                </div>
                 <details class="admin-navigation" data-admin-navigation open>
                     <summary>فهرست مدیریت <x-home.icon name="settings" /></summary>
                     <x-admin.navigation :account="$adminAccount" />
@@ -28,7 +31,7 @@
                         </button>
                         <span class="admin-topbar-root">مدیریت</span>
                         <span class="admin-topbar-divider" aria-hidden="true"></span>
-                        <strong>@yield('title', 'نمای کلی')</strong>
+                        <strong>@yield('title', 'داشبورد مدیریت')</strong>
                     </div>
                     <div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : 'کارمند' }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج <x-home.icon name="arrow-left" /></button></form></div>
                 </header>
