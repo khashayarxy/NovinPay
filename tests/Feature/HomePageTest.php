@@ -21,7 +21,7 @@ class HomePageTest extends TestCase
             $document = new DOMDocument;
             @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get($path)->assertOk()->getContent());
             $xpath = new DOMXPath($document);
-            $selector = 'a[contains(concat(" ",normalize-space(@class)," ")," np-enamad ")]';
+            $selector = 'div[contains(concat(" ",normalize-space(@class)," ")," np-enamad ")]/a';
             $links = $xpath->query('//'.$selector);
             $this->assertCount($count, $links);
             $this->assertCount(1, $xpath->query('//footer//'.$selector));
@@ -35,8 +35,8 @@ class HomePageTest extends TestCase
                 $this->assertSame('origin', $link->getAttribute('referrerpolicy'));
                 $this->assertSame('origin', $image->getAttribute('referrerpolicy'));
                 $this->assertSame('_blank', $link->getAttribute('target'));
-                $this->assertSame('noopener noreferrer', $link->getAttribute('rel'));
-                $this->assertSame('lazy', $image->getAttribute('loading'));
+                $this->assertFalse($link->hasAttribute('rel'));
+                $this->assertSame('نماد اعتماد الکترونیکی نوین‌پی', $image->getAttribute('alt'));
             }
         }
     }
