@@ -8,6 +8,7 @@ use App\Models\AdminActivity;
 use App\Models\Product;
 use App\Models\RepairRequest;
 use App\Models\User;
+use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -280,7 +281,7 @@ class AdminFoundationTest extends TestCase
         $repair = $this->repair();
         $staff = User::factory()->staff(['repairs.view', 'repairs.customer_data'])->create();
         $this->actingAs($staff)->get('/admin/repair-requests/'.$repair->id)->assertOk()
-            ->assertSee($repair->customer_name)->assertSee(\App\Support\FaNumber::digits($repair->contact_phone))
+            ->assertSee($repair->customer_name)->assertSee(FaNumber::digits($repair->contact_phone))
             ->assertSee(e($repair->device_model), false)->assertDontSee('<script>PRIVATE-MODEL</script>', false);
         $this->get('/admin/repair-requests')->assertDontSee($repair->customer_name)->assertDontSee($repair->contact_phone);
         $this->assertDatabaseHas('admin_activities', ['actor_id' => $staff->id, 'action' => AdminAction::RepairCustomerViewed->value, 'target_type' => 'repair_request', 'target_id' => $repair->id]);
