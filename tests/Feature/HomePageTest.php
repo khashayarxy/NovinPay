@@ -12,6 +12,35 @@ class HomePageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_official_enamad_seal_is_in_the_homepage_trust_section_and_public_footer(): void
+    {
+        $code = 'bkoTwmLFJ1lp9goDGHf1cuve1Tgw8t6n';
+        $query = 'id=8644634&Code='.$code;
+
+        foreach (['/' => 2, '/products' => 1] as $path => $count) {
+            $document = new DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get($path)->assertOk()->getContent());
+            $xpath = new DOMXPath($document);
+            $selector = 'a[contains(concat(" ",normalize-space(@class)," ")," np-enamad ")]';
+            $links = $xpath->query('//'.$selector);
+            $this->assertCount($count, $links);
+            $this->assertCount(1, $xpath->query('//footer//'.$selector));
+            $this->assertCount($count - 1, $xpath->query('//section[contains(@class,"np-trust")]/'.$selector));
+
+            foreach ($links as $link) {
+                $image = $xpath->query('./img', $link)->item(0);
+                $this->assertSame('https://trustseal.enamad.ir/?'.$query, $link->getAttribute('href'));
+                $this->assertSame('https://trustseal.enamad.ir/logo.aspx?'.$query, $image->getAttribute('src'));
+                $this->assertSame($code, $image->getAttribute('code'));
+                $this->assertSame('origin', $link->getAttribute('referrerpolicy'));
+                $this->assertSame('origin', $image->getAttribute('referrerpolicy'));
+                $this->assertSame('_blank', $link->getAttribute('target'));
+                $this->assertSame('noopener noreferrer', $link->getAttribute('rel'));
+                $this->assertSame('lazy', $image->getAttribute('loading'));
+            }
+        }
+    }
+
     public function test_homepage_presents_all_approved_sections_and_seven_service_links(): void
     {
         $response = $this->get('/')->assertOk();

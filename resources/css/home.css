@@ -267,6 +267,12 @@
 
 .homepage .np-hero__art::after { content: ""; position: absolute; z-index: -1; width: 65%; height: 6%; bottom: 0; left: 18%; background: radial-gradient(ellipse, #173b6530, transparent 70%); filter: blur(3px); }
 
+.np-enamad { display: inline-flex; background: #fff; color: #102B45; border-radius: 8px; }
+.np-enamad img { width: 76px; height: 76px; object-fit: contain; font-size: 11px; }
+.np-enamad:focus-visible { outline: 2px solid #075ac7; outline-offset: 4px; }
+.np-trust__seal { grid-column: 1 / -1; justify-self: center; margin-block-start: 8px; }
+.np-footer .np-enamad { margin-block-start: 12px; }
+
 /* Minimal three-column RTL footer; the public page composition is unchanged. */
 .np-footer { background: #102B45; color: #f6faff; padding-top: 32px; }
 .np-footer__grid { display: grid; grid-template-columns: 1.1fr .7fr 1.2fr; gap: 48px; padding-bottom: 28px; }

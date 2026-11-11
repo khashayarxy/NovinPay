@@ -4,6 +4,7 @@
             <div class="np-footer__brand">
                 <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark :dark="true" /></a>
                 <p>فروش و تعمیر دستگاه‌های کارتخوان در شهریار</p>
+                <x-home.enamad />
             </div>
             <nav aria-label="پیوندهای کاربردی">
                 <h2>دسترسی سریع</h2>
