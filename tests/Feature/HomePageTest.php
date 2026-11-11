@@ -181,14 +181,19 @@ class HomePageTest extends TestCase
             ->assertSee('width="853" height="933"', false)
             ->assertSee('fetchpriority="high"', false)
             ->assertSee(asset('images/home/novinpay-terminal-clean.webp'))
+            ->assertSee(asset('images/home/novinpay-terminal-clean-400.webp').' 400w')
+            ->assertSee(asset('images/home/novinpay-terminal-clean-640.webp').' 640w')
             ->assertSeeInOrder(['data-artwork-slot="hero"', 'class="np-eyebrow"', 'id="hero-title"', 'class="np-hero__description"', 'مشاهده محصولات', 'ثبت درخواست تعمیر'], false);
         $this->assertSame([853, 933], array_slice(getimagesize(public_path('images/home/novinpay-terminal-clean.webp')), 0, 2));
+        $this->assertSame([400, 438], array_slice(getimagesize(public_path('images/home/novinpay-terminal-clean-400.webp')), 0, 2));
+        $this->assertSame([640, 700], array_slice(getimagesize(public_path('images/home/novinpay-terminal-clean-640.webp')), 0, 2));
     }
 
     public function test_artwork_slot_can_load_a_local_asset_and_falls_back_for_a_missing_file(): void
     {
         config(['homepage.artwork.hero' => 'brand/novinpay-np-blue.svg']);
-        $this->get('/')->assertOk()->assertSee('fetchpriority="high"', false);
+        $this->get('/')->assertOk()->assertSee('fetchpriority="high"', false)
+            ->assertDontSee('novinpay-terminal-clean-400.webp');
 
         config(['homepage.artwork.hero' => 'images/not-supplied.png']);
         $this->get('/')->assertOk()->assertDontSee('fetchpriority="high"', false)
