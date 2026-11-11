@@ -77,20 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const resend = document.querySelector('[data-account-resend]');
-    if (resend instanceof HTMLButtonElement && Number(resend.dataset.accountResend) > 0) {
-        const until = Date.now() + Number(resend.dataset.accountResend) * 1000;
-        const label = resend.textContent;
-        const format = new Intl.NumberFormat('fa-IR');
-        const update = () => {
-            const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-            resend.disabled = remaining > 0;
-            resend.textContent = remaining ? `ارسال دوباره پس از ${format.format(remaining)} ثانیه` : label;
-            if (remaining) window.setTimeout(update, 1000);
-        };
-        update();
-    }
-
     if (window.isSecureContext && navigator.clipboard?.writeText) {
         document.querySelectorAll('[data-copy-address]').forEach((button) => {
             button.hidden = false;

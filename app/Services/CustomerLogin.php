@@ -106,7 +106,10 @@ class CustomerLogin
     {
         $account = DB::transaction(function () use ($challenge, $code): ?CustomerAccount {
             $row = DB::table('customer_login_challenges')->where('challenge_id', $challenge)->lockForUpdate()->first();
-            if (! $row || ! $row->code_hash || now()->gte($row->expires_at) || $row->attempts >= 5) {
+            if ($row?->code_hash && now()->gte($row->expires_at)) {
+                throw ValidationException::withMessages(['code' => 'زمان اعتبار کد تمام شد. کد تازه درخواست کنید.']);
+            }
+            if (! $row || ! $row->code_hash || $row->attempts >= 5) {
                 return null;
             }
             DB::table('customer_login_challenges')->where('id', $row->id)->increment('attempts');

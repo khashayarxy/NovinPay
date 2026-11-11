@@ -12,6 +12,7 @@ use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
 use App\Services\CustomerLogin;
+use App\Services\TestCustomerReset;
 use App\Support\CrmAccess;
 use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
@@ -82,6 +83,7 @@ class CustomerAccountController extends Controller
         $data = $this->validatePrivate($request, ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']]);
         $request->session()->put('customer_challenge', $login->issue($data['phone']));
         $request->session()->put('customer_login_phone', $data['phone']);
+        $request->session()->put('customer_resend_at', now()->addMinute()->timestamp);
 
         return redirect()->route('account.login')->with('success', 'کد تأیید ارسال شد.');
     }
@@ -204,13 +206,24 @@ class CustomerAccountController extends Controller
         return ($offer ? $this->finishLogin($request) : redirect()->route('account.index', ['section' => 'security']))->with('success', 'رمز عبور ذخیره شد.');
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request, TestCustomerReset $reset)
     {
-        Auth::guard('customer')->logout();
+        $guard = Auth::guard('customer');
+        $account = $guard->user();
+        $version = $request->session()->get('customer_session_version');
+        $guard->logout();
         $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_challenge', 'customer_resend_at', 'customer_intended', 'store_cart', 'repair_submission_token', 'repair_reference']);
         $request->session()->regenerate(true);
 
-        return redirect()->route('account.login');
+        $response = redirect()->route('account.login');
+        if ($account && is_int($version) && config('customer.test_reset_on_logout')) {
+            $result = $reset->reset($account, null, null, $version);
+            if ($result[0] === 'blocked') {
+                return $response->withErrors(['reset' => $result[1]]);
+            }
+        }
+
+        return $response;
     }
 
     public function index(Request $request)

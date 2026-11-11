@@ -4,12 +4,68 @@ namespace App\Services;
 
 use App\Enums\AdminAction;
 use App\Enums\RepairRequestStatus;
+use App\Models\AdminActivity;
 use App\Models\CustomerAccount;
 use App\Support\RepairIdentity;
 use Illuminate\Support\Facades\DB;
 
 final class TestCustomerReset
 {
+    public function reset(CustomerAccount $candidate, ?int $actor, ?string $scopePin, ?int $sessionVersion = null): array
+    {
+        $login = app(CustomerLogin::class);
+        if (! $login->isTestAccount($candidate) || ($actor === null && (! config('customer.test_reset_on_logout') || $sessionVersion === null))) {
+            return ['invalid'];
+        }
+
+        return DB::transaction(function () use ($candidate, $login, $actor, $scopePin, $sessionVersion): array {
+            // OTP verification takes this lock before it reads or creates an account.
+            $challenge = DB::table('customer_login_challenges')->where('phone_digest', $candidate->phone_digest)->lockForUpdate()->first();
+            $account = CustomerAccount::query()->lockForUpdate()->find($candidate->id);
+            if (! $account) {
+                return ['absent'];
+            }
+            if ($actor === null && (! $account->is_active || $account->session_version !== $sessionVersion)) {
+                return ['invalid'];
+            }
+            $scope = $this->scope($account, true);
+            $reason = ! $challenge || ! hash_equals($candidate->phone_digest, $account->phone_digest)
+                ? 'اعتبار ثبت‌نام آزمایشی تأیید نشد.'
+                : $scope['reason'];
+            if ($reason === null && $actor !== null && ! hash_equals($scope['pin'], (string) $scopePin)) {
+                $reason = 'سوابق پس از نمایش تغییر کرده‌اند. صفحه را بازبینی و دوباره تأیید کنید.';
+            }
+            if ($reason !== null) {
+                $this->record(AdminAction::TestCustomerResetBlocked, $account, $actor);
+
+                return ['blocked', $reason];
+            }
+
+            DB::table('customer_login_challenges')->where('id', $challenge->id)->update([
+                'challenge_id' => null, 'code_hash' => null, 'attempts' => 0, 'expires_at' => null, 'resend_at' => null,
+            ]);
+            foreach (['customer_notifications' => 'notifications', 'repair_requests' => 'requests', 'customer_addresses' => 'addresses'] as $table => $key) {
+                DB::table($table)->where('customer_account_id', $account->id)->whereIn('id', $scope[$key])->delete();
+            }
+            // Retain reserved tracking numbers and append-only history.
+            $account->delete();
+            $this->record(AdminAction::TestCustomerReset, $account, $actor);
+
+            return ['reset', count($scope['requests'])];
+        }, 3);
+    }
+
+    private function record(AdminAction $action, CustomerAccount $account, ?int $actor): void
+    {
+        (new AdminActivity)->forceFill([
+            'actor_id' => $actor,
+            'action' => $action,
+            'target_type' => 'customer_account',
+            'target_id' => $account->id,
+            'created_at' => now(),
+        ])->save();
+    }
+
     public function scope(CustomerAccount $account, bool $forUpdate = false): array
     {
         $read = static fn (string $table) => DB::table($table)->when($forUpdate, fn ($query) => $query->lockForUpdate());

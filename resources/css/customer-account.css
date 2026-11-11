@@ -47,6 +47,22 @@
 .np-auth__legal a { color: var(--account-blue); text-decoration: underline; text-underline-offset: 3px; }
 .np-auth__alternatives { display: flex; flex-wrap: wrap; gap: .15rem 1.1rem; margin-top: .65rem; }
 .np-auth .np-auth__code { font-size: 1.3rem; font-variant-numeric: tabular-nums; text-align: center; }
+.np-otp { position: relative; width: 100%; max-width: 22rem; }
+.np-otp.is-enhanced .np-auth__code { position: absolute; inset: 0; height: 100%; z-index: 1; opacity: 0; padding: 0; }
+.np-otp__slots { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: clamp(4px, 1.6vw, 9px); }
+.np-otp__slots span {
+    display: grid; place-items: center; aspect-ratio: 1;
+    min-height: 40px; border: 1px solid #b9cce2; border-radius: .7rem; background: #fcfdff;
+    font-size: clamp(1rem, 4.6vw, 1.35rem); font-weight: 700; line-height: 1;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+.np-otp__slots [data-otp-current] { border-color: var(--account-blue); box-shadow: 0 0 0 2px #075ac733; background: var(--account-wash); }
+.np-otp[data-otp-error] .np-otp__slots span { border-color: #b42318; }
+@media (prefers-reduced-motion: no-preference) {
+    .np-otp[data-otp-error] .np-otp__slots { animation: np-otp-error 200ms ease-out; }
+    @keyframes np-otp-error { 35% { transform: translateX(3px); } 70% { transform: translateX(-3px); } }
+}
+@media (prefers-reduced-motion: reduce) { .np-otp__slots span { transition: none; } }
 
 .np-account-form { display: grid; gap: .4rem; max-width: 34rem; margin-block: 1rem; }
 .np-account-form label { font-weight: 700; margin-top: .35rem; }

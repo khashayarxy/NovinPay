@@ -49,13 +49,19 @@
                 </div>
             @else
                 @if($challenge)
-                    <form class="np-account-form" method="post" action="{{ route('account.verify') }}">
+                    <form class="np-account-form" method="post" action="{{ route('account.verify') }}" data-account-otp>
                         @csrf
                         @if($recovery)<input type="hidden" name="recover" value="1">@endif
                         <label for="account-code">کد تأیید شش‌رقمی</label>
-                        <input id="account-code" class="np-auth__code" name="code" dir="ltr" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" aria-describedby="code-expiry" required>
+                        <div class="np-otp" dir="ltr" @if($errors->has('code')) data-otp-error @endif>
+                            <input id="account-code" class="np-auth__code" name="code" dir="ltr" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" aria-describedby="code-expiry" @if($errors->has('code')) aria-invalid="true" @endif required>
+                            <div class="np-otp__slots" aria-hidden="true" hidden>
+                                @for($slot = 0; $slot < 6; $slot++)<span></span>@endfor
+                            </div>
+                        </div>
                         <small id="code-expiry">کد تا سه دقیقه معتبر است.</small>
                         <button class="np-account-primary">{{ $recovery ? 'تأیید و انتخاب رمز' : 'تأیید و ورود' }}</button>
+                        <small role="status" data-otp-pending hidden>در حال بررسی کد…</small>
                     </form>
                 @else
                     <p>اگر کد دریافت نکرده‌اید، می‌توانید درخواست ارسال بدهید یا با رمز عبور وارد شوید.</p>
@@ -89,4 +95,7 @@
         </div>
     </aside>
 </div>
+@if($phone && !$passwordMode)
+    <script src="{{ asset('js/customer-otp.js') }}" defer></script>
+@endif
 @endsection

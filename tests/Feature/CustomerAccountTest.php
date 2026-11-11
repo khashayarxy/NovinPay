@@ -196,6 +196,42 @@ class CustomerAccountTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_explicit_logout_resets_only_the_allowlisted_test_registration(): void
+    {
+        $phone = '09000000000';
+        $real = $this->loginCustomer();
+        config(['customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone], 'customer.test_reset_on_logout' => true]);
+        $this->post('/account/logout')->assertRedirect('/login');
+        $this->assertNotNull($real->fresh());
+
+        $login = app(CustomerLogin::class);
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $this->post('/account/verify', ['code' => $login->privateTestCode($phone)])->assertRedirect('/account?section=security');
+        $test = Auth::guard('customer')->user();
+        $this->post('/account/profile', ['name' => 'Synthetic tester'])->assertRedirect();
+        $this->travel(1)->minutes();
+        $pending = $login->issue($phone);
+        $pendingCode = $login->privateTestCode($phone);
+        $this->post('/account/logout')->assertRedirect('/login')->assertSessionMissing('customer_session_version');
+        $this->assertNull($test->fresh());
+        $this->assertNull($login->privateTestCode($phone));
+        $this->assertDatabaseHas('admin_activities', ['target_id' => $test->id, 'action' => AdminAction::TestCustomerReset->value, 'actor_id' => null]);
+        $this->post('/account/logout')->assertRedirect('/login');
+        $this->withSession(['customer_challenge' => $pending])->post('/account/verify', ['code' => $pendingCode])->assertSessionHasErrors('code');
+
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $this->post('/account/verify', ['code' => $login->privateTestCode($phone)])->assertRedirect('/account?section=security');
+        $new = Auth::guard('customer')->user();
+        $this->assertNotSame($test->id, $new->id);
+        $this->assertNull($new->name);
+        $this->assertSame(['absent'], app(TestCustomerReset::class)->reset($test, null, null, $test->session_version));
+        config(['customer.test_reset_on_logout' => false]);
+        $this->post('/account/logout')->assertRedirect('/login');
+        $this->assertNotNull($new->fresh());
+        $this->assertNotNull($real->fresh());
+        Http::assertSentCount(1);
+    }
+
     public function test_reset_refuses_verified_accounts_and_test_accounts_with_physical_repairs(): void
     {
         [$challenge, $code] = $this->otp();
@@ -220,6 +256,11 @@ class CustomerAccountTest extends TestCase
             $this->assertNotNull($account->fresh());
         }
         $this->assertDatabaseHas('repair_requests', ['customer_account_id' => $test->id]);
+        $this->assertDatabaseHas('repair_cases', ['id' => $case->id]);
+        config(['customer.test_reset_on_logout' => true]);
+        $this->post('/account/logout')->assertRedirect('/login')->assertSessionHasErrors('reset');
+        $this->assertGuest('customer');
+        $this->assertNotNull($test->fresh());
         $this->assertDatabaseHas('repair_cases', ['id' => $case->id]);
     }
 
