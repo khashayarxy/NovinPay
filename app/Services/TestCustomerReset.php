@@ -18,7 +18,7 @@ final class TestCustomerReset
             return ['invalid'];
         }
 
-        return DB::transaction(function () use ($candidate, $login, $actor, $scopePin, $sessionVersion): array {
+        return DB::transaction(function () use ($candidate, $actor, $scopePin, $sessionVersion): array {
             // OTP verification takes this lock before it reads or creates an account.
             $challenge = DB::table('customer_login_challenges')->where('phone_digest', $candidate->phone_digest)->lockForUpdate()->first();
             $account = CustomerAccount::query()->lockForUpdate()->find($candidate->id);
