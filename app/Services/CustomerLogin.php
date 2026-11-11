@@ -13,6 +13,8 @@ use Illuminate\Validation\ValidationException;
 
 class CustomerLogin
 {
+    private const TEST_SMS_HASH_PREFIX = 'v3:test-sms:';
+
     public function testAllowed(string $phone): bool
     {
         return in_array($phone, $this->testPhones(), true);
@@ -22,6 +24,11 @@ class CustomerLogin
     {
         return $account->verified_at === null && $this->testAllowed($account->phone)
             && hash_equals($this->testDigest($account->phone), $account->phone_digest);
+    }
+
+    public function testUsesSms(string $phone): bool
+    {
+        return trim(config('customer.test_sms_phone', '')) === $phone && $this->testAllowed($phone);
     }
 
     public function testPhones(): array
@@ -50,13 +57,14 @@ class CustomerLogin
 
     public function privateTestCode(string $phone): ?string
     {
-        if (! $this->testAllowed($phone)) {
+        if (! $this->testAllowed($phone) || $this->testUsesSms($phone)) {
             return null;
         }
 
         $row = DB::table('customer_login_challenges')->where('phone_digest', $this->digest($phone, true))->first();
 
-        return $row && $row->code_hash && now()->lt($row->expires_at) && $row->attempts < 5
+        return $row && $row->code_hash && ! str_starts_with($row->code_hash, self::TEST_SMS_HASH_PREFIX)
+            && now()->lt($row->expires_at) && $row->attempts < 5
             ? $this->testCode($row->challenge_id) : null;
     }
 
@@ -81,22 +89,26 @@ class CustomerLogin
     {
         abort_unless(preg_match('/\A09[0-9]{9}\z/D', $phone), 422);
         $test = $this->testAllowed($phone);
+        $testSms = $this->testUsesSms($phone);
+        $privateCode = $test && ! $testSms;
         $sms = app(CustomerOtpSms::class);
-        abort_unless($test || ($sms->enabled() && $sms->configured()), 503, 'ورود پیامکی هنوز فعال نشده است.');
+        abort_unless($privateCode || ($sms->enabled() && $sms->configured() && (! $testSms || $sms->provider() === 'ippanel')),
+            503, 'ورود پیامکی هنوز فعال نشده است.');
         $digest = $this->digest($phone, $test);
         $challenge = (string) Str::uuid();
-        $code = $test ? $this->testCode($challenge) : str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        DB::transaction(function () use ($digest, $phone, $code, $challenge): void {
+        $code = $privateCode ? $this->testCode($challenge) : str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $hashPrefix = $testSms ? self::TEST_SMS_HASH_PREFIX : 'v2:';
+        DB::transaction(function () use ($digest, $phone, $code, $challenge, $hashPrefix): void {
             DB::table('customer_login_challenges')->insertOrIgnore(['phone_digest' => $digest, 'phone' => Crypt::encryptString($phone)]);
             $row = DB::table('customer_login_challenges')->where('phone_digest', $digest)->lockForUpdate()->first();
             abort_if($row->resend_at && now()->lt($row->resend_at), 429, 'برای درخواست کد جدید، یک دقیقه صبر کنید.');
             DB::table('customer_login_challenges')->where('id', $row->id)->update([
-                'challenge_id' => $challenge, 'code_hash' => 'v2:'.Hash::make($this->codeDigest($challenge, $code)),
+                'challenge_id' => $challenge, 'code_hash' => $hashPrefix.Hash::make($this->codeDigest($challenge, $code)),
                 'attempts' => 0, 'expires_at' => now()->addMinutes(2), 'resend_at' => now()->addMinute(),
             ]);
         }, 3);
         // Never log the request, OTP, mobile, API response or transport exception.
-        $ok = $test || $sms->send($phone, $code);
+        $ok = $privateCode || $sms->send($phone, $code);
         if (! $ok) {
             DB::table('customer_login_challenges')->where('challenge_id', $challenge)->update(['code_hash' => null]);
             abort(503, 'کد ارسال نشد؛ پس از یک دقیقه دوباره تلاش کنید.');
@@ -121,14 +133,18 @@ class CustomerLogin
                 return null;
             }
             DB::table('customer_login_challenges')->where('id', $row->id)->increment('attempts');
-            // Keep challenges issued just before this release usable until they expire.
-            $keyed = str_starts_with($row->code_hash, 'v2:');
-            if (! Hash::check($keyed ? $this->codeDigest($challenge, $code) : $code, $keyed ? substr($row->code_hash, 3) : $row->code_hash)) {
-                return null;
-            }
             $phone = Crypt::decryptString($row->phone);
             $test = hash_equals($this->digest($phone, true), $row->phone_digest);
             if ($test ? ! $this->testAllowed($phone) : ! hash_equals($this->digest($phone, false), $row->phone_digest)) {
+                return null;
+            }
+            $testSms = str_starts_with($row->code_hash, self::TEST_SMS_HASH_PREFIX);
+            // A code issued through the private reveal path cannot carry over to SMS mode.
+            if ($test && $this->testUsesSms($phone) && ! $testSms) {
+                return null;
+            }
+            $prefixLength = $testSms ? strlen(self::TEST_SMS_HASH_PREFIX) : (str_starts_with($row->code_hash, 'v2:') ? 3 : 0);
+            if (! Hash::check($prefixLength ? $this->codeDigest($challenge, $code) : $code, substr($row->code_hash, $prefixLength))) {
                 return null;
             }
             DB::table('customer_login_challenges')->where('id', $row->id)->update(['code_hash' => null]);

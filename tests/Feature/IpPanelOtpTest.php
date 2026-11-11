@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use App\Services\CustomerLogin;
 use App\Services\IpPanel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -71,6 +73,7 @@ class IpPanelOtpTest extends TestCase
 
     public function test_rejection_revokes_challenge_and_cooldown_prevents_duplicate_send(): void
     {
+        $this->designateSmsTestPhone('09120000000');
         Log::spy();
         Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => false, 'message' => 'Insufficient credit']])]);
         $this->post('/account/start', ['phone' => '09120000000'])->assertRedirect('/login')->assertSessionHasErrors('code');
@@ -84,6 +87,7 @@ class IpPanelOtpTest extends TestCase
 
     public function test_timeout_does_not_retry_or_fall_back_to_smsir(): void
     {
+        $this->designateSmsTestPhone('09120000000');
         config(['customer.sms_enabled' => true, 'customer.approved_template_ids' => [123]]);
         $attempts = 0;
         Http::fake([self::BASE.'/send' => function () use (&$attempts) {
@@ -99,6 +103,82 @@ class IpPanelOtpTest extends TestCase
         }
         $this->assertSame(1, $attempts);
         $this->assertNull(DB::table('customer_login_challenges')->value('code_hash'));
+    }
+
+    private function designateSmsTestPhone(string $phone): void
+    {
+        config(['customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone],
+            'customer.test_sms_phone' => $phone, 'customer.test_reset_on_logout' => true]);
+    }
+
+    public function test_designated_sms_test_customer_can_reregister_after_password_login_and_logout(): void
+    {
+        $phone = '09120000000';
+        $password = 'synthetic-test-password';
+        $this->designateSmsTestPhone($phone);
+        Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
+        $login = app(CustomerLogin::class);
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+        $this->post('/account/otp')->assertRedirect('/login')->assertSessionHasErrors('code');
+        Http::assertSentCount(1);
+        $code = Http::recorded()[0][0]['params']['code'];
+        $this->assertMatchesRegularExpression('/\A[0-9]{6}\z/', $code);
+        $row = DB::table('customer_login_challenges')->sole();
+        $this->assertSame($login->testDigest($phone), $row->phone_digest);
+        $this->assertFalse(Hash::check($code, substr($row->code_hash, strlen('v3:test-sms:'))));
+        $this->assertNull($login->privateTestCode($phone));
+        $owner = User::factory()->superAdmin()->create();
+        $this->actingAs($owner, 'web')->withSession(['admin_session_version' => 1]);
+        $this->get('/admin/test-customers')->assertOk()->assertDontSee('نمایش کد آزمایشی فعال');
+        $this->post('/admin/test-customers/'.$login->testDigest($phone).'/code', ['current_password' => 'password'])
+            ->assertRedirect('/admin/test-customers')->assertSessionHasErrors('challenge');
+        $this->post('/account/verify', ['code' => $code])->assertRedirect('/account?section=security');
+        $original = Auth::guard('customer')->user();
+        $this->assertTrue($login->isTestAccount($original));
+        $this->post('/account/profile', ['name' => 'Synthetic customer'])->assertRedirect();
+        $this->post('/account/password', ['password' => $password, 'password_confirmation' => $password])->assertRedirect('/account');
+        Auth::guard('customer')->logout();
+        $this->app['session.store']->flush();
+        $this->travel(1)->minutes();
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $this->post('/account/password-login', ['password' => $password])->assertRedirect('/account');
+        $original = $original->fresh();
+        $this->assertAuthenticatedAs($original, 'customer');
+        $this->post('/account/logout')->assertRedirect('/login')->assertSessionMissing('customer_session_version');
+        $this->assertModelMissing($original);
+        $this->assertNull($login->passwordAccount($phone, $password));
+        $this->get('/account')->assertRedirect('/login');
+
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+        Http::assertSentCount(3);
+        $this->post('/account/verify', ['code' => Http::recorded()[2][0]['params']['code']])->assertRedirect('/account?section=security');
+        $this->assertNotSame($original->id, Auth::guard('customer')->id());
+        $this->assertNull(Auth::guard('customer')->user()->password);
+    }
+
+    public function test_private_codes_cannot_cross_the_sms_delivery_policy_change(): void
+    {
+        $phone = '09120000000';
+        $this->designateSmsTestPhone($phone);
+        config(['customer.test_sms_phone' => '']);
+        Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
+        $login = app(CustomerLogin::class);
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $privateCode = $login->privateTestCode($phone);
+        $this->assertNotNull($privateCode);
+        config(['customer.test_sms_phone' => $phone]);
+        $this->assertNull($login->privateTestCode($phone));
+        $this->post('/account/verify', ['code' => $privateCode])->assertSessionHasErrors('code');
+        $this->assertGuest('customer');
+        Http::assertNothingSent();
+        $this->travel(1)->minutes();
+        $this->post('/account/otp')->assertRedirect('/login')->assertSessionHasNoErrors();
+        Http::assertSentCount(1);
+        config(['customer.test_sms_phone' => '']);
+        $this->assertNull($login->privateTestCode($phone));
+        config(['customer.test_sms_phone' => $phone]);
+        $this->travel(2)->minutes();
+        $this->post('/account/verify', ['code' => Http::recorded()[0][0]['params']['code']])->assertSessionHasErrors('code');
     }
 
     public function test_disabled_or_unknown_provider_never_sends(): void

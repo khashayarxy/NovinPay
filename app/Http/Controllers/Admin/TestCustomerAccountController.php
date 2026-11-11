@@ -20,6 +20,7 @@ class TestCustomerAccountController extends Controller
             $rows[] = [
                 'key' => $key,
                 'masked' => substr($phone, 0, 4).' ••• '.substr($phone, -4),
+                'sms' => $login->testUsesSms($phone),
                 'account' => $account,
                 'scope' => $account ? $reset->scope($account) : null,
             ];

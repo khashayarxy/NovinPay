@@ -20,6 +20,9 @@
             @endif
         </dl>
         <div class="mt-3 grid gap-3 lg:grid-cols-2">
+            @if($row['sms'])
+                <p class="admin-hint">کد ورود آزمایشی به این شماره پیامک می‌شود.</p>
+            @else
             <details class="admin-section" @if($errors->has('current_password') && !$account) open @endif>
                 <summary>کد ورود آزمایشی</summary>
             <p class="admin-hint">ابتدا در صفحهٔ ورود مشتری درخواست کد بدهید. کد پیامک نمی‌شود و تا دو دقیقه معتبر است.</p>
@@ -29,6 +32,7 @@
                 <button class="btn btn-primary">نمایش کد آزمایشی فعال</button>
             </form>
             </details>
+            @endif
             @if($scope && !$scope['reason'])
                 @php($description = \App\Support\FaNumber::digits(count($scope['requests'])).' درخواست تعمیر، '.\App\Support\FaNumber::digits(count($scope['addresses'])).' آدرس و '.\App\Support\FaNumber::digits(count($scope['notifications'])).' اعلان آزمایشی')
                 <details class="admin-section">
