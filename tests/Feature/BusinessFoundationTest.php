@@ -21,7 +21,7 @@ class BusinessFoundationTest extends TestCase
         $response = $this->get($uri)->assertOk();
         $response->assertSee('href="tel:09362896373"', false)->assertSee('۰۹۳۶۲۸۹۶۳۷۳');
         $response->assertSee(asset('brand/lockups/logo-wordmark-black-on-white.svg'));
-        $response->assertSee(asset('brand/lockups/logo-wordmark-white-on-black.svg'));
+        $response->assertDontSee(asset('brand/lockups/logo-wordmark-white-on-black.svg'));
         $response->assertSee(asset('favicon.svg'));
         $response->assertSee('content="#098CF7"', false);
         $response->assertSee('alt="نوین‌پی"', false);
