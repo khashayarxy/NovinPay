@@ -62,10 +62,10 @@ class SimpleRepairTest extends TestCase
         $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
         $case = RepairCase::query()->sole();
         foreach (['repairing', 'ready'] as $status) {
-            $this->post(route('admin.repair-cases.record', $case), ['version' => $case->version, 'status' => $status, 'repair_cost' => '۳۰۰', 'money_scale' => '1000', 'delivery_method' => 'in_person', 'repair_notes' => 'یادداشت خصوصی'])->assertRedirect()->assertSessionHasNoErrors();
+            $this->post(route('admin.repair-cases.record', $case), ['version' => $case->version, 'status' => $status, 'repair_cost' => '۳۰۰٬۰۰۰', 'delivery_method' => 'in_person', 'repair_notes' => 'یادداشت خصوصی'])->assertRedirect()->assertSessionHasNoErrors();
             $case->refresh();
             $this->assertSame($status, $case->status->value);
-            $this->assertSame(300000, $case->repair_price_toman);
+            $this->assertSame($status === 'ready' ? 300000 : null, $case->repair_price_toman);
         }
         $this->assertSame(300000, $case->billableToman());
         foreach (['repair_inspections', 'repair_estimates', 'repair_work_entries'] as $table) {
@@ -82,7 +82,7 @@ class SimpleRepairTest extends TestCase
     {
         $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
         $case = RepairCase::query()->sole();
-        $this->post(route('admin.repair-cases.record', $case), ['version' => 1, 'status' => 'ready', 'repair_cost' => '300', 'money_scale' => '1000', 'settled' => '1', 'settlement_method' => 'online', 'delivery_method' => 'in_person'])->assertStatus(409);
+        $this->post(route('admin.repair-cases.record', $case), ['version' => 1, 'intent' => 'settlement', 'settlement_method' => 'online'])->assertStatus(409);
         $this->assertDatabaseCount('payment_transactions', 0);
         $this->assertDatabaseCount('financial_entries', 0);
         $this->assertSame('received', $case->fresh()->status->value);
@@ -98,8 +98,62 @@ class SimpleRepairTest extends TestCase
         $this->post(route('admin.repair-cases.record', $case), $data)->assertStatus(409);
         $data['version'] = 2;
         $data['status'] = 'delivered';
-        $this->post(route('admin.repair-cases.record', $case), $data)->assertStatus(409);
+        $this->post(route('admin.repair-cases.record', $case), $data)->assertSessionHasErrors('status');
         $this->assertDatabaseCount('repair_deliveries', 0);
+    }
+
+    public function test_case_saves_with_incomplete_delivery_and_keeps_hidden_values(): void
+    {
+        $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
+        $case = RepairCase::query()->sole();
+        $url = route('admin.repair-cases.record', $case);
+        $this->get(route('admin.repair-cases.show', $case))->assertOk()->assertSee('data-repair-cost  hidden', false);
+        $this->post($url, ['version' => 1, 'status' => 'repairing'])->assertSessionHasNoErrors();
+        $this->post($url, ['version' => 2, 'status' => 'ready', 'delivery_method' => 'shipping'])->assertSessionHasNoErrors();
+        $this->assertNull($case->fresh()->repair_price_toman);
+        $this->assertNull($case->fresh()->delivery_carrier);
+        $this->post($url, ['version' => 3, 'status' => 'ready', 'repair_cost' => '١٬٢٥٠٬٠٠٠', 'delivery_method' => 'shipping', 'delivery_carrier' => 'tipax'])->assertSessionHasNoErrors();
+        $case->refresh()->forceFill(['settlement_method' => 'online'])->save();
+        $this->post($url, ['version' => 4, 'status' => 'repairing', 'repair_cost' => '0', 'delivery_method' => 'in_person', 'delivery_carrier' => 'courier', 'settlement_method' => 'in_person'])->assertSessionHasNoErrors();
+        $case->refresh();
+        $this->assertSame(1250000, $case->repair_price_toman);
+        $this->assertSame('tipax', $case->delivery_carrier);
+        $this->assertSame('online', $case->settlement_method);
+        $this->post($url, ['version' => 5, 'status' => 'ready', 'delivery_method' => 'shipping', 'clear_delivery_carrier' => '1'])->assertSessionHasNoErrors();
+        $this->assertNull($case->fresh()->delivery_carrier);
+        $this->assertDatabaseCount('repair_deliveries', 0);
+        $this->assertDatabaseCount('financial_entries', 0);
+    }
+
+    public function test_actual_shipping_requires_confirmation_carrier_and_tracking(): void
+    {
+        $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
+        $case = RepairCase::query()->sole();
+        $url = route('admin.repair-cases.record', $case);
+        $this->post($url, ['version' => 1, 'status' => 'ready', 'repair_cost' => '۰', 'delivery_method' => 'shipping'])->assertSessionHasNoErrors();
+        $this->post($url, ['version' => 2, 'intent' => 'handover'])->assertSessionHasErrors('handover_confirmed');
+        $this->post($url, ['version' => 2, 'intent' => 'handover', 'handover_confirmed' => '1', 'shipment_tracking' => 'SYNTHETIC'])->assertStatus(422);
+        $this->post($url, ['version' => 2, 'status' => 'ready', 'delivery_method' => 'shipping', 'delivery_carrier' => 'courier'])->assertSessionHasNoErrors();
+        $this->post($url, ['version' => 3, 'intent' => 'handover', 'handover_confirmed' => '1'])->assertStatus(422);
+        $this->assertDatabaseCount('repair_deliveries', 0);
+        $this->post($url, ['version' => 3, 'intent' => 'handover', 'handover_confirmed' => '1', 'shipment_tracking' => 'SYNTHETIC'])->assertRedirect()->assertSessionHasNoErrors();
+        $case->refresh();
+        $this->assertSame('delivered', $case->status->value);
+        $this->assertSame('SYNTHETIC', $case->delivery->confirmation_reference);
+        $this->get(route('admin.repair-cases.document', [$case, 'delivery']))->assertOk()->assertSee('رسید تحویل')->assertSee('SYNTHETIC');
+    }
+
+    public function test_full_toman_amounts_are_stored_without_scaling(): void
+    {
+        $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
+        $case = RepairCase::query()->sole();
+        $url = route('admin.repair-cases.record', $case);
+        foreach ([0, 1000, 12500, 1250000, 123456789] as $amount) {
+            $this->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => number_format($amount)])->assertSessionHasNoErrors();
+            $this->assertSame($amount, $case->refresh()->repair_price_toman);
+        }
+        $this->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => '123', 'money_scale' => '1000'])->assertSessionHasErrors('money_scale');
+        $this->assertSame(123456789, $case->fresh()->repair_price_toman);
     }
 
     public function test_name_and_model_search_keeps_search_state_private(): void
@@ -114,7 +168,7 @@ class SimpleRepairTest extends TestCase
     {
         $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
         $case = RepairCase::query()->sole();
-        $this->post(route('admin.repair-cases.record', $case), ['version' => 1, 'status' => 'ready', 'repair_cost' => '300', 'money_scale' => '1000', 'delivery_method' => 'in_person'])->assertRedirect();
+        $this->post(route('admin.repair-cases.record', $case), ['version' => 1, 'status' => 'ready', 'repair_cost' => '300000', 'delivery_method' => 'in_person'])->assertRedirect();
         $this->get(route('admin.repair-cases.document', [$case, 'summary']))->assertOk()->assertSee('۳۰۰٬۰۰۰');
         $revision = RepairRecordRevision::query()->sole();
         $this->assertArrayNotHasKey('payload', $revision->toArray());

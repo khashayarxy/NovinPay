@@ -12,6 +12,7 @@ use App\Models\InventoryItem;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentReceipt;
 use App\Models\Product;
+use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\User;
 use App\Services\CommerceManagement;
@@ -88,6 +89,47 @@ class SharedPaymentsTest extends TestCase
 
             return Http::response($verify + ['result' => 100, 'amount' => 100000, 'orderId' => $attempt->public_id]);
         });
+    }
+
+    public function test_confirmed_shipping_dispatches_simple_repair_only_after_payment(): void
+    {
+        $token = bin2hex(random_bytes(32));
+        $this->withSession(['repair_intake_token' => $token]);
+        $this->post('/admin/repairs/intake', [
+            'simple_intake' => '1', 'submission_token' => $token, 'customer_name' => 'Synthetic Customer',
+            'contact_phone' => '09000000000', 'device_model' => 'SYNTHETIC', 'issue' => 'Synthetic issue', 'physical_condition' => 'Synthetic condition',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $case = RepairCase::query()->sole();
+        $case->forceFill(['customer_account_id' => $this->account->id, 'customer_id' => $this->account->customer_id])->save();
+        $url = route('admin.repair-cases.record', $case);
+        $this->post($url, ['version' => 1, 'status' => 'ready', 'repair_cost' => '1000'])->assertSessionHasNoErrors();
+        $entry = app(FinancialOperations::class)->execute($this->owner, 'issue', [
+            'operation_key' => (string) Str::uuid(), 'password' => 'password', 'reason' => 'Synthetic repair charge',
+            'source_type' => 'repair', 'source' => $case->public_id, 'source_version' => 2,
+        ]);
+        $document = FinancialDocument::findOrFail(FinancialEntry::findOrFail($entry)->financial_document_id);
+        $plan = new DeliveryPlan;
+        $plan->forceFill(['public_id' => (string) Str::uuid(), 'financial_document_id' => $document->id,
+            'customer_account_id' => $this->account->id, 'method' => 'courier'])->save();
+        $this->post($url, ['version' => 2, 'status' => 'ready', 'delivery_method' => 'shipping'])->assertSessionHasNoErrors();
+        $this->assertSame('planned', $plan->fresh()->state);
+        try {
+            app(DeliveryManagement::class)->dispatch($this->owner, 'password', $plan->public_id, 1, 'SYNTHETIC', 'Synthetic recipient');
+            $this->fail('An unpaid repair was dispatched.');
+        } catch (HttpException $exception) {
+            $this->assertSame(409, $exception->getStatusCode());
+        }
+        app(PaymentReview::class)->inStore($this->owner, 'password', $document->public_id, $document->charged_minor, (string) Str::uuid());
+        $this->post($url, ['version' => 3, 'intent' => 'settlement', 'settlement_method' => 'in_person'])->assertSessionHasNoErrors();
+        $this->post($url, ['version' => 4, 'status' => 'ready', 'repair_notes' => 'Synthetic note'])->assertSessionHasNoErrors();
+        $this->assertSame('in_person', $case->fresh()->settlement_method);
+        $this->assertSame('planned', $plan->fresh()->state);
+        app(DeliveryManagement::class)->dispatch($this->owner, 'password', $plan->public_id, 1, 'SYNTHETIC', 'Synthetic recipient');
+        $this->assertSame('delivered', $case->fresh()->status->value);
+        $this->assertSame('courier', $case->fresh()->delivery_carrier);
+        $this->assertSame('dispatched', $plan->fresh()->state);
+        $this->assertSame('SYNTHETIC', $plan->fresh()->tracking);
+        $this->assertSame('SYNTHETIC', $case->fresh()->delivery->confirmation_reference);
     }
 
     public function test_disabled_payments_make_no_request_and_do_not_create_attempts(): void

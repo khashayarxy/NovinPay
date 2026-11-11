@@ -182,7 +182,7 @@ class RepairOperationsTest extends TestCase
         $this->owner();
         $online = $this->requestRecord();
         $before = $online->fresh()->getAttributes();
-        $this->get('/admin/repair-requests/'.$online->id)->assertOk()->assertSee('هنوز پذیرش فیزیکی نیست');
+        $this->get('/admin/repair-requests/'.$online->id)->assertOk()->assertSee('دستگاه هنوز پذیرش نشده است');
         $this->assertDatabaseCount('repair_cases', 0);
         $this->post('/admin/repairs/intake', $this->intakePayload(['physical_receipt_confirmed' => '0']))->assertSessionHasErrors('physical_receipt_confirmed');
         $this->assertDatabaseCount('repair_cases', 0);
@@ -190,7 +190,7 @@ class RepairOperationsTest extends TestCase
         $this->assertSame(RepairStage::Received, $case->status);
         $this->assertSame($online->tracking_reference, $case->tracking_reference);
         $this->assertSame($before, $online->fresh()->getAttributes());
-        $this->get('/admin/repair-requests/'.$online->id)->assertSee('پذیرش فیزیکی جداگانه ثبت شده است');
+        $this->get('/admin/repair-requests/'.$online->id)->assertSee('دریافت دستگاه ثبت شده است');
         $this->get('/admin')->assertViewHas('repairCount', 0)->assertViewHas('openRepairCount', 1);
     }
 

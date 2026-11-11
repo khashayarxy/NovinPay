@@ -106,6 +106,16 @@ class DeliveryManagement
             $plan = DeliveryPlan::query()->lockForUpdate()->findOrFail($lookup->id);
             abort_unless($plan->version === $version && $plan->state === 'planned' && $plan->requested_method === null, 409);
             abort_unless($document->paid_minor === $document->charged_minor, 409, 'ماندهٔ سند باید پیش از تحویل تسویه شود.');
+            $case = $document->repair_case_id ? RepairCase::query()->findOrFail($document->repair_case_id) : null;
+            if ($case?->simple_workflow) {
+                app(SimpleRepairRecords::class)->save($actor, $case, [
+                    'intent' => 'handover', 'version' => $case->version, 'handover_confirmed' => true,
+                    'shipment_tracking' => $tracking, 'recipient_name' => $recipient, 'current_password' => $password,
+                    'confirmed_delivery_method' => $plan->method,
+                ]);
+
+                return;
+            }
             app(FinancialOperations::class)->reconcile($document);
             $plan->tracking = $tracking;
             $plan->save();
@@ -113,7 +123,6 @@ class DeliveryManagement
                 $order = SalesOrder::query()->findOrFail($document->sales_order_id);
                 app(CommerceManagement::class)->execute($actor, 'order.fulfill', ['operation_key' => (string) Str::uuid(), 'version' => $order->version, 'reason' => 'ثبت تحویل واقعی پس از تسویه', 'fulfillment_info' => $recipient.' / '.$tracking], $order);
             } else {
-                $case = RepairCase::query()->findOrFail($document->repair_case_id);
                 app(RepairOperations::class)->update($actor, $case, 'delivery', ['version' => $case->version, 'recipient_name' => $recipient, 'delivered_at' => RepairTime::input(), 'outcome_notes' => 'تحویل واقعی با مرجع '.$tracking, 'handover_confirmed' => true, 'amounts_confirmed' => true]);
             }
         }, 3);
