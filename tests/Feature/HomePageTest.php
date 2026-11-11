@@ -21,7 +21,7 @@ class HomePageTest extends TestCase
             $document = new DOMDocument;
             @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get($path)->assertOk()->getContent());
             $xpath = new DOMXPath($document);
-            $selector = 'a[starts-with(@href,"https://trustseal.enamad.ir/")]';
+            $selector = 'a[starts-with(@href,"https://trustseal.enamad.ir/") and img]';
             $links = $xpath->query('//'.$selector);
             $this->assertCount(1, $links);
             $this->assertCount(1, $xpath->query('//footer//div[contains(@class,"np-footer__brand")]//'.$selector));
@@ -38,6 +38,15 @@ class HomePageTest extends TestCase
             $this->assertSame('_blank', $link->getAttribute('target'));
             $this->assertFalse($link->hasAttribute('rel'));
             $this->assertSame('نماد اعتماد الکترونیکی نوین‌پی', $image->getAttribute('alt'));
+
+            $fallbacks = $xpath->query('//footer//a[@class="np-enamad__fallback"]');
+            $this->assertCount(1, $fallbacks);
+            $fallback = $fallbacks->item(0);
+            $this->assertSame('استعلام نماد اعتماد الکترونیکی', trim($fallback->textContent));
+            foreach (['href', 'target', 'referrerpolicy'] as $attribute) {
+                $this->assertSame($link->getAttribute($attribute), $fallback->getAttribute($attribute));
+            }
+            $this->assertFalse($fallback->hasAttribute('rel'));
         }
     }
 
