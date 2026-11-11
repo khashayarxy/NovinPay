@@ -96,6 +96,19 @@
                 </section>
             @endif
 
+            @if($section === 'overview')
+                <section class="np-account-card" aria-labelledby="account-support-title">
+                    <h2 id="account-support-title">پشتیبانی</h2>
+                    <details class="np-account-address">
+                        <summary>شناسه حساب</summary>
+                        <p>اگر پشتیبانی از شما شناسه حساب خواست، می‌توانید آن را کپی و ارسال کنید.</p>
+                        <p class="np-account-reference"><bdi id="account-support-id" dir="ltr">{{ $account->public_id }}</bdi></p>
+                        <button class="np-account-link" type="button" data-copy-account="account-support-id" aria-describedby="account-copy-status" hidden>کپی شناسه</button>
+                        <p id="account-copy-status" role="status"></p>
+                    </details>
+                </section>
+            @endif
+
             @if($section === 'profile')
                 <section class="np-account-card">
                     <h2>اطلاعات شخصی</h2>
@@ -108,7 +121,6 @@
                         <small>تغییر شماره به تأیید دوباره مالکیت آن نیاز دارد.</small>
                         <button class="np-account-primary">ذخیره اطلاعات</button>
                     </form>
-                    <p class="np-account-reference">شناسه حساب برای پشتیبانی <bdi dir="ltr">{{ $account->public_id }}</bdi></p>
                 </section>
             @endif
 

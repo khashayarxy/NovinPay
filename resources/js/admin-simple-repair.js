@@ -8,8 +8,9 @@ export function formatRepairToman(value) {
 
 export function initSimpleRepair() {
     document.querySelectorAll('[data-money-input]').forEach((input) => {
-        const format = () => {
+        const format = (event) => {
             const original = input.value;
+            if (original === '') return;
             const formatted = formatRepairToman(original);
             if (formatted === original) return;
             const position = (offset) => {
@@ -21,8 +22,12 @@ export function initSimpleRepair() {
                 }
                 return index;
             };
-            const start = position(input.selectionStart);
-            const end = position(input.selectionEnd);
+            let start = position(input.selectionStart);
+            let end = position(input.selectionEnd);
+            if (event?.inputType === 'deleteContentForward' && start === end && formatted[start] === '٬') {
+                start++;
+                end++;
+            }
             const direction = input.selectionDirection;
             input.value = formatted;
             if (document.activeElement === input) input.setSelectionRange(start, end, direction);

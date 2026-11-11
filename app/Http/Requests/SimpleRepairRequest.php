@@ -21,7 +21,8 @@ class SimpleRepairRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if (is_string($this->input('repair_cost'))) {
-            $this->merge(['repair_cost' => str_replace(['٬', ','], '', FaNumber::normalizeDigits(trim($this->input('repair_cost'))))]);
+            $amount = str_replace(['٬', ','], '', FaNumber::normalizeDigits(trim($this->input('repair_cost'))));
+            $this->merge(['repair_cost' => $amount === '' ? null : $amount]);
         }
     }
 

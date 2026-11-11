@@ -167,9 +167,17 @@
 .admin-permissions label, .admin-checkbox { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 7px 9px; border: 1px solid #e0e9f4; border-radius: 10px; font-size: 12px; cursor: pointer; }
 .admin-site input[type=checkbox] { accent-color: #0674cf; width: 18px; height: 18px; flex: 0 0 auto; }
 .admin-password-form { max-width: 600px; }
-.admin-definition > div { display: grid; grid-template-columns: 160px minmax(0,1fr); gap: 20px; padding-block: 8px; border-bottom: 1px solid #edf1f7; font-size: 13px; line-height: 2; }
-.admin-definition dt { color: #62758b; }
-.admin-definition dd { overflow-wrap: anywhere; min-width: 0; }
+.admin-detail-grid { display:grid; gap:16px; align-items:start; }
+.admin-detail-groups { display:grid; gap:16px; margin-block-start:10px; }
+@media (min-width:1000px) {
+    .admin-detail-grid { grid-template-columns:minmax(0,2fr) minmax(0,3fr); }
+}
+@media (min-width:1280px) {
+    .admin-detail-groups { grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); }
+}
+.admin-definition > div { display:grid; grid-template-columns:fit-content(42%) minmax(0,1fr); align-items:baseline; gap:8px; padding-block:7px; border-block-end:1px solid var(--admin-line); font-size:13px; line-height:2; }
+.admin-definition dt { color:var(--admin-muted); overflow-wrap:anywhere; }
+.admin-definition dd { margin:0; overflow-wrap:anywhere; min-width:0; text-align:match-parent; }
 .admin-reference { font: 13px/2 ui-monospace,monospace; text-align: start; }
 .admin-login-header { max-width: 1160px; margin-inline: auto; padding: 25px; display: flex; justify-content: space-between; align-items: center; }
 .admin-login-main { padding: 30px 20px 60px; }
@@ -213,7 +221,6 @@
     .admin-request-row .admin-icon { width: 36px; height: 36px; }
     .admin-form-grid, .admin-permissions { grid-template-columns: 1fr; gap: 16px; }
     .admin-table-wrap { padding: 0; }
-    .admin-definition > div { grid-template-columns: 1fr; gap: 4px; }
     .admin-shortcuts { padding: 18px; }
     .admin-notice { padding: 16px; font-size: 12px; }
     .admin-login-header { padding: 16px; }

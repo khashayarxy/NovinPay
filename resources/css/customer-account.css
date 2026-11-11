@@ -155,6 +155,7 @@ a.np-account-row:hover { color: var(--account-blue); }
 .np-account-row small { color: var(--account-muted); }
 .np-account-tag { display: inline-block; color: var(--account-blue); border-radius: .45rem; background: var(--account-wash); padding: .15rem .5rem; font-size: .82rem; }
 .np-account-reference { font-size: .82rem; overflow-wrap: anywhere; }
+#account-copy-status:empty { margin:0; }
 .np-account-address { margin-top: .75rem; border-top: 1px solid var(--account-line); }
 .np-account-address summary { cursor: pointer; padding: .65rem .15rem; }
 .np-account-facts { display: grid; gap: .7rem; margin-top: .75rem; }

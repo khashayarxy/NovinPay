@@ -1,8 +1,6 @@
-.admin-money{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-height:2.9rem;padding:.6rem .85rem;background:#fff;border:1px solid #cbd5e1;border-radius:.65rem;color:#0f172a}
-.admin-money:focus-within{outline:2px solid #2563eb;outline-offset:2px}
-.admin-money-number{flex:1;min-width:0;font-variant-numeric:tabular-nums}
-.admin-money-number input{width:100%;min-width:0;padding:0;border:0;background:transparent;text-align:right;outline:none;box-shadow:none;font:inherit;font-variant-numeric:tabular-nums}
-.admin-money-unit{font-size:.85rem;color:#64748b}
+.admin-money { position:relative; }
+.admin-site .admin-money .input[dir=ltr] { padding-inline-start:3.75rem; text-align:right; font-variant-numeric:tabular-nums; }
+.admin-money-unit { position:absolute; inset-block:0; inset-inline-end:.85rem; display:flex; align-items:center; color:var(--admin-muted); font-size:.85rem; pointer-events:none; }
 .simple-repair-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
 .simple-repair-details dd{overflow-wrap:anywhere}
 .simple-repair-details > *{min-width:0}

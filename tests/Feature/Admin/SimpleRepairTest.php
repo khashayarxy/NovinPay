@@ -49,6 +49,29 @@ class SimpleRepairTest extends TestCase
         $this->assertDatabaseCount('repair_tracking_codes', 0);
     }
 
+    public function test_empty_repair_amount_survives_reload_and_preserves_an_explicit_zero(): void
+    {
+        $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
+        $case = RepairCase::query()->sole();
+        $url = route('admin.repair-cases.record', $case);
+        $show = route('admin.repair-cases.show', $case);
+
+        $this->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => ''])->assertSessionHasNoErrors();
+        $this->assertNull($case->refresh()->repair_price_toman);
+        $response = $this->get($show)->assertOk();
+        $this->assertMatchesRegularExpression('/name="repair_cost"[^>]*value=""/', $response->getContent());
+        if ($directory = getenv('NOVINPAY_QA_DIR')) {
+            $this->assertTrue(is_dir($directory) && ! is_link($directory));
+            file_put_contents($directory.DIRECTORY_SEPARATOR.'repair-cost-admin.html', $response->getContent());
+        }
+
+        $this->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => '۰'])->assertSessionHasNoErrors();
+        $this->assertSame(0, $case->refresh()->repair_price_toman);
+        $this->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => '٬', 'repair_notes' => 'یادداشت آزمایشی'])->assertSessionHasNoErrors();
+        $this->assertSame(0, $case->refresh()->repair_price_toman);
+        $this->assertMatchesRegularExpression('/name="repair_cost"[^>]*value="۰"/u', $this->get($show)->assertOk()->getContent());
+    }
+
     public function test_tracking_code_alone_does_not_disclose_a_repair(): void
     {
         $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
