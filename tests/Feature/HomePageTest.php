@@ -217,8 +217,11 @@ class HomePageTest extends TestCase
             $this->assertSame(0, $xpath->query('//footer//a[@href="'.url('/'.$path).'"]')->length);
         }
         $this->assertSame(0, $xpath->query('//footer//a[contains(@href,"?q=")]')->length);
-        $this->assertSame(1, $xpath->query('//footer//img[contains(@src,"white-on-black.svg")]')->length);
-        $this->assertSame(1, $xpath->query('//footer//a[@href="tel:09362896373"]')->length);
+        $this->assertSame(1, $xpath->query('//footer//img[contains(@src,"/logo-wordmark-black-on-white.svg")]')->length);
+        $this->assertSame(
+            [config('business.phone_uri'), config('business.secondary_phone_uri')],
+            array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($xpath->query('//footer//a[starts-with(@href,"tel:")]'))),
+        );
     }
 
     public function test_visit_information_owns_the_address_hours_and_exact_navigation_destinations(): void

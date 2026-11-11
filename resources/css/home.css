@@ -267,27 +267,45 @@
 
 .homepage .np-hero__art::after { content: ""; position: absolute; z-index: -1; width: 65%; height: 6%; bottom: 0; left: 18%; background: radial-gradient(ellipse, #173b6530, transparent 70%); filter: blur(3px); }
 
-/* Minimal three-column RTL footer; the public page composition is unchanged. */
-.np-footer { background: #102B45; color: #f6faff; padding-top: 32px; }
-.np-footer__grid { display: grid; grid-template-columns: 1.1fr .7fr 1.2fr; gap: 48px; padding-bottom: 28px; }
+.np-footer {
+    --footer-divider: #dfeaf5;
+    background: #f2f7fc;
+    border-block-start: 1px solid var(--footer-divider);
+    color: #536d88;
+    padding-block-start: clamp(24px, 3.4vw, 44px);
+    font-size: 13px;
+    line-height: 1.85;
+}
+.np-footer__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .8fr);
+    align-items: start;
+    gap: clamp(24px, 4vw, 56px);
+    padding-block-end: 28px;
+}
+.np-footer__brand { display: grid; grid-template-columns: minmax(0, 250px) 76px; align-items: center; gap: 16px; }
+.np-footer__brand .np-logo-link { max-width: 100%; vertical-align: top; }
 .np-footer__brand .np-wordmark { display: block; width: 174px; height: auto; max-width: 100%; }
-.np-footer__brand p { max-width: 280px; margin-top: 14px; }
-.np-footer__brand .np-enamad { width: fit-content; margin-block-start: 14px; }
-.np-enamad a { display: block; }
-.np-enamad img { display: block; width: 76px; height: 76px; object-fit: contain; font-size: 11px; }
-.np-footer h2 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
-.np-footer p, .np-footer address { color: #c5d5e4; font-size: 13px; line-height: 2; }
-.np-footer nav { display: flex; flex-direction: column; align-items: start; }
-.np-footer nav a { font-size: 13px; min-height: 36px; padding-block: 6px; }
-.np-footer a:hover { color: #75c4ff; }
-.np-footer a:focus-visible { outline: 2px solid #098CF7; outline-offset: 4px; border-radius: 3px; }
-.np-footer__phone { display: inline-flex; align-items: center; min-height: 44px; font-size: 16px; line-height: 2; }
-.np-footer__bottom { border-top: 1px solid #36516a; padding-block: 16px; text-align: center; }
-.np-footer__bottom p { font-size: 11px; }
-@media (max-width: 1100px) { .np-footer__grid { gap: 28px; } }
+.np-footer__identity p { margin-block-start: 8px; }
+.np-footer .np-enamad a, .np-footer .np-enamad img { display: block; }
+.np-footer .np-enamad img { width: 76px; height: 76px; object-fit: contain; font-size: 11px; }
+.np-footer h2 { color: #142d4e; font-size: 14px; font-weight: 700; margin-block-end: 8px; }
+.np-footer nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
+.np-footer nav h2 { grid-column: 1 / -1; }
+.np-footer nav a, .np-footer__phone { display: inline-flex; align-items: center; justify-self: start; min-height: 34px; color: var(--color-brand-700); }
+.np-footer__phones { flex-direction: column; align-items: start; gap: 0; }
+.np-footer__phone { font-size: 15px; font-weight: 600; }
+.np-footer nav a:hover, .np-footer__phone:hover { color: var(--color-brand-800); text-decoration: underline; text-underline-offset: .2em; }
+.np-footer a:focus-visible { outline: 2px solid var(--color-brand-700); outline-offset: 3px; border-radius: 3px; }
+.np-footer__bottom { border-block-start: 1px solid var(--footer-divider); padding-block: 12px; text-align: center; font-size: 12px; }
 @media (max-width: 850px) {
-    .np-footer { padding-top: 28px; }
-    .np-footer__grid { grid-template-columns: 1fr; gap: 24px; padding-bottom: 24px; }
-    .np-footer__brand p { max-width: none; }
-    .np-footer nav a { min-height: 44px; }
+    .np-footer__grid { grid-template-columns: 1fr 1fr; gap: 18px 24px; padding-block-end: 20px; }
+    .np-footer__brand { grid-column: 1 / -1; padding-block-end: 16px; border-block-end: 1px solid var(--footer-divider); }
+    .np-footer nav a, .np-footer__phone { min-height: 44px; }
+}
+@media (max-width: 520px) {
+    .np-footer__grid { grid-template-columns: 1fr; }
+    .np-footer__information { padding-block-start: 14px; border-block-start: 1px solid var(--footer-divider); }
+    .np-footer__phones { flex-flow: row wrap; column-gap: 18px; }
+    .np-footer__bottom { padding-inline-end: 68px; text-align: start; }
 }
