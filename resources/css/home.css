@@ -289,7 +289,7 @@
 .np-footer__identity p { margin-block-start: 8px; }
 .np-footer .np-enamad a, .np-footer .np-enamad img { display: block; }
 .np-footer .np-enamad img { width: 76px; height: 76px; object-fit: contain; font-size: 11px; }
-.np-footer h2 { color: #142d4e; font-size: 14px; font-weight: 700; margin-block-end: 8px; }
+.public-site .np-footer h2 { color: #142d4e; font-size: 14px; font-weight: 700; margin-block-end: 8px; }
 .np-footer nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
 .np-footer nav h2 { grid-column: 1 / -1; }
 .np-footer nav a, .np-footer__phone { display: inline-flex; align-items: center; justify-self: start; min-height: 34px; color: var(--color-brand-700); }
