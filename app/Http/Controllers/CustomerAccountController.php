@@ -18,6 +18,7 @@ use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -112,14 +113,23 @@ class CustomerAccountController extends Controller
     {
         $code = $request->input('code');
         $request->merge(['code' => is_string($code) ? FaNumber::normalizeDigits($code) : '']);
-        $data = $this->validatePrivate($request, ['code' => ['required', 'regex:/\A[0-9]{6}\z/']]);
+        $rules = ['code' => ['required', 'regex:/\A[0-9]{6}\z/']];
+        $data = $request->expectsJson() ? $request->validate($rules) : $this->validatePrivate($request, $rules);
         try {
             $account = $login->verify((string) $request->session()->get('customer_challenge'), $data['code']);
         } catch (ValidationException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->errors()['code'][0]], 422);
+            }
+
             return redirect()->route('account.login', $request->boolean('recover') ? ['method' => 'recovery'] : [])->withErrors($exception->errors());
         }
 
-        return $this->authenticated($request, $account, true);
+        $response = $this->authenticated($request, $account, true);
+
+        return $request->expectsJson() && $response instanceof RedirectResponse
+            ? response()->json(['redirect' => $response->getTargetUrl()])
+            : $response;
     }
 
     public function passwordLogin(Request $request, CustomerLogin $login)
@@ -143,6 +153,10 @@ class CustomerAccountController extends Controller
         $updated = CustomerAccount::query()->whereKey($account->id)->where('session_version', $account->session_version)
             ->where('is_active', true)->update(['last_login_at' => now()]);
         if (! $updated && ! CustomerAccount::query()->whereKey($account->id)->where('session_version', $account->session_version)->where('is_active', true)->exists()) {
+            if ($otp && $request->expectsJson()) {
+                return response()->json(['message' => 'نشست معتبر نیست. دوباره وارد شوید.'], 422);
+            }
+
             return redirect()->route('account.login')->withErrors(['code' => 'نشست معتبر نیست. دوباره وارد شوید.']);
         }
         Auth::guard('customer')->login($account);

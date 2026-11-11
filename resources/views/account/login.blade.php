@@ -54,12 +54,13 @@
                         @if($recovery)<input type="hidden" name="recover" value="1">@endif
                         <label for="account-code">کد تأیید شش‌رقمی</label>
                         <div class="np-otp" dir="ltr" @if($errors->has('code')) data-otp-error @endif>
-                            <input id="account-code" class="np-auth__code" name="code" dir="ltr" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" aria-describedby="code-expiry" @if($errors->has('code')) aria-invalid="true" @endif required>
+                            <input id="account-code" class="np-auth__code" name="code" dir="ltr" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" aria-describedby="code-expiry account-otp-error" @if($errors->has('code')) aria-invalid="true" @endif required>
                             <div class="np-otp__slots" aria-hidden="true" hidden>
                                 @for($slot = 0; $slot < 6; $slot++)<span></span>@endfor
                             </div>
                         </div>
                         <small id="code-expiry">کد تا دو دقیقه معتبر است.</small>
+                        <p id="account-otp-error" class="np-account-otp-error" role="alert" hidden></p>
                         <button class="np-account-primary">{{ $recovery ? 'تأیید و انتخاب رمز' : 'تأیید و ورود' }}</button>
                         <small role="status" data-otp-pending hidden>در حال بررسی کد…</small>
                     </form>
@@ -96,6 +97,6 @@
     </aside>
 </div>
 @if($phone && !$passwordMode)
-    <script src="{{ asset('js/customer-otp.js') }}" defer></script>
+    <script src="{{ asset('js/customer-otp.js?v=2') }}" defer></script>
 @endif
 @endsection

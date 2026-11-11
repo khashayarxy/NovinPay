@@ -318,6 +318,39 @@ class CustomerAccountTest extends TestCase
         $this->assertDatabaseCount('customer_accounts', 0);
     }
 
+    public function test_inline_otp_verification_returns_errors_then_uses_normal_registration_and_login_destinations(): void
+    {
+        [$challenge, $code] = $this->otp();
+        $wrong = $code === '000000' ? '000001' : '000000';
+        $this->withSession(['customer_challenge' => $challenge])->postJson('/account/verify', ['code' => $wrong])
+            ->assertUnprocessable()->assertJsonPath('message', 'کد معتبر نیست یا منقضی شده است.');
+        $this->assertGuest('customer');
+        $this->postJson('/account/verify', ['code' => $code])->assertOk()
+            ->assertExactJson(['redirect' => route('account.index', ['section' => 'security'])])
+            ->assertSessionMissing('customer_challenge');
+        $this->assertAuthenticated('customer');
+        $this->post('/account/password', ['password' => 'synthetic-password', 'password_confirmation' => 'synthetic-password'])->assertRedirect('/account');
+        $this->post('/account/logout')->assertRedirect('/login');
+        $this->travel(1)->minutes();
+        [$nextChallenge, $nextCode] = $this->otp();
+        $this->withSession(['customer_challenge' => $nextChallenge])->postJson('/account/verify', ['code' => $nextCode])
+            ->assertOk()->assertExactJson(['redirect' => route('account.index')]);
+        $this->assertAuthenticated('customer');
+    }
+
+    public function test_inline_otp_verification_preserves_expiry_and_route_rate_limit(): void
+    {
+        [$challenge, $code] = $this->otp();
+        $this->travel(2)->minutes();
+        $this->withSession(['customer_challenge' => $challenge]);
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $this->postJson('/account/verify', ['code' => $code])->assertUnprocessable()
+                ->assertJsonPath('message', 'زمان اعتبار کد تمام شد. کد تازه درخواست کنید.');
+        }
+        $this->postJson('/account/verify', ['code' => $code])->assertStatus(429);
+        $this->assertGuest('customer');
+    }
+
     public function test_otp_is_single_use_and_encrypted_with_bounded_attempts(): void
     {
         [$challenge, $code] = $this->otp();

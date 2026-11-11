@@ -21,6 +21,9 @@
     @endisset
     <x-brand-head />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @if(request()->routeIs('account.*'))
+        <x-password-visibility-assets />
+    @endif
 </head>
 <body @class(['public-site flex min-h-screen flex-col', 'homepage' => request()->routeIs('home')])>
     <a class="skip-link" href="#main-content">پرش به محتوای اصلی</a>
