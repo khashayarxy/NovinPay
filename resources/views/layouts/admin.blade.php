@@ -8,6 +8,7 @@
     <title>@yield('title', 'مدیریت') | پنل مدیریت {{ config('business.name') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-password-visibility-assets />
+    <script src="{{ asset('js/mobile-digits.js?v=1') }}" defer></script>
 </head>
 <body class="admin-site">
     <a class="skip-link" href="#main-content">پرش به محتوای اصلی</a>

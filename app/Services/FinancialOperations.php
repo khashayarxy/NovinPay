@@ -40,7 +40,7 @@ final class FinancialOperations
                 FinanceAccess::authorize($persisted, $action);
                 abort_unless($account && ! $account->must_change_password, 403);
                 if (! Hash::check($data['password'], $persisted->password)) {
-                    throw ValidationException::withMessages(['password' => 'گذرواژهٔ فعلی معتبر نیست.']);
+                    throw ValidationException::withMessages(['password' => 'رمز عبور فعلی معتبر نیست.']);
                 }
                 abort_unless($operation && $operation->actor_id === $actor->id && $operation->action === $action && hash_equals($operation->payload_digest, $digest), 409, 'شناسهٔ عملیات برای درخواست دیگری استفاده شده است.');
                 if ($operation->result_id !== null) {

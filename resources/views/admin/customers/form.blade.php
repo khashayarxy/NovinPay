@@ -7,7 +7,7 @@
 <section class="admin-panel"><form class="admin-form" method="post" action="{{ $customer ? route('admin.customers.update', $customer) : route('admin.customers.store') }}">@csrf
 @if($customer) @method('PUT')<input type="hidden" name="version" value="{{ $customer->version }}">@endif
 <x-operation-field retain name="name" label="نام و نام خانوادگی" :value="$customer?->name ?? ''" :maxlength="100"/>
-<x-operation-field retain name="contact_phone" label="شمارهٔ همراه ایرانی" type="tel" :value="$customer?->contact_phone ?? ''" :maxlength="40"/>
+<x-operation-field retain name="contact_phone" label="شماره موبایل ایرانی" type="tel" :value="$customer?->contact_phone ?? ''" :maxlength="40"/>
 
 <div><label for="profile-active" class="label">وضعیت پروفایل</label><select id="profile-active" name="is_active" class="input"><option value="1" @selected(!$customer || $customer->is_active)>فعال</option><option value="0" @selected($customer && !$customer->is_active)>بایگانی‌شده</option></select></div>
 <x-operation-field retain name="reason" label="دلیل ثبت یا تغییر؛ یادداشت خصوصی" kind="textarea" :maxlength="1000"/>

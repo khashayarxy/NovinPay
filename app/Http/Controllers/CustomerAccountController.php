@@ -195,7 +195,7 @@ class CustomerAccountController extends Controller
         $data = $this->validatePrivate($request, [
             'password' => ['required', 'string', 'min:10', 'max:72', 'confirmed', function ($attribute, $value, $fail): void {
                 if (is_string($value) && (strlen($value) > 72 || str_contains($value, "\0"))) {
-                    $fail('رمز عبور بیش از حد طولانی است یا نویسهٔ نامعتبر دارد.');
+                    $fail('رمز عبور بیش از حد طولانی است یا کاراکتر نامعتبر دارد.');
                 }
             }],
             'current_password' => ['nullable', 'string', 'max:72'],

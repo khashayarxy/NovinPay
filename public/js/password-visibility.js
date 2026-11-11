@@ -24,7 +24,7 @@
 
         function show(visible) {
             input.type = visible ? 'text' : 'password';
-            button.setAttribute('aria-label', visible ? 'پنهان کردن گذرواژه' : 'نمایش گذرواژه');
+            button.setAttribute('aria-label', visible ? 'پنهان کردن رمز عبور' : 'نمایش رمز عبور');
             button.setAttribute('title', button.getAttribute('aria-label'));
             button.setAttribute('aria-pressed', String(visible));
             icon.innerHTML = visible ? eyeOff : eye;

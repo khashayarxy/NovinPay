@@ -26,6 +26,7 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             // Models are not a fabricated catalogue: use the device's own label.
             'device_model' => ['required', 'string', 'max:100'],
             'issue' => ['required', 'string', 'min:10', 'max:2000'],
+            // Accept the older form while a customer may still have it open.
             'additional_description' => ['nullable', 'string', 'max:1000'],
             'submission_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ];
@@ -37,8 +38,10 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             'required' => 'تکمیل :attribute ضروری است.',
             'string' => ':attribute باید متن معتبر باشد.',
             'min' => ':attribute کوتاه‌تر از حد مجاز است.',
+            'issue.min' => 'شرح مشکل دستگاه باید دست‌کم ۱۰ کاراکتر باشد.',
             'max' => ':attribute طولانی‌تر از حد مجاز است.',
-            'contact_phone.regex' => 'شمارهٔ همراه ۱۱ رقمی با ۰۹ وارد کنید.',
+            'issue.max' => 'شرح مشکل دستگاه نباید بیشتر از ۲۰۰۰ کاراکتر باشد.',
+            'contact_phone.regex' => 'شماره موبایل ۱۱ رقمی با ۰۹ وارد کنید.',
             'device_brand' => 'یکی از برندهای PAX، NewPOS یا Newland را انتخاب کنید.',
             'submission_token' => 'فرم را دوباره باز کنید و درخواست را ارسال کنید.',
         ];
@@ -46,6 +49,6 @@ class StoreRepairRequest extends PrivateRepairFormRequest
 
     public function attributes(): array
     {
-        return ['customer_name' => 'نام', 'contact_phone' => 'شماره تماس', 'device_brand' => 'برند', 'device_model' => 'مدل دستگاه', 'issue' => 'شرح مشکل', 'submission_token' => 'شناسهٔ فرم'];
+        return ['customer_name' => 'نام', 'contact_phone' => 'شماره موبایل', 'device_brand' => 'برند', 'device_model' => 'مدل دستگاه', 'issue' => 'شرح مشکل دستگاه', 'submission_token' => 'شناسهٔ فرم'];
     }
 }

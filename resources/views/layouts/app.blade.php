@@ -24,6 +24,9 @@
     @if(request()->routeIs('account.*'))
         <x-password-visibility-assets />
     @endif
+    @if(request()->routeIs('account.*', 'repair*', 'consultation*', 'cart.*'))
+        <script src="{{ asset('js/mobile-digits.js?v=1') }}" defer></script>
+    @endif
 </head>
 <body @class(['public-site flex min-h-screen flex-col', 'homepage' => request()->routeIs('home')])>
     <a class="skip-link" href="#main-content">پرش به محتوای اصلی</a>

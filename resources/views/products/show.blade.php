@@ -66,13 +66,13 @@
 
                 @if ($product->is_sample)
                     <p class="mt-4 rounded-lg border border-dashed border-sky-300 bg-sky-50 px-4 py-3 text-xs leading-6 text-sky-800">
-                        این کالا داده نمونه برای نمایش وب‌سایت است و موجودی یا قیمت واقعی محسوب نمی‌شود.
+                        این کالا نمونهٔ نمایشی است. قیمت و موجودی آن واقعی نیست.
                     </p>
                 @endif
 
                 <div class="mt-6 flex flex-wrap gap-3 public-actions">
-                    <a href="{{ config('business.phone_uri') }}" class="btn btn-primary"><x-home.icon name="phone" /> تماس برای استعلام</a>
-                    <a href="{{ route('contact') }}" class="btn btn-secondary">استعلام و خرید</a>
+                    <a href="{{ config('business.phone_uri') }}" class="btn btn-primary"><x-home.icon name="phone" /> تماس برای قیمت و موجودی</a>
+                    <a href="{{ route('contact') }}" class="btn btn-secondary">راهنمای خرید</a>
                     <a href="{{ route('repair') }}" class="btn btn-secondary">ثبت درخواست تعمیر</a>
                 </div>
             </div>

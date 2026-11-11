@@ -27,6 +27,6 @@ class TrackRepairRequest extends PrivateRepairFormRequest
 
     public function messages(): array
     {
-        return array_fill_keys(['required', 'string', 'regex'], 'کد پیگیری کامل و شمارهٔ همراه ثبت‌شده را وارد کنید.');
+        return array_fill_keys(['required', 'string', 'regex'], 'کد پیگیری هشت‌رقمی و شماره موبایل ثبت‌شده را وارد کنید.');
     }
 }

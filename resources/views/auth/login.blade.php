@@ -32,7 +32,7 @@
                 </div>
 
                 <div>
-                    <label class="label" for="password">گذرواژه</label>
+                    <label class="label" for="password">رمز عبور</label>
                     <input class="input" type="password" id="password" name="password" autocomplete="current-password"
                         required>
                 </div>

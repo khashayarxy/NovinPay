@@ -26,7 +26,7 @@ class StaffController extends Controller
     {
         $administration->save($request->user(), $request->validated());
 
-        return redirect()->route('admin.staff.index')->with('success', 'حساب همکار ایجاد شد؛ گذرواژهٔ اولیه را از راه امن در اختیار او بگذارید.');
+        return redirect()->route('admin.staff.index')->with('success', 'حساب همکار ایجاد شد؛ رمز عبور اولیه را از راه امن در اختیار او بگذارید.');
     }
 
     public function edit(AdminAccount $staff): View

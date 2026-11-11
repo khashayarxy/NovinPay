@@ -19,7 +19,7 @@
             @endforeach
         </nav>
         <div class="np-account-content">
-            @unless($account->verified_at)<p class="np-account-notice" role="status">حساب آزمایشی است. مالکیت شماره موبایل با پیامک تأیید نشده است.</p>@endunless
+            @unless($account->verified_at)<p class="np-account-notice" role="status">این حساب آزمایشی است.</p>@endunless
             <x-admin.errors />
             @if(session('success'))<p class="np-account-notice" role="status">{{ session('success') }}</p>@endif
             @if($section === 'overview')
@@ -104,7 +104,7 @@
                         <label for="profile-name">نام و نام خانوادگی</label>
                         <input id="profile-name" name="name" value="{{ $account->name }}" autocomplete="name" minlength="2" maxlength="100" required>
                         <label for="profile-mobile">شماره موبایل</label>
-                        <input id="profile-mobile" value="{{ \App\Support\FaNumber::digits($account->phone) }}" dir="ltr" readonly>
+                        <input id="profile-mobile" type="tel" value="{{ \App\Support\FaNumber::digits($account->phone) }}" dir="ltr" readonly>
                         <small>تغییر شماره به تأیید دوباره مالکیت آن نیاز دارد.</small>
                         <button class="np-account-primary">ذخیره اطلاعات</button>
                     </form>
@@ -145,7 +145,7 @@
                             @endif
                             <label for="new-password">رمز عبور جدید</label>
                             <x-account.password id="new-password" name="password" autocomplete="new-password" minlength="10" aria-describedby="password-guidance" />
-                            <small id="password-guidance">حداقل ۱۰ نویسه وارد کنید. یک عبارت طولانی که به‌راحتی به خاطر می‌سپارید انتخاب کنید.</small>
+                            <small id="password-guidance">حداقل ۱۰ کاراکتر وارد کنید. یک عبارت طولانی که به‌راحتی به خاطر می‌سپارید انتخاب کنید.</small>
                             <label for="password-confirmation">تکرار رمز عبور جدید</label>
                             <x-account.password id="password-confirmation" name="password_confirmation" autocomplete="new-password" minlength="10" />
                             <button class="np-account-primary">ذخیره رمز عبور</button>

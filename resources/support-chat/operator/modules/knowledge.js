@@ -164,7 +164,7 @@ export function knowledgeView({host,csrfToken,warn}){
 
   // Question Title
   const titleLabel=document.createElement('label');
-  titleLabel.innerHTML='<span>عنوان پرسش (حداکثر ۱۶۰ نویسه)</span>';
+  titleLabel.innerHTML='<span>عنوان پرسش (حداکثر ۱۶۰ کاراکتر)</span>';
   const titleInput=document.createElement('input');
   titleInput.type='text';
   titleInput.required=true;

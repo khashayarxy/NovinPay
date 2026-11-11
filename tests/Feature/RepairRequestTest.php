@@ -51,6 +51,22 @@ class RepairRequestTest extends TestCase
         return RepairRequest::query()->sole();
     }
 
+    public function test_repair_form_has_one_description_and_preserves_submissions_from_older_forms(): void
+    {
+        $this->get('/repair')->assertOk()->assertSee('شرح مشکل دستگاه')
+            ->assertSee('value="۰۹۱۲۳۴۵۶۷۸۹"', false)->assertSee('name="issue"', false)
+            ->assertDontSee('name="additional_description"', false);
+        $first = $this->payload();
+        $this->post('/repair', $first)->assertRedirect(route('repair.confirmation'));
+        $original = RepairRequest::query()->sole();
+        $this->assertSame($first['issue'], $original->issue);
+
+        $second = $this->payload(['additional_description' => 'توضیحات ارسال‌شده از فرم قبلی']);
+        $this->post('/repair', $second)->assertRedirect(route('repair.confirmation'));
+        $this->assertSame($second['issue']."\n\n".$second['additional_description'], RepairRequest::query()->latest('id')->firstOrFail()->issue);
+        $this->assertSame($first['issue'], $original->fresh()->issue);
+    }
+
     public function test_submission_encrypts_personal_fields_and_issues_random_reference_without_intake(): void
     {
         $data = $this->payload(['contact_phone' => '+98 ۹۱۲-۳۴۵۶۷۸۹', 'status' => 'received', 'id' => 999, 'tracking_reference' => 'forged']);
@@ -189,7 +205,7 @@ class RepairRequestTest extends TestCase
         $missingCode = $repair->tracking_reference === '10000000' ? '10000001' : '10000000';
         $unknownCode = $this->post('/repair/track', ['tracking_reference' => $missingCode, 'contact_phone' => '09123456789'])->assertOk();
         $this->assertSame($wrongPhone->getContent(), $unknownCode->getContent());
-        $unknownCode->assertSee('اطلاعات واردشده قابل تأیید نیست.')->assertDontSee($repair->customer_name);
+        $unknownCode->assertSee('درخواستی با این کد و شماره پیدا نشد.')->assertDontSee($repair->customer_name);
         $this->post('/repair/track', ['tracking_reference' => $repair->tracking_reference])->assertSessionHasErrors('contact_phone');
         $this->get('/repair/track?tracking_reference='.$repair->tracking_reference.'&contact_phone=09123456789')
             ->assertOk()->assertDontSee($repair->tracking_reference)->assertDontSee('09123456789');

@@ -35,8 +35,8 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
         diagnostics.events.push({stage,code,ms:Math.round(performance.now())});diagnostics.events=diagnostics.events.slice(-12);dispatchEvent(new Event('support-init-state'));
     };
     initState('initializing','mount');
-    const phoneField=document.getElementById('userPhone');phoneField.dir='ltr';phoneField.style.textAlign='right';phoneField.placeholder='شماره همراه (اختیاری)';
-    const phoneLabel=document.createElement('label');phoneLabel.htmlFor=phoneField.id;phoneLabel.textContent='شماره همراه (اختیاری)';phoneLabel.className='support-phone-label';phoneField.before(phoneLabel);
+    const phoneField=document.getElementById('userPhone');phoneField.dir='ltr';phoneField.style.textAlign='right';phoneField.placeholder='شماره موبایل (اختیاری)';
+    const phoneLabel=document.createElement('label');phoneLabel.htmlFor=phoneField.id;phoneLabel.textContent='شماره موبایل (اختیاری)';phoneLabel.className='support-phone-label';phoneField.before(phoneLabel);
     const launcher=document.querySelector('.chat-btn'),badge=document.createElement('span');badge.className='support-unread-badge';badge.hidden=true;badge.setAttribute('aria-live','polite');launcher?.append(badge);
     let unreadCount=0,reads=null,alerts=null,notificationSection=null,navigation=null,shell=null;
     const shown=()=>d.win.classList.contains('active')&&!globalThis.SupportWidgetHidden&&menu.drawer.hidden&&shell?.chat===true;
@@ -164,7 +164,7 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
         d.error.style.display='none';engine.select(id);cooldown.refresh();startButton.disabled=!hasConversation;shell?.session();
         recovery?.refresh();phone?.refresh();issuance?.refresh();
     };
-    const contactValues=session=>{presentation?.session?.(session);document.getElementById('userName').value=session.contact_name==='مهمان'?'':session.contact_name||'';document.getElementById('userEmail').value=session.user_email||'';document.getElementById('userPhone').value=session.user_phone||'';phone?.prefill(session.user_phone||'');};
+    const contactValues=session=>{presentation?.session?.(session);document.getElementById('userName').value=session.contact_name==='مهمان'?'':session.contact_name||'';document.getElementById('userEmail').value=session.user_email||'';document.getElementById('userPhone').value=window.NovinPayMobile?.display(session.user_phone||'')??(session.user_phone||'');phone?.prefill(session.user_phone||'');};
 d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(document.activeElement===d.input)event.preventDefault();});
     const send=async()=>{
         if(composerLocked)return;if(engine?.sendWait()){cooldown.refresh();return;}if(preparing||revision===lastQueuedRevision)return;preparing=true;
@@ -179,7 +179,7 @@ d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(docu
             if(initializing)await initializing;
             if(!engine||engine.frozen||engine.paused)await create();else await engine.auth();
             if(!hasConversation)throw new Error('ابتدا پیام خود را بفرستید؛ اطلاعات تماس اختیاری است.');
-            await engine.transport.request('api.php',{data:{update_contact:'1',user_id:engine.sync.id,name:document.getElementById('userName').value,email:document.getElementById('userEmail').value,phone:document.getElementById('userPhone')?.value||''}});
+            await engine.transport.request('api.php',{data:{update_contact:'1',user_id:engine.sync.id,name:document.getElementById('userName').value,email:document.getElementById('userEmail').value,phone:window.NovinPayMobile?.ascii(document.getElementById('userPhone').value)??document.getElementById('userPhone').value}});
             menu.close();
             phone?.prefill(document.getElementById('userPhone')?.value||'');
         }catch(e){warn(e.message);}

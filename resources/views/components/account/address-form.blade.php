@@ -6,7 +6,7 @@
         @if($field === 'address')
             <textarea id="{{ $address?->public_id ?? 'new-address' }}-{{ $field }}" name="{{ $field }}" autocomplete="{{ $autocomplete }}" rows="3" maxlength="1000" required>{{ $address?->$field }}</textarea>
         @else
-            <input id="{{ $address?->public_id ?? 'new-address' }}-{{ $field }}" name="{{ $field }}" autocomplete="{{ $autocomplete }}" value="{{ $address?->$field }}" maxlength="{{ $field === 'postal_code' ? 10 : 100 }}" @if(in_array($field, ['phone', 'postal_code'], true)) dir="ltr" inputmode="numeric" @endif required>
+            <input id="{{ $address?->public_id ?? 'new-address' }}-{{ $field }}" name="{{ $field }}" autocomplete="{{ $autocomplete }}" value="{{ $field === 'phone' ? \App\Support\FaNumber::digits($address?->phone ?? '') : $address?->$field }}" maxlength="{{ match($field) { 'postal_code' => 10, 'phone' => 40, default => 100 } }}" @if($field === 'phone') type="tel" dir="ltr" inputmode="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹" @elseif($field === 'postal_code') dir="ltr" inputmode="numeric" @endif required>
         @endif
     @endforeach
     <button class="np-account-primary">ذخیره آدرس</button>

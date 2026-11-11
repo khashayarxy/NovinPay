@@ -17,7 +17,7 @@ const states = new Set(['pending','sending','unknown','needs_action','cancelled'
 export function validateText(value) {
     if (typeof value !== 'string' || !value.trim()) throw new Error('متن پیام لازم است.');
     const text = value.trim();
-    for(const char of text){const point=char.codePointAt(0);if(point>=0xd800&&point<=0xdfff)throw new Error('متن دارای نویسهٔ نامعتبر است.');}
+    for(const char of text){const point=char.codePointAt(0);if(point>=0xd800&&point<=0xdfff)throw new Error('متن دارای کاراکتر نامعتبر است.');}
     const encoded = text.replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
     if (new TextEncoder().encode(encoded).length > 2000) throw new Error('متن پیام از محدودیت ۲۰۰۰ بایت بیشتر است.');
     return text;

@@ -19,7 +19,7 @@
         <form class="admin-form admin-password-form" method="post" action="{{ route($current['enabled'] ? 'admin.maintenance.disable' : 'admin.maintenance.enable') }}">
             @csrf
             <input type="hidden" name="version" value="{{ $current['version'] }}">
-            <div><label class="label" for="current_password">گذرواژهٔ فعلی شما</label><input class="input" type="password" name="current_password" id="current_password" required autocomplete="current-password" maxlength="255"></div>
+            <div><label class="label" for="current_password">رمز عبور فعلی شما</label><input class="input" type="password" name="current_password" id="current_password" required autocomplete="current-password" maxlength="255"></div>
             <label class="admin-checkbox"><input type="checkbox" name="confirm" value="1" required> تأیید می‌کنم که حالت نگهداری سایت {{ $current['enabled'] ? 'غیرفعال' : 'فعال' }} شود.</label>
             <div class="admin-form-footer"><button class="btn btn-primary" type="submit">{{ $current['enabled'] ? 'غیرفعال‌سازی نگهداری و بازکردن سایت' : 'فعال‌سازی حالت نگهداری' }}</button></div>
         </form>

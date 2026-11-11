@@ -409,7 +409,7 @@ class RepairOperationsTest extends TestCase
         $this->post('/admin/logout');
         $this->assertMatchesRegularExpression(RepairTracking::FORMAT, $case->tracking_reference);
         $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000000'])->assertOk()->assertSee($case->status->label())->assertDontSee('PRIVATE-CUSTOMER')->assertDontSee('SERIAL-001')->assertDontSee($case->tracking_reference);
-        $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000001'])->assertOk()->assertSee('اطلاعات واردشده قابل تأیید نیست');
+        $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000001'])->assertOk()->assertSee('درخواستی با این کد و شماره پیدا نشد');
         $events = DB::table('repair_events')->get()->toJson().DB::table('admin_activities')->get()->toJson();
         foreach (['PRIVATE-CUSTOMER', '09000000000', 'PRIVATE-MODEL', 'PRIVATE-ISSUE', $case->tracking_reference] as $secret) {
             $this->assertStringNotContainsString($secret, $events);

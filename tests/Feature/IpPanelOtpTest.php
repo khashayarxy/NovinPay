@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\CustomerLogin;
 use App\Services\IpPanel;
+use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +49,28 @@ class IpPanelOtpTest extends TestCase
                 'recipients' => ['+989120000000'], 'params' => ['code' => '004321'],
             ]);
         Http::assertSentCount(1);
+    }
+
+    public static function mobileDigitInputs(): array
+    {
+        return [
+            'English' => ['09120000000'],
+            'Persian' => ['۰۹۱۲۰۰۰۰۰۰۰'],
+            'Arabic' => ['٠٩١٢٠٠٠٠٠٠٠'],
+        ];
+    }
+
+    #[DataProvider('mobileDigitInputs')]
+    public function test_mobile_digits_are_normalized_before_otp_delivery_and_storage(string $input): void
+    {
+        Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
+        $this->post('/account/start', ['phone' => $input])->assertRedirect('/login')
+            ->assertSessionHas('customer_login_phone', '09120000000');
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request['recipients'] === ['+989120000000']);
+        $this->assertDatabaseHas('customer_login_challenges', [
+            'phone_digest' => RepairIdentity::digest('customer-account-phone', '09120000000'),
+        ]);
     }
 
     public function test_selected_provider_supports_normal_registration_and_two_minute_expiry(): void

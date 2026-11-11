@@ -24,7 +24,7 @@ if ($v2Enabled && (!$legacyRequested || !support_development_ui())) {
 <head>
 <meta charset="utf-8"><?= $criticalTheme ?>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>پشتیبانی</title>
+<title>پشتیبانی</title><script src="/js/mobile-digits.js?v=1" defer></script>
 <link rel="modulepreload" href="support-client/customer-v2.js?v=team1">
 <link rel="modulepreload" href="support-client/customer.js?v=team1">
 <link rel="modulepreload" href="support-client/engine.js?v=team1">
@@ -58,6 +58,6 @@ else import('./support-client/customer-v2.js?v=team1').catch(window.supportShell
 }
 
 header("Content-Security-Policy: default-src 'self'; frame-ancestors 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'");
-?><!doctype html><html lang="fa" dir="rtl" data-support-surface="customer"><head><script src="support-client/theme-init.js?v=0.1.0-r14"></script><script src="support-theme.php"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پشتیبانی</title><link rel="stylesheet" href="support-client/widget.css"><link rel="stylesheet" href="support-client/chat.css?v=0.1.0-r14"><link rel="stylesheet" href="support-client/design-tokens.css?v=icons2"><link rel="stylesheet" href="support-client/customer-layout.css?v=0.1.0-r14"><script type="module" src="support-client/icons.js?v=permissions1" defer></script></head><body>
+?><!doctype html><html lang="fa" dir="rtl" data-support-surface="customer"><head><script src="support-client/theme-init.js?v=0.1.0-r14"></script><script src="support-theme.php"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پشتیبانی</title><script src="/js/mobile-digits.js?v=1" defer></script><link rel="stylesheet" href="support-client/widget.css"><link rel="stylesheet" href="support-client/chat.css?v=0.1.0-r14"><link rel="stylesheet" href="support-client/design-tokens.css?v=icons2"><link rel="stylesheet" href="support-client/customer-layout.css?v=0.1.0-r14"><script type="module" src="support-client/icons.js?v=permissions1" defer></script></head><body>
 <?php readfile(__DIR__.'/support-client/widget.html'); ?>
 <script type="module" src="support-client/widget.js?v=ux1"></script></body></html>
