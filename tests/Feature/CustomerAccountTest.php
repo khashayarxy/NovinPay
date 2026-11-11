@@ -147,7 +147,9 @@ class CustomerAccountTest extends TestCase
             $this->assertNotNull($code);
             $this->get($admin)->assertOk()->assertDontSee($phone)->assertDontSee('کد تأیید آزمایشی');
             $this->post($reveal, ['current_password' => 'wrong'])->assertSessionHasErrors('current_password');
-            $this->post($reveal, ['current_password' => 'password'])->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertSee($code);
+            $this->post($reveal, ['current_password' => 'password'])->assertOk()
+                ->assertHeader('Cache-Control', 'no-store, private')
+                ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')->assertContent($code);
             $this->post('/account/verify', ['code' => $code])->assertRedirect('/account?section=security');
             $account = Auth::guard('customer')->user();
             $this->assertNotContains($account->id, $previousIds);
@@ -230,6 +232,49 @@ class CustomerAccountTest extends TestCase
         $this->assertNotNull($new->fresh());
         $this->assertNotNull($real->fresh());
         Http::assertSentCount(1);
+    }
+
+    public function test_password_login_then_logout_allows_immediate_private_reregistration(): void
+    {
+        $phone = '09000000000';
+        $password = 'synthetic-test-password';
+        config([
+            'customer.sms_provider' => 'ippanel',
+            'customer.ippanel.enabled' => true,
+            'customer.test_otp_enabled' => true,
+            'customer.test_otp_phones' => [$phone],
+            'customer.test_reset_on_logout' => true,
+        ]);
+        Http::preventStrayRequests();
+        Http::fake();
+        $login = app(CustomerLogin::class);
+        $this->post('/account/otp', ['phone' => $phone])->assertRedirect('/login')
+            ->assertSessionHas('success', 'کد تأیید را وارد کنید.');
+        $code = $login->privateTestCode($phone);
+        $this->assertNotNull($code);
+        $this->post('/account/verify', ['code' => $code])->assertRedirect('/account?section=security');
+        $original = Auth::guard('customer')->user();
+        $this->post('/account/password', ['password' => $password, 'password_confirmation' => $password])->assertRedirect('/account');
+
+        // End the first browser session without explicit logout, then sign in with its password.
+        Auth::guard('customer')->logout();
+        $this->app['session.store']->flush();
+        $this->travel(1)->minutes();
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $this->post('/account/password-login', ['password' => $password])->assertRedirect('/account');
+        $this->assertAuthenticatedAs($original->fresh(), 'customer');
+        $this->post('/account/logout')->assertRedirect('/login')->assertSessionMissing('customer_challenge');
+        $this->assertModelMissing($original);
+        $this->assertNull($login->privateTestCode($phone));
+
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+        $newCode = $login->privateTestCode($phone);
+        $this->assertNotNull($newCode);
+        $this->post('/account/verify', ['code' => $newCode])->assertRedirect('/account?section=security');
+        $replacement = Auth::guard('customer')->user();
+        $this->assertNotSame($original->id, $replacement->id);
+        $this->assertNull($replacement->password);
+        Http::assertNothingSent();
     }
 
     public function test_reset_refuses_verified_accounts_and_test_accounts_with_physical_repairs(): void

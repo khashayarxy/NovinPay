@@ -89,7 +89,7 @@ class CustomerLogin
         DB::transaction(function () use ($digest, $phone, $code, $challenge): void {
             DB::table('customer_login_challenges')->insertOrIgnore(['phone_digest' => $digest, 'phone' => Crypt::encryptString($phone)]);
             $row = DB::table('customer_login_challenges')->where('phone_digest', $digest)->lockForUpdate()->first();
-            abort_if($row->resend_at && now()->lt($row->resend_at), 429, 'برای ارسال دوباره، یک دقیقه صبر کنید.');
+            abort_if($row->resend_at && now()->lt($row->resend_at), 429, 'برای درخواست کد جدید، یک دقیقه صبر کنید.');
             DB::table('customer_login_challenges')->where('id', $row->id)->update([
                 'challenge_id' => $challenge, 'code_hash' => 'v2:'.Hash::make($this->codeDigest($challenge, $code)),
                 'attempts' => 0, 'expires_at' => now()->addMinutes(2), 'resend_at' => now()->addMinute(),

@@ -22,6 +22,7 @@
         <div class="mt-3 grid gap-3 lg:grid-cols-2">
             <details class="admin-section" @if($errors->has('current_password') && !$account) open @endif>
                 <summary>کد ورود آزمایشی</summary>
+            <p class="admin-hint">ابتدا در صفحهٔ ورود مشتری درخواست کد بدهید. کد پیامک نمی‌شود و تا دو دقیقه معتبر است.</p>
             <form class="admin-form" method="post" action="{{ route('admin.test-customers.code', $row['key']) }}">
                 @csrf
                 <label class="label">رمز عبور فعلی مدیریت<input class="input" type="password" name="current_password" autocomplete="current-password" required></label>

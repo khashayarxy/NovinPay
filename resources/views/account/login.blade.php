@@ -64,13 +64,13 @@
                         <small role="status" data-otp-pending hidden>در حال بررسی کد…</small>
                     </form>
                 @else
-                    <p>اگر کد دریافت نکرده‌اید، می‌توانید درخواست ارسال بدهید یا با رمز عبور وارد شوید.</p>
+                    <p>درخواست کد تأیید بدهید یا با رمز عبور وارد شوید.</p>
                 @endif
                 <div class="np-auth__alternatives">
                     <form method="post" action="{{ route('account.otp') }}">
                         @csrf
                         @if($recovery)<input type="hidden" name="recover" value="1">@endif
-                        <button type="submit" class="np-account-link" data-account-resend="{{ max(0, $resendAt - now()->timestamp) }}">{{ $challenge ? 'ارسال دوباره کد' : 'درخواست کد تأیید' }}</button>
+                        <button type="submit" class="np-account-link" data-account-resend="{{ max(0, $resendAt - now()->timestamp) }}">{{ $challenge ? 'درخواست کد جدید' : 'درخواست کد تأیید' }}</button>
                     </form>
                     <a class="np-account-link" href="{{ route('account.login', ['method' => 'password']) }}">ورود با رمز عبور</a>
                 </div>

@@ -9,7 +9,7 @@
             var remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
             resend.disabled = remaining > 0;
             resend.textContent = remaining
-                ? 'ارسال دوباره پس از ' + (format ? format.format(remaining) : remaining) + ' ثانیه'
+                ? 'درخواست کد جدید پس از ' + (format ? format.format(remaining) : remaining) + ' ثانیه'
                 : label;
             if (remaining) window.setTimeout(updateResend, 1000);
         };

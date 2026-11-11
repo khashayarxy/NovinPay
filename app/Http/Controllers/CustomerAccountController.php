@@ -88,7 +88,7 @@ class CustomerAccountController extends Controller
         $request->session()->put('customer_login_phone', $data['phone']);
         $request->session()->put('customer_resend_at', now()->addMinute()->timestamp);
 
-        return redirect()->route('account.login')->with('success', 'کد تأیید ارسال شد.');
+        return redirect()->route('account.login')->with('success', 'کد تأیید را وارد کنید.');
     }
 
     private function requestCode(Request $request, CustomerLogin $login, string $phone)
@@ -105,7 +105,7 @@ class CustomerAccountController extends Controller
             return redirect()->route('account.login', $routeParameters)->withErrors(['code' => $exception->getMessage()]);
         }
 
-        return redirect()->route('account.login', $routeParameters)->with('success', 'کد تأیید آماده است.');
+        return redirect()->route('account.login', $routeParameters)->with('success', 'کد تأیید را وارد کنید.');
     }
 
     public function verify(Request $request, CustomerLogin $login)

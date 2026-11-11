@@ -36,7 +36,7 @@ class TestCustomerAccountController extends Controller
                 $code = $login->privateTestCode($phone);
                 if ($code !== null) {
                     // Never put the code in flash, old input, a URL, or an audit payload.
-                    return response()->view('admin.test-customer-code', ['code' => $code]);
+                    return response($code, 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
                 }
                 break;
             }
