@@ -8,6 +8,21 @@ if(!$function){throw 'Shared quota function missing'}
 . ([scriptblock]::Create($function.Extent.Text))
 $reader=$ast.Find({param($n)$n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Read-QuotaEntries'},$true)
 . ([scriptblock]::Create($reader.Extent.Text))
+$open=$ast.Find({param($n)$n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'OpenAccess'},$true)
+$upload=$ast.Find({param($n)$n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'UploadNewPrivate'},$true)
+if(!$upload){throw 'Shared private uploader missing'}
+. ([scriptblock]::Create($open.Extent.Text))
+. ([scriptblock]::Create($upload.Extent.Text))
+$AccessHelper=[IO.Path]::GetTempFileName()
+try {
+ [IO.File]::WriteAllText($AccessHelper, '$script:accessOpened=$true')
+ $recoveryScope=$true;$UploadHelper='/nonexistent-legacy-helper.ps1'
+ . OpenAccess
+ if(!$script:accessOpened){throw 'Existing secure-access workflow was not loaded'}
+ $rejected=$false
+ try{UploadNewPrivate 'outside.json' ([byte[]]@(1)) '/outside'|Out-Null}catch{$rejected=$true}
+ if(!$rejected){throw 'Uploader scope was weakened'}
+}finally{[IO.File]::Delete($AccessHelper)}
 Add-Type -TypeDefinition @'
 using System;
 using System.Net;

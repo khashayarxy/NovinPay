@@ -1,7 +1,7 @@
 param(
  [Parameter(Mandatory)][string]$ManifestPath,
  [Parameter(Mandatory)][string]$AccessHelper,
- [Parameter(Mandatory)][string]$UploadHelper,
+ [string]$UploadHelper,
  [Parameter(Mandatory)][string]$PrivateRoot,
  [Parameter(Mandatory)][string]$StatusPath,
  [ValidateRange(1,24)][int]$Hours=24,
@@ -19,8 +19,21 @@ if(!$legacyScope -and !$pr13Scope -and !$pr13Activation -and !$recoveryScope){th
 if($recoveryScope){$package=$m.stateDirectory}
 $deadline=[DateTimeOffset]::UtcNow.AddHours($Hours)
 function Status([string]$state){[IO.File]::WriteAllText($StatusPath,(@{result=$state;pid=$PID;atUtc=[DateTimeOffset]::UtcNow.ToString('o');manifestSha256=$pin}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))}
+function UploadNewPrivate([string]$name,[byte[]]$bytes,[string]$directory) {
+ if($directory -cne '/home/novinpay/novinpay-direct-pr13' -or $name -cnotmatch '^quota-[a-f0-9]{32}-(reply|ready)\.json$' -or $bytes.Length -lt 1 -or $bytes.Length -gt 65536){throw 'Quota upload outside scope'}
+ if(@(Get-Entries $directory|Where-Object file -ceq $name).Count){throw 'Existing quota evidence preserved'}
+ $hash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+ $form=[Net.Http.MultipartFormDataContent]::new();$form.Add([Net.Http.StringContent]::new($directory),'dir');$part=[Net.Http.ByteArrayContent]::new($bytes);$part.Headers.ContentType=[Net.Http.Headers.MediaTypeHeaderValue]::new('application/octet-stream');$form.Add($part,'file-1',$name);$part.Headers.ContentDisposition.Name='"file-1"';$part.Headers.ContentDisposition.FileName='"'+$name+'"';$part.Headers.ContentDisposition.FileNameStar=$null
+ $req=[Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Post,('https://leda.asemanhost.com:2083/execute/Fileman/upload_files?dir='+[uri]::EscapeDataString($directory)+'&overwrite=0&permissions=0600'));[void]$req.Headers.TryAddWithoutValidation('Authorization','cpanel novinpay:'+[Runtime.InteropServices.Marshal]::PtrToStringBSTR($tokenPointer));$req.Content=$form
+ try {$res=$httpClient.SendAsync($req).GetAwaiter().GetResult();try {if(!$res.IsSuccessStatusCode){throw 'Quota proof upload HTTP failure'};$r=$res.Content.ReadAsStringAsync().GetAwaiter().GetResult()|ConvertFrom-Json;$r=if($r.result){$r.result}else{$r};if($r.status -ne 1 -or $r.data.succeeded -ne 1 -or $r.data.failed -ne 0){throw 'Ambiguous quota upload; reconcile before retry'}}finally{$res.Dispose()}}finally{$req.Dispose()}
+ $meta=Invoke-Cpanel 'Fileman/get_file_information' @{path=$directory+'/'+$name;show_hidden=1;include_permissions=1}
+ if($meta.type -ne 'file' -or [long]$meta.size -ne $bytes.Length -or $meta.nicemode.TrimStart('0') -cne '600' -or (Get-TextHash (Read-HostText ($directory+'/'+$name))) -cne $hash){throw 'Quota proof readback failed'}
+ return $hash
+}
+
 function OpenAccess {
  . $AccessHelper
+ if($recoveryScope){return}
  $tokens=$null;$parseErrors=$null
  $ast=[Management.Automation.Language.Parser]::ParseFile($UploadHelper,[ref]$tokens,[ref]$parseErrors)
  if($parseErrors.Count){throw 'Upload helper syntax'}
