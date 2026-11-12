@@ -64,7 +64,7 @@ class IpPanelOtpTest extends TestCase
     public function test_mobile_digits_are_normalized_before_otp_delivery_and_storage(string $input): void
     {
         Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
-        $this->post('/account/start', ['phone' => $input])->assertRedirect('/login')
+        $this->post('/account/start', ['phone' => $input])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))
             ->assertSessionHas('customer_login_phone', '09120000000');
         Http::assertSentCount(1);
         Http::assertSent(fn ($request) => $request['recipients'] === ['+989120000000']);
@@ -76,7 +76,7 @@ class IpPanelOtpTest extends TestCase
     public function test_selected_provider_supports_normal_registration_and_two_minute_expiry(): void
     {
         Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => ['12345678']]])]);
-        $this->post('/account/start', ['phone' => '۰۹۱۲۰۰۰۰۰۰۰'])->assertRedirect('/login')->assertSessionHasNoErrors();
+        $this->post('/account/start', ['phone' => '۰۹۱۲۰۰۰۰۰۰۰'])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasNoErrors();
         $code = Http::recorded()[0][0]['params']['code'];
         $this->assertMatchesRegularExpression('/\A[0-9]{6}\z/', $code);
         $row = DB::table('customer_login_challenges')->sole();
@@ -99,9 +99,9 @@ class IpPanelOtpTest extends TestCase
         $this->designateSmsTestPhone('09120000000');
         Log::spy();
         Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => false, 'message' => 'Insufficient credit']])]);
-        $this->post('/account/start', ['phone' => '09120000000'])->assertRedirect('/login')->assertSessionHasErrors('code');
+        $this->post('/account/start', ['phone' => '09120000000'])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasErrors('code');
         $this->assertNull(DB::table('customer_login_challenges')->value('code_hash'));
-        $this->post('/account/otp')->assertRedirect('/login')->assertSessionHasErrors('code');
+        $this->post('/account/otp')->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasErrors('code');
         Http::assertSentCount(1);
         Log::shouldHaveReceived('log')->with('warning', 'Customer OTP provider outcome', \Mockery::on(
             fn ($context) => $context['category'] === 'insufficient_credit' && ! isset($context['recipient']) && ! isset($context['code']),
@@ -114,7 +114,7 @@ class IpPanelOtpTest extends TestCase
         $phone = '09120000000';
         Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
         for ($index = 0; $index < 15; $index++) {
-            $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+            $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasNoErrors();
             $this->postJson('/account/otp')->assertTooManyRequests()->assertHeader('Retry-After', '60')
                 ->assertJsonPath('reason', 'resend_cooldown');
             $this->post('/account/verify', ['code' => Http::recorded()[$index][0]['params']['code']])->assertRedirect('/account?section=security');
@@ -125,8 +125,67 @@ class IpPanelOtpTest extends TestCase
         $this->postJson('/account/start', ['phone' => $phone])->assertTooManyRequests()->assertJsonPath('reason', 'daily_sms_limit');
         Http::assertSentCount(15);
         $this->travel(24)->hours();
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasNoErrors();
         Http::assertSentCount(16);
+    }
+
+    public function test_fresh_login_starts_at_phone_and_resubmitting_reuses_only_the_sessions_active_challenge(): void
+    {
+        $this->freezeTime();
+        $phone = '09120000000';
+        Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
+        $start = $this->post('/account/start', ['phone' => $phone]);
+        $flow = session('customer_login_flow');
+        $challenge = session('customer_challenge');
+        $continue = route('account.login', ['flow' => $flow]);
+        $start->assertRedirect($continue);
+        $fresh = $this->get('/login')->assertOk()->assertViewHas('phone', null)
+            ->assertSee('id="account-phone"', false)->assertDontSee('id="account-code"', false);
+        $this->assertGuest('customer');
+        $pending = $this->get($continue)->assertOk()->assertViewHas('challenge', true)->assertSee('id="account-code"', false);
+        $this->postJson('/account/otp', ['flow' => $flow])->assertTooManyRequests()->assertHeader('Retry-After', '60');
+        $this->travel(61)->seconds();
+        $this->get('/login')->assertViewHas('phone', null);
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect($continue)
+            ->assertSessionHas('customer_challenge', $challenge);
+        $this->get($continue)->assertSee('کد قبلی هنوز معتبر است.');
+        Http::assertSentCount(1);
+        $this->travel(60)->seconds();
+        $expired = $this->get($continue)->assertOk()->assertViewHas('challenge', false)->assertDontSee('id="account-code"', false);
+        $this->get('/login')->assertViewHas('phone', null);
+        Http::assertSentCount(1);
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect($continue);
+        Http::assertSentCount(2);
+        $this->assertNotSame($challenge, session('customer_challenge'));
+        $this->postJson('/account/verify', ['flow' => $flow, 'code' => Http::recorded()[1][0]['params']['code']])
+            ->assertOk()->assertJsonStructure(['redirect']);
+        $this->assertAuthenticated('customer');
+        $this->post('/account/logout')->assertRedirect('/login');
+        $this->get($continue)->assertRedirect('/login');
+
+        if ($directory = getenv('NOVINPAY_QA_DIR')) {
+            $this->assertTrue(is_dir($directory) && ! is_link($directory));
+            foreach (['login-fresh' => $fresh, 'login-pending' => $pending, 'login-expired' => $expired] as $name => $response) {
+                file_put_contents($directory.DIRECTORY_SEPARATOR.$name.'.html', $response->getContent());
+            }
+        }
+    }
+
+    public function test_changed_phone_retires_old_tab_without_consuming_its_code_or_sending_again(): void
+    {
+        Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
+        $this->post('/account/start', ['phone' => '09120000000'])->assertRedirect();
+        $old = session('customer_login_flow');
+        $this->post('/account/start', ['phone' => '09120000001'])->assertRedirect();
+        $current = session('customer_login_flow');
+        $this->assertNotSame($old, $current);
+        $this->get(route('account.login', ['flow' => $old]))->assertRedirect('/login');
+        $this->postJson('/account/otp', ['flow' => $old])->assertUnprocessable();
+        $this->postJson('/account/verify', ['flow' => $old, 'code' => Http::recorded()[0][0]['params']['code']])->assertUnprocessable();
+        $this->post('/account/restart', ['flow' => $old])->assertRedirect('/login')->assertSessionHas('customer_login_flow', $current);
+        $this->assertGuest('customer');
+        $this->assertSame(0, (int) DB::table('customer_login_challenges')->sum('attempts'));
+        Http::assertSentCount(2);
     }
 
     public function test_shared_ip_throttle_preserves_current_challenge_and_formats_web_and_json_responses(): void
@@ -134,12 +193,12 @@ class IpPanelOtpTest extends TestCase
         $this->freezeTime();
         Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
         for ($index = 0; $index < 20; $index++) {
-            $this->post('/account/start', ['phone' => sprintf('09120%06d', $index)])->assertRedirect('/login')->assertSessionHasNoErrors();
+            $this->post('/account/start', ['phone' => sprintf('09120%06d', $index)])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasNoErrors();
         }
         $challenge = session('customer_challenge');
-        $this->post('/account/otp')->assertRedirect('/login')->assertHeader('Retry-After', '60')
+        $this->post('/account/otp')->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertHeader('Retry-After', '60')
             ->assertSessionHas('customer_challenge', $challenge);
-        $page = $this->get('/login')->assertOk()->assertSee('درخواست‌های زیادی ثبت شده است.')->assertSee('data-account-wait="60"', false);
+        $page = $this->get(route('account.login', ['flow' => session('customer_login_flow')]))->assertOk()->assertSee('درخواست‌های زیادی ثبت شده است.')->assertSee('data-account-wait="60"', false);
         if ($directory = getenv('NOVINPAY_QA_DIR')) {
             $this->assertTrue(is_dir($directory) && ! is_link($directory));
             file_put_contents($directory.DIRECTORY_SEPARATOR.'otp-throttle.html', $page->getContent());
@@ -164,7 +223,7 @@ class IpPanelOtpTest extends TestCase
 
             return Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]]);
         }]);
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasNoErrors();
         $first = DB::table('customer_login_challenges')->sole()->challenge_id;
         $this->post('/account/restart')->assertRedirect('/login');
         $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.16'])->postJson('/account/start', ['phone' => $phone])
@@ -199,14 +258,14 @@ class IpPanelOtpTest extends TestCase
     {
         $this->freezeTime();
         Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
-        $this->post('/account/start', ['phone' => '09120000000'])->assertRedirect('/login');
+        $this->post('/account/start', ['phone' => '09120000000'])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]));
         $challenge = session('customer_challenge');
         for ($index = 0; $index < 5; $index++) {
-            $this->post('/account/password-login', ['password' => 'synthetic-wrong'])->assertRedirect('/login?method=password');
+            $this->post('/account/password-login', ['password' => 'synthetic-wrong'])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow'), 'method' => 'password']));
         }
-        $this->post('/account/password-login', ['password' => 'synthetic-wrong'])->assertRedirect('/login?method=password')
+        $this->post('/account/password-login', ['password' => 'synthetic-wrong'])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow'), 'method' => 'password']))
             ->assertHeader('Retry-After', '60')->assertSessionHas('customer_challenge', $challenge);
-        $this->get('/login?method=password')->assertOk()->assertSee('data-account-wait="60"', false);
+        $this->get(route('account.login', ['flow' => session('customer_login_flow'), 'method' => 'password']))->assertOk()->assertSee('data-account-wait="60"', false);
         $this->post('/account/verify', ['code' => Http::recorded()[0][0]['params']['code']])->assertRedirect('/account?section=security');
         Http::assertSentCount(1);
     }
@@ -244,8 +303,8 @@ class IpPanelOtpTest extends TestCase
         $this->designateSmsTestPhone($phone);
         Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
         $login = app(CustomerLogin::class);
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
-        $this->post('/account/otp')->assertRedirect('/login')->assertSessionHasErrors('code');
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasNoErrors();
+        $this->post('/account/otp')->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasErrors('code');
         Http::assertSentCount(1);
         $code = Http::recorded()[0][0]['params']['code'];
         $this->assertMatchesRegularExpression('/\A[0-9]{6}\z/', $code);
@@ -266,7 +325,7 @@ class IpPanelOtpTest extends TestCase
         Auth::guard('customer')->logout();
         $this->app['session.store']->flush();
         $this->travel(1)->minutes();
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]));
         $this->post('/account/password-login', ['password' => $password])->assertRedirect('/account');
         $original = $original->fresh();
         $this->assertAuthenticatedAs($original, 'customer');
@@ -275,7 +334,7 @@ class IpPanelOtpTest extends TestCase
         $this->assertNull($login->passwordAccount($phone, $password));
         $this->get('/account')->assertRedirect('/login');
 
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasNoErrors();
         Http::assertSentCount(3);
         $this->post('/account/verify', ['code' => Http::recorded()[2][0]['params']['code']])->assertRedirect('/account?section=security');
         $this->assertNotSame($original->id, Auth::guard('customer')->id());
@@ -289,7 +348,7 @@ class IpPanelOtpTest extends TestCase
         config(['customer.test_sms_phone' => '']);
         Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
         $login = app(CustomerLogin::class);
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]));
         $privateCode = $login->privateTestCode($phone);
         $this->assertNotNull($privateCode);
         config(['customer.test_sms_phone' => $phone]);
@@ -298,7 +357,7 @@ class IpPanelOtpTest extends TestCase
         $this->assertGuest('customer');
         Http::assertNothingSent();
         $this->travel(1)->minutes();
-        $this->post('/account/otp')->assertRedirect('/login')->assertSessionHasNoErrors();
+        $this->post('/account/otp')->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasNoErrors();
         Http::assertSentCount(1);
         config(['customer.test_sms_phone' => '']);
         $this->assertNull($login->privateTestCode($phone));

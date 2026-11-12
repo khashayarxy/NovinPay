@@ -74,7 +74,7 @@ Route::match(['GET', 'POST'], '/support-chat/{path?}', SupportChatController::cl
     ->withoutMiddleware(PreventRequestForgery::class)
     ->middleware('throttle:600,1')->name('support.chat');
 
-Route::get('/login', [CustomerAccountController::class, 'login'])->middleware(PrivateRepairResponse::class)->name('account.login');
+Route::get('/login', [CustomerAccountController::class, 'login'])->block(20, 15)->middleware(PrivateRepairResponse::class)->name('account.login');
 
 Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('account.')->group(function (): void {
     $controller = CustomerAccountController::class;

@@ -1,4 +1,8 @@
 (function () {
+    // A restored form can belong to a completed, expired or replaced flow.
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) window.location.reload();
+    });
     function countdown(button, onChange) {
         var until = 0;
         var timer;
@@ -196,7 +200,8 @@
         if (request) request.abort();
         request = null;
     });
-    window.addEventListener('pageshow', function () {
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) return;
         active = true;
         navigating = false;
         if (!request) busy(false);

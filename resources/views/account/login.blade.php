@@ -22,14 +22,14 @@
             @if($phone)
                 <div class="np-auth__number">
                     <bdi dir="ltr">{{ \App\Support\FaNumber::digits(substr($phone, 0, 4).' ••• '.substr($phone, -4)) }}</bdi>
-                    <form method="post" action="{{ route('account.restart') }}">@csrf<button class="np-account-link" type="submit">تغییر شماره</button></form>
+                    <form method="post" action="{{ route('account.restart') }}">@csrf<input type="hidden" name="flow" value="{{ $flow }}"><button class="np-account-link" type="submit">تغییر شماره</button></form>
                 </div>
             @else
                 <p>برای ورود یا ساخت حساب، شماره موبایل خود را وارد کنید.</p>
             @endif
             <x-admin.errors />
             @unless($errors->any())
-                @foreach($passwordMode ? ['password'] : ['otp', 'verify'] as $action)
+                @foreach($passwordMode ? ['password'] : ($phone ? ['otp', 'verify'] : ['otp']) as $action)
                     @if(isset($retryReason[$action]) && $wait($action) > 0)
                         <p class="np-account-otp-error" role="status">{{ \App\Support\CustomerAuthThrottle::message($retryReason[$action], $wait($action)) }}</p>
                     @endif
@@ -47,18 +47,20 @@
             @elseif($passwordMode)
                 <form class="np-account-form" method="post" action="{{ route('account.password.login') }}">
                     @csrf
+                    <input type="hidden" name="flow" value="{{ $flow }}">
                     <label for="account-password">رمز عبور</label>
                     <x-account.password id="account-password" name="password" autocomplete="current-password" />
                     <button class="np-account-primary" data-account-wait="{{ $wait('password') }}">ورود</button>
                 </form>
                 <div class="np-auth__alternatives">
-                    <a class="np-account-link" href="{{ route('account.login') }}">ورود با کد تأیید</a>
-                    <a class="np-account-link" href="{{ route('account.login', ['method' => 'recovery']) }}">رمز عبور را فراموش کرده‌ام</a>
+                    <a class="np-account-link" href="{{ route('account.login', ['flow' => $flow]) }}">ورود با کد تأیید</a>
+                    <a class="np-account-link" href="{{ route('account.login', ['flow' => $flow, 'method' => 'recovery']) }}">رمز عبور را فراموش کرده‌ام</a>
                 </div>
             @else
                 @if($challenge)
                     <form class="np-account-form" method="post" action="{{ route('account.verify') }}" data-account-otp>
                         @csrf
+                        <input type="hidden" name="flow" value="{{ $flow }}">
                         @if($recovery)<input type="hidden" name="recover" value="1">@endif
                         <label for="account-code">کد تأیید شش‌رقمی</label>
                         <div class="np-otp" dir="ltr" @if($errors->has('code')) data-otp-error @endif>
@@ -72,16 +74,19 @@
                         <button class="np-account-primary" data-verify-wait="{{ $wait('verify') }}">{{ $recovery ? 'تأیید و انتخاب رمز' : 'تأیید و ورود' }}</button>
                         <small role="status" data-otp-pending hidden>در حال بررسی کد…</small>
                     </form>
+                @elseif($challengeEnded)
+                    <p>کد قبلی دیگر معتبر نیست. کد جدید درخواست کنید.</p>
                 @else
                     <p>درخواست کد تأیید بدهید یا با رمز عبور وارد شوید.</p>
                 @endif
                 <div class="np-auth__alternatives">
                     <form method="post" action="{{ route('account.otp') }}">
                         @csrf
+                        <input type="hidden" name="flow" value="{{ $flow }}">
                         @if($recovery)<input type="hidden" name="recover" value="1">@endif
                         <button type="submit" class="np-account-link" data-account-wait="{{ $wait('otp', $resendAt) }}">{{ $challenge ? 'درخواست کد جدید' : 'درخواست کد تأیید' }}</button>
                     </form>
-                    <a class="np-account-link" href="{{ route('account.login', ['method' => 'password']) }}">ورود با رمز عبور</a>
+                    <a class="np-account-link" href="{{ route('account.login', ['flow' => $flow, 'method' => 'password']) }}">ورود با رمز عبور</a>
                 </div>
             @endif
         </div>
@@ -104,5 +109,5 @@
         </div>
     </aside>
 </div>
-<script src="{{ asset('js/customer-otp.js?v=3') }}" defer></script>
+<script src="{{ asset('js/customer-otp.js?v=4') }}" defer></script>
 @endsection

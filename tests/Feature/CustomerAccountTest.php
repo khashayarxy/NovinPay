@@ -52,7 +52,7 @@ class CustomerAccountTest extends TestCase
         Http::preventStrayRequests();
         Http::fake();
         $this->postJson('/account/otp', ['phone' => '09000000000'])->assertStatus(503);
-        $this->post('/account/otp')->assertRedirect('/login')->assertSessionHasErrors('code');
+        $this->post('/account/otp')->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasErrors('code');
         Http::assertNothingSent();
         $this->assertDatabaseCount('customer_login_challenges', 0);
     }
@@ -67,9 +67,9 @@ class CustomerAccountTest extends TestCase
         $this->get('/account/login')->assertRedirect('/login');
         config(['support_chat.enabled' => true]);
         $this->get('/login')->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertDontSee('support-widget.js');
-        $this->post('/account/start', ['phone' => '09000000001'])->assertRedirect('/login')->assertSessionHasErrors('code');
+        $this->post('/account/start', ['phone' => '09000000001'])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasErrors('code');
         $this->assertNull(app(CustomerLogin::class)->privateTestCode('09000000001'));
-        $this->post('/account/start', ['phone' => '۰۹۰۰۰۰۰۰۰۰۰'])->assertRedirect('/login');
+        $this->post('/account/start', ['phone' => '۰۹۰۰۰۰۰۰۰۰۰'])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]));
         $code = app(CustomerLogin::class)->privateTestCode($phone);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
         $this->assertStringNotContainsString('09000000000', $this->get('/login')->assertOk()->getContent());
@@ -110,7 +110,7 @@ class CustomerAccountTest extends TestCase
         $this->assertGuest('customer');
 
         config(['customer.sms_enabled' => false]);
-        $this->post('/account/start', ['phone' => $account->phone])->assertRedirect('/login')->assertSessionHasErrors('code');
+        $this->post('/account/start', ['phone' => $account->phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasErrors('code');
         $this->post('/account/password-login', ['password' => $original])->assertRedirect('/account');
         $this->post('/account/password', ['password' => $changed, 'password_confirmation' => $changed, 'current_password' => 'wrong password'])
             ->assertSessionHasErrors('current_password');
@@ -143,7 +143,7 @@ class CustomerAccountTest extends TestCase
         $this->actingAs($owner, 'web')->withSession(['admin_session_version' => 1]);
         $previousIds = [];
         for ($cycle = 0; $cycle < 3; $cycle++) {
-            $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+            $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]));
             $code = $login->privateTestCode($phone);
             $this->assertNotNull($code);
             $this->get($admin)->assertOk()->assertDontSee($phone)->assertDontSee('کد تأیید آزمایشی');
@@ -208,7 +208,7 @@ class CustomerAccountTest extends TestCase
         $this->assertNotNull($real->fresh());
 
         $login = app(CustomerLogin::class);
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]));
         $this->post('/account/verify', ['code' => $login->privateTestCode($phone)])->assertRedirect('/account?section=security');
         $test = Auth::guard('customer')->user();
         $this->post('/account/profile', ['name' => 'Synthetic tester'])->assertRedirect();
@@ -222,7 +222,7 @@ class CustomerAccountTest extends TestCase
         $this->post('/account/logout')->assertRedirect('/login');
         $this->withSession(['customer_challenge' => $pending])->post('/account/verify', ['code' => $pendingCode])->assertSessionHasErrors('code');
 
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]));
         $this->post('/account/verify', ['code' => $login->privateTestCode($phone)])->assertRedirect('/account?section=security');
         $new = Auth::guard('customer')->user();
         $this->assertNotSame($test->id, $new->id);
@@ -249,7 +249,7 @@ class CustomerAccountTest extends TestCase
         Http::preventStrayRequests();
         Http::fake();
         $login = app(CustomerLogin::class);
-        $this->post('/account/otp', ['phone' => $phone])->assertRedirect('/login')
+        $this->post('/account/otp', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))
             ->assertSessionHas('success', 'کد تأیید را وارد کنید.');
         $code = $login->privateTestCode($phone);
         $this->assertNotNull($code);
@@ -261,14 +261,14 @@ class CustomerAccountTest extends TestCase
         Auth::guard('customer')->logout();
         $this->app['session.store']->flush();
         $this->travel(1)->minutes();
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login');
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]));
         $this->post('/account/password-login', ['password' => $password])->assertRedirect('/account');
         $this->assertAuthenticatedAs($original->fresh(), 'customer');
         $this->post('/account/logout')->assertRedirect('/login')->assertSessionMissing('customer_challenge');
         $this->assertModelMissing($original);
         $this->assertNull($login->privateTestCode($phone));
 
-        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasNoErrors();
         $newCode = $login->privateTestCode($phone);
         $this->assertNotNull($newCode);
         $this->post('/account/verify', ['code' => $newCode])->assertRedirect('/account?section=security');
@@ -314,7 +314,7 @@ class CustomerAccountTest extends TestCase
     {
         Http::preventStrayRequests();
         Http::fake();
-        $this->from('/account/login')->post('/account/verify', ['code' => ['123456']])->assertRedirect('/account/login')->assertSessionHasErrors('code');
+        $this->from('/account/login')->post('/account/verify', ['code' => ['123456']])->assertRedirect('/login')->assertSessionHasErrors('code');
         Http::assertNothingSent();
         $this->assertDatabaseCount('customer_accounts', 0);
     }

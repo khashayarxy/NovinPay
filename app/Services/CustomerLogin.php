@@ -153,6 +153,19 @@ class CustomerLogin
         return RepairIdentity::digest('customer-otp-code', $challenge.':'.$code);
     }
 
+    public function activeChallenge(string $phone, mixed $challenge): bool
+    {
+        if (! is_string($challenge) || $challenge === '') {
+            return false;
+        }
+        $row = DB::table('customer_login_challenges')
+            ->where('phone_digest', $this->digest($phone, $this->testAllowed($phone)))
+            ->where('challenge_id', $challenge)->first(['code_hash', 'attempts', 'expires_at']);
+
+        return $row && $row->code_hash && $row->attempts < 5 && now()->lt($row->expires_at)
+            && (! $this->testUsesSms($phone) || str_starts_with($row->code_hash, self::TEST_SMS_HASH_PREFIX));
+    }
+
     public function verify(string $challenge, string $code): CustomerAccount
     {
         $account = DB::transaction(function () use ($challenge, $code): ?CustomerAccount {

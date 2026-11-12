@@ -28,9 +28,12 @@ final class CustomerAuthThrottle
             return response()->json(['message' => $message, 'retry_after' => $wait, 'reason' => $reason], $status, $headers);
         }
 
-        $mode = $action === 'password' ? ['method' => 'password'] : ($request->boolean('recover') ? ['method' => 'recovery'] : []);
+        $differentPhone = $request->routeIs('account.start') && $phone && RepairIdentity::phone($request->input('phone')) !== $phone;
+        $staleForm = $request->has('flow') && ! CustomerLoginFlow::matches($request, $request->input('flow'));
+        $method = $action === 'password' ? 'password' : ($request->boolean('recover') ? 'recovery' : null);
+        $parameters = $differentPhone || $staleForm ? [] : CustomerLoginFlow::parameters($request, $method);
 
-        return redirect()->route('account.login', $mode)->withHeaders($headers)->withErrors([$action === 'password' ? 'password' : 'code' => $message]);
+        return redirect()->route('account.login', $parameters)->withHeaders($headers)->withErrors([$action === 'password' ? 'password' : 'code' => $message]);
     }
 
     public static function message(string $reason, int $wait): string
