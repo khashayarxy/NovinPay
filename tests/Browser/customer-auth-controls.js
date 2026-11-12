@@ -19,7 +19,7 @@ async page => {
             <form method="post" action="${verify}" data-account-otp><input type="hidden" name="_token" value="synthetic-csrf">
             <div class="np-otp"><input name="code" autocomplete="one-time-code" minlength="6" maxlength="6" required>
             <div class="np-otp__slots" hidden>${'<span></span>'.repeat(6)}</div></div>
-            <button>تأیید</button><p id="account-otp-error" hidden></p><small data-otp-pending hidden>در حال بررسی</small></form></body></html>`,
+            <button type="submit">تأیید</button><p id="account-otp-error" hidden></p><small data-otp-pending hidden>در حال بررسی</small></form></body></html>`,
         }));
         await context.route(verify, async route => {
             requests++;
@@ -60,13 +60,15 @@ async page => {
         await code.dispatchEvent('change');
         await tab.getByText('کد معتبر نیست یا منقضی شده است.').waitFor();
         await code.dispatchEvent('input');
+        await code.press('Enter');
         await tab.waitForTimeout(160);
-        assert(requests === 1 && await code.isEditable(), 'Invalid entry must stay editable without replay');
+        assert(requests === 1 && await code.isEditable(), 'Enter must not replay a definitive rejection');
         await code.fill('246810');
         await code.dispatchEvent('animationstart', { animationName: 'np-otp-autofill' });
         await tab.getByText('درخواست‌های زیادی ثبت شده است.', { exact: false }).waitFor();
         const verifyButton = tab.locator('[data-account-otp] button');
         assert(await verifyButton.isDisabled(), 'Retry-After must disable verification');
+        await code.press('Enter');
         await verifyButton.evaluate(button => new Promise(resolve => {
             const observer = new MutationObserver(() => {
                 if (!button.disabled) { observer.disconnect(); resolve(); }

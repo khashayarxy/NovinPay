@@ -24,7 +24,21 @@
         };
     }
     document.querySelectorAll('[data-account-wait]').forEach(function (button) {
-        countdown(button, function (locked) { button.disabled = locked; })(Number(button.getAttribute('data-account-wait')));
+        countdown(button, function (locked) {
+            button.disabled = locked || button.form.getAttribute('aria-busy') === 'true';
+        })(Number(button.getAttribute('data-account-wait')));
+    });
+    document.querySelectorAll('[data-account-submit]').forEach(function (form) {
+        var button = form.querySelector('button[type="submit"]');
+        form.addEventListener('submit', function (event) {
+            if (button.disabled || form.getAttribute('aria-busy') === 'true') {
+                event.preventDefault();
+                return;
+            }
+            if (event.defaultPrevented) return;
+            form.setAttribute('aria-busy', 'true');
+            button.disabled = true;
+        });
     });
 
     var form = document.querySelector('[data-account-otp]');
@@ -34,7 +48,7 @@
     var field = form.querySelector('.np-otp');
     var visual = field.querySelector('.np-otp__slots');
     var slots = visual.children;
-    var button = form.querySelector('button');
+    var button = form.querySelector('button[type="submit"]');
     var pending = form.querySelector('[data-otp-pending]');
     var error = document.getElementById('account-otp-error');
     var credential = null;
@@ -42,6 +56,7 @@
     var request = null;
     var scheduled = null;
     var lastAttempt = null;
+    var retryable = false;
     var active = true;
     var navigating = false;
     var verifyLocked = false;
@@ -95,8 +110,10 @@
     function verify(manual) {
         window.clearTimeout(scheduled);
         var code = input.value;
-        if (!active || request || navigating || verifyLocked || !/^[0-9]{6}$/.test(code) || (!manual && code === lastAttempt)) return;
+        if (!active || request || navigating || verifyLocked || !/^[0-9]{6}$/.test(code)
+            || (code === lastAttempt && (!manual || !retryable))) return;
         lastAttempt = code;
+        retryable = false;
         stopAutofill();
         clearError();
         var controller = new AbortController();
@@ -124,6 +141,7 @@
                 if (response.status === 422 && typeof body.message === 'string') {
                     showError(body.message);
                 } else if (response.status === 429) {
+                    retryable = true;
                     lockVerify(Number(response.headers.get('Retry-After')) || Number(body.retry_after));
                     showError(typeof body.message === 'string' ? body.message : 'تعداد تلاش‌ها زیاد است. دوباره تلاش کنید.');
                 } else if (response.status === 419) {
@@ -133,7 +151,10 @@
                 }
             });
         }).catch(function () {
-            if (active && request === controller) showError('بررسی کد انجام نشد. دوباره تلاش کنید.');
+            if (active && request === controller) {
+                retryable = true;
+                showError('بررسی کد انجام نشد. دوباره تلاش کنید.');
+            }
         }).then(function () {
             if (request !== controller) return;
             request = null;
@@ -150,7 +171,10 @@
             input.value = value;
             input.setSelectionRange(cursor, cursor);
         }
-        if (value !== lastAttempt) clearError();
+        if (value !== lastAttempt) {
+            lastAttempt = null;
+            clearError();
+        }
         render();
         if (value.length === 6) {
             stopAutofill();
@@ -181,7 +205,7 @@
         input.addEventListener(name, render);
     });
     form.addEventListener('submit', function (event) {
-        if (verifyLocked) {
+        if (verifyLocked || form.getAttribute('aria-busy') === 'true') {
             event.preventDefault();
             return;
         }

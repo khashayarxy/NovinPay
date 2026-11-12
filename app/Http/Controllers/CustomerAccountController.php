@@ -288,15 +288,11 @@ class CustomerAccountController extends Controller
         $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_intended', 'store_cart', 'repair_submission_token', 'repair_reference']);
         $request->session()->regenerate(true);
 
-        $response = redirect()->route('account.login');
         if ($account && is_int($version) && config('customer.test_reset_on_logout')) {
-            $result = $reset->reset($account, null, null, $version);
-            if ($result[0] === 'blocked') {
-                return $response->withErrors(['reset' => $result[1]]);
-            }
+            $reset->reset($account, null, null, $version);
         }
 
-        return $response;
+        return redirect()->route('account.login');
     }
 
     public function index(Request $request)

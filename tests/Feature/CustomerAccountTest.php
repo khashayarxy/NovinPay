@@ -304,16 +304,26 @@ class CustomerAccountTest extends TestCase
         $this->assertDatabaseHas('repair_requests', ['customer_account_id' => $test->id]);
         $this->assertDatabaseHas('repair_cases', ['id' => $case->id]);
         config(['customer.test_reset_on_logout' => true]);
-        $this->post('/account/logout')->assertRedirect('/login')->assertSessionHasErrors('reset');
+        $this->post('/account/logout')->assertRedirect('/login')->assertSessionHasNoErrors()->assertSessionMissing('customer_session_version');
         $this->assertGuest('customer');
+        $this->withCookie(config('session.cookie'), session()->getId())->get('/login')->assertOk()->assertSee('id="account-phone"', false)
+            ->assertDontSee('اطلاعات فرم را بررسی کنید')->assertDontSee('پروندهٔ پذیرش فیزیکی');
         $this->assertNotNull($test->fresh());
-        $this->assertDatabaseHas('repair_cases', ['id' => $case->id]);
+        $this->assertDatabaseHas('repair_cases', ['id' => $case->id, 'repair_request_id' => $record->id, 'customer_account_id' => $test->id]);
+        $this->assertDatabaseHas('repair_requests', ['id' => $record->id, 'customer_account_id' => $test->id]);
+        $this->assertDatabaseHas('admin_activities', [
+            'actor_id' => null, 'action' => AdminAction::TestCustomerResetBlocked->value,
+            'target_type' => 'customer_account', 'target_id' => $test->id,
+        ]);
     }
 
     public function test_malformed_otp_input_is_rejected_without_provider_requests(): void
     {
         Http::preventStrayRequests();
         Http::fake();
+        $this->post('/account/start', ['phone' => 'invalid'])->assertRedirect('/login')->assertSessionHasErrors('phone');
+        $this->withCookie(config('session.cookie'), session()->getId())->get('/login')
+            ->assertOk()->assertSee('id="error-summary"', false)->assertSee('id="account-phone"', false);
         $this->from('/account/login')->post('/account/verify', ['code' => ['123456']])->assertRedirect('/login')->assertSessionHasErrors('code');
         Http::assertNothingSent();
         $this->assertDatabaseCount('customer_accounts', 0);

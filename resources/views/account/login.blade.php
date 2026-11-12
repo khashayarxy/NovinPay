@@ -37,20 +37,20 @@
             @endunless
             @if(session('success') && !$passwordMode)<p class="np-account-notice" role="status">{{ session('success') }}</p>@endif
             @if(!$phone)
-                <form class="np-account-form" method="post" action="{{ route('account.start') }}">
+                <form class="np-account-form" method="post" action="{{ route('account.start') }}" data-account-submit>
                     @csrf
                     <label for="account-phone">شماره موبایل</label>
-                    <input id="account-phone" type="tel" name="phone" dir="ltr" autocomplete="tel" inputmode="tel" maxlength="40" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required>
-                    <button class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ادامه</button>
+                    <input id="account-phone" type="tel" name="phone" dir="ltr" autocomplete="tel" inputmode="tel" enterkeyhint="go" maxlength="40" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required>
+                    <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ادامه</button>
                 </form>
                 <p class="np-auth__legal">با ادامه، <a href="{{ route('terms') }}">شرایط استفاده</a> و <a href="{{ route('privacy') }}">حریم خصوصی</a> را می‌پذیرید.</p>
             @elseif($passwordMode)
-                <form class="np-account-form" method="post" action="{{ route('account.password.login') }}">
+                <form class="np-account-form" method="post" action="{{ route('account.password.login') }}" data-account-submit>
                     @csrf
                     <input type="hidden" name="flow" value="{{ $flow }}">
                     <label for="account-password">رمز عبور</label>
-                    <x-account.password id="account-password" name="password" autocomplete="current-password" />
-                    <button class="np-account-primary" data-account-wait="{{ $wait('password') }}">ورود</button>
+                    <x-account.password id="account-password" name="password" autocomplete="current-password" enterkeyhint="go" />
+                    <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('password') }}">ورود</button>
                 </form>
                 <div class="np-auth__alternatives">
                     <a class="np-account-link" href="{{ route('account.login', ['flow' => $flow]) }}">ورود با کد تأیید</a>
@@ -64,14 +64,14 @@
                         @if($recovery)<input type="hidden" name="recover" value="1">@endif
                         <label for="account-code">کد تأیید شش‌رقمی</label>
                         <div class="np-otp" dir="ltr" @if($errors->has('code')) data-otp-error @endif>
-                            <input id="account-code" class="np-auth__code" name="code" dir="ltr" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" aria-describedby="code-expiry account-otp-error" @if($errors->has('code')) aria-invalid="true" @endif required>
+                            <input id="account-code" class="np-auth__code" name="code" dir="ltr" inputmode="numeric" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" aria-describedby="code-expiry account-otp-error" @if($errors->has('code')) aria-invalid="true" @endif required>
                             <div class="np-otp__slots" aria-hidden="true" hidden>
                                 @for($slot = 0; $slot < 6; $slot++)<span></span>@endfor
                             </div>
                         </div>
                         <small id="code-expiry">کد تا دو دقیقه معتبر است.</small>
                         <p id="account-otp-error" class="np-account-otp-error" role="alert" hidden></p>
-                        <button class="np-account-primary" data-verify-wait="{{ $wait('verify') }}">{{ $recovery ? 'تأیید و انتخاب رمز' : 'تأیید و ورود' }}</button>
+                        <button type="submit" class="np-account-primary" data-verify-wait="{{ $wait('verify') }}">{{ $recovery ? 'تأیید و انتخاب رمز' : 'تأیید و ورود' }}</button>
                         <small role="status" data-otp-pending hidden>در حال بررسی کد…</small>
                     </form>
                 @elseif($challengeEnded)
@@ -109,5 +109,5 @@
         </div>
     </aside>
 </div>
-<script src="{{ asset('js/customer-otp.js?v=4') }}" defer></script>
+<script src="{{ asset('js/customer-otp.js?v=5') }}" defer></script>
 @endsection

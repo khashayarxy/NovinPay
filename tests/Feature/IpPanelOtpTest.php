@@ -143,6 +143,7 @@ class IpPanelOtpTest extends TestCase
             ->assertSee('id="account-phone"', false)->assertDontSee('id="account-code"', false);
         $this->assertGuest('customer');
         $pending = $this->get($continue)->assertOk()->assertViewHas('challenge', true)->assertSee('id="account-code"', false);
+        $password = $this->get(route('account.login', ['flow' => $flow, 'method' => 'password']))->assertOk();
         $this->postJson('/account/otp', ['flow' => $flow])->assertTooManyRequests()->assertHeader('Retry-After', '60');
         $this->travel(61)->seconds();
         $this->get('/login')->assertViewHas('phone', null);
@@ -165,7 +166,7 @@ class IpPanelOtpTest extends TestCase
 
         if ($directory = getenv('NOVINPAY_QA_DIR')) {
             $this->assertTrue(is_dir($directory) && ! is_link($directory));
-            foreach (['login-fresh' => $fresh, 'login-pending' => $pending, 'login-expired' => $expired] as $name => $response) {
+            foreach (['login-fresh' => $fresh, 'login-pending' => $pending, 'login-expired' => $expired, 'login-password' => $password] as $name => $response) {
                 file_put_contents($directory.DIRECTORY_SEPARATOR.$name.'.html', $response->getContent());
             }
         }
