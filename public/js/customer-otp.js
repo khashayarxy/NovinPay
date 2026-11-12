@@ -1,20 +1,27 @@
 (function () {
-    var resend = document.querySelector('[data-account-resend]');
-    var seconds = resend && Number(resend.getAttribute('data-account-resend'));
-    if (seconds > 0) {
-        var until = Date.now() + seconds * 1000;
-        var label = resend.textContent;
+    function countdown(button, onChange) {
+        var until = 0;
+        var timer;
+        var label = button.textContent;
         var format = window.Intl && new Intl.NumberFormat('fa-IR');
-        var updateResend = function () {
+        function update() {
             var remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-            resend.disabled = remaining > 0;
-            resend.textContent = remaining
-                ? 'درخواست کد جدید پس از ' + (format ? format.format(remaining) : remaining) + ' ثانیه'
-                : label;
-            if (remaining) window.setTimeout(updateResend, 1000);
+            var amount = remaining >= 3600 ? Math.ceil(remaining / 3600) : remaining > 60 ? Math.ceil(remaining / 60) : remaining;
+            var unit = remaining >= 3600 ? 'ساعت' : remaining > 60 ? 'دقیقه' : 'ثانیه';
+            button.textContent = remaining ? (format ? format.format(amount) : amount) + ' ' + unit + ' تا تلاش دوباره' : label;
+            onChange(remaining > 0);
+            if (remaining) timer = window.setTimeout(update, remaining > 60 ? 10000 : 1000);
+        }
+        return function (seconds) {
+            if (!(seconds > 0)) return;
+            window.clearTimeout(timer);
+            until = Date.now() + seconds * 1000;
+            update();
         };
-        updateResend();
     }
+    document.querySelectorAll('[data-account-wait]').forEach(function (button) {
+        countdown(button, function (locked) { button.disabled = locked; })(Number(button.getAttribute('data-account-wait')));
+    });
 
     var form = document.querySelector('[data-account-otp]');
     if (!form) return;
@@ -33,6 +40,12 @@
     var lastAttempt = null;
     var active = true;
     var navigating = false;
+    var verifyLocked = false;
+    var lockVerify = countdown(button, function (locked) {
+        verifyLocked = locked;
+        button.disabled = locked || !!request;
+    });
+    lockVerify(Number(button.getAttribute('data-verify-wait')));
 
     function digits(text) {
         return text.replace(/[\u06f0-\u06f9\u0660-\u0669]/g, function (digit) {
@@ -55,7 +68,7 @@
     }
 
     function busy(value) {
-        button.disabled = value;
+        button.disabled = value || verifyLocked;
         input.readOnly = value;
         pending.hidden = !value;
         form.setAttribute('aria-busy', String(value));
@@ -78,7 +91,7 @@
     function verify(manual) {
         window.clearTimeout(scheduled);
         var code = input.value;
-        if (!active || request || navigating || !/^[0-9]{6}$/.test(code) || (!manual && code === lastAttempt)) return;
+        if (!active || request || navigating || verifyLocked || !/^[0-9]{6}$/.test(code) || (!manual && code === lastAttempt)) return;
         lastAttempt = code;
         stopAutofill();
         clearError();
@@ -107,7 +120,8 @@
                 if (response.status === 422 && typeof body.message === 'string') {
                     showError(body.message);
                 } else if (response.status === 429) {
-                    showError('تعداد تلاش‌ها زیاد است. کمی صبر کنید و دوباره تلاش کنید.');
+                    lockVerify(Number(response.headers.get('Retry-After')) || Number(body.retry_after));
+                    showError(typeof body.message === 'string' ? body.message : 'تعداد تلاش‌ها زیاد است. دوباره تلاش کنید.');
                 } else if (response.status === 419) {
                     showError('مهلت نشست تمام شده است. صفحه را تازه کنید و دوباره کد بگیرید.');
                 } else {
@@ -163,6 +177,10 @@
         input.addEventListener(name, render);
     });
     form.addEventListener('submit', function (event) {
+        if (verifyLocked) {
+            event.preventDefault();
+            return;
+        }
         if (canVerifyInline) {
             event.preventDefault();
             verify(true);

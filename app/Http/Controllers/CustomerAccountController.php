@@ -14,6 +14,7 @@ use App\Models\SalesOrder;
 use App\Services\CustomerLogin;
 use App\Services\TestCustomerReset;
 use App\Support\CrmAccess;
+use App\Support\CustomerAuthThrottle;
 use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
 use App\Support\RepairIdentity;
@@ -55,12 +56,14 @@ class CustomerAccountController extends Controller
             'phone' => $request->session()->get('customer_login_phone'),
             'challenge' => $request->session()->has('customer_challenge'),
             'resendAt' => (int) $request->session()->get('customer_resend_at', 0),
+            'retryUntil' => $request->session()->get('customer_retry_until', []),
+            'retryReason' => $request->session()->get('customer_retry_reason', []),
         ]);
     }
 
     public function restart(Request $request)
     {
-        $request->session()->forget(['customer_login_phone', 'customer_challenge', 'customer_resend_at']);
+        $request->session()->forget(['customer_login_phone', 'customer_challenge', 'customer_resend_at', 'customer_retry_until']);
 
         return redirect()->route('account.login');
     }
@@ -70,7 +73,7 @@ class CustomerAccountController extends Controller
         $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
         $data = $this->validatePrivate($request, ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']]);
         if ($request->session()->get('customer_login_phone') !== $data['phone']) {
-            $request->session()->forget(['customer_challenge', 'customer_resend_at']);
+            $request->session()->forget(['customer_challenge', 'customer_resend_at', 'customer_retry_until']);
         }
         $request->session()->put('customer_login_phone', $data['phone']);
 
@@ -85,11 +88,9 @@ class CustomerAccountController extends Controller
         }
         $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
         $data = $this->validatePrivate($request, ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']]);
-        $request->session()->put('customer_challenge', $login->issue($data['phone']));
         $request->session()->put('customer_login_phone', $data['phone']);
-        $request->session()->put('customer_resend_at', now()->addMinute()->timestamp);
 
-        return redirect()->route('account.login')->with('success', 'کد تأیید را وارد کنید.');
+        return $this->requestCode($request, $login, $data['phone']);
     }
 
     private function requestCode(Request $request, CustomerLogin $login, string $phone)
@@ -97,16 +98,30 @@ class CustomerAccountController extends Controller
         $routeParameters = $request->boolean('recover') ? ['method' => 'recovery'] : [];
         try {
             $request->session()->put('customer_challenge', $login->issue($phone));
-            $request->session()->put('customer_resend_at', now()->addMinute()->timestamp);
+            $request->session()->put('customer_resend_at', now()->addSeconds(CustomerLogin::RESEND_SECONDS)->timestamp);
+            $request->session()->forget(['customer_retry_until.otp', 'customer_retry_reason.otp']);
         } catch (HttpException $exception) {
             if (! in_array($exception->getStatusCode(), [429, 503], true)) {
                 throw $exception;
             }
 
+            if (isset($exception->getHeaders()['Retry-After'])) {
+                if ($exception->getStatusCode() === 503) {
+                    $request->session()->forget('customer_challenge');
+                }
+
+                return CustomerAuthThrottle::respond($request, $exception->getHeaders(), 'otp', $exception->getMessage(), $exception->getStatusCode());
+            }
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage()], $exception->getStatusCode());
+            }
+
             return redirect()->route('account.login', $routeParameters)->withErrors(['code' => $exception->getMessage()]);
         }
 
-        return redirect()->route('account.login', $routeParameters)->with('success', 'کد تأیید را وارد کنید.');
+        $redirect = redirect()->route('account.login', $routeParameters)->with('success', 'کد تأیید را وارد کنید.');
+
+        return $request->expectsJson() ? response()->json(['redirect' => $redirect->getTargetUrl()]) : $redirect;
     }
 
     public function verify(Request $request, CustomerLogin $login)
@@ -161,7 +176,7 @@ class CustomerAccountController extends Controller
         }
         Auth::guard('customer')->login($account);
         $request->session()->regenerate(true);
-        $request->session()->forget(['customer_login_phone', 'customer_challenge', 'customer_resend_at', 'customer_otp_at', 'customer_password_offer']);
+        $request->session()->forget(['customer_login_phone', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_otp_at', 'customer_password_offer']);
         $request->session()->put('customer_session_version', $account->session_version);
         if ($otp) {
             $request->session()->put('customer_otp_at', now()->timestamp);
@@ -229,7 +244,7 @@ class CustomerAccountController extends Controller
         $account = $guard->user();
         $version = $request->session()->get('customer_session_version');
         $guard->logout();
-        $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_challenge', 'customer_resend_at', 'customer_intended', 'store_cart', 'repair_submission_token', 'repair_reference']);
+        $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_intended', 'store_cart', 'repair_submission_token', 'repair_reference']);
         $request->session()->regenerate(true);
 
         $response = redirect()->route('account.login');

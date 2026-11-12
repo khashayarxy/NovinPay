@@ -33,12 +33,12 @@ final class CustomerOtpSms
         };
     }
 
-    public function send(string $phone, string $code): bool
+    public function sendOutcome(string $phone, string $code): string
     {
         return match ($this->provider()) {
-            'smsir' => $this->smsIr->send($phone, config('customer.otp_template'), config('customer.otp_parameter'), $code, 'otp'),
-            'ippanel' => $this->ipPanel->send($phone, $code),
-            default => false,
+            'smsir' => $this->smsIr->send($phone, config('customer.otp_template'), config('customer.otp_parameter'), $code, 'otp') ? 'accepted' : 'uncertain',
+            'ippanel' => $this->ipPanel->sendOutcome($phone, $code),
+            default => 'rejected',
         };
     }
 }

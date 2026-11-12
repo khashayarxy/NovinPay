@@ -60,9 +60,14 @@ final class IpPanel
 
     public function send(string $phone, string $code): bool
     {
+        return $this->sendOutcome($phone, $code) === 'accepted';
+    }
+
+    public function sendOutcome(string $phone, string $code): string
+    {
         if (! config('customer.ippanel.enabled') || ! $this->configured()
             || ! preg_match('/\A09[0-9]{9}\z/D', $phone) || ! preg_match('/\A[0-9]{6}\z/D', $code)) {
-            return false;
+            return 'rejected';
         }
 
         $started = hrtime(true);
@@ -79,15 +84,19 @@ final class IpPanel
                 && (is_int($ids[0]) || is_string($ids[0])) && preg_match('/\A[1-9][0-9]{0,19}\z/D', (string) $ids[0])) {
                 $this->record('accepted', $started, ['outbox_id' => (string) $ids[0]]);
 
-                return true;
+                return 'accepted';
             }
-            $this->record($this->failure($response), $started, ['http_status' => $response->status()]);
+            $category = $this->failure($response);
+            $this->record($category, $started, ['http_status' => $response->status()]);
+
+            return in_array($response->status(), [400, 401, 402, 403, 404, 422, 429], true)
+                || ($response->successful() && $response->json('meta.status') === false) ? 'rejected' : 'uncertain';
         } catch (\Throwable) {
             // The outcome can be unknown after a timeout. Never retry or fail over.
             $this->record('transport_or_response', $started);
         }
 
-        return false;
+        return 'uncertain';
     }
 
     private function record(string $category, int $started, array $context = []): void

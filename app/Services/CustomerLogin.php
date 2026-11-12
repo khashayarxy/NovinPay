@@ -7,13 +7,21 @@ use App\Support\RepairIdentity;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Support\Timebox;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CustomerLogin
 {
     private const TEST_SMS_HASH_PREFIX = 'v3:test-sms:';
+
+    public const RESEND_SECONDS = 60;
+
+    private const DAILY_SMS_LIMIT = 15;
+
+    private const DAILY_SMS_SECONDS = 86400;
 
     public function testAllowed(string $phone): bool
     {
@@ -95,23 +103,46 @@ class CustomerLogin
         abort_unless($privateCode || ($sms->enabled() && $sms->configured() && (! $testSms || $sms->provider() === 'ippanel')),
             503, 'ورود پیامکی هنوز فعال نشده است.');
         $digest = $this->digest($phone, $test);
+        $quotaKey = 'customer-sms-dispatch:'.RepairIdentity::digest('otp-send-quota', $phone);
         $challenge = (string) Str::uuid();
         $code = $privateCode ? $this->testCode($challenge) : str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $hashPrefix = $testSms ? self::TEST_SMS_HASH_PREFIX : 'v2:';
-        DB::transaction(function () use ($digest, $phone, $code, $challenge, $hashPrefix): void {
+        $quotaUntil = DB::transaction(function () use ($digest, $phone, $code, $challenge, $hashPrefix, $privateCode, $quotaKey): ?int {
             DB::table('customer_login_challenges')->insertOrIgnore(['phone_digest' => $digest, 'phone' => Crypt::encryptString($phone)]);
             $row = DB::table('customer_login_challenges')->where('phone_digest', $digest)->lockForUpdate()->first();
-            abort_if($row->resend_at && now()->lt($row->resend_at), 429, 'برای درخواست کد جدید، یک دقیقه صبر کنید.');
+            if ($row->resend_at && now()->lt($row->resend_at)) {
+                throw new HttpException(429, 'resend_cooldown', headers: ['Retry-After' => (string) max(1, (int) ceil(now()->diffInSeconds($row->resend_at)))]);
+            }
+            if (! $privateCode && RateLimiter::tooManyAttempts($quotaKey, self::DAILY_SMS_LIMIT)) {
+                throw new HttpException(429, 'daily_sms_limit', headers: ['Retry-After' => (string) max(1, RateLimiter::availableIn($quotaKey))]);
+            }
             DB::table('customer_login_challenges')->where('id', $row->id)->update([
                 'challenge_id' => $challenge, 'code_hash' => $hashPrefix.Hash::make($this->codeDigest($challenge, $code)),
-                'attempts' => 0, 'expires_at' => now()->addMinutes(2), 'resend_at' => now()->addMinute(),
+                'attempts' => 0, 'expires_at' => now()->addMinutes(2), 'resend_at' => now()->addSeconds(self::RESEND_SECONDS),
             ]);
+            if ($privateCode) {
+                return null;
+            }
+            RateLimiter::hit($quotaKey, self::DAILY_SMS_SECONDS);
+
+            return now()->timestamp + RateLimiter::availableIn($quotaKey);
         }, 3);
         // Never log the request, OTP, mobile, API response or transport exception.
-        $ok = $privateCode || $sms->send($phone, $code);
-        if (! $ok) {
-            DB::table('customer_login_challenges')->where('challenge_id', $challenge)->update(['code_hash' => null]);
-            abort(503, 'کد ارسال نشد؛ پس از یک دقیقه دوباره تلاش کنید.');
+        $outcome = $privateCode ? 'accepted' : $sms->sendOutcome($phone, $code);
+        if ($outcome !== 'accepted') {
+            $wait = DB::transaction(function () use ($challenge, $outcome, $quotaKey, $quotaUntil): int {
+                $row = DB::table('customer_login_challenges')->where('challenge_id', $challenge)->lockForUpdate()->first();
+                if ($row) {
+                    DB::table('customer_login_challenges')->where('id', $row->id)->update(['code_hash' => null]);
+                }
+                $remaining = RateLimiter::availableIn($quotaKey);
+                if ($outcome === 'rejected' && $row && $remaining > 0 && now()->timestamp + $remaining === $quotaUntil && RateLimiter::attempts($quotaKey) > 0) {
+                    RateLimiter::decrement($quotaKey, $remaining);
+                }
+
+                return $row?->resend_at ? max(1, (int) ceil(now()->diffInSeconds($row->resend_at))) : self::RESEND_SECONDS;
+            }, 3);
+            throw new HttpException(503, 'delivery_unconfirmed', headers: ['Retry-After' => (string) $wait]);
         }
 
         return $challenge;

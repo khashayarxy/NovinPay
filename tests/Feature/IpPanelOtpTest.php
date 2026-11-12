@@ -108,6 +108,109 @@ class IpPanelOtpTest extends TestCase
         ))->once();
     }
 
+    public function test_normal_customer_can_complete_fifteen_login_cycles_with_daily_quota_and_cooldown(): void
+    {
+        $this->freezeTime();
+        $phone = '09120000000';
+        Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
+        for ($index = 0; $index < 15; $index++) {
+            $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+            $this->postJson('/account/otp')->assertTooManyRequests()->assertHeader('Retry-After', '60')
+                ->assertJsonPath('reason', 'resend_cooldown');
+            $this->post('/account/verify', ['code' => Http::recorded()[$index][0]['params']['code']])->assertRedirect('/account?section=security');
+            $this->post('/account/logout')->assertRedirect('/login');
+            $this->travel(61)->seconds();
+        }
+        $this->assertDatabaseCount('customer_accounts', 1);
+        $this->postJson('/account/start', ['phone' => $phone])->assertTooManyRequests()->assertJsonPath('reason', 'daily_sms_limit');
+        Http::assertSentCount(15);
+        $this->travel(24)->hours();
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+        Http::assertSentCount(16);
+    }
+
+    public function test_shared_ip_throttle_preserves_current_challenge_and_formats_web_and_json_responses(): void
+    {
+        $this->freezeTime();
+        Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
+        for ($index = 0; $index < 20; $index++) {
+            $this->post('/account/start', ['phone' => sprintf('09120%06d', $index)])->assertRedirect('/login')->assertSessionHasNoErrors();
+        }
+        $challenge = session('customer_challenge');
+        $this->post('/account/otp')->assertRedirect('/login')->assertHeader('Retry-After', '60')
+            ->assertSessionHas('customer_challenge', $challenge);
+        $page = $this->get('/login')->assertOk()->assertSee('درخواست‌های زیادی ثبت شده است.')->assertSee('data-account-wait="60"', false);
+        if ($directory = getenv('NOVINPAY_QA_DIR')) {
+            $this->assertTrue(is_dir($directory) && ! is_link($directory));
+            file_put_contents($directory.DIRECTORY_SEPARATOR.'otp-throttle.html', $page->getContent());
+        }
+        $this->postJson('/account/otp')->assertTooManyRequests()->assertHeader('Retry-After', '60')->assertJsonPath('retry_after', 60);
+        Http::assertSentCount(20);
+    }
+
+    public function test_phone_cooldown_blocks_an_overlapping_send_and_requests_from_another_ip(): void
+    {
+        $this->freezeTime();
+        $phone = '09120000000';
+        $sends = 0;
+        Http::fake([self::BASE.'/send' => function () use ($phone, &$sends) {
+            $sends++;
+            try {
+                app(CustomerLogin::class)->issue($phone);
+                $this->fail('The overlapping request bypassed the phone reservation.');
+            } catch (HttpException $e) {
+                $this->assertSame(429, $e->getStatusCode());
+            }
+
+            return Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]]);
+        }]);
+        $this->post('/account/start', ['phone' => $phone])->assertRedirect('/login')->assertSessionHasNoErrors();
+        $first = DB::table('customer_login_challenges')->sole()->challenge_id;
+        $this->post('/account/restart')->assertRedirect('/login');
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.16'])->postJson('/account/start', ['phone' => $phone])
+            ->assertTooManyRequests()->assertJsonPath('reason', 'resend_cooldown')->assertSessionMissing('customer_challenge');
+        $this->assertSame($first, DB::table('customer_login_challenges')->sole()->challenge_id);
+        $this->assertSame(1, $sends);
+    }
+
+    public function test_definitive_rejections_release_daily_quota_but_ambiguous_results_do_not(): void
+    {
+        $this->freezeTime();
+        $phone = '09120000000';
+        $reply = Http::response(['meta' => ['status' => false]], 429);
+        Http::fake([self::BASE.'/send' => function () use (&$reply) {
+            return $reply;
+        }]);
+        for ($index = 0; $index < 16; $index++) {
+            $this->postJson('/account/start', ['phone' => $phone])->assertStatus(503)->assertHeader('Retry-After', '60');
+            $this->travel(61)->seconds();
+        }
+        $reply = Http::response([], 502);
+        for ($index = 0; $index < 15; $index++) {
+            $this->postJson('/account/start', ['phone' => $phone])->assertStatus(503);
+            $this->travel(61)->seconds();
+        }
+        $this->postJson('/account/start', ['phone' => $phone])->assertTooManyRequests()->assertJsonPath('reason', 'daily_sms_limit');
+        Http::assertSentCount(31);
+        $this->assertNull(DB::table('customer_login_challenges')->value('code_hash'));
+    }
+
+    public function test_password_throttle_keeps_the_existing_phone_and_otp_challenge(): void
+    {
+        $this->freezeTime();
+        Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345678]]])]);
+        $this->post('/account/start', ['phone' => '09120000000'])->assertRedirect('/login');
+        $challenge = session('customer_challenge');
+        for ($index = 0; $index < 5; $index++) {
+            $this->post('/account/password-login', ['password' => 'synthetic-wrong'])->assertRedirect('/login?method=password');
+        }
+        $this->post('/account/password-login', ['password' => 'synthetic-wrong'])->assertRedirect('/login?method=password')
+            ->assertHeader('Retry-After', '60')->assertSessionHas('customer_challenge', $challenge);
+        $this->get('/login?method=password')->assertOk()->assertSee('data-account-wait="60"', false);
+        $this->post('/account/verify', ['code' => Http::recorded()[0][0]['params']['code']])->assertRedirect('/account?section=security');
+        Http::assertSentCount(1);
+    }
+
     public function test_timeout_does_not_retry_or_fall_back_to_smsir(): void
     {
         $this->designateSmsTestPhone('09120000000');

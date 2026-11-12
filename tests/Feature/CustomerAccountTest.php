@@ -51,7 +51,8 @@ class CustomerAccountTest extends TestCase
     {
         Http::preventStrayRequests();
         Http::fake();
-        $this->post('/account/otp', ['phone' => '09000000000'])->assertStatus(503);
+        $this->postJson('/account/otp', ['phone' => '09000000000'])->assertStatus(503);
+        $this->post('/account/otp')->assertRedirect('/login')->assertSessionHasErrors('code');
         Http::assertNothingSent();
         $this->assertDatabaseCount('customer_login_challenges', 0);
     }

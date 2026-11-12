@@ -5,6 +5,7 @@
 @php
     $passwordMode = $phone && request()->query('method') === 'password';
     $recovery = $phone && request()->query('method') === 'recovery';
+    $wait = fn (string $action, int $also = 0) => max(0, max($retryUntil[$action] ?? 0, $also) - now()->timestamp);
     $heading = match (true) {
         $passwordMode => 'ورود با رمز عبور',
         $recovery => 'بازیابی رمز عبور',
@@ -27,13 +28,20 @@
                 <p>برای ورود یا ساخت حساب، شماره موبایل خود را وارد کنید.</p>
             @endif
             <x-admin.errors />
+            @unless($errors->any())
+                @foreach($passwordMode ? ['password'] : ['otp', 'verify'] as $action)
+                    @if(isset($retryReason[$action]) && $wait($action) > 0)
+                        <p class="np-account-otp-error" role="status">{{ \App\Support\CustomerAuthThrottle::message($retryReason[$action], $wait($action)) }}</p>
+                    @endif
+                @endforeach
+            @endunless
             @if(session('success') && !$passwordMode)<p class="np-account-notice" role="status">{{ session('success') }}</p>@endif
             @if(!$phone)
                 <form class="np-account-form" method="post" action="{{ route('account.start') }}">
                     @csrf
                     <label for="account-phone">شماره موبایل</label>
                     <input id="account-phone" type="tel" name="phone" dir="ltr" autocomplete="tel" inputmode="tel" maxlength="40" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required>
-                    <button class="np-account-primary">ادامه</button>
+                    <button class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ادامه</button>
                 </form>
                 <p class="np-auth__legal">با ادامه، <a href="{{ route('terms') }}">شرایط استفاده</a> و <a href="{{ route('privacy') }}">حریم خصوصی</a> را می‌پذیرید.</p>
             @elseif($passwordMode)
@@ -41,7 +49,7 @@
                     @csrf
                     <label for="account-password">رمز عبور</label>
                     <x-account.password id="account-password" name="password" autocomplete="current-password" />
-                    <button class="np-account-primary">ورود</button>
+                    <button class="np-account-primary" data-account-wait="{{ $wait('password') }}">ورود</button>
                 </form>
                 <div class="np-auth__alternatives">
                     <a class="np-account-link" href="{{ route('account.login') }}">ورود با کد تأیید</a>
@@ -61,7 +69,7 @@
                         </div>
                         <small id="code-expiry">کد تا دو دقیقه معتبر است.</small>
                         <p id="account-otp-error" class="np-account-otp-error" role="alert" hidden></p>
-                        <button class="np-account-primary">{{ $recovery ? 'تأیید و انتخاب رمز' : 'تأیید و ورود' }}</button>
+                        <button class="np-account-primary" data-verify-wait="{{ $wait('verify') }}">{{ $recovery ? 'تأیید و انتخاب رمز' : 'تأیید و ورود' }}</button>
                         <small role="status" data-otp-pending hidden>در حال بررسی کد…</small>
                     </form>
                 @else
@@ -71,7 +79,7 @@
                     <form method="post" action="{{ route('account.otp') }}">
                         @csrf
                         @if($recovery)<input type="hidden" name="recover" value="1">@endif
-                        <button type="submit" class="np-account-link" data-account-resend="{{ max(0, $resendAt - now()->timestamp) }}">{{ $challenge ? 'درخواست کد جدید' : 'درخواست کد تأیید' }}</button>
+                        <button type="submit" class="np-account-link" data-account-wait="{{ $wait('otp', $resendAt) }}">{{ $challenge ? 'درخواست کد جدید' : 'درخواست کد تأیید' }}</button>
                     </form>
                     <a class="np-account-link" href="{{ route('account.login', ['method' => 'password']) }}">ورود با رمز عبور</a>
                 </div>
@@ -96,7 +104,5 @@
         </div>
     </aside>
 </div>
-@if($phone && !$passwordMode)
-    <script src="{{ asset('js/customer-otp.js?v=2') }}" defer></script>
-@endif
+<script src="{{ asset('js/customer-otp.js?v=3') }}" defer></script>
 @endsection

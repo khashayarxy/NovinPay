@@ -27,7 +27,11 @@ async page => {
             const body = request.postData() || '';
             assert(request.method() === 'POST' && request.headers().accept === 'application/json'
                 && body.includes('synthetic-csrf'), 'Verification must use a CSRF-bearing JSON request');
-            if (body.includes('246810')) return route.fulfill({ status: 429, json: {} });
+            if (body.includes('246810')) return route.fulfill({
+                status: 429,
+                headers: { 'Retry-After': '2' },
+                json: { message: 'درخواست‌های زیادی ثبت شده است.', retry_after: 99 },
+            });
             if (body.includes('001234')) return route.fulfill({ status: 200, json: { redirect: '/__auth-controls-next' } });
             return route.fulfill({ status: 422, json: { message: 'کد معتبر نیست یا منقضی شده است.' } });
         });
@@ -60,7 +64,16 @@ async page => {
         assert(requests === 1 && await code.isEditable(), 'Invalid entry must stay editable without replay');
         await code.fill('246810');
         await code.dispatchEvent('animationstart', { animationName: 'np-otp-autofill' });
-        await tab.getByText('تعداد تلاش‌ها زیاد است.', { exact: false }).waitFor();
+        await tab.getByText('درخواست‌های زیادی ثبت شده است.', { exact: false }).waitFor();
+        const verifyButton = tab.locator('[data-account-otp] button');
+        assert(await verifyButton.isDisabled(), 'Retry-After must disable verification');
+        await verifyButton.evaluate(button => new Promise(resolve => {
+            const observer = new MutationObserver(() => {
+                if (!button.disabled) { observer.disconnect(); resolve(); }
+            });
+            if (!button.disabled) resolve();
+            else observer.observe(button, { attributes: true, attributeFilter: ['disabled'] });
+        }));
         assert(requests === 2, 'Autofill and rate-limit handling must send once');
         await code.evaluate(input => {
             const clipboardData = new DataTransfer();

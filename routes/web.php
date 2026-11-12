@@ -79,11 +79,11 @@ Route::get('/login', [CustomerAccountController::class, 'login'])->middleware(Pr
 Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('account.')->group(function (): void {
     $controller = CustomerAccountController::class;
     Route::get('login', fn () => redirect()->route('account.login'))->name('login.legacy');
-    Route::post('start', [$controller, 'start'])->middleware('throttle:customer-otp')->name('start');
-    Route::post('restart', [$controller, 'restart'])->name('restart');
-    Route::post('otp', [$controller, 'send'])->middleware('throttle:customer-otp')->name('otp');
-    Route::post('verify', [$controller, 'verify'])->middleware('throttle:20,1')->name('verify');
-    Route::post('password-login', [$controller, 'passwordLogin'])->middleware('throttle:customer-password')->name('password.login');
+    Route::post('start', [$controller, 'start'])->block(20, 15)->middleware('throttle:customer-otp')->name('start');
+    Route::post('restart', [$controller, 'restart'])->block(20, 15)->name('restart');
+    Route::post('otp', [$controller, 'send'])->block(20, 15)->middleware('throttle:customer-otp')->name('otp');
+    Route::post('verify', [$controller, 'verify'])->block(20, 15)->middleware('throttle:customer-verify')->name('verify');
+    Route::post('password-login', [$controller, 'passwordLogin'])->block(20, 15)->middleware('throttle:customer-password')->name('password.login');
     Route::middleware(EnsureCustomerSession::class)->group(function () use ($controller): void {
         Route::get('/', [$controller, 'index'])->name('index');
         Route::get('/repairs/requests/{record}', [$controller, 'repairRequest'])->where('record', '[A-Za-z0-9-]{1,35}')->name('repairs.request');
@@ -91,7 +91,7 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
         Route::get('/orders/{record}', [$controller, 'order'])->whereUuid('record')->name('orders.show');
         Route::post('password', [$controller, 'password'])->middleware('throttle:10,1')->name('password.update');
         Route::post('password-skip', [$controller, 'skipPassword'])->name('password.skip');
-        Route::post('logout', [$controller, 'logout'])->name('logout');
+        Route::post('logout', [$controller, 'logout'])->block(20, 15)->name('logout');
         Route::post('profile', [$controller, 'profile'])->middleware('throttle:20,1')->name('profile');
         Route::post('addresses', [$controller, 'address'])->middleware('throttle:10,1')->name('address');
         Route::post('addresses/{addressId}', [$controller, 'address'])->middleware('throttle:10,1')->name('address.update');
