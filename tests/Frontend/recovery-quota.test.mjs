@@ -16,6 +16,18 @@ test('shared quota companion bounds transient retries and preserves authorizatio
     assert.match(result.stdout, /QUOTA_COMPANION_REGRESSION_PASS/);
 });
 
+test('source activation receives a bound quota reply through the shared private directory', (t) => {
+    const probe = spawnSync('pwsh', ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.Major'], { encoding: 'utf8' });
+    if (probe.error?.code === 'ENOENT') {
+        t.skip('PowerShell is unavailable');
+        return;
+    }
+    const fixture = fileURLToPath(new URL('../Fixtures/source-quota.ps1', import.meta.url));
+    const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-File', fixture], { encoding: 'utf8', timeout: 20_000 });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /SOURCE_QUOTA_WORKFLOW_PASS/);
+});
+
 test('durable capture detects concurrent writes even when bytes are restored', (t) => {
     if (process.platform !== 'linux') {
         t.skip('This native monitor regression requires Linux inotify');

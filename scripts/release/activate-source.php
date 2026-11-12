@@ -49,7 +49,7 @@ try {
     }
 
     if ($action === 'quota') {
-        NovinPay\Release\requestQuota($manifest, KIT.'/'.$manifest['releaseName'].'-attempt/quota', 'fence');
+        NovinPay\Release\requestQuota($manifest, KIT, 'fence');
         echo "ADMIN_QUOTA_PASS\n";
         exit(0);
     }

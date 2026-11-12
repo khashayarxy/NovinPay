@@ -81,7 +81,6 @@ p "$tools/activate-source.php" "$manifest" "$pin" baseline-files
 phase=recovery_runtime_and_quota
 p "$tools/activate-source.php" "$manifest" "$pin" preflight
 mkdir -m 0700 "$journal"
-mkdir -m 0700 "$journal/quota"
 p "$tools/activate-source.php" "$manifest" "$pin" quota
 p "$tools/activate-source.php" "$manifest" "$pin" web-check
 phase=rollback_capture

@@ -12,7 +12,7 @@ A failed capture or occupied restore target is preserved and cannot be replayed.
 
 Recovery and activation share an exclusive operation lock; capture also holds a database advisory lock through isolated restoration. Only the diagnostic `error_log` may append while preserving its original prefix. All durable chat/security/session files remain covered by the strict capture monitor. The enabled private test-account flag can coexist with approved real SMS delivery and logout reset; verify effective/fresh configuration agreement instead of requiring the obsolete all-test-features-OFF state. No backup operation changes provider settings or sends an SMS.
 
-Current shared-tool hosted end-to-end qualification is **pending**. Unit/companion checks do not establish a verified recovery point or deployed release. See the current incident in [deployment lessons](DEPLOYMENT-LESSONS-LEARNED.md).
+Shared recovery qualification passed on 2026-11-13 against production baseline `9082e64`, with 23 migrations, 13 triggers, matching schema/definers/rows, and independent encrypted off-host verification of all protected files and 82 persistent files. Source activation remains pending. Reuse this evidence within policy instead of repeating capture/restore. See [deployment lessons](DEPLOYMENT-LESSONS-LEARNED.md).
 
 Owner workflow decision: 2026-11-06. This replaces the old fresh-install/staging sequence. Production is already installed: do not reinstall, recreate users/databases, regenerate APP_KEY, replace directories, or replay Stage 1/2/Phase 8.
 

@@ -14,9 +14,11 @@ $package='/home/novinpay/novinpay-release-pipeline-v1'
 $legacyScope=!$QuotaOnly -and $m.stateDirectory -ceq "$package/pipeline-pr12" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr12-v2'
 $pr13Scope=$QuotaOnly -and $m.stateDirectory -ceq "$package/pipeline-pr13-r2" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1' -and $m.backup.restoreDatabase -ceq 'novinpay_restore13r1' -and $m.baseline -ceq '1f39bb476fd31880600564e58599c4488622c4c0'
 $pr13Activation=$QuotaOnly -and $m.mode -ceq 'pr13-migration-activation-v1' -and $m.stateDirectory -ceq "$package/pipeline-pr13-activation-r4" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1' -and $m.backup.restoreDatabase -ceq 'novinpay_restore13r1' -and $m.baseline -ceq '1f39bb476fd31880600564e58599c4488622c4c0' -and $m.candidate -ceq 'ded4e16302770f28f7bfe8e567e9a2de2314f99d'
-$recoveryScope=$QuotaOnly -and $m.format -ceq 'novinpay-recovery-v1' -and $m.stateDirectory -ceq '/home/novinpay/novinpay-direct-pr13' -and $m.backup.directory -cmatch '^/home/novinpay/novinpay-private-backups/recovery-[a-z0-9-]{1,60}$' -and $m.backup.restoreDatabase -cmatch '^novinpay_restore[a-z0-9]+$' -and $m.baseline -cmatch '^[a-f0-9]{40}$' -and $m.target -cmatch '^[a-f0-9]{40}$'
-if(!$legacyScope -and !$pr13Scope -and !$pr13Activation -and !$recoveryScope){throw 'Bridge manifest scope mismatch'}
-if($recoveryScope){$package=$m.stateDirectory}
+$modernScope=$QuotaOnly -and $m.format -cin @('novinpay-recovery-v1','novinpay-source-release-v1') -and $m.stateDirectory -ceq '/home/novinpay/novinpay-direct-pr13' -and $m.backup.directory -cmatch '^/home/novinpay/novinpay-private-backups/recovery-[a-z0-9-]{1,60}$' -and $m.backup.restoreDatabase -cmatch '^novinpay_restore[a-z0-9]+$' -and $m.baseline -cmatch '^[a-f0-9]{40}$' -and $m.target -cmatch '^[a-f0-9]{40}$'
+$recoveryScope=$modernScope -and $m.format -ceq 'novinpay-recovery-v1'
+$sourceScope=$modernScope -and $m.format -ceq 'novinpay-source-release-v1' -and $m.releaseName -cmatch '^[a-z0-9-]{1,64}$'
+if(!$legacyScope -and !$pr13Scope -and !$pr13Activation -and !$recoveryScope -and !$sourceScope){throw 'Bridge manifest scope mismatch'}
+if($modernScope){$package=$m.stateDirectory}
 $deadline=[DateTimeOffset]::UtcNow.AddHours($Hours)
 function Status([string]$state){[IO.File]::WriteAllText($StatusPath,(@{result=$state;pid=$PID;atUtc=[DateTimeOffset]::UtcNow.ToString('o');manifestSha256=$pin}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))}
 function UploadNewPrivate([string]$name,[byte[]]$bytes,[string]$directory) {
@@ -33,7 +35,7 @@ function UploadNewPrivate([string]$name,[byte[]]$bytes,[string]$directory) {
 
 function OpenAccess {
  . $AccessHelper
- if($recoveryScope){return}
+ if($modernScope){return}
  $tokens=$null;$parseErrors=$null
  $ast=[Management.Automation.Language.Parser]::ParseFile($UploadHelper,[ref]$tokens,[ref]$parseErrors)
  if($parseErrors.Count){throw 'Upload helper syntax'}
@@ -127,6 +129,7 @@ try {
    $check='quota_reply_upload';$hash=UploadNewPrivate ($base+'-reply.json') $bytes $package
    $null=UploadNewPrivate ($base+'-ready.json') ([Text.Encoding]::UTF8.GetBytes((@{sha256=$hash}|ConvertTo-Json -Compress))) $package
    $done[$base]=$true;Status ('QUOTA_'+$q.phase.ToUpperInvariant())
+   if($sourceScope){Status 'ACTIVATION_QUOTA_PASS';exit 0}
   }
   if($QuotaOnly){
    if($recoveryScope -and @(Get-Entries '/home/novinpay/novinpay-private-backups'|Where-Object file -ceq ([IO.Path]::GetFileName($m.backup.directory))).Count){

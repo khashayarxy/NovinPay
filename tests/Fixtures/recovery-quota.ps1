@@ -16,7 +16,7 @@ if(!$upload){throw 'Shared private uploader missing'}
 $AccessHelper=Join-Path ([IO.Path]::GetTempPath()) ('np-access-fixture-'+[guid]::NewGuid().ToString('N')+'.ps1')
 try {
  [IO.File]::WriteAllText($AccessHelper, '$accessOpened=$true')
- $recoveryScope=$true;$UploadHelper='/nonexistent-legacy-helper.ps1'
+ $modernScope=$true;$UploadHelper='/nonexistent-legacy-helper.ps1'
  . OpenAccess
  if(!$accessOpened){throw 'Existing secure-access workflow was not loaded'}
  $rejected=$false
