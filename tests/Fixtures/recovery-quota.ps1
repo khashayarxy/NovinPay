@@ -13,12 +13,12 @@ $upload=$ast.Find({param($n)$n -is [Management.Automation.Language.FunctionDefin
 if(!$upload){throw 'Shared private uploader missing'}
 . ([scriptblock]::Create($open.Extent.Text))
 . ([scriptblock]::Create($upload.Extent.Text))
-$AccessHelper=[IO.Path]::GetTempFileName()
+$AccessHelper=Join-Path ([IO.Path]::GetTempPath()) ('np-access-fixture-'+[guid]::NewGuid().ToString('N')+'.ps1')
 try {
- [IO.File]::WriteAllText($AccessHelper, '$script:accessOpened=$true')
+ [IO.File]::WriteAllText($AccessHelper, '$accessOpened=$true')
  $recoveryScope=$true;$UploadHelper='/nonexistent-legacy-helper.ps1'
  . OpenAccess
- if(!$script:accessOpened){throw 'Existing secure-access workflow was not loaded'}
+ if(!$accessOpened){throw 'Existing secure-access workflow was not loaded'}
  $rejected=$false
  try{UploadNewPrivate 'outside.json' ([byte[]]@(1)) '/outside'|Out-Null}catch{$rejected=$true}
  if(!$rejected){throw 'Uploader scope was weakened'}
