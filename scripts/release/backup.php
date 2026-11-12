@@ -88,7 +88,7 @@ function schema(PDO $db, string $name): array
         $row = $db->query('SHOW CREATE TRIGGER `'.$trigger['TRIGGER_NAME'].'`')->fetch(PDO::FETCH_ASSOC);
         $result['triggers'][$trigger['TRIGGER_NAME']] = ['definer' => $trigger['DEFINER'], 'mode' => $row['sql_mode'], 'sql' => str_replace('`'.$name.'`.', '`BACKUP_SCHEMA`.', $row['SQL Original Statement']), 'charset' => $row['character_set_client'], 'collation' => $row['collation_connection'], 'databaseCollation' => $row['Database Collation']];
     }
-    need(count($result['triggers']) === 5, 'five_triggers_required');
+    need(count($result['triggers']) === EXPECTED_TRIGGERS, 'expected_trigger_count');
     need((int) $db->query('SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA=DATABASE()')->fetchColumn() === 0, 'unexpected_routines');
     need((int) $db->query('SELECT COUNT(*) FROM information_schema.EVENTS WHERE EVENT_SCHEMA=DATABASE()')->fetchColumn() === 0, 'unexpected_events');
 
@@ -169,11 +169,14 @@ function verifiedProductionEnvironment(): array
     return $env;
 }
 
-function prepare(array $manifest): array
+function prepare(array $manifest, bool $withQuota = true): array
 {
+    \NovinPay\Release\recoveryManifest($manifest);
     define(__NAMESPACE__.'\OUT', $manifest['backup']['directory']);
     define(__NAMESPACE__.'\RESTORE_DB', $manifest['backup']['restoreDatabase']);
     define(__NAMESPACE__.'\BASELINE', $manifest['baseline']);
+    define(__NAMESPACE__.'\EXPECTED_TRIGGERS', $manifest['expectedTriggers']);
+    define(__NAMESPACE__.'\EXPECTED_MIGRATIONS', count($manifest['migrations']));
     $optionFile = OUT.'/client.cnf';
     $GLOBALS['np_backup_check'] = 'backup_preflight';
     need(PHP_SAPI === 'cli' && PHP_VERSION_ID >= 80401 && posix_getpwuid(posix_geteuid())['name'] === 'novinpay', 'cli_account');
@@ -185,9 +188,11 @@ function prepare(array $manifest): array
         need(! str_starts_with($k, 'MYSQL_') || $v === '', 'inherited_mysql_override');
     }
 
-    need(trim(\NovinPayReleaseV1\git(APP, ['rev-parse', 'HEAD'])) === BASELINE, 'source_identity_before_backup');
-    need(trim(\NovinPayReleaseV1\git(APP, ['branch', '--show-current'])) === 'codex/novinpay-release-contact-corrections', 'source_branch');
-    $retainedEvidence = \NovinPayBackupWorktreeV2\verify(APP);
+    $GLOBALS['np_backup_check'] = 'source_git_identity';
+    need(trim(\NovinPay\Release\recoveryGit(APP, ['rev-parse', 'HEAD'])) === BASELINE, 'source_identity_before_backup');
+    need(trim(\NovinPay\Release\recoveryGit(APP, ['branch', '--show-current'])) === $manifest['sourceBranch'], 'source_branch');
+    $GLOBALS['np_backup_check'] = 'worktree_inventory';
+    $retainedEvidence = \NovinPay\Release\verifyRecoveryWorktree(APP, $manifest);
     $stateDir = APP.'/storage/framework/site-maintenance';
     foreach ($manifest['maintenanceHashes'] as $file => $expected) {
         $path = $stateDir.'/'.$file;
@@ -205,6 +210,10 @@ function prepare(array $manifest): array
     need(! is_link($parent) && (fileperms($parent) & 0777) === 0700, 'private_backup_parent_permissions');
     need(disk_free_space($parent) > 768 * 1024 * 1024, 'filesystem_headroom');
     $env = verifiedProductionEnvironment();
+    $flags = require APP.'/bootstrap/cache/config.php';
+    $auth = \NovinPay\Release\recoveryCustomerConfiguration($env, $flags);
+    echo json_encode($auth, JSON_THROW_ON_ERROR)."\n";
+    unset($flags, $auth);
     $hashes = [];
     foreach (['.env', 'public/.htaccess', 'public/build/manifest.json', 'composer.lock', 'package-lock.json'] as $file) {
         $hashes[$file] = hash_file('sha256', APP.'/'.$file);
@@ -218,9 +227,18 @@ function prepare(array $manifest): array
     $credentials = json_decode(file_get_contents(CREDS), true, 512, JSON_THROW_ON_ERROR)['migrator'];
     need($credentials['user'] === 'novinpay_mig1', 'migrator_identity');
     $connect = fn (string $db): PDO => new PDO('mysql:host=localhost;port=3306;dbname='.$db.';charset=utf8mb4', $credentials['user'], $credentials['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+    $GLOBALS['np_backup_check'] = 'database_connectivity';
     $source = $connect(SOURCE_DB);
     $restore = $connect(RESTORE_DB);
     unset($connect);
+    if ($withQuota) {
+        $lock = $restore->prepare('SELECT GET_LOCK(?, 0)');
+        $lock->execute(['novinpay:recovery:capture']);
+        need((int) $lock->fetchColumn() === 1, 'recovery_already_running');
+    }
+    $privileges = $restore->query('SELECT GRANTEE,TABLE_SCHEMA,PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES')->fetchAll();
+    need(\NovinPay\Release\databasePrivilegesPresent($privileges, RESTORE_DB, $restore->query('SELECT CURRENT_USER()')->fetchColumn(),
+        ['SELECT', 'INSERT', 'CREATE', 'TRIGGER']), 'restore_schema_privileges');
     need($restore->query('SELECT DATABASE()')->fetchColumn() === RESTORE_DB && (int) $restore->query('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()')->fetchColumn() === 0, 'restore_target_not_empty');
     need(explode('@', $source->query('SELECT CURRENT_USER()')->fetchColumn())[0] === 'novinpay_mig1', 'source_account_identity');
     need(str_starts_with($source->query('SELECT VERSION()')->fetchColumn(), '10.6.28'), 'unverified_server_version');
@@ -241,28 +259,46 @@ function prepare(array $manifest): array
     $restoreMetadata = $restore->query('SELECT DEFAULT_CHARACTER_SET_NAME charset_name,DEFAULT_COLLATION_NAME collation_name FROM information_schema.SCHEMATA WHERE SCHEMA_NAME=DATABASE()')->fetch();
     need($restoreMetadata === $dbMetadata, 'restore_defaults_changed_no_alter_permitted');
 
+    $GLOBALS['np_backup_check'] = 'restore_target_object_inventory';
+    foreach (['TABLES' => 'TABLE_SCHEMA', 'TRIGGERS' => 'TRIGGER_SCHEMA', 'ROUTINES' => 'ROUTINE_SCHEMA', 'EVENTS' => 'EVENT_SCHEMA'] as $table => $field) {
+        need((int) $restore->query("SELECT COUNT(*) FROM information_schema.$table WHERE $field=DATABASE()")->fetchColumn() === 0, 'restore_target_not_empty');
+    }
+    $GLOBALS['np_restore_empty'] = true;
+    $GLOBALS['np_backup_check'] = 'source_trigger_contracts';
+    $contracts = $source->query('SELECT TRIGGER_NAME name, EVENT_OBJECT_TABLE tableName, EVENT_MANIPULATION eventName, ACTION_TIMING timing, ACTION_STATEMENT body, DEFINER definer FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE()')->fetchAll();
+    foreach ($contracts as &$contract) {
+        $contract['bodySha256'] = hash('sha256', $contract['body']);
+        unset($contract['body']);
+    }
+    unset($contract);
+    \NovinPay\Release\verifyRecoveryTriggers($contracts, $manifest);
     $schema = schema($source, SOURCE_DB);
-    need((int) $source->query('SELECT COUNT(*) FROM migrations')->fetchColumn() === 14, 'expected_migrations');
-    $storage = filesManifest(APP.'/storage/app');
+    need((int) $source->query('SELECT COUNT(*) FROM migrations')->fetchColumn() === EXPECTED_MIGRATIONS, 'expected_migrations');
+    $actualMigrations = $source->query('SELECT migration FROM migrations ORDER BY migration')->fetchAll(PDO::FETCH_COLUMN);
+    $expectedMigrations = $manifest['migrations'];
+    sort($expectedMigrations);
+    need($actualMigrations === $expectedMigrations, 'exact_baseline_migrations');
     need(is_link(APP.'/public/storage') && realpath(APP.'/public/storage') === APP.'/storage/app/public', 'public_storage_identity');
     $sourceFiles = [];
-    foreach (explode("\0", \NovinPayReleaseV1\git(APP, ['ls-files', '-z'])) as $file) {
+    foreach (explode("\0", \NovinPay\Release\recoveryGit(APP, ['ls-files', '-z'])) as $file) {
         if ($file === '' || str_starts_with($file, 'storage/framework/') || str_starts_with($file, 'storage/logs/') || str_starts_with($file, 'bootstrap/cache/')) {
             continue;
         }
         need(is_file(APP.'/'.$file) && ! is_link(APP.'/'.$file), 'tracked_source_type');
         $sourceFiles[$file] = hash_file('sha256', APP.'/'.$file);
     }
-    foreach (['error_log', 'novinpay-stage3v2-preview/public/.htaccess'] as $file) {
+    foreach (array_keys($manifest['retainedFiles']) as $file) {
         need(is_file(APP.'/'.$file) && ! is_link(APP.'/'.$file), 'retained_source_file');
-        $sourceFiles[$file] = hash_file('sha256', APP.'/'.$file);
+        $sourceFiles[$file] = $manifest['retainedFiles'][$file]['sha256'];
     }
     $assets = filesManifest(APP.'/public/build');
 
     $GLOBALS['np_backup_check'] = 'fresh_backup_quota';
-    \NovinPay\Release\requestQuota($manifest, __DIR__, 'backup', max(805306368, 4 * $dbBytes + 3 * $appBytes + 268435456));
+    if ($withQuota) {
+        \NovinPay\Release\requestQuota($manifest, $manifest['stateDirectory'], 'backup', max(805306368, 4 * $dbBytes + 3 * $appBytes + 268435456));
+    }
 
-    return compact('manifest', 'optionFile', 'env', 'credentials', 'source', 'restore', 'dbMetadata', 'schema', 'storage', 'sourceFiles', 'assets', 'hashes', 'maintenanceHashes', 'retainedEvidence', 'stateDir');
+    return compact('manifest', 'optionFile', 'env', 'credentials', 'source', 'restore', 'dbMetadata', 'schema', 'sourceFiles', 'assets', 'hashes', 'maintenanceHashes', 'retainedEvidence', 'stateDir');
 }
 function execute(array $context): array
 {
@@ -280,11 +316,15 @@ function execute(array $context): array
         unset($credentials,$env);
         $common = ['--defaults-file='.$optionFile, '--single-transaction', '--skip-lock-tables', '--quick', '--hex-blob', '--order-by-primary', '--skip-extended-insert', '--complete-insert', '--skip-comments', '--skip-add-locks', '--skip-disable-keys', '--default-character-set=utf8mb4', '--tz-utc', '--no-tablespaces'];
         $snapshotUnix = time();
-        $GLOBALS['np_backup_check'] = 'consistent_production_export';
-        runProcess(array_merge(['/bin/mariadb-dump'], $common, ['--skip-add-drop-table', '--skip-add-drop-trigger', '--triggers', SOURCE_DB]), null, OUT.'/database.sql');
+        $GLOBALS['np_backup_check'] = 'consistent_database_and_storage_capture';
+        runProcess(['/usr/bin/python3', '-I', __DIR__.'/capture.py', OUT], null, OUT.'/capture-result.json');
+        $capture = json_decode(file_get_contents(OUT.'/capture-result.json'), true, 16, JSON_THROW_ON_ERROR);
+        $snapshotRoot = OUT.'/snapshot/novinpay/storage/app';
+        $storage = filesManifest($snapshotRoot);
+        need(($capture['result'] ?? null) === 'CONSISTENT_CAPTURE_PASS' && $capture['files'] === count($storage), 'capture_inventory');
         need(filesize(OUT.'/database.sql') > 1000 && schema($source, SOURCE_DB) === $schema, 'dump_or_source_schema_changed');
         $snapshot = dataDigest(OUT.'/database.sql');
-        need(! empty($snapshot['insertRows']['migrations']) && $snapshot['insertRows']['migrations'] === 14 && ! empty($snapshot['insertRows']['users']), 'dump_missing_required_rows');
+        need(! empty($snapshot['insertRows']['migrations']) && $snapshot['insertRows']['migrations'] === EXPECTED_MIGRATIONS && ! empty($snapshot['insertRows']['users']), 'dump_missing_required_rows');
         $GLOBALS['np_backup_check'] = 'dedicated_disposable_restore';
         runProcess(['/bin/mariadb', '--defaults-file='.$optionFile, "--init-command=SET SESSION explicit_defaults_for_timestamp=1, time_zone='+00:00', check_constraint_checks=1, foreign_key_checks=1", '--default-character-set=utf8mb4', RESTORE_DB], OUT.'/database.sql', OUT.'/restore-output.txt');
         need(schema($restore, RESTORE_DB) === $schema, 'restored_schema_or_definer_mismatch');
@@ -292,13 +332,29 @@ function execute(array $context): array
         need(dataDigest(OUT.'/restored-data.sql') === $snapshot, 'restored_all_rows_mismatch');
         runProcess(['git', '-C', APP, 'status', '--porcelain', '--untracked-files=no'], null, OUT.'/source-working-tree.txt');
         need(in_array(trim(file_get_contents(OUT.'/source-working-tree.txt')), ['', 'M public/.htaccess'], true), 'unexpected_source_working_tree');
+        $retainedArchivePaths = [];
+        foreach ($manifest['retainedFiles'] as $file => $pin) {
+            $copy = OUT.'/snapshot/novinpay/'.$file;
+            if (! is_dir(dirname($copy))) {
+                need(mkdir(dirname($copy), 0700, true), 'retained_snapshot_parent');
+            }
+            $stream = fopen(APP.'/'.$file, 'rb');
+            try {
+                $bytes = $pin['bytes'] === 0 ? '' : stream_get_contents($stream, $pin['bytes']);
+            } finally {
+                fclose($stream);
+            }
+            putPrivate($copy, $bytes);
+            need(hash_file('sha256', $copy) === $pin['sha256'], 'retained_snapshot_changed');
+            $retainedArchivePaths[] = 'snapshot/novinpay/'.$file;
+        }
         $GLOBALS['np_backup_check'] = 'application_and_persistent_storage_archive';
-        $instructions = 'Recovery source: '.BASELINE."\nDatabase: ".SOURCE_DB."; five triggers retain novinpay_mig1 definers.\nRestore only into an empty isolated database first. Never import automatically over a live database.\nApplication root: ".APP."; public_html symlink must stay unchanged.\nKeep production .env/APP_KEY and the included .stage2-credentials.json private. Match database-metadata.json defaults when creating a fresh restore destination. Set restore-client session explicit_defaults_for_timestamp=1 before importing. Never restore through the runtime account. Keep production .env/APP_KEY from this encrypted archive. Do not generate a new key.\nComposer dependencies and prebuilt assets are included; no Node installation is needed.\nRuntime cache/views/logs and Git object history are reproducible and excluded. The private state.json and audit.jsonl at the archive root belong to storage/framework/site-maintenance and must be preserved/recovered together with 0700 directory and 0600 file modes; never discard audit history as a code rollback.\nData rollback is a separately reviewed maintenance operation, never an automatic code rollback.\n";
+        $instructions = 'Recovery source: '.BASELINE."\nDatabase: ".SOURCE_DB."; trigger definers are preserved in schema metadata.\nRestore only into an empty isolated database first. Never import automatically over a live database.\nApplication root: ".APP."; public_html symlink must stay unchanged.\nKeep production .env/APP_KEY and the included .stage2-credentials.json private. Match database-metadata.json defaults when creating a fresh restore destination. Set restore-client session explicit_defaults_for_timestamp=1 before importing. Never restore through the runtime account. Keep production .env/APP_KEY from this encrypted archive. Do not generate a new key.\nComposer dependencies and prebuilt assets are included; no Node installation is needed.\nRuntime cache/views/logs and Git object history are reproducible and excluded. The private state.json and audit.jsonl at the archive root belong to storage/framework/site-maintenance and must be preserved/recovered together with 0700 directory and 0600 file modes; never discard audit history as a code rollback.\nData rollback is a separately reviewed maintenance operation, never an automatic code rollback.\n";
         putPrivate(OUT.'/RECOVERY.txt', $instructions);
-        putPrivate(OUT.'/release-metadata.json', json_encode(['sourceCommit' => BASELINE, 'sourceDatabase' => SOURCE_DB, 'protectedFileHashes' => $hashes, 'persistentFileHashes' => $storage, 'sourceFileHashes' => $sourceFiles, 'assetFileHashes' => $assets, 'sourceBranch' => 'codex/novinpay-release-contact-corrections', 'retainedDiagnosticEvidence' => $retainedEvidence, 'maintenanceStateFileHashes' => $maintenanceHashes], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-        runProcess(['/bin/tar', '-czf', '-', '--exclude=novinpay/.git', '--exclude=novinpay/storage/logs', '--exclude=novinpay/storage/framework', '--exclude=novinpay/bootstrap/cache', '-C', '/home/novinpay', 'novinpay', '-C', OUT, 'database.sql', 'database-metadata.json', 'release-metadata.json', 'RECOVERY.txt', '-C', dirname(CREDS), '.stage2-credentials.json', '-C', $stateDir, 'state.json', 'audit.jsonl'], null, OUT.'/bundle.tar.gz');
+        putPrivate(OUT.'/release-metadata.json', json_encode(['sourceCommit' => BASELINE, 'sourceDatabase' => SOURCE_DB, 'protectedFileHashes' => $hashes, 'persistentFileHashes' => $storage, 'sourceFileHashes' => $sourceFiles, 'assetFileHashes' => $assets, 'sourceBranch' => $manifest['sourceBranch'], 'retainedDiagnosticEvidence' => $retainedEvidence, 'maintenanceStateFileHashes' => $maintenanceHashes], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        runProcess(['/bin/tar', '-czf', '-', '--anchored', '--exclude=novinpay/.git', '--exclude=novinpay/error_log', '--exclude=novinpay/storage/logs', '--exclude=novinpay/storage/framework', '--exclude=novinpay/bootstrap/cache', '--exclude=novinpay/storage/app', '--transform=s,^snapshot/,,r', '-C', '/home/novinpay', 'novinpay', '-C', OUT, 'snapshot/novinpay/storage/app', ...$retainedArchivePaths, 'database.sql', 'database-metadata.json', 'release-metadata.json', 'RECOVERY.txt', '-C', dirname(CREDS), '.stage2-credentials.json', '-C', $stateDir, 'state.json', 'audit.jsonl'], null, OUT.'/bundle.tar.gz');
         need(filesize(OUT.'/bundle.tar.gz') <= 64 * 1024 * 1024, 'archive_exceeds_verified_memory_bound');
-        need(filesManifest(APP.'/storage/app') === $storage, 'persistent_storage_changed_during_backup');
+        need(filesManifest($snapshotRoot) === $storage, 'private_snapshot_changed_during_packaging');
         foreach ($hashes as $file => $hash) {
             need(hash_file('sha256', APP.'/'.$file) === $hash, 'production_file_changed_during_backup');
         }
@@ -317,10 +373,12 @@ function execute(array $context): array
             need(hash_equals($hash, hash_file('sha256', OUT.'/archive-check.bin')), 'archive_private_state_mismatch');
         }
         foreach ($sourceFiles as $file => $hash) {
-            need(hash_equals($hash, hash_file('sha256', APP.'/'.$file)), 'source_changed_during_backup');
+            $actual = isset($manifest['retainedFiles'][$file])
+                ? \NovinPay\Release\retainedFileDigest(APP.'/'.$file, $manifest['retainedFiles'][$file]) : hash_file('sha256', APP.'/'.$file);
+            need(hash_equals($hash, $actual), 'source_changed_during_backup');
         }
         need(filesManifest(APP.'/public/build') === $assets, 'assets_changed_during_backup');
-        need(\NovinPayBackupWorktreeV2\verify(APP) === $retainedEvidence, 'retained_evidence_changed_during_backup');
+        need(\NovinPay\Release\verifyRecoveryWorktree(APP, $manifest) === $retainedEvidence, 'retained_evidence_changed_during_backup');
         foreach ($manifest['maintenanceHashes'] as $file => $expected) {
             need(hash_equals($expected, hash_file('sha256', $stateDir.'/'.$file)), 'offhost_state_snapshot_changed');
         }
@@ -361,12 +419,22 @@ function execute(array $context): array
                 need(unlink(OUT.'/'.$temporary), 'private_temporary_cleanup_failed');
             }
         }
+        // Remove only the verified copy after encrypted archive verification. Leave any failure intact.
+        need(filesManifest($snapshotRoot) === $storage, 'private_snapshot_changed_before_cleanup');
+        $copyTree = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(OUT.'/snapshot', FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
+        foreach ($copyTree as $item) {
+            need(! $item->isLink() && ($item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname())), 'private_snapshot_cleanup_failed');
+        }
+        need(rmdir(OUT.'/snapshot'), 'private_snapshot_root_cleanup_failed');
+        if (is_file(OUT.'/capture-dump-error.txt')) {
+            need(unlink(OUT.'/capture-dump-error.txt'), 'private_capture_log_cleanup_failed');
+        }
         // Retain the exact server key until independent off-host recovery is verified.
 
-        $receipt = ['result' => 'BACKUP_AND_DISPOSABLE_RESTORE_PASS', 'createdUtc' => gmdate('c'), 'sourceCommit' => BASELINE, 'sourceDatabase' => SOURCE_DB, 'restoreDatabase' => RESTORE_DB, 'migrations' => 14, 'triggers' => 5, 'schemaAndDefinersMatch' => true, 'allSnapshotRowsMatch' => true, 'snapshotDataDigest' => $snapshot['sha256'], 'persistentFiles' => count($storage), 'privateMaintenanceStateVerified' => true, 'environmentPreserved' => true, 'publicHtmlUnchanged' => readlink('/home/novinpay/public_html') === APP.'/public', 'archiveSha256' => hash_file('sha256', OUT.'/backup.npb'), 'decryptedTarSha256' => $plainHash, 'archiveBytes' => filesize(OUT.'/backup.npb'), 'parts' => $parts, 'serverPlaintextRemoved' => true, 'serverKeyRetained' => true, 'snapshotUnix' => $snapshotUnix, 'offHostCopyVerified' => false, 'productionUpdated' => false];
+        $receipt = ['result' => 'BACKUP_AND_DISPOSABLE_RESTORE_PASS', 'manifestSha256' => $manifest['_sha256'], 'createdUtc' => gmdate('c'), 'sourceCommit' => BASELINE, 'sourceDatabase' => SOURCE_DB, 'restoreDatabase' => RESTORE_DB, 'migrations' => EXPECTED_MIGRATIONS, 'triggers' => EXPECTED_TRIGGERS, 'schemaAndDefinersMatch' => true, 'allSnapshotRowsMatch' => true, 'snapshotDataDigest' => $snapshot['sha256'], 'persistentFiles' => count($storage), 'privateMaintenanceStateVerified' => true, 'environmentPreserved' => true, 'publicHtmlUnchanged' => readlink('/home/novinpay/public_html') === APP.'/public', 'archiveSha256' => hash_file('sha256', OUT.'/backup.npb'), 'decryptedTarSha256' => $plainHash, 'archiveBytes' => filesize(OUT.'/backup.npb'), 'parts' => $parts, 'serverPlaintextRemoved' => true, 'serverKeyRetained' => true, 'snapshotUnix' => $snapshotUnix, 'offHostCopyVerified' => false, 'productionUpdated' => false];
         // Publish only a complete, fsynced receipt: the off-host bridge may be polling.
         \NovinPay\Release\writeNew(OUT.'/receipt.json', $receipt);
-        echo "BACKUP AND RESTORE PASS\nSource database: ".SOURCE_DB."\nDisposable restore: ".RESTORE_DB."\nMigrations: 14; triggers: 5; schema/definers and every snapshot row: MATCH\nEncrypted backup: ".OUT."/backup.npb\nArchive SHA256: ".$receipt['archiveSha256']."\nProduction updated: NO\nOff-host copy: pending automated API transfer\n";
+        echo "BACKUP AND RESTORE PASS\nSource database: ".SOURCE_DB."\nDisposable restore: ".RESTORE_DB."\nMigrations: ".EXPECTED_MIGRATIONS.'; triggers: '.EXPECTED_TRIGGERS."; schema/definers and every snapshot row: MATCH\nEncrypted backup: ".OUT."/backup.npb\nArchive SHA256: ".$receipt['archiveSha256']."\nProduction updated: NO\nOff-host copy: pending automated API transfer\n";
 
         return $receipt;
 

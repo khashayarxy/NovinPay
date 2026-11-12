@@ -46,6 +46,26 @@ function writeNew(string $path, array $value): void
     }
 }
 
+/** Shared by recovery and the conventional source updater, never application requests. */
+function operationLock(string $directory)
+{
+    $path = $directory.'/.operation.lock';
+    requireGate(! is_link($path), 'operation_lock_type', 'regular private operation lock', [], 'Preserve the unexpected path.');
+    if (file_exists($path)) {
+        requireGate(is_file($path) && (PHP_OS_FAMILY === 'Windows' || (fileowner($path) === posix_geteuid() && (fileperms($path) & 0777) === 0600)),
+            'operation_lock_permissions', 'same-owner private regular file', [], 'Inspect lock permissions without changing them.');
+    }
+    $mask = umask(0077);
+    try {
+        $handle = fopen($path, 'c+b');
+    } finally {
+        umask($mask);
+    }
+    requireGate(is_resource($handle) && flock($handle, LOCK_EX | LOCK_NB), 'operation_already_running', 'exclusive backup or release operation', [], 'Wait for the current owned operation; do not terminate it.');
+
+    return $handle;
+}
+
 final class Journal
 {
     private $lock;
@@ -122,18 +142,13 @@ function requestQuota(array $manifest, string $directory, string $purpose, int $
     $deadline = microtime(true) + 180;
     do {
         clearstatcache();
-        if (is_file($base.'-ready.json')) {
-            try {
-                $ready = json_decode(privateRead($base.'-ready.json'), true, 16, JSON_THROW_ON_ERROR);
-            } catch (\JsonException) {
-                // The API may have created the file while still uploading it.
+        if (is_file($base.'-ready.json') && is_file($base.'-reply.json')) {
+            $proof = quotaReply(privateRead($base.'-ready.json'), privateRead($base.'-reply.json'));
+            if ($proof === null) {
                 usleep(250000);
 
                 continue;
             }
-            $text = privateRead($base.'-reply.json');
-            requireGate(hash_equals($ready['sha256'] ?? '', hash('sha256', $text)), 'quota_response_hash', 'verified API response', [], 'Inspect broker evidence.');
-            $proof = json_decode($text, true, 16, JSON_THROW_ON_ERROR);
             quotaGate($proof, time(), $nonce, $manifest['baseline'], (int) disk_free_space('/home/novinpay'), $required);
             requireGate(($proof['manifestSha256'] ?? '') === $manifest['_sha256'] && ($proof['phase'] ?? '') === $purpose
                 && $proof['observedAtUnix'] >= $request['createdAtUnix'] - 2, 'quota_request_binding', 'response to this exact request', [], 'Refresh only quota.');
