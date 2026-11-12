@@ -14,7 +14,7 @@
     @if($fault)
         <div class="admin-notice" role="alert">وضعیت سایت قابل خواندن نیست. از راهنمای بازیابی اضطراری استفاده کنید؛ تا رفع خطا امکان تغییر از این فرم وجود ندارد.</div>
     @else
-        @if($current['updated_at'])<p class="admin-hint">آخرین تغییر: {{ \App\Support\FinanceTime::display(\Carbon\Carbon::parse($current['updated_at'])) }}</p>@endif
+        @if($current['updated_at'])<p class="admin-hint">آخرین تغییر: <x-finance-time :value="\Carbon\Carbon::parse($current['updated_at'])" /></p>@endif
         @can('maintenance.manage')
         <form class="admin-form admin-password-form" method="post" action="{{ route($current['enabled'] ? 'admin.maintenance.disable' : 'admin.maintenance.enable') }}">
             @csrf

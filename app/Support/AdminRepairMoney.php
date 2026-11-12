@@ -4,6 +4,16 @@ namespace App\Support;
 
 final class AdminRepairMoney
 {
+    public static function format(?int $toman): string
+    {
+        return $toman === null ? '' : FaNumber::digits(preg_replace('/\B(?=(?:[0-9]{3})+(?![0-9]))/', '٬', (string) $toman));
+    }
+
+    public static function display(?int $toman): string
+    {
+        return $toman === null ? 'هزینه هنوز ثبت نشده است' : self::format($toman).' تومان';
+    }
+
     /** Exact decimal thousands of toman -> whole toman; no floating point. */
     public static function toman(string $input, int $scale = 1000): int
     {

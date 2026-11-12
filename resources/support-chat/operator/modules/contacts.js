@@ -1,6 +1,6 @@
 import {mobileTable} from './mobile-table.js?v=mobile2';
 // Customer Contacts module for NovinPay Operator Admin Panel V3
-import {persianDate} from '../../support-client/persian-date.js';
+import {persianDate,messageDate} from '../../support-client/persian-date.js';
 
 export function contactsView({host,api,navigate,openConversation,warn}){
  let searchTimer=null,currentQuery='',cursor=0,hasMore=false,contacts=[],loading=false;
@@ -8,7 +8,7 @@ export function contactsView({host,api,navigate,openConversation,warn}){
  function formatTime(timeStr){
   if(!timeStr)return '–';
   try{
-   return persianDate({time:timeStr}).label;
+   return persianDate(messageDate({time:timeStr})).label;
   }catch{
    return timeStr;
   }
@@ -176,7 +176,7 @@ export function contactsView({host,api,navigate,openConversation,warn}){
 
    const tdTime=document.createElement('td');
    const smallTime=document.createElement('small');
-   smallTime.textContent=time;
+   smallTime.dir='ltr';smallTime.textContent=time;
    tdTime.append(smallTime);
 
    const tdStatus=document.createElement('td');

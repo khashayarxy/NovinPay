@@ -50,7 +50,7 @@ export function renderCustomerV2(host,messages,{engine,follow=true,operator=fals
    if(images.childElementCount){bubble.classList.add('v2-media');bubble.append(images);}
    if(keepBubble)bubble.replaceWith(oldBubble);row.append(wrap);
    const stamp=group.stamp;
-   const meta=node('div','v2-meta'),time=node('time','chat-time',group.label);if(!Number.isNaN(stamp.getTime())){time.dateTime=stamp.toISOString();time.title=group.full;time.setAttribute('aria-label',group.full);time.dir='auto';}meta.classList.toggle('v2-meta-collapsed',!group.last);meta.append(time);
+   const meta=node('div','v2-meta'),time=node('time','chat-time',group.label);if(!Number.isNaN(stamp.getTime())){time.dateTime=stamp.toISOString();time.title=group.full;time.setAttribute('aria-label',group.full);time.dir='ltr';}meta.classList.toggle('v2-meta-collapsed',!group.last);meta.append(time);
    if(outgoing&&!automatic){const label=pending?(late?'ارسال تأیید نشد':'در انتظار تأیید'):m.read_receipt?'خوانده شد':'ارسال شد';const status=node('span','support-read-state support-icon',pending?(late?'error_outline':'schedule'):m.read_receipt?'done_all':'done');status.style.visibility=grace?'hidden':'';status.dataset.state=pending?(late?'failed':'pending'):m.read_receipt?'read':'sent';status.title=label;status.setAttribute('aria-label',label);meta.append(status);}
    if(m.edited_at){const edited=node('small','support-edited','ویرایش‌شده');edited.title=m.edited_at;if(group.last)meta.append(edited);else row.append(edited);}
    row.append(meta);if(editForm){row.append(editForm);if(editFocus){editFocus.focus({preventScroll:true});if(editSelection&&editFocus.setSelectionRange)editFocus.setSelectionRange(...editSelection);}}

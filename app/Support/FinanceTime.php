@@ -19,7 +19,7 @@ final class FinanceTime
         return $local->subDays((int) $calendar->get(IntlCalendar::FIELD_DAY_OF_MONTH) - 1)->startOfDay();
     }
 
-    public static function display(?CarbonInterface $time, bool $withTime = true, bool $withZone = true): string
+    public static function display(?CarbonInterface $time, bool $withTime = true): string
     {
         if ($time === null) {
             return '—';
@@ -27,14 +27,14 @@ final class FinanceTime
 
         if (class_exists(IntlDateFormatter::class)) {
             static $formatters = [];
-            $formatter = $formatters[$withTime] ??= new IntlDateFormatter('fa_IR@calendar=persian', IntlDateFormatter::NONE, IntlDateFormatter::NONE, 'Asia/Tehran', IntlDateFormatter::TRADITIONAL, $withTime ? 'yyyy/MM/dd HH:mm' : 'yyyy/MM/dd');
+            $formatter = $formatters[$withTime] ??= new IntlDateFormatter('fa_IR@calendar=persian', IntlDateFormatter::NONE, IntlDateFormatter::NONE, 'Asia/Tehran', IntlDateFormatter::TRADITIONAL, $withTime ? 'HH:mm | yyyy/MM/dd' : 'yyyy/MM/dd');
             $formatted = $formatter->format($time->getTimestamp());
             if ($formatted !== false) {
-                return FaNumber::digits($formatted).($withZone ? ' (شمسی، تهران)' : '');
+                return FaNumber::digits($formatted);
             }
         }
 
         // An explicit fallback never presents a Gregorian date as a Persian one.
-        return FaNumber::digits($time->copy()->timezone('Asia/Tehran')->format($withTime ? 'Y/m/d H:i' : 'Y/m/d')).' (میلادی، تهران)';
+        return FaNumber::digits($time->copy()->timezone('Asia/Tehran')->format($withTime ? 'H:i | Y/m/d' : 'Y/m/d')).' (میلادی)';
     }
 }

@@ -10,12 +10,11 @@
     $shipping = $case->delivery_method === 'shipping';
     $canEditCost = auth()->user()->can('repairs.estimate') && !$hasRepairDocument;
     $showMoney = auth()->user()->can('finance.view') || auth()->user()->can('repairs.estimate');
-    $toman = static fn ($amount) => $amount === null ? 'تعیین نشده' : \App\Support\FaNumber::digits(number_format($amount, 0, '.', '٬')).' تومان';
 @endphp
 <header class="admin-page-heading">
     <div>
         <h1>پرونده تعمیر <bdi>{{ \App\Support\FaNumber::digits($case->tracking_reference) }}</bdi></h1>
-        <p>زمان پذیرش: {{ \App\Support\FinanceTime::display($case->received_at) }}</p>
+        <p>زمان پذیرش: <x-finance-time :value="$case->received_at" /></p>
     </div>
     <x-admin.status :tone="in_array($status, ['ready', 'delivered'], true) ? 'success' : ($status === 'repairing' ? 'info' : 'neutral')">{{ $case->status->label() }}</x-admin.status>
     <a class="btn btn-secondary" href="{{ route('admin.repair-cases.index') }}">پرونده‌های تعمیر</a>
@@ -106,7 +105,7 @@
                 @endphp
                 <li>
                     <p><strong>{{ \App\Enums\AdminAction::tryFrom($event->action)?->label() ?? 'به‌روزرسانی پرونده' }}</strong>
-                        · {{ \App\Support\FinanceTime::display($event->created_at) }}
+                        · <x-finance-time :value="$event->created_at" />
                         @if($event->actor) · {{ $event->actor->name }} @endif
                     </p>
                     @if($to && $from !== $to)<p>{{ $from ? $from->label().' ← ' : '' }}{{ $to->label() }}</p>@endif
@@ -115,7 +114,7 @@
                             <p class="whitespace-pre-line">{{ $change['after']['repair_notes'] }}</p>
                         @endif
                         @if($showMoney && ($change['before']['repair_price_toman'] ?? null) !== ($change['after']['repair_price_toman'] ?? null))
-                            <p>هزینه تعمیر: {{ $toman($change['before']['repair_price_toman'] ?? null) }} ← {{ $toman($change['after']['repair_price_toman'] ?? null) }}</p>
+                            <p>هزینه تعمیر: {{ \App\Support\AdminRepairMoney::display($change['before']['repair_price_toman'] ?? null) }} ← {{ \App\Support\AdminRepairMoney::display($change['after']['repair_price_toman'] ?? null) }}</p>
                         @endif
                         @if(($change['before']['delivery_method'] ?? null) !== ($change['after']['delivery_method'] ?? null) || ($change['before']['delivery_carrier'] ?? null) !== ($change['after']['delivery_carrier'] ?? null))
                             <p>روش تحویل به‌روز شد.@if(($change['after']['delivery_method'] ?? null) === 'shipping') ارسال{{ isset($carriers[$change['after']['delivery_carrier'] ?? '']) ? ' با '.$carriers[$change['after']['delivery_carrier']] : '' }}@elseif(($change['after']['delivery_method'] ?? null) === 'in_person') حضوری@endif</p>
@@ -137,8 +136,8 @@
         <section class="admin-panel mb-3" aria-labelledby="repair-finance">
             <h2 id="repair-finance">هزینه و تسویه</h2>
             <dl class="admin-record-facts">
-                <div><dt>هزینه تعمیر</dt><dd>{{ $toman($price) }}</dd></div>
-                @if($price === null && $case->currentEstimate)<div><dt>برآورد قبلی</dt><dd>{{ $toman($case->currentEstimate->total()) }}</dd></div>@endif
+                <div><dt>هزینه تعمیر</dt><dd>{{ \App\Support\AdminRepairMoney::display($price) }}</dd></div>
+                @if($price === null && $case->currentEstimate)<div><dt>برآورد قبلی</dt><dd>{{ \App\Support\AdminRepairMoney::display($case->currentEstimate->total()) }}</dd></div>@endif
                 @can('finance.view')
                     <div><dt>تسویه شد</dt><dd>{{ $settled ? 'پرداخت کامل در سند ثبت شده است.' : ($repairDocument ? 'پرداخت کامل در سند ثبت نشده است.' : 'هنوز سند مالی صادر نشده است.') }}</dd></div>
                     @if($case->settlement_method)<div><dt>روش ثبت‌شده</dt><dd>{{ $case->settlement_method === 'online' ? 'اینترنتی' : 'حضوری' }}</dd></div>@endif
@@ -170,7 +169,7 @@
                 @if($shipping && isset($carriers[$case->delivery_carrier])) · {{ $carriers[$case->delivery_carrier] }} @endif
             </p>
             @if($case->delivery)
-                <p>{{ \App\Support\FinanceTime::display($case->delivery->delivered_at) }}</p>
+                <p><x-finance-time :value="$case->delivery->delivered_at" /></p>
                 @if($case->delivery->confirmation_reference)<p>مرجع تحویل: <bdi>{{ $case->delivery->confirmation_reference }}</bdi></p>@endif
             @endif
             @can('repairs.deliver')

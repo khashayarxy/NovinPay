@@ -3,12 +3,16 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\RepairBrand;
+use App\Models\CustomerAccount;
 use App\Models\RepairCase;
 use App\Models\RepairRecordRevision;
 use App\Models\User;
+use App\Support\RepairIdentity;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class SimpleRepairTest extends TestCase
@@ -51,25 +55,50 @@ class SimpleRepairTest extends TestCase
 
     public function test_empty_repair_amount_survives_reload_and_preserves_an_explicit_zero(): void
     {
+        $this->travelTo(CarbonImmutable::parse('2026-11-11T21:05:00Z'));
         $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
+        $admin = auth('web')->user();
         $case = RepairCase::query()->sole();
+        $account = new CustomerAccount;
+        $account->forceFill([
+            'public_id' => (string) Str::uuid(), 'phone' => '09000000000', 'verified_at' => now(),
+            'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000000'),
+        ])->save();
+        $account->refresh();
+        $case->customer_account_id = $account->id;
+        $case->save();
         $url = route('admin.repair-cases.record', $case);
         $show = route('admin.repair-cases.show', $case);
+        $summary = route('admin.repair-cases.document', [$case, 'summary']);
+        $finance = route('admin.finance.sources.show', ['type' => 'repair', 'reference' => $case->public_id]);
+        $tracking = route('account.repairs.show', $case->public_id);
 
         $this->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => ''])->assertSessionHasNoErrors();
         $this->assertNull($case->refresh()->repair_price_toman);
-        $response = $this->get($show)->assertOk();
+        $response = $this->get($show)->assertOk()->assertSee('۰۰:۳۵ | ۱۴۰۵/۰۸/۲۱')->assertDontSee('شمسی، تهران');
         $this->assertMatchesRegularExpression('/name="repair_cost"[^>]*value=""/', $response->getContent());
+        $this->get($summary)->assertOk()->assertSee('هزینه هنوز ثبت نشده است');
+        $this->get($finance)->assertOk()->assertViewHas('amount', null);
+        $customerResponse = $this->actingAs($account, 'customer')->withSession(['customer_session_version' => 1])
+            ->get($tracking)->assertOk()->assertSee('هزینه هنوز ثبت نشده است')->assertSee('۰۰:۳۵ | ۱۴۰۵/۰۸/۲۱');
         if ($directory = getenv('NOVINPAY_QA_DIR')) {
             $this->assertTrue(is_dir($directory) && ! is_link($directory));
             file_put_contents($directory.DIRECTORY_SEPARATOR.'repair-cost-admin.html', $response->getContent());
+            file_put_contents($directory.DIRECTORY_SEPARATOR.'repair-cost-customer.html', $customerResponse->getContent());
         }
 
+        $this->actingAs($admin, 'web');
         $this->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => '۰'])->assertSessionHasNoErrors();
         $this->assertSame(0, $case->refresh()->repair_price_toman);
         $this->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => '٬', 'repair_notes' => 'یادداشت آزمایشی'])->assertSessionHasNoErrors();
         $this->assertSame(0, $case->refresh()->repair_price_toman);
         $this->assertMatchesRegularExpression('/name="repair_cost"[^>]*value="۰"/u', $this->get($show)->assertOk()->getContent());
+        $this->get($summary)->assertOk()->assertSee('۰ تومان');
+        $this->get($finance)->assertOk()->assertViewHas('amount', 0);
+        $this->actingAs($account, 'customer')->get($tracking)->assertOk()->assertSee('۰ تومان')->assertDontSee('هزینه هنوز ثبت نشده است');
+        $this->actingAs($admin, 'web')->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => '۱٬۲۵۰٬۰۰۰'])->assertSessionHasNoErrors();
+        $this->get($finance)->assertOk()->assertViewHas('amount', 125000000);
+        $this->actingAs($account, 'customer')->get($tracking)->assertOk()->assertSee('۱٬۲۵۰٬۰۰۰ تومان');
     }
 
     public function test_tracking_code_alone_does_not_disclose_a_repair(): void
