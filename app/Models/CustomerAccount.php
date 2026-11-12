@@ -8,10 +8,10 @@ class CustomerAccount extends Authenticatable
 {
     protected $guarded = ['*'];
 
-    protected $hidden = ['phone', 'phone_digest', 'name'];
+    protected $hidden = ['phone', 'phone_digest', 'name', 'password'];
 
     protected function casts(): array
     {
-        return ['phone' => 'encrypted', 'name' => 'encrypted', 'verified_at' => 'datetime', 'is_active' => 'boolean', 'session_version' => 'integer'];
+        return ['phone' => 'encrypted', 'name' => 'encrypted', 'verified_at' => 'datetime', 'last_login_at' => 'datetime', 'is_active' => 'boolean', 'session_version' => 'integer'];
     }
 }

@@ -7,6 +7,7 @@ async function boot(){
 if(window.SupportCompatibilityDiagnostics?.capabilities.modules===false)return;
 const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
 const config=await fetch('api.php?widget_config=1',{cache:'no-store',signal:controller.signal}).finally(()=>clearTimeout(timer)).then(r=>{if(!r.ok)throw Error('Widget configuration unavailable');return r.json();});
+globalThis.SupportWidgetConfig=config;
 if((config.customer_v2===true||config.local_v2===true)&&!window.__supportCompat&&new URL(location.href).searchParams.get('support_legacy')!=='1'){
  document.querySelector('#chatWindow')?.remove();document.querySelector('.chat-btn')?.remove();
  const script=document.createElement('script');script.src='support-widget.js?v='+(/^[a-f0-9]{64}$/.test(config.local_asset_revision||'')?config.local_asset_revision:'ux1');document.body.append(script);

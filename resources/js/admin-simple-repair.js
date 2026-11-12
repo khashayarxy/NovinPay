@@ -1,33 +1,56 @@
 const latin = (value) => value.replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit))).replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
 
+export function formatRepairToman(value) {
+    const raw = latin(value).replace(/[٬,]/g, '');
+    if (!/^\d*$/.test(raw)) return value;
+    return raw.replace(/\B(?=(\d{3})+(?!\d))/g, '٬').replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
+}
+
 export function initSimpleRepair() {
     document.querySelectorAll('[data-money-input]').forEach((input) => {
-        const format = () => {
-            const raw = latin(input.value).replace(/[٬,]/g, '').replace(/^0+(?=\d)/, '');
-            if (!/^\d*$/.test(raw)) return;
-            const grouped = raw.replace(/\B(?=(\d{3})+(?!\d))/g, '٬');
-            input.value = grouped.replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
-            input.style.width = `${Math.max(2, input.value.length + 0.5)}ch`;
+        const format = (event) => {
+            const original = input.value;
+            if (original === '') return;
+            const formatted = formatRepairToman(original);
+            if (formatted === original) return;
+            const position = (offset) => {
+                let digits = latin(original.slice(0, offset)).replace(/\D/g, '').length;
+                let index = 0;
+                while (index < formatted.length && digits > 0) {
+                    if (formatted[index] !== '٬') digits--;
+                    index++;
+                }
+                return index;
+            };
+            let start = position(input.selectionStart);
+            let end = position(input.selectionEnd);
+            if (event?.inputType === 'deleteContentForward' && start === end && formatted[start] === '٬') {
+                start++;
+                end++;
+            }
+            const direction = input.selectionDirection;
+            input.value = formatted;
+            if (document.activeElement === input) input.setSelectionRange(start, end, direction);
         };
         input.addEventListener('input', format);
         format();
     });
     document.querySelectorAll('[data-simple-repair]').forEach((form) => {
-        const settlement = form.querySelector('[name="settled"]');
         const method = form.querySelector('[name="delivery_method"]');
+        const status = form.querySelector('[name="status"]');
         const refresh = () => {
-            const payment = form.querySelector('[data-settlement-options]');
             const carrier = form.querySelector('[data-carrier-options]');
-            if (payment) {
-                payment.hidden = !settlement.checked;
-                payment.querySelectorAll('input').forEach((input) => { input.disabled = !settlement.checked; });
+            const cost = form.querySelector('[data-repair-cost]');
+            if (cost) {
+                cost.hidden = status.value !== 'ready';
+                cost.querySelector('input').disabled = cost.hidden;
             }
             if (carrier) {
                 carrier.hidden = method.value !== 'shipping';
-                carrier.querySelectorAll('select').forEach((input) => { input.disabled = method.value !== 'shipping'; });
+                carrier.querySelectorAll('select, input').forEach((input) => { input.disabled = carrier.hidden; });
             }
         };
-        settlement?.addEventListener('change', refresh);
+        status?.addEventListener('change', refresh);
         method?.addEventListener('change', refresh);
         refresh();
     });

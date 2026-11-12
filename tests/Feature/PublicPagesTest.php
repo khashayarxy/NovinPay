@@ -59,11 +59,11 @@ class PublicPagesTest extends TestCase
         $response = $this->get('/repair');
 
         $response->assertOk();
-        $response->assertSee('به معنی دریافت دستگاه نیست');
+        $response->assertSee('دستگاه هنوز به ما تحویل داده نشده');
         $response->assertSee('کد پیگیری');
         $response->assertDontSee('action="'.route('repair.store').'"', false);
-        $response->assertSee(route('account.login'))->assertSee('ابتدا شمارهٔ همراه خود را تأیید کنید');
-        $response->assertSee('تعمیرات تخصصی کارتخوان')->assertSee('ثبت درخواست آنلاین');
+        $response->assertSee(route('account.login'))->assertSee('ابتدا شماره موبایل خود را تأیید کنید');
+        $response->assertSee('تعمیرات تخصصی کارتخوان')->assertSee('ثبت درخواست تعمیر');
     }
 
     public function test_contact_page_displays_official_business_details(): void

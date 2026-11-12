@@ -114,7 +114,7 @@ class LoginTest extends TestCase
 
         $response->assertRedirect(route('admin.login'));
         $response->assertSessionHasErrors('email');
-        $this->assertSame('ایمیل یا گذرواژه معتبر نیست.', session('errors')->first('email'));
+        $this->assertSame('ایمیل یا رمز عبور معتبر نیست.', session('errors')->first('email'));
         $this->assertGuest();
     }
 
@@ -135,7 +135,7 @@ class LoginTest extends TestCase
             ->assertSessionHasErrors(['email', 'password']);
 
         $this->assertStringContainsString('الزامی است', session('errors')->first('email'));
-        $this->assertSame('گذرواژه الزامی است.', session('errors')->first('password'));
+        $this->assertSame('رمز عبور الزامی است.', session('errors')->first('password'));
     }
 
     public function test_login_is_throttled_after_repeated_failures(): void
@@ -238,7 +238,7 @@ class LoginTest extends TestCase
         ])->assertSessionHasErrors('email');
 
         $this->assertSame(
-            'ایمیل یا گذرواژه معتبر نیست.',
+            'ایمیل یا رمز عبور معتبر نیست.',
             session('errors')->first('email')
         );
         $this->assertGuest();

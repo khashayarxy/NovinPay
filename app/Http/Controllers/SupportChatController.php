@@ -104,7 +104,7 @@ class SupportChatController extends Controller
             $payload = ['status' => 'error', 'code' => $failure->reason, 'message' => 'درخواست پشتیبانی انجام نشد.'];
         } catch (ValidationException $error) {
             $status = 422;
-            $payload = ['status' => 'error', 'code' => 'validation_failed', 'message' => 'اطلاعات یا گذرواژهٔ تأیید معتبر نیست.'];
+            $payload = ['status' => 'error', 'code' => 'validation_failed', 'message' => 'اطلاعات یا رمز عبور تأیید معتبر نیست.'];
         } catch (HttpExceptionInterface $error) {
             $status = $error->getStatusCode();
             $payload = ['status' => 'error', 'code' => 'operator_permission_denied'];

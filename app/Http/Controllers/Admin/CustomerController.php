@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CrmOperationRequest;
 use App\Http\Requests\CrmSearchRequest;
 use App\Models\Customer;
+use App\Models\CustomerAccount;
 use App\Services\CustomerManagement;
 use App\Support\AdminHistory;
 use App\Support\CrmAccess;
@@ -88,6 +89,8 @@ class CustomerController extends Controller
         return view('admin.customers.show', [
             'orders' => Gate::allows('orders.view') ? $customer->salesOrders()->select(['id', 'public_id', 'status', 'total', 'created_at'])->latest('id')->paginate(10, ['*'], 'orders_page') : null,
             'customer' => $customer, 'contact' => $contact,
+            'accountIdentifier' => $contact && $customer->is_active && ! $customer->merged_into_id && Gate::allows('customers.link')
+                ? CustomerAccount::query()->where('customer_id', $customer->id)->value('public_id') : null,
             'notes' => $notes ? $customer->notes()->with('actor:id,name')->latest('id')->paginate(15, ['*'], 'notes_page') : null,
             'duplicates' => $contact ? Customer::query()->where('phone_digest', $customer->phone_digest)->whereKeyNot($customer->id)->limit(20)->get() : collect(),
             'predecessors' => Customer::query()->where('merged_into_id', $customer->id)->select('public_id')->limit(20)->get(),

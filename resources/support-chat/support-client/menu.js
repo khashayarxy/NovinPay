@@ -7,7 +7,7 @@ export function chatMenu(win,ui){
     const info=document.createElement('details');info.className='support-chat-info';const summary=document.createElement('summary');summary.textContent='اطلاعات گفتگو';info.append(summary,ui.panel);
     body.append(recovery,info);drawer.append(top,body);win.append(drawer);
     const toggle=document.createElement('button');toggle.type='button';toggle.className='support-menu-toggle';toggle.innerHTML='<span class="support-icon" aria-hidden="true">settings</span>';toggle.setAttribute('aria-label','تنظیمات گفتگو');toggle.title='تنظیمات گفتگو';toggle.setAttribute('aria-controls',drawer.id);toggle.setAttribute('aria-expanded','false');
-    const actions=win.querySelector('.chat-header-actions');actions.prepend(toggle);
+    const actions=win.querySelector('.chat-header-actions');if(!win.hasAttribute('data-support-stable-shell'))actions.prepend(toggle);
     const logout=win.querySelector('#logoutBtn');logout.replaceChildren();const icon=document.createElement('span');icon.className='support-icon';icon.setAttribute('aria-hidden','true');icon.textContent='logout';logout.append(icon);logout.setAttribute('aria-label','خروج از گفتگو');logout.title='خروج از گفتگو';
     let origin=toggle;
     const close=()=>{drawer.hidden=true;toggle.setAttribute('aria-expanded','false');for(const el of win.children)el.inert=false;origin?.focus();};

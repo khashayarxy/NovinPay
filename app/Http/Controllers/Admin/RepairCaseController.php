@@ -8,6 +8,7 @@ use App\Http\Requests\RepairOperationRequest;
 use App\Http\Requests\SimpleRepairRequest;
 use App\Models\FinancialDocument;
 use App\Models\RepairCase;
+use App\Models\RepairRecordRevision;
 use App\Models\RepairRequest;
 use App\Services\RepairOperations;
 use App\Services\SimpleRepairRecords;
@@ -119,18 +120,28 @@ class RepairCaseController extends Controller
         if ($customer) {
             AdminHistory::record(AdminAction::RepairCustomerViewed, 'repair_case', $repairCase->id);
         }
-        $repairCase->load(['currentEstimate']);
+        $repairCase->load(['currentEstimate', 'onlineRequest:id,tracking_reference', 'delivery']);
         $document = $customer && Gate::allows('finance.view') ? FinancialDocument::query()->where('repair_case_id', $repairCase->id)->first() : null;
-        $financial = ['repairDocument' => $document, 'repairBillable' => $customer && Gate::allows('finance.view') ? $repairCase->billableToman() : null];
+        $hasDocument = $document !== null || ($customer && Gate::allows('repairs.estimate') && ! Gate::allows('finance.view')
+            && FinancialDocument::query()->where('repair_case_id', $repairCase->id)->exists());
+        $financial = ['repairDocument' => $document, 'hasRepairDocument' => $hasDocument];
 
-        return view('admin.repair-cases.simple-record', $financial + ['case' => $repairCase, 'customer' => $customer, 'events' => $repairCase->events()->with('actor:id,name')->latest('id')->paginate(20)]);
+        $events = $repairCase->events()->with('actor:id,name')->latest('id')->paginate(20);
+        $revisions = $customer ? RepairRecordRevision::query()->where('repair_case_id', $repairCase->id)
+            ->whereIn('id', $events->getCollection()->where('subject_type', 'repair_revision')->pluck('subject_id'))->get()->keyBy('id') : collect();
+
+        return view('admin.repair-cases.simple-record', $financial + ['case' => $repairCase, 'customer' => $customer, 'events' => $events, 'revisions' => $revisions]);
     }
 
     public function saveSimple(SimpleRepairRequest $request, RepairCase $repairCase, SimpleRepairRecords $records): RedirectResponse
     {
         $records->save($request->user(), $repairCase, $request->validated());
 
-        return redirect()->route('admin.repair-cases.show', $repairCase)->with('success', 'پرونده ذخیره شد.');
+        return redirect()->route('admin.repair-cases.show', $repairCase)->with('success', match ($request->validated('intent')) {
+            'settlement' => 'روش پرداخت ثبت شد.',
+            'handover' => 'تحویل دستگاه ثبت شد.',
+            default => 'تغییرات پرونده ذخیره شد.',
+        });
     }
 
     public function update(RepairOperationRequest $request, RepairCase $repairCase, RepairOperations $operations): RedirectResponse

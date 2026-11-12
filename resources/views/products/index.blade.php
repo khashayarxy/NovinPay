@@ -50,26 +50,26 @@
             <h2 class="sr-only">فهرست محصولات</h2>
             <p class="text-sm text-slate-600">
                 @if ($products->total() === 0)
-                    هیچ محصولی یافت نشد
+                    محصولی پیدا نشد
                 @else
                     {{ \App\Support\FaNumber::digits($products->total()) }} محصول یافت شد
                 @endif
             </p>
             @if ($hasFilters)
-                <p class="text-xs text-slate-500">نتایج بر اساس فیلترهای اعمال‌شده نمایش داده می‌شوند.</p>
+                <p class="text-xs text-slate-500">نتایج با فیلترهای انتخابی شما نمایش داده می‌شوند.</p>
             @endif
         </div>
 
         <div class="mt-6">
             @if ($products->isEmpty())
                 @if ($hasFilters)
-                    <x-empty-state title="محصولی مطابق جستجوی شما پیدا نشد"
-                        message="عبارت جستجو یا دسته‌بندی انتخاب‌شده را تغییر دهید و دوباره تلاش کنید.">
+                    <x-empty-state title="محصولی با این جست‌وجو پیدا نشد"
+                        message="عبارت جست‌وجو یا دسته‌بندی را تغییر دهید و دوباره تلاش کنید.">
                         <a href="{{ route('products.index') }}" class="btn btn-secondary">نمایش همه محصولات</a>
                     </x-empty-state>
                 @else
                     <x-empty-state title="هنوز محصولی ثبت نشده است"
-                        message="کاتالوگ محصولات خالی است. اطلاعات کالاها پس از تأیید نهایی در این بخش قرار می‌گیرد.">
+                        message="محصولات پس از تأیید در این صفحه نمایش داده می‌شوند.">
                         <a href="{{ route('contact') }}" class="btn btn-secondary">راهنمایی خرید</a>
                     </x-empty-state>
                 @endif

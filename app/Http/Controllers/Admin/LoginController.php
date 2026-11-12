@@ -50,7 +50,7 @@ class LoginController extends Controller
                 'email' => ['required', 'string', 'email', 'max:255'],
                 'password' => ['required', 'string'],
             ], [
-                'password.required' => 'گذرواژه الزامی است.',
+                'password.required' => 'رمز عبور الزامی است.',
             ]);
         } catch (ValidationException $exception) {
             RateLimiter::hit($ipKey, self::DECAY_SECONDS);
@@ -71,7 +71,7 @@ class LoginController extends Controller
             RateLimiter::hit($ipKey, self::DECAY_SECONDS);
 
             throw ValidationException::withMessages([
-                'email' => 'ایمیل یا گذرواژه معتبر نیست.',
+                'email' => 'ایمیل یا رمز عبور معتبر نیست.',
             ]);
         }
 

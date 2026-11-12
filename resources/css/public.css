@@ -1,7 +1,6 @@
 /* Public pages extend the approved homepage tokens and shared chrome. */
 .public-site { background: #fff; color: #121d47; }
 .public-site h1, .public-site h2, .public-site h3 { color: #101a43; }
-.public-site .np-footer h2 { color: #fff; }
 .public-site main { min-width: 0; }
 .public-site .np-nav a { min-height: 44px; }
 .np-footer__maps { gap: 8px; margin-top: 10px; }

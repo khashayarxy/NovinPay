@@ -1,9 +1,12 @@
-.admin-money{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-height:2.9rem;padding:.6rem .85rem;background:#fff;border:1px solid #cbd5e1;border-radius:.65rem;color:#0f172a}
-.admin-money:focus-within{outline:2px solid #2563eb;outline-offset:2px}
-.admin-money-number{display:flex;align-items:baseline;min-width:0;max-width:85%;font-variant-numeric:tabular-nums}
-.admin-money-number input{width:6ch;min-width:2ch;max-width:100%;padding:0;border:0;background:transparent;text-align:right;outline:none;box-shadow:none;font:inherit;font-variant-numeric:tabular-nums}
-.admin-money-zeroes{color:#94a3b8;white-space:nowrap}
-.admin-money-unit{font-size:.85rem;color:#64748b}
+.admin-money { position:relative; }
+.admin-site .admin-money .input[dir=ltr] { padding-inline-start:3.75rem; text-align:right; font-variant-numeric:tabular-nums; }
+.admin-money-unit { position:absolute; inset-block:0; inset-inline-end:.85rem; display:flex; align-items:center; color:var(--admin-muted); font-size:.85rem; pointer-events:none; }
 .simple-repair-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
 .simple-repair-details dd{overflow-wrap:anywhere}
-@media(max-width:639px){.simple-repair-details{grid-template-columns:1fr}}
+.simple-repair-details > *{min-width:0}
+.repair-management-layout > *{min-width:0}
+.repair-delivery-options{min-width:0;border-block-start:1px solid #e2e8f0;padding-block-start:.5rem}
+.repair-delivery-options legend{font-weight:600;padding-inline-end:.5rem}
+.repair-history{display:grid;gap:.75rem;margin-block:1rem;overflow-wrap:anywhere}
+.repair-history li + li{border-block-start:1px solid #e2e8f0;padding-block-start:.75rem}
+@media(max-width:800px){.simple-repair-details{grid-template-columns:1fr}}

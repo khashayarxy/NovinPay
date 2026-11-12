@@ -1,6 +1,6 @@
-@props(['name', 'label', 'hint' => null])
+@props(['name', 'label', 'hint' => null, 'required' => true])
 <div class="public-field">
-    <label for="{{ $name }}">{{ $label }} <span aria-hidden="true">*</span></label>
+    <label for="{{ $name }}">{{ $label }} @if($required)<span aria-hidden="true">*</span>@endif</label>
     {{ $slot }}
     <div id="{{ $name }}-feedback">
         @if ($hint)<p class="public-hint">{{ $hint }}</p>@endif

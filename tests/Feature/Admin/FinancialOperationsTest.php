@@ -15,6 +15,7 @@ use App\Services\FinancialReporting;
 use App\Services\RepairOperations;
 use App\Support\FinanceMoney;
 use App\Support\RepairTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -293,6 +294,22 @@ class FinancialOperationsTest extends TestCase
         $this->assertSame('10010', $parts['outstanding']);
         $this->get('/admin/finance/reports?from=2025-01-01&to=2026-10-21')->assertUnprocessable();
         $this->get('/admin/finance/reports?category=parts')->assertOk()->assertSee('گزارش مالی و تطبیق');
+    }
+
+    public function test_finance_date_filter_uses_inclusive_tehran_days_without_changing_utc_records(): void
+    {
+        $timestamps = ['2026-03-20 20:29:59', '2026-03-20 20:30:00', '2026-03-21 20:29:59', '2026-03-21 20:30:00'];
+        $entries = [];
+        foreach ($timestamps as $index => $timestamp) {
+            $this->travelTo(CarbonImmutable::parse($timestamp, 'UTC'));
+            $entries[] = $this->command('expense', ['amount' => '1.00', 'category' => 'parts', 'reference' => 'EXP-BOUNDARY-'.$index, 'method' => 'cash']);
+        }
+        $this->travelBack();
+
+        $response = $this->get('/admin/finance/reports?from=2026-03-21&to=2026-03-21')->assertOk();
+        $this->assertSame([$entries[2]->id, $entries[1]->id], $response->viewData('entries')->pluck('id')->all());
+        $this->assertSame('200', $response->viewData('summary')['expenses']);
+        $this->assertSame($timestamps[1], $entries[1]->fresh()->created_at->utc()->toDateTimeString());
     }
 
     public function test_customer_reconciliation_never_moves_financial_history_or_combines_debts(): void

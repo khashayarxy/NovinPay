@@ -7,7 +7,7 @@
     $specRowIndex = 0;
 @endphp
 
-<form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="space-y-6">
+<form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="admin-panel admin-form-surface space-y-4" autocomplete="off">
     @csrf
     @if ($method !== 'POST')
         @method($method)
@@ -24,9 +24,10 @@
         </div>
     @endif
 
-    <div class="card space-y-5 p-5 sm:p-6">
+    <div class="admin-section space-y-3">
         <h2 class="text-base font-semibold">اطلاعات اصلی</h2>
 
+        <div class="admin-form-grid">
         <div>
             <label class="label" for="name">نام محصول <span class="text-red-600"
                     aria-hidden="true">*</span></label>
@@ -43,12 +44,12 @@
                 value="{{ old('slug', $product->slug) }}" maxlength="255" dir="ltr"
                 aria-describedby="slug-hint" placeholder="novin-pos">
             <p class="mt-1 text-xs leading-6 text-slate-500" id="slug-hint">
-                برای نمایش در آدرس صفحه. خالی بگذارید تا از نام محصول ساخته شود؛ فقط حروف کوچک انگلیسی، اعداد و خط
-                تیره مجاز است.
+                با حروف کوچک انگلیسی، اعداد و خط تیره. اگر خالی بماند، از نام محصول ساخته می‌شود.
             </p>
             @error('slug')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
             @enderror
+        </div>
         </div>
 
         <div>
@@ -69,7 +70,7 @@
         </div>
     </div>
 
-    <div class="card space-y-5 p-5 sm:p-6">
+    <div class="admin-section space-y-3">
         <h2 class="text-base font-semibold">دسته‌بندی و وضعیت</h2>
 
         <div class="grid gap-5 sm:grid-cols-2">
@@ -135,13 +136,13 @@
             </div>
         </div>
 
-        <div class="space-y-3 border-t border-slate-100 pt-5">
-            <label class="flex items-center gap-2 text-sm">
+        <div class="admin-form-grid">
+            <label class="admin-checkbox">
                 <input type="checkbox" name="is_published" value="1" class="size-4 rounded border-slate-300"
                     @checked($isPublishedChecked)>
                 <span>منتشر شود (نمایش در وب‌سایت عمومی)</span>
             </label>
-            <label class="flex items-center gap-2 text-sm">
+            <label class="admin-checkbox">
                 <input type="checkbox" name="is_sample" value="1" class="size-4 rounded border-slate-300"
                     @checked($isSampleChecked)>
                 <span>داده نمونه (با نشان «داده نمونه» نمایش داده شود)</span>
@@ -149,8 +150,8 @@
         </div>
     </div>
 
-    <div class="card space-y-5 p-5 sm:p-6">
-        <h2 class="text-base font-semibold">مشخصات فنی</h2>
+    <details class="admin-section space-y-3" @if($existingSpecs || $errors->hasAny(['spec_labels', 'spec_values', 'spec_labels.*', 'spec_values.*'])) open @endif>
+        <summary>مشخصات فنی</summary>
         <p class="text-xs leading-6 text-slate-500">هر ردیف یک «برچسب و مقدار» است؛ ردیف‌های خالی نادیده گرفته
             می‌شوند.</p>
 
@@ -220,9 +221,9 @@
         </template>
 
         <button type="button" class="btn btn-secondary" data-add-spec-row>افزودن ردیف مشخصات</button>
-    </div>
+    </details>
 
-    <div class="card space-y-4 p-5 sm:p-6">
+    <div class="admin-section space-y-3">
         <h2 class="text-base font-semibold">تصویر محصول</h2>
 
         @if ($product->image_path)
@@ -246,7 +247,7 @@
         </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="admin-form-footer">
         <button type="submit" class="btn btn-primary">{{ $submitLabel }}</button>
         <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">انصراف</a>
     </div>

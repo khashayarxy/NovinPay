@@ -25,7 +25,7 @@ class CustomerAccountLink
             abort_unless(Hash::check($password, $persisted->password), 403);
             $customer = Customer::query()->where('public_id', $customerId)->lockForUpdate()->firstOrFail();
             $account = CustomerAccount::query()->where('public_id', $accountId)->lockForUpdate()->firstOrFail();
-            abort_unless($account->is_active && $account->customer_id === null && $customer->is_active && $customer->merged_into_id === null, 409);
+            abort_unless($account->is_active && $account->verified_at && $account->customer_id === null && $customer->is_active && $customer->merged_into_id === null, 409);
             abort_unless(hash_equals(RepairIdentity::digest('customer-account-phone', $customer->contact_phone), $account->phone_digest), 409, 'شماره‌ها یکسان نیستند؛ ابتدا هویت و اطلاعات تماس را بررسی کنید.');
             $account->customer_id = $customer->id;
             $account->session_version++;

@@ -1,11 +1,11 @@
 import {recoveryRequest} from './recovery.js?v=0.1.0-r14';
 export function phoneControls(parent,{current,conversation,beforeSwitch,restart,warn,done=()=>{}}){
     const panel=document.createElement('details');panel.className='support-phone-recovery';panel.hidden=true;
-    const title=document.createElement('summary');title.textContent='بازیابی با شماره همراه';
+    const title=document.createElement('summary');title.textContent='بازیابی با شماره موبایل';
     const help=document.createElement('p');help.textContent='فقط گفتگوهای متصل به شمارهٔ تأییدشده بازیابی می‌شوند.';
-    const policy=document.createElement('details'),policyTitle=document.createElement('summary'),policyText=document.createElement('small');policyTitle.textContent='دربارهٔ شماره همراه';policyText.textContent='دارندگان شمارهٔ مشترک به گفتگوهای متصل دسترسی دارند. پیش از واگذاری سیم‌کارت، ارتباط را حذف کنید. تأیید شماره پس از ۳۰ روز نیاز به تمدید دارد.';policy.append(policyTitle,policyText);
+    const policy=document.createElement('details'),policyTitle=document.createElement('summary'),policyText=document.createElement('small');policyTitle.textContent='دربارهٔ شماره موبایل';policyText.textContent='دارندگان شمارهٔ مشترک به گفتگوهای متصل دسترسی دارند. پیش از واگذاری سیم‌کارت، ارتباط را حذف کنید. تأیید شماره پس از ۳۰ روز نیاز به تمدید دارد.';policy.append(policyTitle,policyText);
     const number=document.createElement('input');number.type='tel';number.inputMode='tel';number.autocomplete='tel';number.maxLength=30;number.placeholder='شماره موبایل';number.setAttribute('aria-label','شماره موبایل برای بازیابی');
-    const link=document.createElement('button');link.type='button';link.textContent='تأیید شماره همراه';
+    const link=document.createElement('button');link.type='button';link.textContent='تأیید شماره موبایل';
     const recover=document.createElement('button');recover.type='button';recover.textContent='بازیابی گفتگوهای قبلی';
     const code=document.createElement('input');code.type='text';code.inputMode='numeric';code.autocomplete='one-time-code';code.maxLength=6;code.placeholder='کد پیامک‌شده را وارد کنید';code.setAttribute('aria-label','کد پیامک‌شده');code.hidden=true;
     const verify=document.createElement('button');verify.type='button';verify.textContent='تأیید کد';verify.hidden=true;
@@ -24,7 +24,7 @@ export function phoneControls(parent,{current,conversation,beforeSwitch,restart,
         if(challenge&&challenge.purpose===purpose){if(Date.now()-challenge.at<60000)throw new Error('برای ارسال دوباره یک دقیقه صبر کنید.');operation=null;}
         if(purpose==='link'&&!confirm('این شماره برای بازیابی همین گفتگو استفاده می‌شود. اگر شماره قبلی متصل باشد، جایگزین خواهد شد. ادامه؟'))return;
         if(!operation||operation.purpose!==purpose||operation.id!==id)operation={purpose,id,key:crypto.randomUUID()};
-        const r=await recoveryRequest({phone_action:'begin',purpose,phone:number.value,user_id:id,operation_id:operation.key});
+        const r=await recoveryRequest({phone_action:'begin',purpose,phone:window.NovinPayMobile?.ascii(number.value)??number.value,user_id:id,operation_id:operation.key});
         challenge={id:r.challenge,purpose,at:Date.now()};code.hidden=verify.hidden=false;code.focus();status.textContent='درخواست ارسال کد ثبت شد. در صورت دریافت، کد را تا پنج دقیقه وارد کنید. برای ارسال دوباره حداقل یک دقیقه صبر کنید.';
     }
     link.onclick=()=>run(()=>begin('link'));recover.onclick=()=>run(()=>begin('recover'));
@@ -52,5 +52,5 @@ export function phoneControls(parent,{current,conversation,beforeSwitch,restart,
         if(conversation()!==lastConversation){lastConversation=conversation();list.replaceChildren();resetChallenge();}
     }
     fetch('api.php?recovery_availability=1',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(r=>{enabled=r.phone_enabled===true;available=r.phone_available===true;refresh();}).catch(()=>{});
-    refresh();return {refresh,prefill:value=>{if(!number.value)number.value=value;}};
+    refresh();return {refresh,prefill:value=>{if(!number.value)number.value=window.NovinPayMobile?.display(value)??value;}};
 }

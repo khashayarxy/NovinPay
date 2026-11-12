@@ -36,7 +36,7 @@ class PasswordController extends Controller
             abort_unless($account->is_active && $account->session_version === $request->session()->get('admin_session_version'), 403);
             abort_unless(Hash::check($data['current_password'], $user->password), 403);
             if (Hash::check($data['password'], $user->password)) {
-                throw ValidationException::withMessages(['password' => 'گذرواژهٔ تازه باید با گذرواژهٔ فعلی متفاوت باشد.']);
+                throw ValidationException::withMessages(['password' => 'رمز عبور تازه باید با رمز عبور فعلی متفاوت باشد.']);
             }
             $user->password = $data['password'];
             $user->remember_token = Str::random(60);
@@ -52,6 +52,6 @@ class PasswordController extends Controller
         $request->session()->put('admin_session_version', $version);
         $request->user()->refresh();
 
-        return redirect(AdminAccess::landingUrl($request->user()))->with('success', 'گذرواژه تغییر کرد؛ نشست‌های قبلی لغو شدند.');
+        return redirect(AdminAccess::landingUrl($request->user()))->with('success', 'رمز عبور تغییر کرد؛ نشست‌های قبلی لغو شدند.');
     }
 }

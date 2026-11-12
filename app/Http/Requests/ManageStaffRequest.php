@@ -31,11 +31,11 @@ class ManageStaffRequest extends FormRequest
 
     public function messages(): array
     {
-        return ['current_password.current_password' => 'گذرواژهٔ فعلی مدیر کل صحیح نیست.', 'permissions.*' => 'مجوز انتخاب‌شده معتبر نیست.', 'prohibited' => 'ارسال :attribute مجاز نیست.'];
+        return ['current_password.current_password' => 'رمز عبور فعلی مدیر کل صحیح نیست.', 'permissions.*' => 'مجوز انتخاب‌شده معتبر نیست.', 'prohibited' => 'ارسال :attribute مجاز نیست.'];
     }
 
     public function attributes(): array
     {
-        return ['name' => 'نام همکار', 'email' => 'ایمیل', 'password' => 'گذرواژهٔ همکار', 'current_password' => 'گذرواژهٔ فعلی مدیر کل', 'permissions' => 'مجوزها', 'is_active' => 'فعال بودن حساب'];
+        return ['name' => 'نام همکار', 'email' => 'ایمیل', 'password' => 'رمز عبور همکار', 'current_password' => 'رمز عبور فعلی مدیر کل', 'permissions' => 'مجوزها', 'is_active' => 'فعال بودن حساب'];
     }
 }

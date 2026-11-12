@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\RepairRequestStatus;
 use App\Models\CustomerAccount;
 use App\Models\RepairRequest;
+use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -48,6 +49,22 @@ class RepairRequestTest extends TestCase
         $this->post('/repair', $this->payload())->assertRedirect(route('repair.confirmation'));
 
         return RepairRequest::query()->sole();
+    }
+
+    public function test_repair_form_has_one_description_and_preserves_submissions_from_older_forms(): void
+    {
+        $this->get('/repair')->assertOk()->assertSee('شرح مشکل دستگاه')
+            ->assertSee('value="۰۹۱۲۳۴۵۶۷۸۹"', false)->assertSee('name="issue"', false)
+            ->assertDontSee('name="additional_description"', false);
+        $first = $this->payload();
+        $this->post('/repair', $first)->assertRedirect(route('repair.confirmation'));
+        $original = RepairRequest::query()->sole();
+        $this->assertSame($first['issue'], $original->issue);
+
+        $second = $this->payload(['additional_description' => 'توضیحات ارسال‌شده از فرم قبلی']);
+        $this->post('/repair', $second)->assertRedirect(route('repair.confirmation'));
+        $this->assertSame($second['issue']."\n\n".$second['additional_description'], RepairRequest::query()->latest('id')->firstOrFail()->issue);
+        $this->assertSame($first['issue'], $original->fresh()->issue);
     }
 
     public function test_submission_encrypts_personal_fields_and_issues_random_reference_without_intake(): void
@@ -167,8 +184,10 @@ class RepairRequestTest extends TestCase
     public function test_tracking_requires_both_credentials_and_returns_only_initial_status(): void
     {
         $repair = $this->submit();
+        $displayedCode = FaNumber::digits($repair->tracking_reference);
+        $this->get('/account?section=repairs')->assertOk()->assertSee($displayedCode);
         $response = $this->post('/repair/track', [
-            'tracking_reference' => strtolower($repair->tracking_reference),
+            'tracking_reference' => $displayedCode,
             'contact_phone' => '۰۹۱۲۳۴۵۶۷۸۹',
         ])->assertOk()->assertSee('دریافت فیزیکی تأیید نشده است');
         foreach ([$repair->customer_name, $repair->contact_phone, $repair->device_model, $repair->issue, $repair->tracking_reference, $repair->phone_digest] as $sensitive) {
@@ -183,9 +202,10 @@ class RepairRequestTest extends TestCase
     {
         $repair = $this->submit();
         $wrongPhone = $this->post('/repair/track', ['tracking_reference' => $repair->tracking_reference, 'contact_phone' => '09999999999'])->assertOk();
-        $unknownCode = $this->post('/repair/track', ['tracking_reference' => 'NP-'.str_repeat('F', 32), 'contact_phone' => '09123456789'])->assertOk();
+        $missingCode = $repair->tracking_reference === '10000000' ? '10000001' : '10000000';
+        $unknownCode = $this->post('/repair/track', ['tracking_reference' => $missingCode, 'contact_phone' => '09123456789'])->assertOk();
         $this->assertSame($wrongPhone->getContent(), $unknownCode->getContent());
-        $unknownCode->assertSee('اطلاعات واردشده قابل تأیید نیست.')->assertDontSee($repair->customer_name);
+        $unknownCode->assertSee('درخواستی با این کد و شماره پیدا نشد.')->assertDontSee($repair->customer_name);
         $this->post('/repair/track', ['tracking_reference' => $repair->tracking_reference])->assertSessionHasErrors('contact_phone');
         $this->get('/repair/track?tracking_reference='.$repair->tracking_reference.'&contact_phone=09123456789')
             ->assertOk()->assertDontSee($repair->tracking_reference)->assertDontSee('09123456789');
@@ -198,6 +218,20 @@ class RepairRequestTest extends TestCase
             ->assertRedirect(route('repair.track'))->assertSessionHasErrors(['tracking_reference', 'contact_phone'])
             ->assertSessionMissing('_old_input');
         $this->get('/repair/track')->assertDontSee('<script>alert(1)</script>', false);
+    }
+
+    public function test_tracking_requires_the_issued_format_and_keeps_historical_records(): void
+    {
+        $repair = $this->submit();
+        $legacyCode = 'NP-'.str_repeat('A', 32);
+        DB::table('repair_requests')->where('id', $repair->id)->update(['tracking_reference' => $legacyCode]);
+        $this->get('/repair/track')->assertOk()->assertSee('maxlength="8"', false)->assertDontSee('NP-');
+        foreach ([$legacyCode, '1234567', '123456789', '01234567', '1234567A'] as $invalid) {
+            $this->post('/repair/track', ['tracking_reference' => $invalid, 'contact_phone' => '09123456789'])
+                ->assertRedirect(route('repair.track'))->assertSessionHasErrors('tracking_reference')
+                ->assertSessionMissing('_old_input');
+        }
+        $this->assertSame($legacyCode, $repair->fresh()->tracking_reference);
     }
 
     public function test_tracking_rate_limit_counts_invalid_attempts_and_expires(): void

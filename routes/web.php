@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\RepairCaseController;
 use App\Http\Controllers\Admin\RepairOverviewController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\TestCustomerAccountController;
 use App\Http\Controllers\ArticleController as PublicArticleController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ConsultationController;
@@ -73,14 +74,24 @@ Route::match(['GET', 'POST'], '/support-chat/{path?}', SupportChatController::cl
     ->withoutMiddleware(PreventRequestForgery::class)
     ->middleware('throttle:600,1')->name('support.chat');
 
+Route::get('/login', [CustomerAccountController::class, 'login'])->block(20, 15)->middleware(PrivateRepairResponse::class)->name('account.login');
+
 Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('account.')->group(function (): void {
     $controller = CustomerAccountController::class;
-    Route::get('login', [$controller, 'login'])->name('login');
-    Route::post('otp', [$controller, 'send'])->middleware('throttle:customer-otp')->name('otp');
-    Route::post('verify', [$controller, 'verify'])->middleware('throttle:20,1')->name('verify');
+    Route::get('login', fn () => redirect()->route('account.login'))->name('login.legacy');
+    Route::post('start', [$controller, 'start'])->block(20, 15)->middleware('throttle:customer-otp')->name('start');
+    Route::post('restart', [$controller, 'restart'])->block(20, 15)->name('restart');
+    Route::post('otp', [$controller, 'send'])->block(20, 15)->middleware('throttle:customer-otp')->name('otp');
+    Route::post('verify', [$controller, 'verify'])->block(20, 15)->middleware('throttle:customer-verify')->name('verify');
+    Route::post('password-login', [$controller, 'passwordLogin'])->block(20, 15)->middleware('throttle:customer-password')->name('password.login');
     Route::middleware(EnsureCustomerSession::class)->group(function () use ($controller): void {
         Route::get('/', [$controller, 'index'])->name('index');
-        Route::post('logout', [$controller, 'logout'])->name('logout');
+        Route::get('/repairs/requests/{record}', [$controller, 'repairRequest'])->where('record', '[A-Za-z0-9-]{1,35}')->name('repairs.request');
+        Route::get('/repairs/{record}', [$controller, 'repair'])->whereUuid('record')->name('repairs.show');
+        Route::get('/orders/{record}', [$controller, 'order'])->whereUuid('record')->name('orders.show');
+        Route::post('password', [$controller, 'password'])->middleware('throttle:10,1')->name('password.update');
+        Route::post('password-skip', [$controller, 'skipPassword'])->name('password.skip');
+        Route::post('logout', [$controller, 'logout'])->block(20, 15)->name('logout');
         Route::post('profile', [$controller, 'profile'])->middleware('throttle:20,1')->name('profile');
         Route::post('addresses', [$controller, 'address'])->middleware('throttle:10,1')->name('address');
         Route::post('addresses/{addressId}', [$controller, 'address'])->middleware('throttle:10,1')->name('address.update');
@@ -148,6 +159,12 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::middleware([EnsureAdminSession::class, 'can:access-admin'])->group(function (): void {
+        Route::middleware('can:staff.manage')->prefix('test-customers')->name('test-customers.')->group(function (): void {
+            $controller = TestCustomerAccountController::class;
+            Route::get('/', [$controller, 'index'])->name('index');
+            Route::post('{key}/code', [$controller, 'reveal'])->where('key', '[a-f0-9]{64}')->middleware('throttle:10,1')->name('code');
+            Route::post('{record}/reset', [$controller, 'reset'])->whereUuid('record')->middleware('throttle:10,1')->name('reset');
+        });
         Route::get('support', fn () => redirect('/support'))->middleware('can:support.view')->name('support.index');
         Route::get('support/confirm', fn () => redirect('/support'))->middleware('can:support.view')->name('support.confirm');
         Route::get('deliveries', [DeliveryController::class, 'admin'])->middleware(['can:finance.view', 'can:finance.details'])->name('deliveries.index');

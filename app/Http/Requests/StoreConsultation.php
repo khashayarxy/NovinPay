@@ -11,7 +11,7 @@ class StoreConsultation extends PrivateRepairFormRequest
 
     public function attributes(): array
     {
-        return ['submission_token' => 'فرم مشاوره', 'customer_name' => 'نام و نام خانوادگی', 'contact_phone' => 'شمارهٔ همراه', 'topic' => 'موضوع مشاوره', 'device_info' => 'اطلاعات دستگاه', 'question' => 'شرح پرسش'];
+        return ['submission_token' => 'فرم مشاوره', 'customer_name' => 'نام و نام خانوادگی', 'contact_phone' => 'شماره موبایل', 'topic' => 'موضوع مشاوره', 'device_info' => 'اطلاعات دستگاه', 'question' => 'شرح پرسش'];
     }
 
     public function rules(): array

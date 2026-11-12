@@ -29,8 +29,10 @@ class FinancePresentationTest extends TestCase
     {
         $before = CarbonImmutable::parse('2026-03-20T20:29:00Z');
         $after = $before->addMinute();
-        $this->assertSame('۱۴۰۴/۱۲/۲۹ ۲۳:۵۹ (شمسی، تهران)', FinanceTime::display($before));
-        $this->assertSame('۱۴۰۵/۰۱/۰۱ ۰۰:۰۰ (شمسی، تهران)', FinanceTime::display($after));
+        $this->assertSame('۲۳:۵۹ | ۱۴۰۴/۱۲/۲۹', FinanceTime::display($before));
+        $this->assertSame('۰۰:۰۰ | ۱۴۰۵/۰۱/۰۱', FinanceTime::display($after));
+        $this->assertSame('2026-03-21', FinanceTime::startOfMonth($after->addDays(12))->toDateString());
+        $this->assertSame('۱۴۰۵/۰۱/۰۱', FinanceTime::display($after, withTime: false));
         $this->assertSame('2026-03-20 20:29:00 +00:00', $before->format('Y-m-d H:i:s P'));
         $this->assertSame('—', FinanceTime::display(null));
     }
@@ -39,6 +41,6 @@ class FinancePresentationTest extends TestCase
     {
         $utc = CarbonImmutable::parse('2026-10-21T21:00:00Z');
         $this->assertSame(FinanceTime::display($utc), FinanceTime::display($utc->timezone('America/New_York')));
-        $this->assertStringContainsString('۰۰:۳۰', FinanceTime::display($utc));
+        $this->assertSame('۰۰:۳۰ | ۱۴۰۵/۰۷/۳۰', FinanceTime::display($utc));
     }
 }

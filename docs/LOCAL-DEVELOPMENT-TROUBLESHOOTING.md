@@ -20,6 +20,10 @@ Private `development/recovery/installation.json` records the installed shared gu
 
 Focused validation: `./scripts/test.ps1 tests/Unit/LocalHerdEnvironmentTest.php tests/Feature/SupportChatTest.php tests/Feature/CustomerAccountTest.php`. See the latest deployment lessons for browser measurements and acceptance scope.
 
+Customer account acceptance starts at `/login`. After applying the customer account migration to the approved database, configure `CUSTOMER_TEST_OTP_ENABLED=true` and `CUSTOMER_TEST_OTP_PHONES` with a private comma-separated list of canonical, owner-designated test mobiles. Keep `SMSIR_ENABLED=false` for local tests. Request the code from the customer browser, then use a separate super-admin browser session at `/admin/test-customers` and confirm the current administrator password, or run `php artisan customers:test-code` in a private interactive terminal. The test flow sends no SMS. Enter the code in the original customer browser within two minutes. The code is never included in a URL or audit event.
+
+Use «بازنشانی حساب تست» on the same admin page to clear an isolated account and re-register with the same number. The reset refuses accounts with CRM, repair, order, payment, delivery, notification, or chat history. Use a separate fixture to test operations that create retained records. Existing OTP rate limits still apply. Test identities remain unverified and cannot link to CRM history or order against live inventory. Turn off test OTP after acceptance. If reverting to a release that predates test accounts, revoke their customer sessions before reopening traffic and retain support for the test-reset audit actions.
+
 Verified 2026-10-23 with Windows 11, Herd 2.0.3, Happ 4.5.6.627, and canonical `https://novinpaypos.test`. The project is `C:\Users\Khashayar\Documents\NovinPay`. Use the isolated Herd site, never an unguarded `artisan serve`, `artisan dev`, queue worker or migration against the original SQLite file.
 
 ## Reproduced cause and approved correction

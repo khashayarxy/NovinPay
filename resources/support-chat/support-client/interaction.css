@@ -50,6 +50,12 @@ html[data-support-surface] .outgoing .support-reply-reference{--support-hover:rg
 html[data-support-surface=customer-v2] #chatWindow .v2-typing{box-sizing:border-box;width:66px;height:42px;min-width:66px;min-height:42px;flex:0 0 42px;justify-content:center;gap:6px;padding:0;margin:0 auto 12px 16px;align-self:auto;background:var(--bplus-bubble-in);border:1px solid var(--bplus-bubble-border);box-shadow:var(--bplus-bubble-shadow);border-radius:14px;border-bottom-left-radius:5px;color:var(--support-muted)}
 html[data-support-surface=customer-v2] #chatWindow .v2-typing i{flex:0 0 6px;width:6px;height:6px;animation:typing-dot 1.2s infinite}
 html[data-support-surface=customer-v2] #chatWindow .v2-typing i:nth-child(2){animation-delay:.15s}html[data-support-surface=customer-v2] #chatWindow .v2-typing i:nth-child(3){animation-delay:.3s}
+html[data-support-surface=operator] #replyArea .v2-typing:not([hidden]){display:flex;gap:5px;align-items:center;justify-content:center;min-height:20px;color:var(--support-muted)}
+html[data-support-surface=operator] #replyArea .v2-typing i{width:5px;height:5px;border-radius:50%;background:currentColor;animation:support-operator-typing 1.2s infinite}
+html[data-support-surface=operator] #replyArea .v2-typing i:nth-child(2){animation-delay:.15s}
+html[data-support-surface=operator] #replyArea .v2-typing i:nth-child(3){animation-delay:.3s}
+@keyframes support-operator-typing{50%{opacity:.35;transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){html[data-support-surface=operator] #replyArea .v2-typing i{animation:none}}
 @media(prefers-reduced-motion:reduce){html[data-support-surface] :is(#chatWindow,body) *{transition:none}html[data-support-surface=customer-v2] #chatWindow .v2-typing i{animation:none}}
 @media(forced-colors:active){html[data-support-surface] :is(#chatWindow,body) :is(input,textarea,select,button,summary,a):focus-visible{outline:2px solid Highlight;outline-offset:-2px}}
 

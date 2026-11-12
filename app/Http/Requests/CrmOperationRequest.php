@@ -53,11 +53,11 @@ class CrmOperationRequest extends PrivateRepairFormRequest
 
     public function messages(): array
     {
-        return ['required' => 'تکمیل :attribute ضروری است.', 'accepted' => 'تأیید صریح بررسی هویت ضروری است.', 'min' => ':attribute کوتاه‌تر از حد مجاز است.', 'max' => ':attribute بیش از حد مجاز است.', 'regex' => 'قالب :attribute معتبر نیست.', 'contact_phone.regex' => 'شمارهٔ همراه معتبر وارد کنید.', 'record.regex' => 'شمارهٔ درخواست آنلاین معتبر وارد کنید.', 'record.uuid' => 'شناسهٔ کامل پرونده یا مشاوره معتبر وارد کنید.'];
+        return ['required' => 'تکمیل :attribute ضروری است.', 'accepted' => 'تأیید صریح بررسی هویت ضروری است.', 'min' => ':attribute کوتاه‌تر از حد مجاز است.', 'max' => ':attribute بیش از حد مجاز است.', 'regex' => 'قالب :attribute معتبر نیست.', 'contact_phone.regex' => 'شماره موبایل معتبر وارد کنید.', 'record.regex' => 'شمارهٔ درخواست آنلاین معتبر وارد کنید.', 'record.uuid' => 'شناسهٔ کامل پرونده یا مشاوره معتبر وارد کنید.'];
     }
 
     public function attributes(): array
     {
-        return ['name' => 'نام و نام خانوادگی', 'contact_phone' => 'شمارهٔ همراه', 'is_active' => 'وضعیت پروفایل', 'reason' => 'دلیل بررسی', 'record' => 'شناسهٔ سابقه', 'type' => 'نوع سابقه', 'version' => 'نسخهٔ رکورد', 'destination' => 'شناسهٔ مقصد', 'destination_version' => 'نسخهٔ مقصد', 'body' => 'شرح خصوصی', 'assigned_to' => 'همکار مسئول', 'status' => 'مرحله', 'kind' => 'نوع یادداشت', 'channel' => 'روش ارتباط', 'outcome' => 'نتیجهٔ تماس'];
+        return ['name' => 'نام و نام خانوادگی', 'contact_phone' => 'شماره موبایل', 'is_active' => 'وضعیت پروفایل', 'reason' => 'دلیل بررسی', 'record' => 'شناسهٔ سابقه', 'type' => 'نوع سابقه', 'version' => 'نسخهٔ رکورد', 'destination' => 'شناسهٔ مقصد', 'destination_version' => 'نسخهٔ مقصد', 'body' => 'شرح خصوصی', 'assigned_to' => 'همکار مسئول', 'status' => 'مرحله', 'kind' => 'نوع یادداشت', 'channel' => 'روش ارتباط', 'outcome' => 'نتیجهٔ تماس'];
     }
 }

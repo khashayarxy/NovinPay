@@ -29,7 +29,7 @@ class SiteMaintenance
                 Gate::forUser($persisted)->authorize('maintenance.manage');
                 abort_unless($account && ! $account->must_change_password && $account->session_version === $sessionVersion, 403);
                 if (! Hash::check($input['current_password'], $persisted->password)) {
-                    throw ValidationException::withMessages(['current_password' => 'گذرواژهٔ فعلی معتبر نیست.']);
+                    throw ValidationException::withMessages(['current_password' => 'رمز عبور فعلی معتبر نیست.']);
                 }
                 // No filesystem state is touched until persisted authorization
                 // and password checks pass under the existing staff row lock.

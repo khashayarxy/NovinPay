@@ -1,32 +1,77 @@
 @extends('layouts.admin')
-@section('title', 'نمای کلی')
+@section('title', 'داشبورد مدیریت')
 @section('content')
-<div class="commerce-dashboard-summary">@if($pendingOrderCount !== null)<a class="admin-panel" href="{{ route('admin.orders.index') }}"><strong>{{ \App\Support\FaNumber::digits($pendingOrderCount) }}</strong><span>سفارش باز · پیش‌نویس، رزرو یا تأیید</span></a>@endif @if($lowStockCount !== null)<a class="admin-panel" href="{{ route('admin.inventory.index',['low'=>'1']) }}"><strong>{{ \App\Support\FaNumber::digits($lowStockCount) }}</strong><span>کالا در آستانهٔ کمبود موجودی آزاد</span></a>@endif</div>
-@if($openRepairCount !== null)<div class="admin-notice"><a class="admin-text-link" href="{{ route('admin.repair-cases.index') }}">عملیات تعمیر ←</a><p>پروندهٔ فیزیکی باز: {{ \App\Support\FaNumber::digits($openRepairCount) }} · آمادهٔ مراجعه: {{ \App\Support\FaNumber::digits($readyRepairCount) }}</p></div>@endif
-    <header class="admin-page-heading"><div><p class="admin-eyebrow">پیشخوان نوین‌پی</p><h1>نمای کلی کسب‌وکار</h1><p>سلام {{ auth()->user()->name }}؛ اطلاعات این صفحه از داده‌های ثبت‌شدهٔ سامانه است.</p></div><span class="admin-status"><span aria-hidden="true">●</span> حساب فعال</span></header>
-    <div class="admin-stats">
-        @foreach ([['count' => $productCount, 'label' => 'محصول ثبت‌شده', 'icon' => 'shopping-bag', 'route' => 'admin.products.index', 'note' => 'کاتالوگ و پیش‌نویس‌ها'], ['count' => $publishedCount, 'label' => 'محصول منتشرشده', 'icon' => 'check', 'route' => 'admin.products.index', 'note' => 'قابل مشاهده در وب‌سایت'], ['count' => $repairCount, 'label' => 'درخواست آنلاین تعمیر', 'icon' => 'tool', 'route' => 'admin.repairs.index', 'note' => 'دریافت فیزیکی تأیید نشده'], ['count' => $staffCount, 'label' => 'همکار فعال', 'icon' => 'user', 'route' => 'admin.staff.index', 'note' => 'با دسترسی مشخص']] as $stat)
-            @if ($stat['count'] !== null)
-                <a class="admin-stat" href="{{ route($stat['route']) }}"><span class="admin-icon"><x-home.icon :name="$stat['icon']" /></span><p>{{ $stat['label'] }}</p><strong>{{ \App\Support\FaNumber::digits(number_format($stat['count'])) }}</strong><span>{{ $stat['note'] }}</span></a>
-            @endif
-        @endforeach
-    </div>
+    <header class="admin-page-heading admin-dashboard-heading">
+        <div>
+            <h1>داشبورد مدیریت</h1>
+            <p><x-finance-time :value="now()" :with-time="false" /></p>
+        </div>
+        <div class="admin-actions">
+            @can('repairs.intake') @can('repairs.customer_data') @can('repairs.view')
+                <a class="btn btn-primary" href="{{ route('admin.repair-cases.create') }}">پذیرش دستگاه</a>
+            @endcan @endcan @endcan
+        </div>
+    </header>
+    @if($repairCount !== null || $openRepairCount !== null || $pendingOrderCount !== null || $lowStockCount !== null)
+        <section class="admin-panel admin-workbench" aria-labelledby="pending-work">
+            <div class="admin-panel-heading"><h2 id="pending-work">کارهای جاری</h2></div>
+            <div class="admin-task-list">
+                @foreach ([
+                    [$openRepairCount, 'پروندهٔ تعمیر باز', 'tool', 'admin.repair-cases.index', []],
+                    [$repairCount, 'درخواست آنلاین تعمیر', 'clock', 'admin.repairs.index', []],
+                    [$pendingOrderCount, 'سفارش باز', 'shopping-bag', 'admin.orders.index', []],
+                    [$lowStockCount, 'کالای کم‌موجود', 'tag', 'admin.inventory.index', ['low' => '1']],
+                ] as [$count, $label, $icon, $route, $parameters])
+                    @if ($count !== null)
+                        <a href="{{ route($route, $parameters) }}" @class(['admin-task', 'admin-task--pending' => $count > 0])>
+                            <span class="admin-task-icon"><x-home.icon :name="$icon" /></span>
+                            <strong>{{ \App\Support\FaNumber::digits(number_format($count)) }}</strong>
+                            <span class="admin-task-label">{{ $label }}</span>
+                            <x-home.icon class="admin-task-arrow" name="arrow-left" />
+                        </a>
+                    @endif
+                @endforeach
+            </div>
+        </section>
+    @endif
     <div class="admin-dashboard-grid">
-        <section class="admin-panel" aria-labelledby="recent-requests"><div class="admin-panel-heading"><div><p class="admin-eyebrow">دید عملیاتی</p><h2 id="recent-requests">درخواست‌های آنلاین اخیر</h2></div>@can('repairs.view')<a href="{{ route('admin.repairs.index') }}" class="admin-text-link">همه درخواست‌ها ←</a>@endcan</div>
+        <div class="admin-dashboard-primary">
             @can('repairs.view')
-                @forelse($recentRepairs as $repair)
-                    <a class="admin-request-row" href="{{ route('admin.repairs.show', $repair) }}"><span class="admin-icon"><x-home.icon name="tool" /></span><div><h3>درخواست {{ \App\Support\FaNumber::digits($repair->id) }} · <bdi>{{ $repair->device_brand->value }}</bdi></h3><p>{{ $repair->physical_case_exists ? 'پذیرش فیزیکی در پروندهٔ جداگانه ثبت شده است' : 'ثبت آنلاین؛ دریافت دستگاه تأیید نشده است' }}</p></div><x-home.icon name="arrow-left" /></a>
-                @empty
-                    <div class="admin-empty"><x-home.icon name="tool" /><h3>هنوز درخواستی ثبت نشده است</h3><p>درخواست‌های فرم عمومی پس از ثبت در اینجا قرار می‌گیرند.</p></div>
-                @endforelse
+            <section class="admin-panel" aria-labelledby="recent-requests"><div class="admin-panel-heading"><h2 id="recent-requests">درخواست‌های آنلاین اخیر</h2><a href="{{ route('admin.repairs.index') }}" class="admin-text-link">همهٔ درخواست‌ها <x-home.icon name="arrow-left" /></a></div>
+                    @forelse($recentRepairs as $repair)
+                        <a class="admin-request-row" href="{{ route('admin.repairs.show', $repair) }}"><span class="admin-icon"><x-home.icon name="tool" /></span><div><h3>درخواست {{ \App\Support\FaNumber::digits($repair->id) }} · <bdi>{{ $repair->device_brand->value }}</bdi></h3><p>{{ $repair->physical_case_exists ? 'پذیرش فیزیکی در پروندهٔ جداگانه ثبت شده است' : 'ثبت آنلاین؛ دریافت دستگاه تأیید نشده است' }}</p></div><x-home.icon name="arrow-left" /></a>
+                    @empty
+                        <x-admin.empty-state title="درخواست آنلاینی ثبت نشده است" icon="tool">درخواست‌های تازهٔ وب‌سایت اینجا نمایش داده می‌شوند.</x-admin.empty-state>
+                    @endforelse
+            </section>
             @else
-                <div class="admin-empty"><x-home.icon name="shield-check" /><h3>دسترسی به درخواست‌ها ندارید</h3><p>برای تغییر مجوز با مدیر کل هماهنگ کنید.</p></div>
+                <section class="admin-panel">
+                    <x-admin.empty-state title="دسترسی به درخواست‌ها ندارید" icon="shield-check">برای تغییر مجوز با مدیر کل هماهنگ کنید.</x-admin.empty-state>
+                </section>
             @endcan
-            <p class="admin-footnote">این بخش پذیرش فیزیکی، هزینه، تعمیر یا تحویل دستگاه را تأیید نمی‌کند.</p>
+            <section class="admin-panel admin-shortcuts" aria-labelledby="shortcuts-title">
+                <h2 id="shortcuts-title">دسترسی سریع</h2>
+                <div class="admin-actions">
+                    @can('products.manage')<a class="btn btn-secondary" href="{{ route('admin.products.create') }}">افزودن محصول</a>@endcan
+                    @can('customers.view')<a class="btn btn-secondary" href="{{ route('admin.customers.index') }}">مشتریان</a>@endcan
+                    @can('staff.manage')<a class="btn btn-secondary" href="{{ route('admin.staff.create') }}">تعریف همکار</a>@endcan
+                    @if (config('support_chat.enabled'))
+                        @can('support.view')
+                            <a class="btn btn-secondary" href="{{ route('support.panel') }}" target="_blank" rel="nofollow noopener noreferrer">ورود به پشتیبانی آنلاین</a>
+                        @endcan
+                    @endif
+                    <a class="btn btn-secondary" href="{{ route('admin.password.edit') }}">امنیت حساب من</a>
+                </div>
+            </section>
+        </div>
+        @can('activity.view')
+        <section class="admin-panel" aria-labelledby="recent-activities"><div class="admin-panel-heading"><h2 id="recent-activities">آخرین فعالیت‌ها</h2><a href="{{ route('admin.activities.index') }}" class="admin-text-link">همهٔ سوابق <x-home.icon name="arrow-left" /></a></div>
+                @if($recentActivities->isEmpty())
+                    <x-admin.empty-state title="فعالیت تازه‌ای ثبت نشده است" icon="clock" />
+                @else
+                    <ul class="admin-activities"><x-admin.activity-list :activities="$recentActivities" /></ul>
+                @endif
         </section>
-        <section class="admin-panel" aria-labelledby="recent-activities"><div class="admin-panel-heading"><div><p class="admin-eyebrow">آخرین رویدادها</p><h2 id="recent-activities">تاریخچهٔ فعالیت</h2></div>@can('activity.view')<a href="{{ route('admin.activities.index') }}" class="admin-text-link">مشاهده همه ←</a>@endcan</div>
-            @can('activity.view')<ul class="admin-activities"><x-admin.activity-list :activities="$recentActivities" /></ul>@else<div class="admin-empty"><x-home.icon name="shield-check" /><h3>دسترسی به تاریخچه ندارید</h3><p>این بخش به مجوز جداگانه نیاز دارد.</p></div>@endcan
-        </section>
+        @endcan
     </div>
-    <section class="admin-shortcuts" aria-labelledby="shortcuts-title"><div><h2 id="shortcuts-title">دسترسی سریع</h2><p>عملیات در دسترس حساب شما</p></div><div class="admin-actions">@can('products.manage')<a class="btn btn-primary" href="{{ route('admin.products.create') }}">افزودن محصول</a>@endcan @can('staff.manage')<a class="btn btn-secondary" href="{{ route('admin.staff.create') }}">تعریف همکار</a>@endcan<a class="btn btn-secondary" href="{{ route('admin.password.edit') }}">امنیت حساب من</a></div></section>
 @endsection

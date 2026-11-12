@@ -106,7 +106,7 @@ enum AdminPermission: string
             self::FinanceCharge => 'صدور صریح سند مطالبه از منبع تکمیل‌شده',
             self::FinanceReceive => 'ثبت دستی دریافت تخصیص‌یافته',
             self::FinanceExpenses => 'ثبت هزینهٔ واقعی با مدرک',
-            self::FinanceCorrect => 'اصلاح مانده و برگشت جبرانی با گذرواژه',
+            self::FinanceCorrect => 'اصلاح مانده و برگشت جبرانی با رمز عبور',
             self::FinanceBalances => 'مشاهدهٔ ماندهٔ پروفایل تاریخی مشتری',
         };
     }

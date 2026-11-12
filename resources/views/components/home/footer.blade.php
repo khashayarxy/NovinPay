@@ -2,8 +2,11 @@
     <div class="np-container">
         <div class="np-footer__grid">
             <div class="np-footer__brand">
-                <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark :dark="true" /></a>
-                <p>فروش و تعمیر دستگاه‌های کارتخوان در شهریار</p>
+                <div class="np-footer__identity">
+                    <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
+                    <p>فروش و تعمیر دستگاه‌های کارتخوان در شهریار</p>
+                </div>
+                <x-home.enamad />
             </div>
             <nav aria-label="پیوندهای کاربردی">
                 <h2>دسترسی سریع</h2>
@@ -16,7 +19,7 @@
             </nav>
             <div class="np-footer__information">
                 <h2>تماس با نوین‌پی</h2>
-                <x-business-phones link-class="np-footer__phone" />
+                <x-business-phones class="np-footer__phones" link-class="np-footer__phone" />
             </div>
         </div>
         <div class="np-footer__bottom">

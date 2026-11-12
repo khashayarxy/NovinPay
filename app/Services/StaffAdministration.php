@@ -21,7 +21,7 @@ final class StaffAdministration
             abort_unless($owner?->isSuperAdmin() && $owner->is_active, 403);
             $persistedActor = User::query()->findOrFail($actor->id);
             if (! Hash::check($data['current_password'], $persistedActor->password)) {
-                throw ValidationException::withMessages(['current_password' => 'گذرواژهٔ فعلی مدیر کل صحیح نیست.']);
+                throw ValidationException::withMessages(['current_password' => 'رمز عبور فعلی مدیر کل صحیح نیست.']);
             }
             $permissions = array_values($data['permissions'] ?? []);
             foreach ($permissions as $permission) {

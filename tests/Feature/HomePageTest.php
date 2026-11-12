@@ -6,11 +6,62 @@ use App\Enums\ProductCondition;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 class HomePageTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_official_enamad_seal_appears_once_in_the_public_footer(): void
+    {
+        $code = 'bkoTwmLFJ1lp9goDGHf1cuve1Tgw8t6n';
+        $query = 'id=8644634&Code='.$code;
+
+        foreach (['/', '/products', '/repair', '/contact', '/articles'] as $path) {
+            $document = new DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get($path)->assertOk()->getContent());
+            $xpath = new DOMXPath($document);
+            $selector = 'a[starts-with(@href,"https://trustseal.enamad.ir/") and img]';
+            $links = $xpath->query('//'.$selector);
+            $this->assertCount(1, $links);
+            $this->assertCount(1, $xpath->query('//footer//div[contains(@class,"np-footer__brand")]//'.$selector));
+            $this->assertCount(0, $xpath->query('//img[starts-with(@src,"https://trustseal.enamad.ir/")]'));
+            $this->assertCount(1, $xpath->query('//img[@src="'.asset('brand/trust/enamad-8644634.png').'"]'));
+
+            $link = $links->item(0);
+            $image = $xpath->query('./img', $link)->item(0);
+            $this->assertNotNull($image);
+            $this->assertSame('https://trustseal.enamad.ir/?'.$query, $link->getAttribute('href'));
+            $this->assertSame(asset('brand/trust/enamad-8644634.png'), $image->getAttribute('src'));
+            $this->assertSame($code, $image->getAttribute('code'));
+            $this->assertSame('origin', $link->getAttribute('referrerpolicy'));
+            $this->assertSame('origin', $image->getAttribute('referrerpolicy'));
+            $this->assertSame('_blank', $link->getAttribute('target'));
+            $this->assertFalse($link->hasAttribute('rel'));
+            $this->assertSame('نماد اعتماد الکترونیکی نوین‌پی', $image->getAttribute('alt'));
+
+            $fallbacks = $xpath->query('//footer//a[@class="np-enamad__fallback"]');
+            $this->assertCount(1, $fallbacks);
+            $fallback = $fallbacks->item(0);
+            $this->assertSame('استعلام نماد اعتماد الکترونیکی', trim($fallback->textContent));
+            foreach (['href', 'target', 'referrerpolicy'] as $attribute) {
+                $this->assertSame($link->getAttribute($attribute), $fallback->getAttribute($attribute));
+            }
+            $this->assertFalse($fallback->hasAttribute('rel'));
+        }
+    }
+
+    public function test_enamad_can_render_the_original_provider_image_on_request(): void
+    {
+        $markup = Blade::render('<x-home.enamad :use-provider-image="true" />');
+
+        $this->assertStringContainsString(
+            'src="https://trustseal.enamad.ir/logo.aspx?id=8644634&amp;Code=bkoTwmLFJ1lp9goDGHf1cuve1Tgw8t6n"',
+            $markup,
+        );
+        $this->assertStringNotContainsString('enamad-8644634.png', $markup);
+    }
 
     public function test_homepage_presents_all_approved_sections_and_seven_service_links(): void
     {
@@ -66,7 +117,7 @@ class HomePageTest extends TestCase
         $features = $xpath->query('//div[@class="np-trust__item"]');
         $expected = [
             ['مشاوره تخصصی خرید', 'انتخاب کارتخوان متناسب با نیاز و بودجه شما'],
-            ['استعلام آنلاین وضعیت تعمیرات', 'با استفاده از کد پیگیری'],
+            ['پیگیری آنلاین تعمیر', 'با کد پیگیری'],
             ['ارسال و تحویل به تمام نقاط', 'در سریع‌ترین زمان ممکن'],
             ['تعمیرات تخصصی کارتخوان', 'رسیدگی به مشکلات فنی دستگاه'],
         ];
@@ -130,14 +181,19 @@ class HomePageTest extends TestCase
             ->assertSee('width="853" height="933"', false)
             ->assertSee('fetchpriority="high"', false)
             ->assertSee(asset('images/home/novinpay-terminal-clean.webp'))
+            ->assertSee(asset('images/home/novinpay-terminal-clean-400.webp').' 400w')
+            ->assertSee(asset('images/home/novinpay-terminal-clean-640.webp').' 640w')
             ->assertSeeInOrder(['data-artwork-slot="hero"', 'class="np-eyebrow"', 'id="hero-title"', 'class="np-hero__description"', 'مشاهده محصولات', 'ثبت درخواست تعمیر'], false);
         $this->assertSame([853, 933], array_slice(getimagesize(public_path('images/home/novinpay-terminal-clean.webp')), 0, 2));
+        $this->assertSame([400, 438], array_slice(getimagesize(public_path('images/home/novinpay-terminal-clean-400.webp')), 0, 2));
+        $this->assertSame([640, 700], array_slice(getimagesize(public_path('images/home/novinpay-terminal-clean-640.webp')), 0, 2));
     }
 
     public function test_artwork_slot_can_load_a_local_asset_and_falls_back_for_a_missing_file(): void
     {
         config(['homepage.artwork.hero' => 'brand/novinpay-np-blue.svg']);
-        $this->get('/')->assertOk()->assertSee('fetchpriority="high"', false);
+        $this->get('/')->assertOk()->assertSee('fetchpriority="high"', false)
+            ->assertDontSee('novinpay-terminal-clean-400.webp');
 
         config(['homepage.artwork.hero' => 'images/not-supplied.png']);
         $this->get('/')->assertOk()->assertDontSee('fetchpriority="high"', false)
@@ -163,10 +219,10 @@ class HomePageTest extends TestCase
         $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
-        $this->assertSame(5, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
-        $this->assertSame(3, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
+        $this->assertSame(6, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
+        $this->assertSame(4, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
         $desktop = $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]')->item(0);
-        $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
+        $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها', 'حساب کاربری'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
         $this->assertSame(5, $xpath->query('//main/section')->length);
         $response->assertSeeInOrder(['id="hero-title"', 'np-trust np-container', 'id="popular-services-title"', 'id="brands-title"', 'id="location-title"'], false);
@@ -188,8 +244,11 @@ class HomePageTest extends TestCase
             $this->assertSame(0, $xpath->query('//footer//a[@href="'.url('/'.$path).'"]')->length);
         }
         $this->assertSame(0, $xpath->query('//footer//a[contains(@href,"?q=")]')->length);
-        $this->assertSame(1, $xpath->query('//footer//img[contains(@src,"white-on-black.svg")]')->length);
-        $this->assertSame(1, $xpath->query('//footer//a[@href="tel:09362896373"]')->length);
+        $this->assertSame(1, $xpath->query('//footer//img[contains(@src,"/logo-wordmark-black-on-white.svg")]')->length);
+        $this->assertSame(
+            [config('business.phone_uri'), config('business.secondary_phone_uri')],
+            array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($xpath->query('//footer//a[starts-with(@href,"tel:")]'))),
+        );
     }
 
     public function test_visit_information_owns_the_address_hours_and_exact_navigation_destinations(): void

@@ -17,7 +17,7 @@ class ProductController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
             'category' => ['nullable', 'string', Rule::enum(ProductCategory::class)],
         ], [
-            'q.max' => 'عبارت جستجو نباید بیش از ۱۰۰ نویسه باشد.',
+            'q.max' => 'عبارت جست‌وجو نباید بیشتر از ۱۰۰ کاراکتر باشد.',
             'category' => 'دسته‌بندی انتخاب‌شده معتبر نیست.',
         ]);
 

@@ -58,7 +58,7 @@ export function teamView({host,api,currentOperator,warn}){
    form.innerHTML=`
     <h3>افزودن عضو جدید</h3>
     <label>
-     <span>نام کاربری (حداکثر ۸۰ نویسه انگلیسی)</span>
+     <span>نام کاربری (حداکثر ۸۰ کاراکتر انگلیسی)</span>
      <input type="text" id="newOpUsername" required maxlength="80" autocomplete="off" placeholder="مثال: sara_support">
     </label>
     <label>
@@ -66,7 +66,7 @@ export function teamView({host,api,currentOperator,warn}){
      <input type="text" id="newOpName" required maxlength="200" placeholder="مثال: سارا محمدی">
     </label>
     <label>
-     <span>رمز عبور (حداقل ۱۲ نویسه)</span>
+     <span>رمز عبور (حداقل ۱۲ کاراکتر)</span>
      <input type="password" id="newOpPassword" required minlength="12" maxlength="200" autocomplete="new-password">
     </label>
     <label>

@@ -19,7 +19,7 @@ final class CustomerManagement
     {
         CrmAccess::require($actor, CrmAccess::permissions('customer.save'));
         $phone = RepairIdentity::phone($data['contact_phone']);
-        abort_unless(preg_match('/\A09[0-9]{9}\z/', $phone), 422, 'شمارهٔ همراه معتبر نیست.');
+        abort_unless(preg_match('/\A09[0-9]{9}\z/', $phone), 422, 'شماره موبایل معتبر نیست.');
         abort_unless(! empty($data['identity_reviewed']), 422, 'بررسی هویت لازم است.');
         try {
             return DB::transaction(function () use ($actor, $data, $target, $phone): Customer {

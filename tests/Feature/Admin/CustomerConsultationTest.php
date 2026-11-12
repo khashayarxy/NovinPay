@@ -125,7 +125,8 @@ class CustomerConsultationTest extends TestCase
         $this->assertSame($customer->id, (int) $after->customer_id);
         $this->get('/admin/repair-requests/'.$record->id)->assertOk()->assertSee($customer->public_id);
         $this->get('/admin/customers/'.$customer->public_id)->assertOk()->assertSee('درخواست آنلاین');
-        $this->post('/repair/track', ['tracking_reference' => $record->tracking_reference, 'contact_phone' => '09000000000'])->assertOk()->assertDontSee('PRIVATE-PROFILE');
+        $this->post('/repair/track', ['tracking_reference' => $record->tracking_reference, 'contact_phone' => '09000000000'])
+            ->assertRedirect(route('repair.track'))->assertSessionHasErrors('tracking_reference');
         $this->link($customer, 'request', (string) $record->id, ['unlink' => '1'])->assertRedirect();
         $this->assertNull($record->fresh()->customer_id);
     }
@@ -474,9 +475,9 @@ class CustomerConsultationTest extends TestCase
     public function test_public_consultation_errors_use_persian_field_names_without_replaying_private_input(): void
     {
         $this->post('/consultation', ['submission_token' => str_repeat('a', 64), 'customer_name' => 'PRIVATE-INVALID-NAME', 'contact_phone' => 'invalid', 'topic' => 'purchase', 'question' => 'PRIVATE-INVALID-QUESTION'])
-            ->assertSessionHasErrors(['contact_phone' => 'قالب شمارهٔ همراه نامعتبر است.'])
+            ->assertSessionHasErrors(['contact_phone' => 'قالب شماره موبایل نامعتبر است.'])
             ->assertSessionMissing('_old_input');
-        $this->get('/consultation')->assertOk()->assertSee('شمارهٔ همراه')->assertDontSee('contact phone')->assertDontSee('PRIVATE-INVALID-NAME')->assertDontSee('PRIVATE-INVALID-QUESTION');
+        $this->get('/consultation')->assertOk()->assertSee('شماره موبایل')->assertDontSee('contact phone')->assertDontSee('PRIVATE-INVALID-NAME')->assertDontSee('PRIVATE-INVALID-QUESTION');
         $this->assertDatabaseCount('consultations', 0);
     }
 

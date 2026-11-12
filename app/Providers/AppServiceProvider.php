@@ -7,6 +7,7 @@ use App\Http\Middleware\PreviewAwareSession;
 use App\Models\User;
 use App\Support\AdminAccess;
 use App\Support\Chat\ChatBridge;
+use App\Support\CustomerAuthThrottle;
 use App\Support\RepairIdentity;
 use App\Support\SiteMaintenanceState;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -37,9 +38,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('customer-otp', fn ($request) => [
-            Limit::perMinute(5)->by('otp-ip:'.hash('sha256', $request->ip())),
-            Limit::perDay(10)->by('otp-phone:'.RepairIdentity::digest('otp-throttle', RepairIdentity::phone($request->input('phone')))),
+            Limit::perMinute(20)->by('otp-ip:'.hash('sha256', $request->ip()))->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'otp')),
+            Limit::perHour(180)->by('otp-ip-hour:'.hash('sha256', $request->ip()))->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'otp')),
         ]);
+        RateLimiter::for('customer-password', fn ($request) => [
+            Limit::perMinute(8)->by('customer-password-ip:'.hash('sha256', $request->ip()))->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'password')),
+            Limit::perMinute(5)->by('customer-password-phone:'.RepairIdentity::digest('password-throttle', (string) $request->session()->get('customer_login_phone')))->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'password')),
+        ]);
+        RateLimiter::for('customer-verify', fn ($request) => Limit::perMinute(20)->by(hash('sha256', $request->ip()))
+            ->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'verify')));
         Gate::define('access-admin', fn (User $user): bool => AdminAccess::account($user) !== null);
         Gate::define('staff.manage', fn (User $user): bool => AdminAccess::account($user)?->isSuperAdmin() ?? false);
         foreach (AdminPermission::cases() as $permission) {

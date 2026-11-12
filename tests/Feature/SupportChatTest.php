@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AdminAccount;
 use App\Models\CustomerAccount;
+use App\Models\CustomerAddress;
 use App\Models\User;
 use App\Services\IndependentSupportOperators;
 use App\Support\Chat\ChatBridge;
@@ -52,6 +53,46 @@ class SupportChatTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_chat_api_requests_cannot_become_profile_form_redirect_targets(): void
+    {
+        $account = new CustomerAccount;
+        $account->public_id = (string) Str::uuid();
+        $account->phone = '09000000000';
+        $account->phone_digest = hash('sha256', 'synthetic profile fixture');
+        $account->verified_at = now();
+        $account->is_active = true;
+        $account->session_version = 1;
+        $account->save();
+        $this->actingAs($account, 'customer')->withSession(['customer_session_version' => 1]);
+        $profile = 'https://localhost/account?section=profile';
+        $addresses = 'https://localhost/account?section=addresses';
+        $chat = 'https://localhost/support-chat/api.php?get_session=1&bootstrap=1';
+
+        $this->get($profile)->assertOk();
+        $this->get($chat)->assertOk()->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSessionHas('_previous.url', $profile);
+        $this->get('https://localhost/support-chat/get_activity.php')->assertOk()
+            ->assertJsonPath('users', [])->assertSessionHas('_previous.url', $profile);
+        $this->get('https://localhost/support-chat/get_activity.php?scope=operator')->assertUnauthorized();
+
+        $this->withHeader('Referer', $chat);
+        $this->post('https://localhost/account/profile', ['name' => ''])->assertRedirect($profile)
+            ->assertSessionHasErrors('name');
+        $this->post('https://localhost/account/profile', ['name' => 'Synthetic Updated Name'])->assertRedirect($profile);
+        $this->assertSame('Synthetic Updated Name', $account->fresh()->name);
+
+        $this->post('https://localhost/account/addresses', [])->assertRedirect($addresses)
+            ->assertSessionHasErrors('address')->assertSessionMissing('_old_input.address');
+        $this->post('https://localhost/account/addresses', [
+            'recipient' => 'Synthetic Recipient', 'phone' => '09000000000', 'province' => 'تهران',
+            'city' => 'شهریار', 'address' => 'Synthetic private address', 'postal_code' => '1234567890',
+        ])->assertRedirect($addresses);
+        $address = CustomerAddress::query()->where('customer_account_id', $account->id)->sole();
+        $this->assertSame('Synthetic private address', $address->address);
+        $this->post('https://localhost/account/addresses/'.$address->public_id.'/remove')->assertRedirect($addresses);
+        $this->assertModelMissing($address);
+    }
+
     public function test_anonymous_context_and_widget_have_no_external_dependencies(): void
     {
         $this->get('https://localhost/support-chat/api.php?get_csrf=1')->assertOk()->assertJsonStructure(['token', 'context']);
@@ -67,6 +108,71 @@ class SupportChatTest extends TestCase
         $response = $this->get('https://localhost/support-chat/api.php?widget_config=1')->assertOk()->assertJsonStructure(['name', 'installation', 'source_paths', 'attachments', 'typing', 'customer_theme_default']);
         $this->assertIsString($response->json('name'));
         $this->assertIsArray($response->json('source_paths'));
+        $widget = $this->get('https://localhost/support-chat/support-widget.php')->assertOk();
+        $this->assertSame(1, preg_match('/<script type="application\/json" id="supportWidgetConfig">(.*?)<\/script>/s', $widget->getContent(), $matches));
+        $this->assertSame($response->json(), json_decode($matches[1], true, 32, JSON_THROW_ON_ERROR));
+    }
+
+    public function test_typing_is_bidirectional_session_scoped_and_expires(): void
+    {
+        [$customer, $id] = $this->customerContext();
+        $customerCookie = [session_name(), session_id()];
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $id, 'message' => 'typing fixture', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $customer])->assertOk();
+        $operator = $this->loginOperator();
+        $endpoint = 'https://localhost/support-chat/support-typing.php';
+        $publish = fn ($role, $token, $typing = '1', $age = '0') => $this->post($endpoint, ['scope' => $role, 'user_id' => $id, 'typing' => $typing, 'idle_seconds' => $age, 'csrf_token' => $token]);
+        $observe = fn ($role) => $this->get($endpoint.'?'.http_build_query(['scope' => $role, 'user_id' => $id]))->assertOk();
+        $publish('customer', $customer)->assertOk();
+        $observe('customer')->assertJsonPath('typing', false);
+        $reply = $observe('operator')->assertJsonPath('typing', true);
+        $this->assertGreaterThanOrEqual(29, $reply->json('expires_in'));
+        $publish('customer', $customer, '1', '30')->assertOk();
+        $observe('operator')->assertJsonPath('typing', false);
+        $publish('customer', $customer, '1', '12')->assertOk();
+        $this->assertLessThanOrEqual(18, $observe('operator')->assertJsonPath('typing', true)->json('expires_in'));
+        $publish('customer', $customer)->assertOk();
+        $this->assertGreaterThanOrEqual(29, $observe('operator')->json('expires_in'));
+        $publish('customer', $customer, '0')->assertOk();
+        $observe('operator')->assertJsonPath('typing', false);
+        $publish('operator', $operator)->assertOk();
+        $observe('operator')->assertJsonPath('typing', false);
+        $observe('customer')->assertJsonPath('typing', true);
+        $this->withCookie($customerCookie[0], str_repeat('b', 32))->get($endpoint.'?scope=customer&user_id='.$id)->assertUnauthorized();
+        $this->withCookie(...$customerCookie);
+        $publish('operator', $operator, '0')->assertOk();
+        $observe('customer')->assertJsonPath('typing', false);
+    }
+
+    public function test_legacy_and_current_operator_replies_have_same_opaque_group_across_pages(): void
+    {
+        [$customer, $id] = $this->customerContext();
+        $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'user_id' => $id, 'message' => 'history fixture', 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $customer])->assertOk();
+        $operator = $this->loginOperator();
+        foreach (['historical', 'current'] as $message) {
+            $this->post('https://localhost/support-chat/api.php', ['action' => 'send_reply', 'user_id' => $id, 'reply' => $message, 'protocol_version' => '2', 'client_message_id' => (string) Str::uuid(), 'csrf_token' => $operator])->assertOk();
+        }
+        $bridge = app(ChatBridge::class);
+        $bridge->begin();
+        try {
+            support_store(function (array &$state, bool &$changed) use ($id): void {
+                $old = &$state['conversations'][$id]['messages'][1];
+                foreach (['protocol_version', 'client_message_id', 'sender_principal', 'payload_digest', 'accepted_at', 'team_reply_through', 'team_reply_protocol'] as $key) {
+                    unset($old[$key]);
+                }
+                $changed = true;
+            }, true);
+        } finally {
+            $bridge->finish();
+        }
+        $url = 'https://localhost/support-chat/api.php?get_conversation=1&limit=1&user_id='.$id;
+        $new = $this->get($url)->assertOk()->assertJsonPath('messages.0.legacy', false)->json('messages.0');
+        $old = $this->get($url.'&before_sequence='.$new['id'])->assertOk()->assertJsonPath('messages.0.legacy', true)->json('messages.0');
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $new['sender_account_group']);
+        $this->assertSame($new['sender_account_group'], $old['sender_account_group']);
+        $this->assertNull($old['sender']);
+        $this->assertArrayNotHasKey('operator_id', $old);
+        $this->assertArrayNotHasKey('sender_principal', $old);
+        $this->assertArrayNotHasKey('sender_account_group', $this->get($url.'&scope=operator')->assertOk()->json('messages.0'));
     }
 
     public function test_operator_entry_redirects_to_explicit_document_without_loop(): void
@@ -90,7 +196,8 @@ class SupportChatTest extends TestCase
 
     public function test_independent_login_shell_is_available_without_admin_authentication(): void
     {
-        $this->get('https://localhost/support')->assertOk()->assertSee('id="username"', false)->assertSee('id="password"', false)->assertDontSee('/admin/support/confirm');
+        $this->get('https://localhost/support')->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow')
+            ->assertSee('id="username"', false)->assertSee('id="password"', false)->assertDontSee('/admin/support/confirm');
         $this->get('https://localhost/support-chat/operator/app.js')->assertOk()->assertDontSee('/admin/support/confirm');
     }
 

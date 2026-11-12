@@ -2,97 +2,390 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RepairStage;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
 use App\Models\CustomerAddress;
+use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
 use App\Services\CustomerLogin;
+use App\Services\TestCustomerReset;
 use App\Support\CrmAccess;
+use App\Support\CustomerAuthThrottle;
+use App\Support\CustomerLoginFlow;
+use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CustomerAccountController extends Controller
 {
-    private function validatePrivate(Request $request, array $rules): array
+    private function validatePrivate(Request $request, array $rules, ?string $accountSection = null): array
     {
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
-            throw new HttpResponseException(back()->withErrors($validator));
+            $redirect = match (true) {
+                $accountSection !== null => redirect()->route('account.index', ['section' => $accountSection]),
+                $request->routeIs('account.start', 'account.otp') => redirect()->route('account.login'),
+                $request->routeIs('account.verify') => redirect()->route('account.login', CustomerLoginFlow::parameters($request, $request->boolean('recover') ? 'recovery' : null)),
+                $request->routeIs('account.password.login') => redirect()->route('account.login', CustomerLoginFlow::parameters($request, 'password')),
+                default => back(),
+            };
+            throw new HttpResponseException($redirect->withErrors($validator));
         }
 
         return $validator->validated();
     }
 
-    public function login()
+    public function login(Request $request, CustomerLogin $login)
     {
-        return view('account.login');
+        $account = Auth::guard('customer')->user();
+        if ($account && $account->is_active && $account->session_version === $request->session()->get('customer_session_version')
+            && ($account->verified_at || $login->testAllowed($account->phone))) {
+            return redirect()->route('account.index');
+        }
+
+        $flow = $request->query('flow');
+        $phone = CustomerLoginFlow::matches($request, $flow) ? $request->session()->get('customer_login_phone') : null;
+        if ($flow !== null && ! is_string($phone)) {
+            return redirect()->route('account.login');
+        }
+        $pending = $phone ? $request->session()->get('customer_challenge') : null;
+        $active = $phone && $login->activeChallenge($phone, $pending);
+
+        return response()->view('account.login', [
+            'phone' => $phone,
+            'flow' => $phone ? $flow : null,
+            'challenge' => $active,
+            'challengeEnded' => $pending && ! $active,
+            'resendAt' => $phone ? (int) $request->session()->get('customer_resend_at', 0) : 0,
+            'retryUntil' => $request->session()->get('customer_retry_until', []),
+            'retryReason' => $request->session()->get('customer_retry_reason', []),
+        ]);
     }
 
-    public function send(Request $request, CustomerLogin $login)
+    public function restart(Request $request)
     {
-        $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
-        $data = $this->validatePrivate($request, ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']]);
-        $request->session()->put('customer_challenge', $login->issue($data['phone']));
-
-        return redirect()->route('account.login')->with('success', 'کد تأیید ارسال شد.');
-    }
-
-    public function verify(Request $request, CustomerLogin $login)
-    {
-        $code = $request->input('code');
-        $request->merge(['code' => is_string($code) ? FaNumber::normalizeDigits($code) : '']);
-        $data = $this->validatePrivate($request, ['code' => ['required', 'regex:/\A[0-9]{6}\z/']]);
-        $account = $login->verify((string) $request->session()->get('customer_challenge'), $data['code']);
-        Auth::guard('customer')->login($account);
-        $request->session()->regenerate();
-        $request->session()->forget('customer_challenge');
-        $request->session()->put('customer_session_version', $account->session_version);
-
-        return redirect()->route('account.index');
-    }
-
-    public function logout(Request $request)
-    {
-        Auth::guard('customer')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $this->checkFlow($request);
+        $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason']);
 
         return redirect()->route('account.login');
     }
 
-    public function index()
+    public function start(Request $request, CustomerLogin $login)
+    {
+        $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
+        $data = $this->validatePrivate($request, ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']]);
+        if ($request->session()->get('customer_login_phone') !== $data['phone']) {
+            $request->session()->forget(['customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason']);
+        }
+        $request->session()->put('customer_login_phone', $data['phone']);
+
+        if ($login->activeChallenge($data['phone'], $request->session()->get('customer_challenge'))) {
+            return $this->codeScreen($request, 'کد قبلی هنوز معتبر است. همان کد را وارد کنید.');
+        }
+
+        return $this->requestCode($request, $login, $data['phone']);
+    }
+
+    public function send(Request $request, CustomerLogin $login)
+    {
+        $this->checkFlow($request);
+        $sessionPhone = $request->session()->get('customer_login_phone');
+        if (is_string($sessionPhone)) {
+            return $this->requestCode($request, $login, $sessionPhone);
+        }
+        $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
+        $data = $this->validatePrivate($request, ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']]);
+        $request->session()->put('customer_login_phone', $data['phone']);
+
+        return $this->requestCode($request, $login, $data['phone']);
+    }
+
+    private function requestCode(Request $request, CustomerLogin $login, string $phone)
+    {
+        try {
+            $request->session()->put('customer_challenge', $login->issue($phone));
+            $request->session()->put('customer_resend_at', now()->addSeconds(CustomerLogin::RESEND_SECONDS)->timestamp);
+            $request->session()->forget(['customer_retry_until.otp', 'customer_retry_reason.otp']);
+        } catch (HttpException $exception) {
+            if (! in_array($exception->getStatusCode(), [429, 503], true)) {
+                throw $exception;
+            }
+
+            if (isset($exception->getHeaders()['Retry-After'])) {
+                if ($exception->getStatusCode() === 503) {
+                    $request->session()->forget('customer_challenge');
+                }
+
+                return CustomerAuthThrottle::respond($request, $exception->getHeaders(), 'otp', $exception->getMessage(), $exception->getStatusCode());
+            }
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage()], $exception->getStatusCode());
+            }
+
+            return redirect()->route('account.login', CustomerLoginFlow::parameters($request, $request->boolean('recover') ? 'recovery' : null))
+                ->withErrors(['code' => $exception->getMessage()]);
+        }
+
+        return $this->codeScreen($request, 'کد تأیید را وارد کنید.');
+    }
+
+    private function codeScreen(Request $request, string $message)
+    {
+        $redirect = redirect()->route('account.login', CustomerLoginFlow::parameters($request, $request->boolean('recover') ? 'recovery' : null))
+            ->with('success', $message);
+
+        return $request->expectsJson() ? response()->json(['redirect' => $redirect->getTargetUrl()]) : $redirect;
+    }
+
+    private function checkFlow(Request $request): void
+    {
+        if (! $request->has('flow') || CustomerLoginFlow::matches($request, $request->input('flow'))) {
+            return;
+        }
+        $message = 'این مرحله دیگر معتبر نیست. ورود را از ابتدا شروع کنید.';
+        throw new HttpResponseException($request->expectsJson()
+            ? response()->json(['message' => $message], 422)
+            : redirect()->route('account.login')->withErrors(['code' => $message]));
+    }
+
+    public function verify(Request $request, CustomerLogin $login)
+    {
+        $this->checkFlow($request);
+        $code = $request->input('code');
+        $request->merge(['code' => is_string($code) ? FaNumber::normalizeDigits($code) : '']);
+        $rules = ['code' => ['required', 'regex:/\A[0-9]{6}\z/']];
+        $data = $request->expectsJson() ? $request->validate($rules) : $this->validatePrivate($request, $rules);
+        try {
+            $account = $login->verify((string) $request->session()->get('customer_challenge'), $data['code']);
+        } catch (ValidationException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->errors()['code'][0]], 422);
+            }
+
+            return redirect()->route('account.login', CustomerLoginFlow::parameters($request, $request->boolean('recover') ? 'recovery' : null))
+                ->withErrors($exception->errors());
+        }
+
+        $response = $this->authenticated($request, $account, true);
+
+        return $request->expectsJson() && $response instanceof RedirectResponse
+            ? response()->json(['redirect' => $response->getTargetUrl()])
+            : $response;
+    }
+
+    public function passwordLogin(Request $request, CustomerLogin $login)
+    {
+        $this->checkFlow($request);
+        $data = $this->validatePrivate($request, ['password' => ['required', 'string', 'max:72']]);
+        $phone = $request->session()->get('customer_login_phone');
+        $password = $data['password'];
+        $account = is_string($phone) && strlen($password) <= 72 && ! str_contains($password, "\0")
+            ? $login->passwordAccount($phone, $password) : null;
+        if (! $account) {
+            return redirect()->route('account.login', CustomerLoginFlow::parameters($request, 'password'))->withErrors([
+                'password' => 'ورود با این رمز ممکن نیست. رمز را بررسی کنید یا با کد تأیید وارد شوید.',
+            ]);
+        }
+
+        return $this->authenticated($request, $account, false);
+    }
+
+    private function authenticated(Request $request, CustomerAccount $account, bool $otp)
+    {
+        $updated = CustomerAccount::query()->whereKey($account->id)->where('session_version', $account->session_version)
+            ->where('is_active', true)->update(['last_login_at' => now()]);
+        if (! $updated && ! CustomerAccount::query()->whereKey($account->id)->where('session_version', $account->session_version)->where('is_active', true)->exists()) {
+            if ($otp && $request->expectsJson()) {
+                return response()->json(['message' => 'نشست معتبر نیست. دوباره وارد شوید.'], 422);
+            }
+
+            return redirect()->route('account.login')->withErrors(['code' => 'نشست معتبر نیست. دوباره وارد شوید.']);
+        }
+        Auth::guard('customer')->login($account);
+        $request->session()->regenerate(true);
+        $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_otp_at', 'customer_password_offer']);
+        $request->session()->put('customer_session_version', $account->session_version);
+        if ($otp) {
+            $request->session()->put('customer_otp_at', now()->timestamp);
+            if (! $account->password) {
+                $request->session()->put('customer_password_offer', true);
+
+                return redirect()->route('account.index', ['section' => 'security']);
+            }
+            if ($request->boolean('recover')) {
+                return redirect()->route('account.index', ['section' => 'security']);
+            }
+        }
+
+        return $this->finishLogin($request);
+    }
+
+    private function finishLogin(Request $request)
+    {
+        return redirect()->to($request->session()->pull('customer_intended', route('account.index')));
+    }
+
+    public function skipPassword(Request $request)
+    {
+        $request->session()->forget('customer_password_offer');
+
+        return $this->finishLogin($request);
+    }
+
+    public function password(Request $request)
+    {
+        $data = $this->validatePrivate($request, [
+            'password' => ['required', 'string', 'min:10', 'max:72', 'confirmed', function ($attribute, $value, $fail): void {
+                if (is_string($value) && (strlen($value) > 72 || str_contains($value, "\0"))) {
+                    $fail('رمز عبور بیش از حد طولانی است یا کاراکتر نامعتبر دارد.');
+                }
+            }],
+            'current_password' => ['nullable', 'string', 'max:72'],
+        ]);
+        $fresh = DB::transaction(function () use ($request, $data): CustomerAccount {
+            $account = CustomerAccount::query()->lockForUpdate()->findOrFail(Auth::guard('customer')->id());
+            abort_unless($account->is_active && $account->session_version === $request->session()->get('customer_session_version'), 403);
+            $verifiedAt = (int) $request->session()->get('customer_otp_at', 0);
+            $recent = $verifiedAt > 0 && $verifiedAt <= now()->timestamp && $verifiedAt >= now()->subMinutes(5)->timestamp;
+            $current = $data['current_password'] ?? '';
+            if (! $recent && (! $account->password || strlen($current) > 72 || str_contains($current, "\0") || ! Hash::check($current, $account->password))) {
+                throw ValidationException::withMessages(['current_password' => 'رمز فعلی را بررسی کنید یا دوباره با کد تأیید وارد شوید.']);
+            }
+            $account->password = Hash::make($data['password']);
+            $account->session_version++;
+            $account->save();
+
+            return $account;
+        }, 3);
+        $offer = $request->session()->pull('customer_password_offer', false);
+        $request->session()->forget('customer_otp_at');
+        $request->session()->put('customer_session_version', $fresh->session_version);
+        $request->session()->regenerate(true);
+
+        return ($offer ? $this->finishLogin($request) : redirect()->route('account.index', ['section' => 'security']))->with('success', 'رمز عبور ذخیره شد.');
+    }
+
+    public function logout(Request $request, TestCustomerReset $reset)
+    {
+        $guard = Auth::guard('customer');
+        $account = $guard->user();
+        $version = $request->session()->get('customer_session_version');
+        $guard->logout();
+        $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_intended', 'store_cart', 'repair_submission_token', 'repair_reference']);
+        $request->session()->regenerate(true);
+
+        if ($account && is_int($version) && config('customer.test_reset_on_logout')) {
+            $reset->reset($account, null, null, $version);
+        }
+
+        return redirect()->route('account.login');
+    }
+
+    public function index(Request $request)
     {
         $account = Auth::guard('customer')->user();
-        $scoped = fn ($query) => $query->where('customer_account_id', $account->id)->when($account->customer_id, fn ($q) => $q->orWhere('customer_id', $account->customer_id));
+        $section = $request->query('section');
+        $sections = ['overview', 'repairs', 'orders', 'payments', 'delivery', 'profile', 'addresses', 'security'];
+        $section = in_array($section, $sections, true) ? $section : 'overview';
+        $repairs = RepairCase::query()->where($this->owned($account));
+        $requests = RepairRequest::query()->where($this->owned($account));
+        $orders = SalesOrder::query()->where($this->owned($account));
+        $documents = FinancialDocument::query()->where('customer_id', $account->customer_id ?? 0);
 
         return view('account.index', [
             'account' => $account,
-            'repairs' => RepairCase::query()->where($scoped)->latest('id')->paginate(10, ['*'], 'repairs_page'),
-            'requests' => RepairRequest::query()->where($scoped)->whereDoesntHave('physicalCase')->latest('id')->paginate(10, ['*'], 'requests_page'),
-            'orders' => SalesOrder::query()->where('customer_id', $account->customer_id ?? 0)->latest('id')->paginate(10, ['*'], 'orders_page'),
-            'documents' => FinancialDocument::query()->where('customer_id', $account->customer_id ?? 0)->latest('id')->paginate(10, ['*'], 'documents_page'),
-            'addresses' => CustomerAddress::query()->where('customer_account_id', $account->id)->latest('id')->get(),
+            'section' => $section,
+            'counts' => $section === 'overview' ? [
+                'requests' => (clone $requests)->count(),
+                'active' => (clone $repairs)->whereNotIn('status', [RepairStage::Delivered->value, RepairStage::Returned->value])->count(),
+                'orders' => (clone $orders)->count(),
+            ] : [],
+            'repairs' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($repairs, $section, 'repairs_page') : [],
+            'requests' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($requests->whereDoesntHave('physicalCase'), $section, 'requests_page') : [],
+            'orders' => in_array($section, ['overview', 'orders'], true) ? $this->listing($orders, $section, 'orders_page') : [],
+            'documents' => in_array($section, ['payments', 'delivery'], true) ? $this->listing($documents, $section, 'page') : [],
+            'addresses' => $section === 'addresses' ? CustomerAddress::query()->where('customer_account_id', $account->id)->latest('id')->get() : [],
+            'complete' => $section === 'overview' && $account->name && CustomerAddress::query()->where('customer_account_id', $account->id)->exists(),
+            'recentOtp' => (int) $request->session()->get('customer_otp_at', 0) >= now()->subMinutes(5)->timestamp,
         ]);
+    }
+
+    private function listing($query, string $section, string $page)
+    {
+        $query->latest('id');
+
+        return $section === 'overview' ? $query->limit(3)->get() : $query->paginate(10, ['*'], $page)->appends(['section' => $section]);
+    }
+
+    private function owned(CustomerAccount $account): \Closure
+    {
+        return fn ($query) => $query->where('customer_account_id', $account->id)
+            ->when($account->customer_id, fn ($q) => $q->orWhere('customer_id', $account->customer_id));
+    }
+
+    public function repairRequest(string $record)
+    {
+        $account = Auth::guard('customer')->user();
+        $repair = RepairRequest::query()->where($this->owned($account))->where('tracking_reference', $record)->firstOrFail();
+        $case = $repair->physicalCase()->where($this->owned($account))->first();
+        if ($case) {
+            return redirect()->route('account.repairs.show', $case->public_id);
+        }
+
+        return view('account.repair', ['repair' => $repair, 'case' => false, 'timeline' => CustomerTimeline::request($repair), 'document' => null, 'plan' => null]);
+    }
+
+    public function repair(string $record)
+    {
+        $account = Auth::guard('customer')->user();
+        $repair = RepairCase::query()->where($this->owned($account))->where('public_id', $record)
+            ->with(['onlineRequest' => fn ($q) => $q->where($this->owned($account)), 'currentEstimate.decision', 'delivery', 'events' => fn ($q) => $q->orderBy('id')])->firstOrFail();
+        [$document, $plan] = $this->settlement($account, 'repair_case_id', $repair->id);
+
+        return view('account.repair', ['repair' => $repair, 'case' => true, 'timeline' => CustomerTimeline::repair($repair, $plan), 'document' => $document, 'plan' => $plan]);
+    }
+
+    public function order(string $record)
+    {
+        $account = Auth::guard('customer')->user();
+        $order = SalesOrder::query()->where($this->owned($account))->where('public_id', $record)
+            ->with(['lines', 'events' => fn ($q) => $q->orderBy('id')])->firstOrFail();
+        [$document, $plan] = $this->settlement($account, 'sales_order_id', $order->id);
+
+        return view('account.order', ['order' => $order, 'timeline' => CustomerTimeline::order($order, $plan), 'document' => $document, 'plan' => $plan]);
+    }
+
+    private function settlement(CustomerAccount $account, string $column, int $id): array
+    {
+        $document = FinancialDocument::query()->where('customer_id', $account->customer_id ?? 0)->where($column, $id)->first();
+        $plan = $document ? DeliveryPlan::query()->where('financial_document_id', $document->id)->first() : null;
+
+        return [$document, $plan];
     }
 
     public function profile(Request $request)
     {
-        $data = $this->validatePrivate($request, ['name' => ['required', 'string', 'min:2', 'max:100']]);
+        $data = $this->validatePrivate($request, ['name' => ['required', 'string', 'min:2', 'max:100']], 'profile');
         DB::transaction(function () use ($data, $request): void {
             $account = CustomerAccount::query()->lockForUpdate()->findOrFail(Auth::guard('customer')->id());
             abort_unless($account->is_active && $account->session_version === $request->session()->get('customer_session_version'), 403);
             $account->name = $data['name'];
             $phoneDigest = RepairIdentity::digest('customer-phone', $account->phone);
-            if (! $account->customer_id && ! Customer::query()->where('phone_digest', $phoneDigest)->exists()) {
+            if ($account->verified_at && ! $account->customer_id && ! Customer::query()->where('phone_digest', $phoneDigest)->exists()) {
                 $customer = new Customer;
                 foreach (['public_id' => (string) Str::uuid(), 'name' => $data['name'], 'contact_phone' => $account->phone, 'phone_digest' => $phoneDigest, 'name_digest' => RepairIdentity::digest('customer-name', CrmAccess::name($data['name'])), 'identity_digest' => RepairIdentity::digest('customer-identity', CrmAccess::name($data['name']).':'.$account->phone), 'is_active' => true, 'version' => 1] as $key => $value) {
                     $customer->$key = $value;
@@ -103,13 +396,15 @@ class CustomerAccountController extends Controller
             $account->save();
         }, 3);
 
-        return back()->with('success', 'اطلاعات شما ذخیره شد.');
+        return redirect()->route('account.index', ['section' => 'profile'])->with('success', 'اطلاعات شما ذخیره شد.');
     }
 
     public function address(Request $request, ?string $addressId = null)
     {
         $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
-        $data = $this->validatePrivate($request, ['recipient' => ['required', 'string', 'max:100'], 'phone' => ['required', 'regex:/\A09[0-9]{9}\z/'], 'province' => ['required', 'string', 'max:100'], 'city' => ['required', 'string', 'max:100'], 'address' => ['required', 'string', 'min:10', 'max:1000'], 'postal_code' => ['required', 'regex:/\A[0-9]{10}\z/']]);
+        $postal = $request->input('postal_code');
+        $request->merge(['postal_code' => is_string($postal) ? FaNumber::normalizeDigits($postal) : '']);
+        $data = $this->validatePrivate($request, ['recipient' => ['required', 'string', 'max:100'], 'phone' => ['required', 'regex:/\A09[0-9]{9}\z/'], 'province' => ['required', 'string', 'max:100'], 'city' => ['required', 'string', 'max:100'], 'address' => ['required', 'string', 'min:10', 'max:1000'], 'postal_code' => ['required', 'regex:/\A[0-9]{10}\z/']], 'addresses');
         DB::transaction(function () use ($request, $addressId, $data): void {
             $account = CustomerAccount::query()->lockForUpdate()->findOrFail(Auth::guard('customer')->id());
             abort_unless($account->is_active && $account->session_version === $request->session()->get('customer_session_version'), 403);
@@ -123,7 +418,7 @@ class CustomerAccountController extends Controller
             $address->save();
         }, 3);
 
-        return back()->with('success', 'آدرس ذخیره شد.');
+        return redirect()->route('account.index', ['section' => 'addresses'])->with('success', 'آدرس ذخیره شد.');
     }
 
     public function removeAddress(Request $request, string $addressId)
@@ -134,6 +429,6 @@ class CustomerAccountController extends Controller
             CustomerAddress::query()->where('public_id', $addressId)->where('customer_account_id', $account->id)->lockForUpdate()->firstOrFail()->delete();
         }, 3);
 
-        return back()->with('success', 'آدرس حذف شد؛ نشانی ثبت‌شده در ارسال‌های قبلی حفظ می‌شود.');
+        return redirect()->route('account.index', ['section' => 'addresses'])->with('success', 'آدرس حذف شد؛ نشانی ثبت‌شده در ارسال‌های قبلی حفظ می‌شود.');
     }
 }

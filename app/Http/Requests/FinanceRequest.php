@@ -26,7 +26,7 @@ class FinanceRequest extends PrivateRepairFormRequest
 
     public function attributes(): array
     {
-        return ['amount' => 'مبلغ تومان', 'reference' => 'شناسهٔ مدرک', 'reason' => 'شرح و دلیل', 'password' => 'گذرواژهٔ فعلی', 'document' => 'شناسهٔ سند', 'version' => 'نسخهٔ سند', 'source' => 'شناسهٔ منبع', 'source_version' => 'نسخهٔ منبع', 'source_type' => 'نوع منبع', 'entry' => 'شناسهٔ ثبت اصلی', 'operation_key' => 'شناسهٔ عملیات', 'method' => 'روش ثبت', 'category' => 'دسته'];
+        return ['amount' => 'مبلغ تومان', 'reference' => 'شناسهٔ مدرک', 'reason' => 'شرح و دلیل', 'password' => 'رمز عبور فعلی', 'document' => 'شناسهٔ سند', 'version' => 'نسخهٔ سند', 'source' => 'شناسهٔ منبع', 'source_version' => 'نسخهٔ منبع', 'source_type' => 'نوع منبع', 'entry' => 'شناسهٔ ثبت اصلی', 'operation_key' => 'شناسهٔ عملیات', 'method' => 'روش ثبت', 'category' => 'دسته'];
     }
 
     public function rules(): array

@@ -43,7 +43,7 @@ export function dashboardView({host,api,currentOperator,navigate,openConversatio
   h2.textContent='داشبورد پشتیبانی';
   const p=document.createElement('p');
   const op=currentOperator();
-  const todayStr=new Date().toLocaleDateString('fa-IR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const todayStr=new Date().toLocaleDateString('fa-IR-u-ca-persian-nu-arabext',{timeZone:'Asia/Tehran',weekday:'long',day:'numeric',month:'long',year:'numeric'});
   p.textContent=`خوش آمدید، ${op?.name||'همکار'} · امروز ${todayStr}`;
   greetingBox.append(h2,p);
 
@@ -241,7 +241,7 @@ export function dashboardView({host,api,currentOperator,navigate,openConversatio
 
       const tdTime=document.createElement('td');
       const smallTime=document.createElement('small');
-      smallTime.textContent=timeStr;
+      smallTime.dir='ltr';smallTime.textContent=timeStr;
       tdTime.append(smallTime);
 
       const tdPriority=document.createElement('td');
