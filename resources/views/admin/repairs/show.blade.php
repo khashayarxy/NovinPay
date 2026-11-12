@@ -9,7 +9,7 @@
         <h2 id="request-data-title">اطلاعات درخواست</h2>
         <dl class="admin-definition">
             <div><dt>کد پیگیری عمومی</dt><dd><bdi dir="ltr">{{ preg_match('/\A[0-9]+\z/', $repair->tracking_reference) ? \App\Support\FaNumber::digits($repair->tracking_reference) : $repair->tracking_reference }}</bdi></dd></div>
-            <div><dt>زمان ثبت</dt><dd><bdi>{{ \App\Support\FinanceTime::display($repair->created_at, withZone: false) }}</bdi></dd></div>
+            <div><dt>زمان ثبت</dt><dd><x-finance-time :value="$repair->created_at" /></dd></div>
             <div><dt>وضعیت</dt><dd>{{ $physicalCase ? 'دریافت دستگاه ثبت شده است' : $repair->status->label() }}</dd></div>
             @unless($showCustomerData)
                 <div><dt>برند</dt><dd><bdi>{{ $repair->device_brand->value }}</bdi></dd></div>

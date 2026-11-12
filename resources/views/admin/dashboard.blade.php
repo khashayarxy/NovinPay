@@ -4,7 +4,7 @@
     <header class="admin-page-heading admin-dashboard-heading">
         <div>
             <h1>داشبورد مدیریت</h1>
-            <p>{{ \App\Support\FinanceTime::display(now(), withTime: false, withZone: false) }}</p>
+            <p><x-finance-time :value="now()" :with-time="false" /></p>
         </div>
         <div class="admin-actions">
             @can('repairs.intake') @can('repairs.customer_data') @can('repairs.view')

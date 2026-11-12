@@ -118,7 +118,7 @@ class FinanceController extends Controller
         abort_unless(in_array($type, ['order', 'repair'], true), 404);
         FinanceAccess::source($request->user(), $type);
         $class = $type === 'order' ? SalesOrder::class : RepairCase::class;
-        $source = $class::query()->where('public_id', $reference)->firstOrFail($type === 'order' ? ['id', 'public_id', 'version', 'status', 'total', 'customer_account_id'] : ['id', 'public_id', 'version', 'status', 'inbound_shipping_cost']);
+        $source = $class::query()->where('public_id', $reference)->firstOrFail($type === 'order' ? ['id', 'public_id', 'version', 'status', 'total', 'customer_account_id'] : ['id', 'public_id', 'version', 'status', 'inbound_shipping_cost', 'simple_workflow', 'repair_price_toman']);
         $document = FinancialDocument::query()->where($type === 'order' ? 'sales_order_id' : 'repair_case_id', $source->id)->first();
         $amount = null;
         if ($source instanceof SalesOrder && ($source->status === 'fulfilled' || ($source->status === 'confirmed' && $source->customer_account_id))) {

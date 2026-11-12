@@ -13,7 +13,7 @@
         </div>
         <dl class="admin-record-facts mt-3">
             <div><dt>رمز عبور</dt><dd>{{ $account?->password ? 'تنظیم شده' : 'تنظیم نشده' }}</dd></div>
-            <div><dt>آخرین ثبت‌نام یا ورود</dt><dd>{{ \App\Support\FinanceTime::display($account?->last_login_at ?? $account?->created_at) }}</dd></div>
+            <div><dt>آخرین ثبت‌نام یا ورود</dt><dd><x-finance-time :value="$account?->last_login_at ?? $account?->created_at" /></dd></div>
             @if($scope)
                 <div><dt>درخواست‌های ثبت‌شده با این حساب</dt><dd>{{ \App\Support\FaNumber::digits(count($scope['requests'])) }}</dd></div>
                 <div><dt>وضعیت بازنشانی</dt><dd>{{ $scope['reason'] ?? 'آمادهٔ بازنشانی' }}</dd></div>

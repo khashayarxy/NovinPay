@@ -1,5 +1,6 @@
 import {Outbox,blockedReason} from './outbox.js?v=team1';
 import {Transport,ConversationSync,Poller,RequestError,apiHealth} from './network.js?v=team1';
+import {messageDate,persianDate} from './persian-date.js';
 const presenceBudget=new Map();
 export class ChatEngine {
     constructor(role,hooks={},dependencies={}) {
@@ -312,7 +313,7 @@ export function openImagePreview(url,origin){
 export function renderTranscript(host,messages,{operator=false,older=false,compact=false,engine=null,follow=true}={}) {
     const bottom=host.scrollHeight-host.scrollTop-host.clientHeight<80,oldHeight=host.scrollHeight;
     const messageKey=m=>!operator&&m.type==='user'&&m.client_message_id?'user:'+m.client_message_id:'message:'+m.id;
-    const rows=[];let previousDay=null;const now=new Date(),today=now.toDateString();for(const m of messages){const stamp=m.accepted_at?new Date(m.accepted_at):m._row?new Date(m._row.created):new Date(String(m.time).replace(' ','T'));if(!Number.isNaN(stamp.getTime())){const day=stamp.toDateString();if(day!==previousDay){rows.push({_day:day,_label:day===today?'امروز':stamp.toLocaleDateString('fa-IR',{month:'long',day:'numeric'}),_key:'day:'+day+':'+messageKey(m)});previousDay=day;}}rows.push(m);}messages=rows;
+    const rows=[];let previousDay=null;const now=new Date();for(const m of messages){const {day,date}=persianDate(messageDate(m),now);if(day&&day!==previousDay){rows.push({_day:day,_label:date,_key:'day:'+day+':'+messageKey(m)});previousDay=day;}rows.push(m);}messages=rows;
     const key=m=>m._day?m._key:messageKey(m),keys=new Set(messages.map(key));let position=0;
     for(const el of [...host.children])if(!keys.has(el.dataset.messageKey))el.remove();
     for(const m of messages){
@@ -328,8 +329,9 @@ export function renderTranscript(host,messages,{operator=false,older=false,compa
             if((operator&&m.type==='user')||(!operator&&m.type==='admin')){const avatar=document.createElement('span');avatar.className='support-sender-avatar';avatar.setAttribute('aria-label',operator?'مشتری':'پشتیبانی');if(!operator&&m.sender?.avatar&&/^support-avatar\.php\?id=[a-f0-9]{32}$/.test(m.sender.avatar)){const img=document.createElement('img');img.src=m.sender.avatar;img.alt=m.sender.name||'پشتیبانی';img.onerror=()=>{img.remove();avatar.textContent='پ';};avatar.append(img);}else if(operator)avatar.textContent=(engine?.sync?.userName||'مهمان').trim().slice(0,1);else{const icon=document.createElement('span');icon.className='support-icon';icon.textContent='support_agent';avatar.append(icon);}el.append(avatar);if(!operator&&m.sender?.name){const name=document.createElement('small');name.className='support-sender-name';name.textContent=m.sender.name;el.append(name);}}
             const text=document.createElement('span');text.className='support-message-text';text.textContent=m.text;
             const time=document.createElement('small');time.className=operator?'message-time':'chat-time';
-            const stamp=m.accepted_at?new Date(m.accepted_at):new Date(String(m.time).replace(' ','T'));
-            time.textContent=(Number.isNaN(stamp.getTime())?'زمان قدیمی':stamp.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'}))+(compact?'':m.accepted_at?' · در سرور ثبت شد':' · سابقهٔ قدیمی');time.setAttribute('aria-label',m.accepted_at?'ثبت‌شده در '+time.textContent:time.textContent);
+            const {time:clock,full}=persianDate(messageDate(m),now);
+            const clockText=document.createElement('bdi');clockText.dir='ltr';clockText.textContent=clock||'زمان قدیمی';time.append(clockText);
+            time.append(compact?'':m.accepted_at?' · در سرور ثبت شد':' · سابقهٔ قدیمی');if(full){time.title=full;time.setAttribute('aria-label',m.accepted_at?'ثبت‌شده در '+full:full);}
             if(m.reply_to){const quote=document.createElement('button');quote.type='button';quote.className='support-reply-reference';quote.textContent=m.reference?.available?(m.reference.text||'تصویر پیوست'):'پیام مرجع در دسترس نیست';quote.disabled=m.reference?.available!==true;quote.setAttribute('aria-label','رفتن به پیام مرجع');quote.onclick=()=>host.dispatchEvent(new CustomEvent('support-reference',{bubbles:true,detail:{id:m.reply_to}}));el.append(quote);}
             el.append(text);
             if(m._row&&!m._ack){
