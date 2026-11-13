@@ -49,3 +49,29 @@ The older `pipeline.php` is not the supported production entry point. Standalone
 `login-submit-*` / `login-recovery-*` checksum lists left on the host reference removed
 helpers and must not be replayed. Current shared-tool syntax/checksum validation does
 not authorize an actual deployment, restore, migration, or cron installation.
+
+## Scheduler readiness (not installed automatically)
+
+The observed production cache driver is `database`; Laravel's database cache store
+implements cross-process locks and the baseline includes `cache` / `cache_locks`.
+No live lock acquisition or current CLI execution was performed through cPanel API.
+The configured web handler is ea-php84; verify the explicit CLI version at activation.
+After separate owner authorization, use this cPanel cron once per minute:
+
+```cron
+* * * * * cd /home/novinpay/novinpay && /opt/cpanel/ea-php84/root/usr/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+`operations:status` is read-only and reports heartbeat age, stale/review counts and
+cache-lock capability, without customer identifiers or network calls. Missing/stale
+heartbeat is not scheduler success. The heartbeat should update within three minutes.
+Payment and notification schedules retain overlap locks, but default to disabled via
+`OPERATIONS_SCHEDULED_PAYMENTS=false` and `OPERATIONS_SCHEDULED_NOTIFICATIONS=false`.
+Enabling cron does not authorize provider processing; payment live switches and
+notification configuration remain separate gates. Never enable them by implication.
+
+Do not schedule `recover.php` as a recurring backup job: it is a unique, guarded
+capture/isolated-restore operation and may encounter an occupied destination. Reuse
+verified encrypted recovery within the approved 72-hour policy. A separately approved
+recurring encrypted capture/transfer task is still pending; do not silently introduce
+a restore database, recurring restore, new daemon, or another backup during development.

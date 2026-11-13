@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
+use App\Models\CustomerAccount;
 use App\Models\FinancialDocument;
+use App\Models\PaymentAttempt;
 use App\Models\SalesOrder;
 use App\Models\User;
 use App\Services\FinancialOperations;
@@ -52,10 +54,10 @@ class CustomerPaymentMigrationTest extends TestCase
         $document = FinancialDocument::firstOrFail();
         $this->assertSame(100000, app(FinancialOperations::class)->reconcile($document)['charged']);
         $this->assertSame($owner->id, (int) DB::table('financial_entries')->value('actor_id'));
-        $account = new \App\Models\CustomerAccount;
+        $account = new CustomerAccount;
         $account->forceFill(['public_id' => (string) Str::uuid(), 'customer_id' => $customer->id, 'phone' => '09000000000',
             'phone_digest' => hash('sha256', 'synthetic-resolution-migration'), 'verified_at' => now()])->save();
-        $attempt = new \App\Models\PaymentAttempt;
+        $attempt = new PaymentAttempt;
         $attempt->forceFill(['public_id' => (string) Str::uuid(), 'financial_document_id' => $document->id,
             'customer_account_id' => $account->id, 'operation_key' => (string) Str::uuid(), 'amount_minor' => 100000,
             'amount_rial' => 10000, 'document_version' => 1, 'merchant_digest' => str_repeat('a', 64), 'state' => 'uncertain'])->save();
