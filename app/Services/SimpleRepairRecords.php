@@ -29,6 +29,7 @@ final class SimpleRepairRecords
             }
             $case = RepairCase::query()->lockForUpdate()->findOrFail($target->id);
             abort_unless($case->version === (int) $data['version'], 409, 'پرونده تغییر کرده است؛ صفحه را تازه کنید.');
+            abort_unless($case->simple_workflow, 409, 'این پرونده در گردش کار کامل است؛ از عملیات کامل تعمیر استفاده کنید.');
             abort_if($case->status->closed(), 409, 'پرونده تحویل شده است؛ اصلاحات مالی را در سند مالی ثبت کنید.');
             $before = $case->status;
             $beforeRecord = $case->only(['repair_price_toman', 'repair_notes', 'delivery_method', 'delivery_carrier', 'settlement_method']);
@@ -90,7 +91,6 @@ final class SimpleRepairRecords
                 abort_if($document && ($price + (int) $case->inbound_shipping_cost) * 100 !== $document->source_amount_minor,
                     409, 'برای تغییر مبلغ سند صادرشده، اصلاح مالی ثبت کنید.');
                 $case->repair_price_toman = $price;
-                $case->simple_workflow = true;
             }
         }
         if (array_key_exists('repair_notes', $data)) {

@@ -119,6 +119,45 @@ class RepairOperationsTest extends TestCase
         return ['recipient_name' => 'PRIVATE-RECIPIENT', 'outcome_notes' => 'PUBLIC-OUTCOME-NOTES', 'delivered_at' => RepairTime::input(), 'handover_confirmed' => '1', 'amounts_confirmed' => '1'];
     }
 
+    public static function legacyRecords(): array
+    {
+        return array_map(fn ($state) => [$state], ['incomplete', 'inspection', 'pending', 'rejected', 'work']);
+    }
+
+    #[DataProvider('legacyRecords')]
+    public function test_simplified_endpoint_cannot_convert_or_mutate_a_full_workflow(string $state): void
+    {
+        $owner = $this->owner();
+        $case = $state === 'incomplete' ? $this->intake() : $this->inspected($owner);
+        if (in_array($state, ['pending', 'rejected', 'work'], true)) {
+            $estimate = $this->estimate($case);
+            if ($state !== 'pending') {
+                $this->decision($case, $estimate, $state === 'rejected' ? 'rejected' : 'approved');
+            }
+            if ($state === 'work') {
+                $this->op($case, 'transition', ['status' => 'repairing'])->assertRedirect();
+                $this->op($case, 'work', $this->work())->assertRedirect();
+            }
+        }
+        $case->refresh();
+        $before = $case->getRawOriginal();
+        $events = $case->events()->count();
+        foreach (['save', 'handover', 'settlement'] as $intent) {
+            $this->post(route('admin.repair-cases.record', $case), [
+                'version' => $case->version, 'intent' => $intent, 'status' => 'ready',
+                'repair_cost' => '25000', 'handover_confirmed' => '1', 'settlement_method' => 'online',
+            ])->assertConflict();
+        }
+        $this->assertSame($before, $case->fresh()->getRawOriginal());
+        $this->assertSame($events, $case->events()->count());
+        $this->assertDatabaseCount('repair_record_revisions', 0);
+        $this->assertDatabaseCount('financial_documents', 0);
+        $this->get(route('admin.repair-cases.show', $case))->assertOk()->assertViewIs('admin.repair-cases.show');
+
+        $this->actingAs(User::factory()->staff(['repairs.view'])->create());
+        $this->post(route('admin.repair-cases.record', $case), ['version' => $case->version, 'status' => 'ready'])->assertForbidden();
+    }
+
     public function test_combined_diagnosis_unreachable_contact_and_declined_billing_preserve_approval_boundary(): void
     {
         $owner = $this->owner();
