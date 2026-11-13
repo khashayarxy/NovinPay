@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\ConfigurationUrlParser;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use NovinPay\Release\GateFailure;
@@ -24,7 +26,7 @@ function gate(bool $valid, string $check): void
 $action = $argv[3] ?? '';
 try {
     gate(PHP_SAPI === 'cli' && PHP_VERSION_ID >= 80401 && posix_geteuid() === 1321
-        && in_array($action, ['contract', 'baseline-files', 'smoke', 'preflight', 'ready', 'web-check', 'web-cache', 'quota'], true), 'execution_scope');
+        && in_array($action, ['contract', 'migration-paths', 'migrate-reviewed', 'database-ready', 'baseline-files', 'smoke', 'preflight', 'ready', 'web-check', 'web-cache', 'quota'], true), 'execution_scope');
     require __DIR__.'/recovery-contract.php';
     $raw = NovinPay\Release\privateRead($argv[1]);
     $manifest = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
@@ -34,6 +36,13 @@ try {
     if ($action === 'contract') {
         foreach (['baseline', 'target', 'releaseName', 'targetBranch', 'cssAsset', 'successResult'] as $key) {
             echo $manifest[$key].PHP_EOL;
+        }
+        echo $manifest['format'].PHP_EOL;
+        exit(0);
+    }
+    if ($action === 'migration-paths') {
+        foreach (array_keys($manifest['reviewedMigrations'] ?? []) as $path) {
+            echo $path.PHP_EOL;
         }
         exit(0);
     }
@@ -66,7 +75,7 @@ try {
                 gate(preg_match('~\A(?:(?:app|lang)/[A-Za-z0-9_./-]+\.php)\z~D', $path) === 1, 'changed_php_path');
                 $paths[] = ROOT.'/'.$path;
             }
-            array_push($paths, ROOT.'/bootstrap/cache/config.php', ...glob(ROOT.'/storage/framework/views/*.php'));
+            array_push($paths, ROOT.'/bootstrap/cache/config.php', ROOT.'/bootstrap/cache/routes-v7.php', ...glob(ROOT.'/storage/framework/views/*.php'));
         }
         $token = bin2hex(random_bytes(32));
         $endpoint = ROOT.'/public/_np_admin_cache_'.bin2hex(random_bytes(12)).'.php';
@@ -99,11 +108,60 @@ try {
     foreach (['customer.notifications_enabled', 'payments.zibal.enabled', 'payments.zibal.live_requests', 'postex.enabled', 'postex.independent_postage_verified'] as $flag) {
         gate(config($flag) === false, 'provider_flag');
     }
+    foreach (['operations.scheduled_payments', 'operations.scheduled_notifications'] as $flag) {
+        gate(config($flag, false) === false, 'scheduled_provider_flag');
+    }
     $pdo = DB::connection()->getPdo();
     $identity = $pdo->query('SELECT DATABASE(),CURRENT_USER(),VERSION()')->fetch(PDO::FETCH_NUM);
     gate($identity[0] === 'novinpay_live1' && $identity[1] === 'novinpay_app1@localhost' && str_starts_with($identity[2], '10.6.28'), 'database_identity');
     $migrations = $pdo->query('SELECT migration FROM migrations ORDER BY migration')->fetchAll(PDO::FETCH_COLUMN);
-    gate(count($migrations) === count($manifest['migrations']) && $migrations === $manifest['migrations'], 'migration_history');
+    $application = $manifest['format'] === 'novinpay-application-release-v1';
+    $expected = $application && in_array($action, ['database-ready', 'ready'], true) ? $manifest['candidateMigrations'] : $manifest['migrations'];
+    gate($migrations === $expected, 'migration_history');
+    if ($application && in_array($action, ['preflight', 'migrate-reviewed'], true)) {
+        $credentialFile = '/home/novinpay/novinpay-releases/155fc9f30feb5b9d0c41445b33f1118d5e07da8e/.stage2-credentials.json';
+        $rawCredentials = NovinPay\Release\privateRead($credentialFile);
+        gate(hash_equals($manifest['credentialsSha256'], hash('sha256', $rawCredentials)), 'migration_credential_identity');
+        $credentials = json_decode($rawCredentials, true, 16, JSON_THROW_ON_ERROR)['migrator'];
+        gate($credentials['user'] === 'novinpay_mig1', 'migration_account');
+        $connection = (new ConfigurationUrlParser)->parseConfiguration(config('database.connections.'.config('database.default')));
+        $connection['url'] = null;
+        $connection['username'] = $credentials['user'];
+        $connection['password'] = $credentials['password'];
+        config(['database.connections.release_migrator' => $connection]);
+        unset($rawCredentials, $credentials, $connection);
+        $observer = DB::connection('release_migrator')->selectOne('SELECT DATABASE() db,CURRENT_USER() account');
+        gate($observer->db === 'novinpay_live1' && $observer->account === 'novinpay_mig1@localhost', 'migration_connection_identity');
+        $grants = DB::connection('release_migrator')->select('SELECT GRANTEE,TABLE_SCHEMA,PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES');
+        gate(NovinPay\Release\databasePrivilegesPresent(array_map(fn ($row) => (array) $row, $grants),
+            'novinpay_live1', 'novinpay_mig1@localhost', ['SELECT', 'INSERT', 'CREATE', 'ALTER', 'TRIGGER']), 'migration_privileges');
+    }
+    if ($action === 'migrate-reviewed') {
+        gate($application && is_file(ROOT.'/storage/framework/down'), 'reviewed_migration_maintenance');
+        gate(trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD'])) === $manifest['baseline'], 'migration_baseline_source');
+        NovinPay\Release\sourceTriggerEvidence($manifest);
+        $journal = KIT.'/'.$manifest['releaseName'].'-attempt';
+        $staged = $journal.'/migrations';
+        foreach ($manifest['reviewedMigrations'] as $path => $sha) {
+            gate(is_file($staged.'/'.$path) && ! is_link($staged.'/'.$path)
+                && hash_equals($sha, hash_file('sha256', $staged.'/'.$path)), 'staged_migration_integrity');
+        }
+        NovinPay\Release\writeNew($journal.'/migration-started.json', json_encode(['manifestSha256' => $manifest['_sha256'], 'retrySafe' => false], JSON_THROW_ON_ERROR));
+        // The parent holds the exclusive shared operation flock throughout.
+        $exit = Artisan::call('migrate', ['--database' => 'release_migrator',
+            '--path' => [$staged.'/database/migrations'], '--realpath' => true, '--force' => true, '--no-interaction' => true]);
+        gate($exit === 0, 'reviewed_migration_failed');
+        NovinPay\Release\writeNew($journal.'/migration-complete.json', json_encode(['manifestSha256' => $manifest['_sha256'], 'expectedMigrations' => $manifest['candidateMigrations']], JSON_THROW_ON_ERROR));
+        echo "REVIEWED_MIGRATION_COMMAND_COMPLETE\n";
+        exit(0);
+    }
+    if ($application && $action === 'ready') {
+        $before = KIT.'/'.$manifest['releaseName'].'-attempt/config-before.php';
+        gate(hash_equals($manifest['baselineFiles']['bootstrap/cache/config.php'], hash('sha256', NovinPay\Release\privateRead($before))), 'original_config_backup');
+        gate(NovinPay\Release\preservedConfigurationDigest(require $before)
+            === NovinPay\Release\preservedConfigurationDigest(require ROOT.'/bootstrap/cache/config.php'), 'protected_configuration_changed');
+        gate(Route::has('admin.payments.attempt.resolve'), 'resolution_route_missing');
+    }
     foreach (['admin.dashboard', 'admin.products.index', 'admin.inventory.index', 'admin.repair-cases.index', 'admin.orders.index', 'admin.customers.index', 'admin.finance.reports', 'admin.deliveries.index', 'admin.test-customers.index', 'account.login', 'support.panel'] as $route) {
         gate(Route::has($route), 'required_routes');
     }

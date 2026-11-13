@@ -75,3 +75,38 @@ capture/isolated-restore operation and may encounter an occupied destination. Re
 verified encrypted recovery within the approved 72-hour policy. A separately approved
 recurring encrypted capture/transfer task is still pending; do not silently introduce
 a restore database, recurring restore, new daemon, or another backup during development.
+
+
+## Reviewed additive application release
+
+The existing `activate-source.*` entry point also accepts the separately reviewed
+`novinpay-application-release-v1` manifest. The original source-only format still
+rejects route/config/schema changes. Application mode requires exact candidate blob
+hashes for ALL changed config/routes/migrations, new migration names only, and the
+baseline-plus-additions name inventory. Composer/Node dependency changes, historical
+migration edits, deletions/renames/type changes and changed trigger contracts remain
+unsupported. A current baseline cached-config hash is mandatory.
+
+The same operation flock and quota/recovery gates precede a unique non-replayable
+journal. During conventional Laravel maintenance, stage and hash only reviewed
+migration files from Git, run only those through the existing migrator account in
+process memory, verify the candidate migration set/trigger contracts, then fast-forward
+application code. The additive nullable payment-attempt metadata is compatible with
+baseline code; Laravel request admission is closed and live payment/cron workers stay
+disabled. This is not a claim of global process draining or chat-writer fencing; the
+independent chat does not write the altered payment-attempt table.
+
+Rebuild config/routes/views; compare protected configuration semantically against the
+checksum-pinned original (only the reviewed new local defaults may differ). Recheck
+IPPanel/test-reset preservation and provider-OFF gates; invalidate changed application,
+route and config opcodes through the authenticated existing web probe. Publish checked
+Vite assets and reopen only after readiness. Reusing an existing CSS file is allowed
+only when byte-identical to the checked package.
+
+Any migration-started/partial-DDL failure keeps maintenance and all journals; NEVER
+replay, run down(), restore an older database, or blindly restore old application
+files. Forward recovery is required after migration uncertainty/new customer writes.
+Before DDL, cancellation still requires verified baseline compatibility. A successful
+local/CI contract test does not establish hosted activation: current live SQL inventory,
+applicable encrypted recovery/rollback, exact artifact pins and explicit production
+operation approval remain release gates. No production activation was performed here.

@@ -233,10 +233,10 @@ function recoveryFailure(\Throwable $error, string $phase, bool $captureExists =
     return $report;
 }
 
-/** This adapter deliberately refuses dependency, route and migration changes. */
+/** Source-only remains strict; application mode needs separately reviewed pins. */
 function sourceReleaseManifest(array $m): void
 {
-    requireGate(($m['format'] ?? null) === 'novinpay-source-release-v1', 'source_release_format', 'reviewed source/asset release', [], 'Use a separately reviewed procedure for schema or dependency changes.');
+    requireGate(in_array($m['format'] ?? null, ['novinpay-source-release-v1', 'novinpay-application-release-v1'], true), 'source_release_format', 'reviewed release format', [], 'Use a separately reviewed procedure for schema or dependency changes.');
     $recovery = $m;
     $recovery['format'] = 'novinpay-recovery-v1';
     recoveryManifest($recovery);
@@ -244,7 +244,7 @@ function sourceReleaseManifest(array $m): void
         && preg_match('~\A[a-zA-Z0-9_./-]+\z~D', $m['targetBranch'] ?? '') === 1
         && preg_match('~\Aassets/[a-zA-Z0-9_-]+\.css\z~D', $m['cssAsset'] ?? '') === 1,
         'source_release_paths', 'safe release name, branch and versioned CSS asset', [], 'Inspect the artifact contract.');
-    requireGate(in_array($m['successResult'] ?? null, ['SOURCE_RELEASE_PASS', 'LOGIN_SUBMIT_RELEASE_PASS'], true),
+    requireGate(in_array($m['successResult'] ?? null, ['SOURCE_RELEASE_PASS', 'LOGIN_SUBMIT_RELEASE_PASS', 'APPLICATION_RELEASE_PASS'], true),
         'source_result_contract', 'known success receipt label', [], 'Inspect the release contract.');
     requireGate(is_array($m['httpChecks'] ?? null) && isset($m['httpChecks']['/'], $m['httpChecks']['/login'])
         && is_array($m['baselineFiles'] ?? null) && isset($m['baselineFiles']['public/build/manifest.json'], $m['baselineFiles']['bootstrap/cache/routes-v7.php'], $m['baselineFiles']['public/build/support-chat/manifest.json']),
@@ -254,6 +254,66 @@ function sourceReleaseManifest(array $m): void
             && preg_match('/\A[a-f0-9]{64}\z/D', $hash) === 1,
             'source_baseline_file', 'relative file and expected fingerprint', [], 'Pin actual production files.');
     }
+    if ($m['format'] === 'novinpay-application-release-v1') {
+        applicationReleasePlan($m);
+        requireGate(isset($m['baselineFiles']['bootstrap/cache/config.php']), 'application_config_pin', 'original cached configuration pinned', [], 'Pin the current configuration privately.');
+    }
+}
+
+/** This extension supports reviewed additive migrations, never dependency changes. */
+function applicationReleasePlan(array $m): void
+{
+    $reviewed = $m['reviewedRuntimeChanges'] ?? [];
+    $migrations = $m['reviewedMigrations'] ?? [];
+    requireGate(is_array($reviewed) && $reviewed !== [] && is_array($migrations) && $migrations !== [],
+        'application_reviewed_changes', 'explicit runtime and migration blob hashes', [], 'Review and pin the exact candidate diff.');
+    foreach ($reviewed as $path => $sha) {
+        requireGate(preg_match('~\A(?:config|routes|database/migrations)/[A-Za-z0-9_/-]+\.php\z~D', $path) === 1
+            && ! str_contains($path, '..') && preg_match('/\A[a-f0-9]{64}\z/D', $sha) === 1,
+            'application_reviewed_path', 'relative reviewed PHP runtime path', [], 'Reject unexpected paths.');
+    }
+    $expected = $m['migrations'];
+    foreach ($migrations as $path => $sha) {
+        $name = basename($path, '.php');
+        requireGate(preg_match('~\Adatabase/migrations/[0-9]{4}_[0-9]{2}_[0-9]{2}_[0-9]{6}_[a-z0-9_]+\.php\z~D', $path) === 1
+            && ! in_array($name, $expected, true) && ($reviewed[$path] ?? null) === $sha,
+            'application_additive_migration', 'new reviewed migration, never a modified historical migration', [], 'Review the migration scope.');
+        $expected[] = $name;
+    }
+    sort($expected);
+    requireGate(($m['candidateMigrations'] ?? null) === $expected, 'application_candidate_migrations', 'baseline plus exactly reviewed additions', [], 'Rebuild the candidate inventory from Git.');
+    $migrationPaths = array_keys(array_filter($reviewed, fn ($sha, $path) => str_starts_with($path, 'database/migrations/'), ARRAY_FILTER_USE_BOTH));
+    $declaredPaths = array_keys($migrations);
+    sort($migrationPaths);
+    sort($declaredPaths);
+    requireGate($migrationPaths === $declaredPaths, 'application_migration_scope', 'every schema change explicitly reviewed', [], 'Reject undeclared migration edits.');
+    requireGate(expectedTriggerContracts($expected) === expectedTriggerContracts($m['migrations']),
+        'application_trigger_change', 'unchanged protective trigger contracts', [], 'A trigger-changing release needs a separate reviewed procedure.');
+    $rows = [];
+    foreach ($m['triggers'] ?? [] as $name => $contract) {
+        $rows[] = ['name' => $name] + $contract;
+    }
+    verifyRecoveryTriggers($rows, ['triggers' => expectedTriggerContracts($m['migrations'])]);
+}
+
+function preservedConfigurationDigest(array $configuration): string
+{
+    // Only the reviewed new defaults may differ. Provider/identity/secrets remain bound.
+    unset($configuration['operations']);
+    unset($configuration['payments']['zibal']['review_after_minutes'], $configuration['payments']['zibal']['reconciliation_limit']);
+    $sort = static function (array $value) use (&$sort): array {
+        foreach ($value as &$item) {
+            if (is_array($item)) {
+                $item = $sort($item);
+            }
+        }
+        unset($item);
+        ksort($value);
+
+        return $value;
+    };
+
+    return hash('sha256', json_encode($sort($configuration), JSON_THROW_ON_ERROR));
 }
 
 function sourceRecoveryEvidence(array $m): void
@@ -274,8 +334,22 @@ function sourceRecoveryEvidence(array $m): void
     requireGate(is_file($archive) && ! is_link($archive) && (fileperms($archive) & 0777) === 0600
         && hash_equals($proof['archiveSha256'], hash_file('sha256', $archive)), 'backup_checksum', 'encrypted backup still intact', [], 'Preserve the archive and investigate corruption.');
     $forbidden = recoveryGit('/home/novinpay/novinpay', ['diff', '--name-only', $m['baseline'], $m['target'], '--', 'composer.json', 'composer.lock', 'package.json', 'package-lock.json', 'config', 'public/.htaccess', 'database/migrations', 'routes']);
-    requireGate(trim($forbidden) === '', 'source_release_schema_or_dependency_change', 'unchanged migrations, dependencies and routes', [], 'Prepare the appropriate reviewed migration/dependency release.');
-    $nonModified = recoveryGit('/home/novinpay/novinpay', ['diff', '--name-only', '--diff-filter=ACDRT', $m['baseline'], $m['target']]);
+    if ($m['format'] === 'novinpay-application-release-v1') {
+        $paths = preg_split('/\r?\n/', trim($forbidden), -1, PREG_SPLIT_NO_EMPTY);
+        $reviewed = array_keys($m['reviewedRuntimeChanges']);
+        sort($paths);
+        sort($reviewed);
+        requireGate($paths === $reviewed, 'application_runtime_diff', 'exact reviewed runtime changes; dependency changes prohibited', [], 'Inspect the candidate diff.');
+        foreach ($m['reviewedRuntimeChanges'] as $path => $sha) {
+            requireGate(hash_equals($sha, hash('sha256', recoveryGit('/home/novinpay/novinpay', ['show', $m['target'].':'.$path]))),
+                'application_runtime_blob', 'reviewed candidate blob', [], 'Reject changed artifacts.');
+        }
+        $files = recoveryGit('/home/novinpay/novinpay', ['ls-tree', '-r', '--name-only', $m['target'], '--', 'database/migrations']);
+        verifyMigrationInventory(array_map(fn ($path) => basename($path, '.php'), preg_split('/\r?\n/', trim($files), -1, PREG_SPLIT_NO_EMPTY)), $m['candidateMigrations']);
+    } else {
+        requireGate(trim($forbidden) === '', 'source_release_schema_or_dependency_change', 'unchanged migrations, dependencies and routes', [], 'Prepare the appropriate reviewed migration/dependency release.');
+    }
+    $nonModified = recoveryGit('/home/novinpay/novinpay', ['diff', '--name-only', '--diff-filter='.($m['format'] === 'novinpay-application-release-v1' ? 'CDRT' : 'ACDRT'), $m['baseline'], $m['target']]);
     requireGate(trim($nonModified) === '', 'source_release_rollback_scope', 'modified existing files with complete baseline rollback coverage', [], 'Review additions, deletions, renames or type changes before adapting rollback.');
     $prior = privateRead($m['baselineReceipt']['path']);
     requireGate(hash_equals($m['baselineReceipt']['sha256'], hash('sha256', $prior)), 'baseline_release_receipt', 'preserved successful baseline receipt', [], 'Reconcile the active production release.');

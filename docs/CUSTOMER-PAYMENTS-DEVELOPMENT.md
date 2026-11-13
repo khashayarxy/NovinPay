@@ -72,8 +72,9 @@ One additive migration adds nullable resolution actor/time/encrypted-note storag
 No historical row is backfilled or financial CHECK/trigger changed. Its down()
 refuses to discard recorded resolutions. After admission/new resolution writes,
 prefer forward recovery; do not restore an old database or blindly revert code
-that cannot reconcile late success. The source-only updater intentionally rejects
-this route/config/migration-bearing release; do not reuse its old activation command.
+that cannot reconcile late success. The source-only format intentionally rejects this route/config/migration-bearing
+release. Use only the reviewed application-mode extension of the existing shared
+updater; do not reuse an old activation command.
 Production activation requires a separately reviewed conventional migration step,
 current baseline SQL inventory, applicable verified recovery, exact-head CI and
 explicit owner authorization. Do not create a backup during ordinary development.
@@ -89,8 +90,8 @@ provider request, cron, backup, restore, application file or configuration was c
 The retained 23-migration/13-trigger recovery proof is historical evidence; fresh live
 SQL inventory and the new 24-migration candidate remain distinct. cPanel Fileman does
 not provide arbitrary SQL/CLI execution. Final production activation, including this
-single reviewed migration, still needs explicit owner authorization and a compatible
-reviewed activation procedure; never run the source-only helper against schema changes.
+single reviewed migration, still needs explicit owner authorization and live validation of the reviewed
+application-mode procedure; never run the source-only helper against schema changes.
 OTP transport UX/global SMS budgets, MFA, SEO and expanded header changes are deferred
 for separate focused work; the private test flow, live IPPanel configuration and chat
 are untouched. Account-linked pickup/shipping handover now consistently reauthenticates.

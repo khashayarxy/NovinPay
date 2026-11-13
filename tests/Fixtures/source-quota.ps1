@@ -1,8 +1,10 @@
+param([switch]$Application)
 $ErrorActionPreference='Stop'
 $scratch=Join-Path ([IO.Path]::GetTempPath()) ('np-source-quota-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($scratch)|Out-Null
 try {
  $manifest=@{format='novinpay-source-release-v1';releaseName='fixture';stateDirectory='/home/novinpay/novinpay-direct-pr13';baseline=('a'*40);target=('b'*40);backup=@{directory='/home/novinpay/novinpay-private-backups/recovery-fixture';restoreDatabase='novinpay_restoreauth1'}}
+ if($Application){$manifest.format='novinpay-application-release-v1'}
  $manifestPath=Join-Path $scratch 'manifest.json'
  [IO.File]::WriteAllText($manifestPath,($manifest|ConvertTo-Json))
  $helper=Join-Path $scratch 'access.ps1'

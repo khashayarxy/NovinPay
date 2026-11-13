@@ -9,17 +9,19 @@ pin="${2-}"
 tools="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 phase=identity
 passed=false
-trap 'if [[ "$passed" != true ]]; then if [[ -e "$app/storage/framework/down" ]]; then down=true; else down=false; fi; printf "{\"result\":\"SOURCE_RELEASE_STOP\",\"phase\":\"%s\",\"maintenanceActive\":%s,\"retrySafe\":false}\n" "$phase" "$down"; fi' EXIT
+schema_changed=false
+trap 'if [[ "$passed" != true ]]; then if [[ -e "$app/storage/framework/down" ]]; then down=true; else down=false; fi; printf "{\"result\":\"SOURCE_RELEASE_STOP\",\"phase\":\"%s\",\"maintenanceActive\":%s,\"schemaMayHaveChanged\":%s,\"retrySafe\":false}\n" "$phase" "$down" "$schema_changed"; fi' EXIT
 p() { /opt/cpanel/ea-php84/root/usr/bin/php -d display_errors=0 -d log_errors=0 -d opcache.enable_cli=0 -d opcache.file_cache_only=0 -d opcache.file_cache= "$@"; }
 contract=$(p "$tools/activate-source.php" "$manifest" "$pin" contract)
 mapfile -t values <<<"$contract"
-test "${#values[@]}" -eq 6
+test "${#values[@]}" -eq 7
 base="${values[0]}"
 target="${values[1]}"
 release="${values[2]}"
 target_branch="${values[3]}"
 asset="${values[4]}"
 success_result="${values[5]}"
+mode="${values[6]}"
 journal="$kit/$release-attempt"
 status() { curl -sS --connect-timeout 10 --max-time 25 -o /dev/null -w '%{http_code}' "https://novinpaypos.com$1"; }
 verify_ippanel() {
@@ -81,6 +83,21 @@ p "$tools/activate-source.php" "$manifest" "$pin" baseline-files
 phase=recovery_runtime_and_quota
 p "$tools/activate-source.php" "$manifest" "$pin" preflight
 mkdir -m 0700 "$journal"
+p "$tools/activate-source.php" "$manifest" "$pin" migration-paths >"$journal/migration-paths.txt"
+mapfile -t migration_paths <"$journal/migration-paths.txt"
+if [[ "$mode" == novinpay-application-release-v1 ]]; then
+    test "${#migration_paths[@]}" -gt 0
+    mkdir -m 0700 "$journal/migrations"
+    git archive --format=tar --output="$journal/migrations.tar" "$target" -- "${migration_paths[@]}"
+    tar -xf "$journal/migrations.tar" -C "$journal/migrations"
+    test -z "$(find "$journal/migrations" -type l -print -quit)"
+    test "$(find "$journal/migrations" -type f | wc -l)" -eq "${#migration_paths[@]}"
+    git diff --diff-filter=A --name-only "$base" "$target" >"$journal/added-source-files.txt"
+    install -m 0600 bootstrap/cache/config.php "$journal/config-before.php"
+    install -m 0600 bootstrap/cache/routes-v7.php "$journal/routes-before.php"
+    cmp -s bootstrap/cache/config.php "$journal/config-before.php"
+    cmp -s bootstrap/cache/routes-v7.php "$journal/routes-before.php"
+fi
 p "$tools/activate-source.php" "$manifest" "$pin" quota
 p "$tools/activate-source.php" "$manifest" "$pin" web-check
 phase=rollback_capture
@@ -100,7 +117,9 @@ test -d "$build" && test ! -L "$build" && test -d "$build/assets" && test ! -L "
 install -m 0600 -- "$build/manifest.json" "$journal/vite-manifest-before.json"
 sha256sum "$journal/baseline-source.tar" "$journal/vite-manifest-before.json" >"$journal/rollback.sha256"
 sha256sum --check --strict "$journal/rollback.sha256"
-sha256sum .env bootstrap/cache/config.php public/.htaccess storage/app/private/support-chat/installation.env storage/framework/site-maintenance/state.json storage/framework/site-maintenance/audit.jsonl "$routes" "$chat" >"$journal/protected.sha256"
+protected=(.env public/.htaccess storage/app/private/support-chat/installation.env storage/framework/site-maintenance/state.json storage/framework/site-maintenance/audit.jsonl "$chat")
+if [[ "$mode" != novinpay-application-release-v1 ]]; then protected+=(bootstrap/cache/config.php "$routes"); fi
+sha256sum "${protected[@]}" >"$journal/protected.sha256"
 phase=stage_vite_assets
 stage="$journal/vite"
 
@@ -109,25 +128,36 @@ unzip -q "$kit/$release-vite.zip" -d "$stage"
 test -z "$(find "$stage" -type l -print -quit)"
 test "$(find "$stage" -type f | wc -l)" -eq 2
 ( cd "$stage"; sha256sum -c --strict "$kit/$release-assets.sha256" )
-test ! -e "$build/$asset" && test ! -L "$build/$asset"
+test ! -L "$build/$asset"
+if [[ -e "$build/$asset" ]]; then cmp -s "$stage/$asset" "$build/$asset"; fi
 chmod 0644 "$stage/$asset" "$stage/manifest.json"
 phase=maintenance
 p artisan down --render=errors::503 --retry=60 --no-interaction >"$journal/maintenance.log" 2>&1
 test -f storage/framework/down && test -f storage/framework/maintenance.php
 test "$(status /login)" = 503
 sha256sum --check --strict "$journal/protected.sha256"
+if [[ "$mode" == novinpay-application-release-v1 ]]; then
+    phase=reviewed_migration
+    schema_changed=true
+    p "$tools/activate-source.php" "$manifest" "$pin" migrate-reviewed >"$journal/migration.log" 2>&1
+    p "$tools/activate-source.php" "$manifest" "$pin" database-ready
+fi
 phase=source
 (umask 022; git merge --ff-only "$target") >"$journal/source.log" 2>&1
 test "$(git rev-parse HEAD)" = "$target"
 git diff --cached --quiet
 git diff --quiet -- . ':(exclude)public/.htaccess'
 phase=runtime
+if [[ "$mode" == novinpay-application-release-v1 ]]; then
+    p artisan config:cache --no-interaction >"$journal/config.log" 2>&1
+    p artisan route:cache --no-interaction >"$journal/routes.log" 2>&1
+fi
 p artisan view:cache --no-interaction >"$journal/views.log" 2>&1
 p "$tools/activate-source.php" "$manifest" "$pin" ready
 verify_ippanel
 phase=vite_publication
 cmp -s "$build/manifest.json" "$journal/vite-manifest-before.json"
-ln -- "$stage/$asset" "$build/$asset"
+if [[ ! -e "$build/$asset" ]]; then ln -- "$stage/$asset" "$build/$asset"; fi
 mv -T -- "$stage/manifest.json" "$build/manifest.json"
 ( cd "$build"; sha256sum -c --strict "$kit/$release-assets.sha256" )
 p "$tools/activate-source.php" "$manifest" "$pin" web-cache
@@ -139,6 +169,6 @@ phase=https_acceptance
 p "$tools/activate-source.php" "$manifest" "$pin" smoke
 sha256sum --check --strict "$journal/protected.sha256"
 verify_ippanel
-printf '{"result":"%s","commit":"%s","migrationsApplied":0,"smsConfigurationPreserved":true,"activeProvider":"ippanel","otpReady":true,"smsirSendingEnabled":false,"testResetOnLogoutPreserved":true,"testSmsDeliveryPreserved":true,"sendingExecuted":false}\n' "$success_result" "$target" >"$journal/complete.json"
+printf '{"result":"%s","commit":"%s","migrationsApplied":%s,"smsConfigurationPreserved":true,"activeProvider":"ippanel","otpReady":true,"smsirSendingEnabled":false,"testResetOnLogoutPreserved":true,"testSmsDeliveryPreserved":true,"sendingExecuted":false}\n' "$success_result" "$target" "${#migration_paths[@]}" >"$journal/complete.json"
 cat "$journal/complete.json"
 passed=true

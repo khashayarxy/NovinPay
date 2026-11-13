@@ -26,6 +26,9 @@ test('source activation receives a bound quota reply through the shared private 
     const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-File', fixture], { encoding: 'utf8', timeout: 20_000 });
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(result.stdout, /SOURCE_QUOTA_WORKFLOW_PASS/);
+    const application = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-File', fixture, '-Application'], { encoding: 'utf8', timeout: 20_000 });
+    assert.equal(application.status, 0, application.stderr || application.stdout);
+    assert.match(application.stdout, /SOURCE_QUOTA_WORKFLOW_PASS/);
 });
 
 test('durable capture detects concurrent writes even when bytes are restored', (t) => {
