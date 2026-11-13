@@ -122,9 +122,9 @@ Route::get('/products/{product}', [ProductController::class, 'show'])->name('pro
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $cart = CartController::class;
     Route::get('/cart', [$cart, 'index'])->name('cart.index');
-    Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1')->name('cart.add');
-    Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1')->name('cart.remove');
-    Route::post('/cart/checkout', [$cart, 'checkout'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('cart.checkout');
+    Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1')->block(20, 15)->name('cart.add');
+    Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1')->block(20, 15)->name('cart.remove');
+    Route::post('/cart/checkout', [$cart, 'checkout'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->block(20, 15)->name('cart.checkout');
 });
 
 Route::middleware(PublicArticleResponse::class)->prefix('articles')->name('articles.')->group(function (): void {

@@ -7,6 +7,7 @@ use App\Models\PaymentAttempt;
 use App\Models\User;
 use App\Services\FinancialOperations;
 use App\Services\PaymentReview;
+use App\Services\StoreCheckout;
 use App\Services\ZibalPayments;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -27,6 +28,14 @@ if ($command['hold']) {
             }
         });
     }
+    if ($command['action'] === 'store.checkout') {
+        DB::listen(function ($query) use ($command): void {
+            if (str_starts_with(strtolower($query->sql), 'insert into `sales_orders`')) {
+                file_put_contents($command['ready'], 'ready');
+                usleep(1200000);
+            }
+        });
+    }
 }
 $start = microtime(true);
 $status = 200;
@@ -34,7 +43,9 @@ $id = null;
 try {
     $actor = User::findOrFail($command['actor']);
     $data = $command['data'];
-    if (str_starts_with($command['action'], 'payment.zibal.')) {
+    if ($command['action'] === 'store.checkout') {
+        $id = app(StoreCheckout::class)->create(CustomerAccount::findOrFail($data['account']), $data['cart'], $data['operation_key'])->id;
+    } elseif (str_starts_with($command['action'], 'payment.zibal.')) {
         config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true,
             'payments.zibal.merchant' => 'synthetic-'.$data['document'], 'payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
         Http::preventStrayRequests();

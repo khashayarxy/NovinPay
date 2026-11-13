@@ -5,12 +5,15 @@ namespace Tests\Feature\Admin;
 use App\Enums\RepairStage;
 use App\Models\AdminAccount;
 use App\Models\Customer;
+use App\Models\CustomerAccount;
+use App\Models\CustomerAddress;
 use App\Models\FinancialDocument;
 use App\Models\FinancialEntry;
 use App\Models\RepairCase;
 use App\Models\RepairEstimate;
 use App\Models\RepairRequest;
 use App\Models\User;
+use App\Services\DeliveryManagement;
 use App\Services\FinancialOperations;
 use App\Support\OrderMoney;
 use App\Support\RepairIdentity;
@@ -19,6 +22,7 @@ use App\Support\RepairTracking;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -117,6 +121,89 @@ class RepairOperationsTest extends TestCase
     private function handover(): array
     {
         return ['recipient_name' => 'PRIVATE-RECIPIENT', 'outcome_notes' => 'PUBLIC-OUTCOME-NOTES', 'delivered_at' => RepairTime::input(), 'handover_confirmed' => '1', 'amounts_confirmed' => '1'];
+    }
+
+    public static function customerDeliveryMethods(): array
+    {
+        return [['pickup'], ['tipax']];
+    }
+
+    #[DataProvider('customerDeliveryMethods')]
+    public function test_customer_request_to_full_repair_settlement_and_reauthenticated_handover(string $method): void
+    {
+        Http::preventStrayRequests();
+        $account = new CustomerAccount;
+        foreach (['public_id' => (string) Str::uuid(), 'phone' => '09000000000',
+            'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000000'),
+            'verified_at' => now()] as $key => $value) {
+            $account->$key = $value;
+        }
+        $account->save();
+        $account->refresh();
+        $this->actingAs($account, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->post('/account/profile', ['name' => 'Synthetic Customer'])->assertRedirect();
+        $account->refresh();
+        $address = null;
+        if ($method !== 'pickup') {
+            $this->post('/account/addresses', ['recipient' => 'Synthetic Customer', 'phone' => '09000000000',
+                'province' => 'تهران', 'city' => 'تهران', 'address' => 'SYNTHETIC PRIVATE ADDRESS',
+                'postal_code' => '1234567890'])->assertRedirect();
+            $address = CustomerAddress::query()->sole()->public_id;
+        }
+        $this->get('/repair')->assertOk();
+        $this->post('/repair', ['submission_token' => session('repair_submission_token'),
+            'customer_name' => 'Synthetic Customer', 'contact_phone' => '09000000000',
+            'device_brand' => 'PAX', 'device_model' => 'SYNTHETIC', 'issue' => 'Synthetic hardware fault'])->assertRedirect();
+        $request = RepairRequest::query()->sole();
+        $owner = User::factory()->superAdmin()->create();
+        $this->actingAs($owner, 'web');
+        $case = $this->intake(['repair_request_id' => $request->id]);
+        $this->assertSame($account->id, $case->customer_account_id);
+        $this->op($case, 'assign', ['technician_id' => $owner->id])->assertRedirect();
+        $this->op($case, 'diagnose', ['diagnosis' => 'Synthetic diagnosis', 'customer_summary' => 'Synthetic estimate',
+            'service_cost' => 100000, 'parts_cost' => 20000, 'diagnosis_fee' => 30000])->assertRedirect();
+        $this->decision($case, $case->estimates()->sole());
+        $this->op($case, 'transition', ['status' => 'repairing'])->assertRedirect();
+        $this->op($case, 'work', $this->work())->assertRedirect();
+        $this->op($case, 'transition', ['status' => 'ready'])->assertRedirect();
+        $finance = app(FinancialOperations::class);
+        $entry = $finance->execute($owner, 'issue', ['operation_key' => (string) Str::uuid(), 'password' => 'password',
+            'reason' => 'Synthetic approved repair charge', 'source_type' => 'repair',
+            'source' => $case->public_id, 'source_version' => $case->fresh()->version]);
+        $document = FinancialDocument::findOrFail(FinancialEntry::findOrFail($entry)->financial_document_id);
+        $this->assertSame(12000000, $document->charged_minor);
+        $this->op($case, 'delivery', $this->handover() + ['current_password' => 'password'])->assertConflict();
+        $finance->execute($owner, 'receipt', ['operation_key' => (string) Str::uuid(), 'password' => 'password',
+            'reason' => 'Synthetic recorded offline transfer', 'document' => $document->public_id,
+            'version' => $document->version, 'amount' => '120000.00', 'method' => 'transfer', 'reference' => 'SYNTHETIC-FULL-REPAIR']);
+        $delivery = app(DeliveryManagement::class);
+        $plan = $delivery->request($account, $document->public_id, $method, $address, 0);
+        $plan = $delivery->confirm($owner, 'password', $plan->public_id, $plan->version, (string) Str::uuid());
+        $version = $case->fresh()->version;
+        $this->op($case, 'delivery', $this->handover())->assertForbidden();
+        $this->op($case, 'delivery', $this->handover() + ['current_password' => 'wrong'])->assertForbidden();
+        $this->assertSame($version, $case->fresh()->version);
+        $this->assertSame('planned', $plan->fresh()->state);
+        $clerk = User::factory()->staff(['repairs.view', 'repairs.customer_data', 'repairs.deliver'])->create();
+        $this->actingAs($clerk, 'web');
+        $this->op($case, 'delivery', $this->handover() + ['current_password' => 'password'])->assertForbidden();
+        $this->assertSame('planned', $plan->fresh()->state);
+        $this->actingAs($owner, 'web');
+        $this->get('/admin/repairs/'.$case->public_id)->assertOk()->assertSee('name="current_password"', false);
+        if ($method === 'pickup') {
+            $this->op($case, 'delivery', $this->handover() + ['current_password' => 'password'])->assertRedirect();
+        } else {
+            $this->op($case, 'delivery', $this->handover() + ['current_password' => 'password'])->assertConflict();
+            $delivery->dispatch($owner, 'password', $plan->public_id, $plan->version, 'SYNTHETIC-TRACK', 'Synthetic Recipient');
+        }
+        $this->assertSame(RepairStage::Delivered, $case->fresh()->status);
+        $this->assertSame($method === 'pickup' ? 'collected' : 'dispatched', $plan->fresh()->state);
+        $label = $method === 'pickup' ? 'تحویل ثبت شد' : 'ارسال به شرکت حمل ثبت شد';
+        $this->get('/account/repairs/'.$case->public_id)->assertOk()->assertSee($label)->assertDontSee('SECRET-INTERNAL');
+        $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000000'])
+            ->assertOk()->assertViewHas('physicalMatch', true)->assertSee($label)->assertDontSee('SECRET-INTERNAL');
+        $finance->reconcile($document->fresh());
+        Http::assertNothingSent();
     }
 
     public static function legacyRecords(): array

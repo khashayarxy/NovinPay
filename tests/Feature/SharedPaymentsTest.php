@@ -24,6 +24,8 @@ use App\Services\StoreCheckout;
 use App\Services\ZibalPayments;
 use App\Support\RepairIdentity;
 use App\Support\SiteMaintenanceState;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
@@ -528,7 +530,10 @@ class SharedPaymentsTest extends TestCase
 
     public function test_store_checkout_uses_server_price_and_existing_reservation_workflow(): void
     {
-        $product = Product::create(['name' => 'Synthetic terminal', 'slug' => 'synthetic-terminal', 'category' => 'pos_terminal', 'is_published' => true, 'is_sample' => false, 'condition' => 'new', 'stock_status' => 'in_stock', 'price' => 10000]);
+        $this->post('/admin/products', ['name' => 'Synthetic terminal', 'slug' => 'synthetic-terminal',
+            'category' => 'pos_terminal', 'is_published' => '1', 'condition' => 'new',
+            'stock_status' => 'in_stock', 'price' => '10000'])->assertRedirect('/admin/products');
+        $product = Product::query()->where('slug', 'synthetic-terminal')->sole();
         $commerce = app(CommerceManagement::class);
         $id = $commerce->execute($this->owner, 'item.create', ['operation_key' => (string) Str::uuid(), 'sku' => 'SYNTHETIC-STORE', 'name' => 'Synthetic stock', 'condition' => 'new', 'serialized' => false, 'product_id' => $product->id, 'low_stock_threshold' => 0, 'reason' => 'Synthetic store setup']);
         $item = InventoryItem::findOrFail($id);
@@ -541,7 +546,28 @@ class SharedPaymentsTest extends TestCase
         $product->price = 10000;
         $product->save();
         $key = (string) Str::uuid();
-        $order = $checkout->create($this->account, [$product->slug => 2], $key);
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get('/products/'.$product->slug)->assertOk()->assertSee($product->name);
+        $this->post(route('cart.add', $product), ['quantity' => 2])->assertRedirect(route('cart.index'));
+        $this->get('/cart')->assertOk()->assertSee($product->name);
+        $this->post('/cart/checkout', ['operation_key' => $key])->assertRedirect(route('account.index'));
+        $order = SalesOrder::query()->where('checkout_key', $key)->sole();
+        $this->assertSame([], session('store_cart', []));
+        $count = SalesOrder::count();
+        // A lost redirect/ACK can be retried after the first request cleared the cart.
+        $this->post('/cart/checkout', ['operation_key' => $key])->assertRedirect(route('account.index'));
+        $this->assertSame($count, SalesOrder::count());
+        // An old request must not consume a newly assembled, different cart.
+        $this->post(route('cart.add', $product), ['quantity' => 1])->assertRedirect();
+        $this->post('/cart/checkout', ['operation_key' => $key])->assertConflict();
+        $this->assertSame([$product->slug => 1], session('store_cart'));
+        $this->post(route('cart.remove', $product->slug))->assertRedirect();
+        $this->post(route('cart.add', $product), ['quantity' => 2])->assertRedirect();
+        $this->post('/cart/checkout', ['operation_key' => $key])->assertRedirect(route('account.index'));
+        $this->assertSame([$product->slug => 2], session('store_cart'));
+        $this->post(route('cart.remove', $product->slug))->assertRedirect();
+        $this->post('/cart/checkout', ['operation_key' => (string) Str::uuid()])->assertUnprocessable();
+        $this->assertSame($count, SalesOrder::count());
         $this->assertSame('20000.00', $order->total);
         $this->assertNull($order->created_by);
         $this->assertSame($order->id, $checkout->create($this->account, [$product->slug => 2], $key)->id);
@@ -567,8 +593,90 @@ class SharedPaymentsTest extends TestCase
         $this->assertSame('collected', $plan->fresh()->state);
         $this->assertSame(0, $item->fresh()->on_hand);
         $this->assertSame(0, $item->fresh()->reserved);
+        $this->get('/account/orders/'.$order->public_id)->assertOk()->assertSee('تحویل ثبت شد');
+        $this->assertSame($document->fresh()->charged_minor, $document->fresh()->paid_minor);
+        Http::assertNothingSent();
         $this->expectException(HttpException::class);
         $delivery->request($this->account, $document->public_id, 'pickup', null, $plan->fresh()->version);
+    }
+
+    public function test_empty_checkout_replay_still_requires_the_exact_active_account_and_session(): void
+    {
+        $order = SalesOrder::findOrFail($this->document->sales_order_id);
+        $order->checkout_key = (string) Str::uuid();
+        $order->checkout_digest = str_repeat('a', 64);
+        $order->save();
+        $customer = Customer::findOrFail($this->account->customer_id)->replicate();
+        $customer->public_id = (string) Str::uuid();
+        $customer->phone_digest = bin2hex(random_bytes(32));
+        $customer->identity_digest = bin2hex(random_bytes(32));
+        $customer->save();
+        $other = $this->account->replicate();
+        $other->public_id = (string) Str::uuid();
+        $other->phone = '09000000003';
+        $other->phone_digest = RepairIdentity::digest('customer-account-phone', $other->phone);
+        $other->customer_id = $customer->id;
+        $other->save();
+        $this->actingAs($other, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->post('/cart/checkout', ['operation_key' => $order->checkout_key])->assertConflict();
+        $this->assertDatabaseCount('sales_orders', 1);
+        $stale = $this->account;
+        CustomerAccount::query()->whereKey($stale->id)->update(['session_version' => 2]);
+        try {
+            app(StoreCheckout::class)->create($stale, [], $order->checkout_key);
+            $this->fail('Stale account session replay accepted');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_withdrawn_cart_items_can_be_removed_without_exposing_unpublished_product_data(): void
+    {
+        foreach (['visible' => true, 'withdrawn' => false] as $slug => $published) {
+            Product::create(['name' => $published ? 'Visible product' : 'PRIVATE WITHDRAWN NAME', 'slug' => $slug,
+                'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'in_stock',
+                'price' => 10000, 'is_published' => $published, 'is_sample' => false]);
+        }
+        $this->actingAs($this->account, 'customer')->withSession([
+            'customer_session_version' => 1, 'store_cart' => ['visible' => 1, 'withdrawn' => 1],
+        ]);
+        $response = $this->get('/cart')->assertOk()->assertSee('Visible product')
+            ->assertDontSee('PRIVATE WITHDRAWN NAME')->assertSee('این کالا دیگر برای خرید در دسترس نیست.')
+            ->assertSee('action="'.route('cart.remove', 'withdrawn').'"', false);
+        $dom = new DOMDocument;
+        @$dom->loadHTML($response->getContent());
+        $button = (new DOMXPath($dom))->query('//form[@action="'.route('cart.checkout').'"]//button')->item(0);
+        $this->assertNotNull($button);
+        $this->assertTrue($button->hasAttribute('disabled'));
+        $this->post('/cart/checkout', ['operation_key' => (string) Str::uuid()])->assertConflict();
+        $this->assertSame(['visible' => 1, 'withdrawn' => 1], session('store_cart'));
+        $this->post(route('cart.remove', 'withdrawn'))->assertRedirect();
+        $this->assertSame(['visible' => 1], session('store_cart'));
+        $this->get('/cart')->assertOk()->assertDontSee('این کالا دیگر برای خرید در دسترس نیست.');
+        $this->assertDatabaseCount('sales_orders', 1);
+        Http::assertNothingSent();
+    }
+
+    public function test_cart_does_not_quote_a_missing_or_unrepresentable_price_as_zero(): void
+    {
+        $product = Product::create(['name' => 'Synthetic changing price', 'slug' => 'changing-price',
+            'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'in_stock',
+            'price' => null, 'is_published' => true, 'is_sample' => false]);
+        $this->actingAs($this->account, 'customer')->withSession([
+            'customer_session_version' => 1, 'store_cart' => [$product->slug => 1],
+        ]);
+        foreach ([null, 0, 10000000000] as $price) {
+            $product->price = $price;
+            $product->save();
+            $this->get('/cart')->assertOk()->assertSee('استعلام قیمت')->assertSee('جمع قیمت کالاهای این سبد هنوز مشخص نیست.')
+                ->assertDontSee('۰ تومان')->assertSee('aria-describedby="cart-unavailable"', false);
+        }
+        $product->price = 25000;
+        $product->save();
+        $this->get('/cart')->assertOk()->assertSee('۲۵,۰۰۰ تومان')->assertDontSee('aria-describedby="cart-unavailable"', false);
+        $this->assertDatabaseCount('sales_orders', 1);
+        Http::assertNothingSent();
     }
 
     public function test_notifications_are_durable_but_disabled_without_configuration(): void

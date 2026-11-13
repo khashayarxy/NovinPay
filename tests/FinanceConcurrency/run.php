@@ -6,10 +6,13 @@ use App\Models\CustomerAccount;
 use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
 use App\Models\FinancialEntry;
+use App\Models\InventoryItem;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentTransaction;
+use App\Models\Product;
 use App\Models\SalesOrder;
 use App\Models\User;
+use App\Services\CommerceManagement;
 use App\Services\FinancialOperations;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -124,6 +127,29 @@ foreach (['different-operation', 'same-operation'] as $scenario) {
     $reports[] = financeRace('zibal-verify-'.$scenario, $verify, $verify, [200, 200]);
     auditCheck(PaymentTransaction::where('payment_attempt_id', $attempt->id)->count() === 1
         && $document->fresh()->paid_minor === 1000000, 'competing verifications settle exactly once');
+}
+$product = Product::create(['name' => 'Synthetic checkout race', 'slug' => 'synthetic-checkout-race',
+    'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'in_stock',
+    'is_published' => true, 'is_sample' => false, 'price' => 100]);
+$stockId = app(CommerceManagement::class)->execute($one, 'item.create', financeData([
+    'sku' => 'SYNTHETIC-CHECKOUT-RACE', 'name' => 'Synthetic stock', 'condition' => 'new',
+    'serialized' => false, 'product_id' => $product->id, 'low_stock_threshold' => 0]));
+$stock = InventoryItem::findOrFail($stockId);
+app(CommerceManagement::class)->execute($one, 'item.receive', financeData([
+    'version' => $stock->version, 'quantity' => 2]), $stock);
+foreach (['same-cart', 'cleared-cart', 'different-cart'] as $scenario) {
+    $first = financeCommand($one, 'store.checkout', ['account' => $account->id, 'cart' => [$product->slug => 1]]);
+    $second = $first;
+    $second['data']['cart'] = match ($scenario) {
+        'cleared-cart' => [], 'different-cart' => [$product->slug => 2], default => [$product->slug => 1],
+    };
+    $report = financeRace('checkout-'.$scenario, $first, $second, [200, $scenario === 'different-cart' ? 409 : 200]);
+    $reports[] = $report;
+    auditCheck($scenario === 'different-cart' || $report['first']['result'] === $report['second']['result'], 'successful replay returns the original order');
+    auditCheck(SalesOrder::where('checkout_key', $first['data']['operation_key'])->count() === 1, 'one order after competing checkout');
+    $order = SalesOrder::where('checkout_key', $first['data']['operation_key'])->sole();
+    auditCheck($order->lines()->count() === 1 && $order->total === '100.00', 'checkout lines and server price preserved');
+    auditCheck($stock->fresh()->reserved === 0 && $stock->fresh()->on_hand === 2, 'checkout never fakes reservation or fulfillment');
 }
 foreach (FinancialDocument::cursor() as $document) {
     app(FinancialOperations::class)->reconcile($document);

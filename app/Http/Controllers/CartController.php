@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Services\StoreCheckout;
+use App\Support\OrderMoney;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -12,8 +13,12 @@ class CartController extends Controller
     public function index(Request $request)
     {
         $cart = $request->session()->get('store_cart', []);
+        $products = Product::query()->published()->whereIn('slug', array_keys($cart))->get();
+        $unavailable = array_values(array_diff(array_keys($cart), $products->pluck('slug')->all()));
+        $unpriced = $products->filter(fn (Product $product) => ! $product->price || $product->price < 0
+            || $product->price > OrderMoney::MAX_UNIT_MAJOR)->pluck('slug')->all();
 
-        return view('account.cart', ['cart' => $cart, 'products' => Product::query()->published()->whereIn('slug', array_keys($cart))->get()]);
+        return view('account.cart', compact('cart', 'products', 'unavailable', 'unpriced'));
     }
 
     public function add(Request $request, Product $product, StoreCheckout $checkout)
@@ -40,8 +45,11 @@ class CartController extends Controller
     public function checkout(Request $request, StoreCheckout $checkout)
     {
         $data = $request->validate(['operation_key' => ['required', 'uuid']]);
-        $checkout->create(Auth::guard('customer')->user(), $request->session()->get('store_cart', []), $data['operation_key']);
-        $request->session()->forget('store_cart');
+        $order = $checkout->create(Auth::guard('customer')->user(), $request->session()->get('store_cart', []), $data['operation_key']);
+        // A replay may arrive after the customer has assembled a new, identical cart.
+        if ($order->wasRecentlyCreated) {
+            $request->session()->forget('store_cart');
+        }
 
         return redirect()->route('account.index')->with('success', 'سفارش ثبت شد؛ پس از تأیید موجودی، سند و روش تحویل در حساب شما نمایش داده می‌شود.');
     }
