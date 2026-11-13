@@ -2,11 +2,15 @@
 
 require dirname(__DIR__).'/Concurrency/bootstrap.php';
 
+use App\Models\CustomerAccount;
+use App\Models\PaymentAttempt;
 use App\Models\User;
 use App\Services\FinancialOperations;
 use App\Services\PaymentReview;
+use App\Services\ZibalPayments;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 $command = json_decode(file_get_contents($argv[1]), true, flags: JSON_THROW_ON_ERROR);
@@ -15,6 +19,14 @@ if ($command['hold']) {
         file_put_contents($command['ready'], 'ready');
         usleep(1200000);
     });
+    if ($command['action'] === 'payment.zibal.start') {
+        DB::listen(function ($query) use ($command): void {
+            if (str_starts_with(strtolower($query->sql), 'insert into `payment_attempts`')) {
+                file_put_contents($command['ready'], 'ready');
+                usleep(1200000);
+            }
+        });
+    }
 }
 $start = microtime(true);
 $status = 200;
@@ -22,9 +34,26 @@ $id = null;
 try {
     $actor = User::findOrFail($command['actor']);
     $data = $command['data'];
-    $id = $command['action'] === 'payment.in_store'
-        ? app(PaymentReview::class)->inStore($actor, $data['password'], $data['document'], $data['amount_minor'], $data['operation_key'])->id
-        : app(FinancialOperations::class)->execute($actor, $command['action'], $data);
+    if (str_starts_with($command['action'], 'payment.zibal.')) {
+        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true,
+            'payments.zibal.merchant' => 'synthetic-'.$data['document'], 'payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
+        Http::preventStrayRequests();
+        Http::fake(function ($request) use ($data) {
+            if (str_ends_with($request->url(), '/request')) {
+                return Http::response(['result' => 100, 'trackId' => '70001']);
+            }
+            $attempt = PaymentAttempt::findOrFail($data['attempt']);
+
+            return Http::response(['result' => 100, 'amount' => $attempt->amount_rial, 'orderId' => $attempt->public_id]);
+        });
+        $id = $command['action'] === 'payment.zibal.start'
+            ? app(ZibalPayments::class)->start(CustomerAccount::findOrFail($data['account']), $data['document'], $data['amount_minor'], $data['operation_key'])->id
+            : app(ZibalPayments::class)->verify(PaymentAttempt::findOrFail($data['attempt']))->id;
+    } else {
+        $id = $command['action'] === 'payment.in_store'
+            ? app(PaymentReview::class)->inStore($actor, $data['password'], $data['document'], $data['amount_minor'], $data['operation_key'])->id
+            : app(FinancialOperations::class)->execute($actor, $command['action'], $data);
+    }
 } catch (HttpException $exception) {
     $status = $exception->getStatusCode();
 }

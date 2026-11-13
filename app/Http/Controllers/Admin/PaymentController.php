@@ -29,7 +29,7 @@ class PaymentController extends Controller
         return view('admin.payments', [
             'receipts' => PaymentReceipt::query()->whereIn('financial_document_id', clone $documents)->where('state', 'pending')->oldest('id')->paginate(20),
             'credits' => DB::table('payment_credit_events')->join('financial_documents', 'financial_documents.id', '=', 'payment_credit_events.financial_document_id')->whereIn('financial_document_id', clone $documents)->selectRaw('financial_documents.public_id, SUM(amount_delta) AS balance')->groupBy('financial_documents.public_id')->havingRaw('SUM(amount_delta) > 0')->paginate(20, ['*'], 'credits_page'),
-            'attempts' => PaymentAttempt::query()->whereIn('financial_document_id', clone $documents)->whereIn('state', ['review', 'uncertain', 'requesting'])->latest('id')->paginate(20, ['*'], 'attempts_page'),
+            'attempts' => PaymentAttempt::query()->whereIn('financial_document_id', clone $documents)->whereIn('state', ['review', 'uncertain', 'requesting', 'pending', 'processing', 'verified'])->latest('id')->paginate(20, ['*'], 'attempts_page'),
         ]);
     }
 
@@ -39,6 +39,15 @@ class PaymentController extends Controller
         $service->review($request->user(), $data['password'], $receipt, $data['decision'] === 'approve', $data['note'], isset($data['amount']) ? FinanceMoney::minor($data['amount']) : null, $data['reference'] ?? null);
 
         return back()->with('success', 'نتیجهٔ بررسی ثبت شد.');
+    }
+
+    public function resolveAttempt(Request $request, string $attempt, PaymentReview $service)
+    {
+        $data = $request->validate(['password' => ['required', 'string', 'max:255'],
+            'note' => ['required', 'string', 'min:10', 'max:1000'], 'unpaid_confirmed' => ['accepted']]);
+        $service->resolveUnpaid($request->user(), $data['password'], $attempt, $data['note']);
+
+        return back()->with('success', 'نتیجهٔ بررسی ثبت شد. هر تأیید دیرهنگام درگاه همچنان بررسی می‌شود.');
     }
 
     public function store(Request $request, PaymentReview $service)

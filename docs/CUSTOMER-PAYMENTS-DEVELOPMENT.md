@@ -47,3 +47,33 @@ Focused local results include payments/delivery/notifications (22), customer acc
 4. Version the release manifest, readiness and backup checks for the new schema and trigger set. The old 14-migration/five-trigger updater and maintenance-only rollback helpers must not be reused unchanged. Retain a verified encrypted current backup, isolated restore and independent off-host recovery copy, plus current quota and hosting evidence.
 5. Prepare a reviewed compatibility rollback before activation. Once new customer/system-origin financial rows or AdminAction values exist, a pristine old-code checkout is unsafe. Keep new private maintenance/audit state, nullable actor handling and enum compatibility; code rollback must never restore or overwrite newer live business data. New migration down() deliberately refuses to discard customer/payment/delivery history.
 6. Only after protected review and explicit deployment approval: in-place cPanel update at the permanent path, preserve `.env`/APP_KEY/uploads/sessions/public_html, use the migration account only for reviewed schema changes, rebuild route/view caches, verify authentication, receipts, settlement and handover without synthetic production transactions, then enable only accepted services. Review the single existing scheduler cron; do not install duplicate workers.
+
+## Confirmed audit remediation (2026-11-13)
+
+Request validation errors 102/103/104/105/106/113 are definitive request rejections;
+transport errors, malformed responses and unknown result codes remain uncertain.
+Reference: official Zibal sample `https://github.com/zibalco/gateway-php-sample/blob/master/functions.php`.
+Inquiry status 3 is accepted as cancellation only with result 100 and matching
+order/amount. A later successful verification still settles idempotently, including
+after a cancellation or manual unpaid resolution. Never infer non-payment from a
+missing track ID or browser flags.
+
+The 30-minute review threshold is LOCAL TRIAGE, not a claimed Zibal session TTL.
+Unknown/no-track requests go to manual review without replaying request creation.
+Reconciliation is due-time ordered, backed off, bounded to 40 items/180 seconds and
+8 verification attempts. Exhaustion becomes visible review, not a silent skip.
+`/admin/payments` allows independently evidenced unpaid resolution only with
+finance.correct/details/view, source access, password reauthentication and explicit
+confirmation. It never synthesizes a paid receipt. Notes are encrypted; actor/time
+and immutable payment/admin events remain attributable. Active leases prevent
+manual interference. Live Zibal flags remain disabled; all gateway tests are mocked.
+
+One additive migration adds nullable resolution actor/time/encrypted-note storage.
+No historical row is backfilled or financial CHECK/trigger changed. Its down()
+refuses to discard recorded resolutions. After admission/new resolution writes,
+prefer forward recovery; do not restore an old database or blindly revert code
+that cannot reconcile late success. The source-only updater intentionally rejects
+this route/config/migration-bearing release; do not reuse its old activation command.
+Production activation requires a separately reviewed conventional migration step,
+current baseline SQL inventory, applicable verified recovery, exact-head CI and
+explicit owner authorization. Do not create a backup during ordinary development.

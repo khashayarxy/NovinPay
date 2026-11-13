@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\PaymentAttempt;
 use App\Services\CustomerLogin;
 use App\Services\CustomerNotifications;
 use App\Services\CustomerOtpSms;
@@ -46,17 +45,7 @@ Artisan::command('payments:reconcile', function (ZibalPayments $payments, ZibalG
 
         return 0;
     }
-    $started = microtime(true);
-    foreach (PaymentAttempt::query()->whereIn('state', ['pending', 'uncertain', 'processing'])->whereNotNull('track_id')->where(fn ($q) => $q->whereNull('retry_at')->orWhere('retry_at', '<=', now()))->orderBy('id')->limit(40)->get() as $attempt) {
-        if (microtime(true) - $started > 180) {
-            break;
-        }
-        if ($attempt->attempts >= 1440) {
-            continue; // Retain evidence; manual review, never discard unresolved funds.
-        }
-        $payments->verify($attempt);
-    }
-    $this->info('Reconciliation completed; no transaction details printed.');
+    $this->info('Reconciliation processed: '.$payments->reconcile().'; no transaction details printed.');
 
     return 0;
 })->purpose('Reconcile known payment attempts without trusting browser callbacks');

@@ -52,6 +52,19 @@ class CustomerPaymentMigrationTest extends TestCase
         $document = FinancialDocument::firstOrFail();
         $this->assertSame(100000, app(FinancialOperations::class)->reconcile($document)['charged']);
         $this->assertSame($owner->id, (int) DB::table('financial_entries')->value('actor_id'));
+        $account = new \App\Models\CustomerAccount;
+        $account->forceFill(['public_id' => (string) Str::uuid(), 'customer_id' => $customer->id, 'phone' => '09000000000',
+            'phone_digest' => hash('sha256', 'synthetic-resolution-migration'), 'verified_at' => now()])->save();
+        $attempt = new \App\Models\PaymentAttempt;
+        $attempt->forceFill(['public_id' => (string) Str::uuid(), 'financial_document_id' => $document->id,
+            'customer_account_id' => $account->id, 'operation_key' => (string) Str::uuid(), 'amount_minor' => 100000,
+            'amount_rial' => 10000, 'document_version' => 1, 'merchant_digest' => str_repeat('a', 64), 'state' => 'uncertain'])->save();
+        $snapshot = (array) DB::table('payment_attempts')->where('id', $attempt->id)->first();
+        $addition = require database_path('migrations/2026_11_13_000001_add_payment_resolution_metadata.php');
+        $addition->down();
+        $addition->up();
+        $this->assertEquals($snapshot, (array) DB::table('payment_attempts')->where('id', $attempt->id)->first());
+        $this->assertNull($attempt->fresh()->resolved_at);
     }
 
     public function test_empty_extension_rollback_and_reapply_preserve_original_financial_triggers(): void
@@ -80,6 +93,7 @@ class CustomerPaymentMigrationTest extends TestCase
             glob(database_path('migrations/2026_11_03_*.php')),
             glob(database_path('migrations/2026_11_04_*.php')),
             [database_path('migrations/2026_11_09_000001_add_customer_password.php')],
+            [database_path('migrations/2026_11_13_000001_add_payment_resolution_metadata.php')],
         );
     }
 }

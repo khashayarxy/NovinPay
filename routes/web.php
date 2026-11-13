@@ -173,6 +173,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
         Route::get('payments', [App\Http\Controllers\Admin\PaymentController::class, 'index'])->middleware('can:finance.view')->name('payments.index');
         Route::get('payments/receipts/{receipt}/image', [ReceiptController::class, 'image'])->middleware(['can:finance.receive', 'can:finance.details'])->name('payments.image');
         Route::post('payments/{receipt}/review', [App\Http\Controllers\Admin\PaymentController::class, 'review'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('payments.review');
+        Route::post('payments/attempts/{attempt}/resolve', [App\Http\Controllers\Admin\PaymentController::class, 'resolveAttempt'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:10,1'])->name('payments.attempt.resolve');
         Route::post('payments/receive', [App\Http\Controllers\Admin\PaymentController::class, 'store'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('payments.store');
         Route::post('payments/refund', [App\Http\Controllers\Admin\PaymentController::class, 'refund'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:15,1'])->name('payments.refund');
         Route::post('customer-accounts/link', function (Request $request, CustomerAccountLink $service) {

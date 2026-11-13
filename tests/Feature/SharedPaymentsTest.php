@@ -25,6 +25,7 @@ use App\Services\ZibalPayments;
 use App\Support\RepairIdentity;
 use App\Support\SiteMaintenanceState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -139,6 +140,132 @@ class SharedPaymentsTest extends TestCase
         $this->post('/account/documents/'.$this->document->public_id.'/zibal', ['amount' => '10000', 'operation_key' => (string) Str::uuid()])->assertStatus(503);
         Http::assertNothingSent();
         $this->assertDatabaseCount('payment_attempts', 0);
+    }
+
+    private function enableGateway(): void
+    {
+        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true,
+            'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant',
+            'payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
+    }
+
+    public function test_unknown_request_is_not_failed_or_replayed_and_can_be_audited_for_manual_resolution(): void
+    {
+        $this->enableGateway();
+        $available = false;
+        $requests = 0;
+        Http::fake(function () use (&$available, &$requests) {
+            $requests++;
+            if (! $available) {
+                throw new ConnectionException('Synthetic timeout');
+            }
+
+            return Http::response(['result' => 100, 'trackId' => '504']);
+        });
+        $service = app(ZibalPayments::class);
+        $key = (string) Str::uuid();
+        $attempt = $service->start($this->account, $this->document->public_id, 1000000, $key);
+        $this->assertSame('uncertain', $attempt->state);
+        $this->assertNull($attempt->track_id);
+        $this->travel(3)->minutes();
+        $this->assertSame(1, $service->reconcile());
+        $this->assertSame('review', $attempt->fresh()->state);
+        $this->assertSame(1, $requests);
+        $url = route('admin.payments.attempt.resolve', $attempt->public_id);
+        $payload = ['password' => 'password', 'unpaid_confirmed' => '1', 'note' => 'Synthetic independent gateway evidence'];
+        $this->post($url, array_replace($payload, ['password' => 'incorrect']))->assertForbidden();
+        $this->post($url, array_diff_key($payload, ['unpaid_confirmed' => true]))->assertSessionHasErrors('unpaid_confirmed');
+        $this->post($url, $payload)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('failed', $attempt->fresh()->state);
+        $this->assertSame($this->owner->id, (int) $attempt->fresh()->resolved_by);
+        $this->assertNotSame($payload['note'], DB::table('payment_attempts')->where('id', $attempt->id)->value('resolution_note'));
+        $this->assertDatabaseHas('payment_events', ['payment_attempt_id' => $attempt->id, 'event' => 'manual_unpaid_resolution']);
+        $this->assertDatabaseCount('payment_transactions', 0);
+        $this->assertSame($attempt->id, $service->start($this->account, $this->document->public_id, 1000000, $key)->id);
+        $this->assertSame(1, $requests);
+        $available = true;
+        $this->assertSame('pending', $service->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid())->state);
+    }
+
+    public function test_definitive_request_rejection_is_terminal_without_reusing_its_operation(): void
+    {
+        $this->enableGateway();
+        Http::fake(['gateway.zibal.ir/*' => Http::response(['result' => 104])]);
+        $service = app(ZibalPayments::class);
+        $attempt = $service->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $this->assertSame('failed', $attempt->state);
+        $this->assertDatabaseHas('payment_events', ['payment_attempt_id' => $attempt->id, 'event' => 'request_rejected_104']);
+        $next = $service->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $this->assertNotSame($attempt->id, $next->id);
+        $this->assertDatabaseCount('payment_transactions', 0);
+    }
+
+    public function test_canceled_attempt_still_accepts_a_late_bound_success_exactly_once(): void
+    {
+        $this->enableGateway();
+        $paid = false;
+        Http::fake(function ($request) use (&$paid) {
+            if (str_ends_with($request->url(), '/request')) {
+                return Http::response(['result' => 100, 'trackId' => '505']);
+            }
+            $binding = ['amount' => 100000, 'orderId' => PaymentAttempt::firstOrFail()->public_id];
+
+            return Http::response($paid ? ['result' => 100] + $binding : (str_ends_with($request->url(), '/inquiry')
+                ? ['result' => 100, 'status' => 3] + $binding : ['result' => 202]));
+        });
+        $service = app(ZibalPayments::class);
+        $attempt = $service->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $this->assertSame('failed', $service->verify($attempt)->state);
+        $this->assertDatabaseCount('payment_transactions', 0);
+        $paid = true;
+        $this->assertSame('settled', $service->verify($attempt)->state);
+        $this->assertSame('settled', $service->verify($attempt)->state);
+        $this->assertDatabaseCount('payment_transactions', 1);
+    }
+
+    public function test_reconciliation_exhaustion_cannot_starve_later_attempts_or_forge_a_failure(): void
+    {
+        $this->gateway();
+        $service = app(ZibalPayments::class);
+        $first = $service->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $first->attempts = config('payments.zibal.reconciliation_limit');
+        $first->save();
+        $later = $first->replicate();
+        $later->public_id = (string) Str::uuid();
+        $later->operation_key = (string) Str::uuid();
+        $later->track_id = '506';
+        $later->attempts = 0;
+        $later->save();
+        $this->travel(3)->minutes();
+        $this->assertSame(1, $service->reconcile(1));
+        $this->assertSame('review', $first->fresh()->state);
+        $this->assertSame(1, $service->reconcile(1));
+        $this->assertGreaterThan(0, $later->fresh()->attempts);
+        $this->assertDatabaseHas('payment_events', ['payment_attempt_id' => $first->id, 'event' => 'reconciliation_exhausted']);
+        $this->assertDatabaseCount('payment_transactions', 0);
+    }
+
+    public function test_manual_resolution_requires_permissions_and_never_interrupts_a_verification_lease(): void
+    {
+        $this->gateway();
+        $attempt = app(ZibalPayments::class)->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $attempt->state = 'review';
+        $attempt->lease_until = now()->addMinutes(2);
+        $attempt->save();
+        $url = route('admin.payments.attempt.resolve', $attempt->public_id);
+        $payload = ['password' => 'password', 'unpaid_confirmed' => '1', 'note' => 'Synthetic independent gateway evidence'];
+        $this->post($url, $payload)->assertConflict();
+        $this->actingAs(User::factory()->staff(['finance.view', 'finance.details', 'orders.view'])->create());
+        $this->post($url, $payload)->assertForbidden();
+        $this->assertNull($attempt->fresh()->resolved_at);
+        $this->assertDatabaseCount('payment_transactions', 0);
+        $this->travel(3)->minutes();
+        $this->actingAs($this->owner)->post($url, $payload)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('settled', app(ZibalPayments::class)->verify($attempt)->state);
+        $this->assertDatabaseCount('payment_transactions', 1);
+        $migration = require database_path('migrations/2026_11_13_000001_add_payment_resolution_metadata.php');
+        $this->expectExceptionMessage('Preserve payment resolution history');
+        $migration->down();
     }
 
     public function test_malformed_provider_track_is_never_used_as_gateway_identifier(): void

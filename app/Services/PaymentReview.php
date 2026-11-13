@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\AdminAction;
 use App\Models\AdminAccount;
 use App\Models\FinancialDocument;
+use App\Models\PaymentAttempt;
 use App\Models\PaymentReceipt;
 use App\Models\PaymentTransaction;
 use App\Models\User;
@@ -15,6 +16,31 @@ use Illuminate\Support\Facades\Hash;
 
 class PaymentReview
 {
+    /** Record independently established non-payment; never synthesize a receipt. */
+    public function resolveUnpaid(User $actor, string $password, string $reference, string $note): void
+    {
+        DB::transaction(function () use ($actor, $password, $reference, $note): void {
+            $actor = $this->actor($actor, $password, 'reverse');
+            abort_unless(mb_strlen(trim($note)) >= 10 && mb_strlen($note) <= 1000, 422);
+            $attempt = PaymentAttempt::query()->where('public_id', $reference)->lockForUpdate()->firstOrFail();
+            $document = FinancialDocument::query()->lockForUpdate()->findOrFail($attempt->financial_document_id);
+            FinanceAccess::source($actor, $document->sales_order_id ? 'order' : 'repair');
+            abort_unless(in_array($attempt->state, ['review', 'uncertain'], true)
+                && (! $attempt->lease_until || $attempt->lease_until->isPast()) && $attempt->resolved_at === null, 409);
+            abort_if(PaymentTransaction::query()->where('payment_attempt_id', $attempt->id)->exists(), 409);
+            $attempt->state = 'failed';
+            $attempt->resolved_by = $actor->id;
+            $attempt->resolved_at = now();
+            $attempt->resolution_note = trim($note);
+            $attempt->retry_at = null;
+            $attempt->lease_until = null;
+            $attempt->attempts++;
+            $attempt->save();
+            DB::table('payment_events')->insert(['payment_attempt_id' => $attempt->id, 'event' => 'manual_unpaid_resolution', 'created_at' => now()]);
+            AdminHistory::record(AdminAction::FinancePosted, 'payment_attempt', $attempt->id, $actor->id);
+        }, 3);
+    }
+
     public function actor(User $actor, string $password, string $action = 'receipt'): User
     {
         $grant = AdminAccount::query()->where('user_id', $actor->id)->lockForUpdate()->firstOrFail();
