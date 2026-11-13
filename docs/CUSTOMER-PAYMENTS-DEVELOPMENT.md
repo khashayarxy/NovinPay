@@ -77,3 +77,20 @@ this route/config/migration-bearing release; do not reuse its old activation com
 Production activation requires a separately reviewed conventional migration step,
 current baseline SQL inventory, applicable verified recovery, exact-head CI and
 explicit owner authorization. Do not create a backup during ordinary development.
+
+
+### Release preparation boundary
+
+Current remediation starts from production source 191cf4e plus the four reviewed shared
+recovery-tool commits through 2d5e74c; no unrelated feature branch was merged. Local
+validation used isolated SQLite, not the owner acceptance database. MariaDB/MySQL
+competing start/verify scenarios run in the existing CI harness. No production SQL,
+provider request, cron, backup, restore, application file or configuration was changed.
+The retained 23-migration/13-trigger recovery proof is historical evidence; fresh live
+SQL inventory and the new 24-migration candidate remain distinct. cPanel Fileman does
+not provide arbitrary SQL/CLI execution. Final production activation, including this
+single reviewed migration, still needs explicit owner authorization and a compatible
+reviewed activation procedure; never run the source-only helper against schema changes.
+OTP transport UX/global SMS budgets, MFA, SEO and expanded header changes are deferred
+for separate focused work; the private test flow, live IPPanel configuration and chat
+are untouched. Account-linked pickup/shipping handover now consistently reauthenticates.

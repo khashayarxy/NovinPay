@@ -401,3 +401,28 @@ The previous operator transcript rendered the current sender's optimistic row wi
 The owner-approved 300-second reply lease belongs inside the existing exclusive conversation transaction, after UUID replay lookup and before new reply/attachment acceptance. Acquiring on views/typing or renewing during replay would cause starvation; checking outside the store lock would permit simultaneous owners. Recheck uploads before publication as well as before decoding. Use native account version/activity to invalidate revoked/deleted owners and explicitly clear on closure/new episodes/authorized handoff. Do not use tab close or presence as a release signal. A blocked outbox must still reconcile already accepted receipts without resending or discarding its draft. No migrations, cron or new service is required.
 
 Regression coverage: `SupportChatTest` includes two real competing PHP workers in a fresh isolated fixture, renewal/expiry/replay, customers/automation and release conditions; frontend tests cover stale snapshots, local elapsed-time expiration, blocked retry/lost-ACK recovery and stable sender/UUID. Keep the original four-second sync and fresh-send fast path. Browser fixture access was denied by the tool's workspace policy; do not reroute the denied script through another tool. Local/hosted visual and two-operator acceptance remain separately reported until actually observed. A new public asset version must include `operator/reply-ownership.js`; copying only files from the previous build would omit this new dependency. Verify the entire new asset manifest before switching it, retain older versioned directories for open tabs, and preserve native authority/history.
+
+
+## Audit remediation regression prevention (2026-11-13)
+
+- **REP-01:** the simple-record service accepted full-workflow cases and price edits
+  enabled `simple_workflow`. Lock/recheck the persisted workflow type before any
+  mutation, never infer conversion from missing history, and render the retained
+  full-workflow view for legacy cases. Regression: `RepairOperationsTest` covers
+  incomplete/inspection/pending/rejected/work cases and original completion/billing.
+- **OPS-01:** legacy health/pipeline literals contradicted the current schema, while
+  the shared backup already consumed manifest inventories. Use `schema-contract.php`
+  and reviewed `trigger-contracts.json`, shipped with every new helper bundle.
+  Exact migration names and trigger SQL hashes/definers remain mandatory. Tests discover
+  trigger-emitting migrations independently of the JSON. Do not restore deleted helper
+  directories or run surviving standalone commands with incomplete checksum manifests.
+- **PAY-01–05:** a lost request response is not a rejection; missing track IDs and
+  retry-limit skips otherwise leave permanent blockers. Preserve uncertainty, require
+  bound provider evidence for cancellation, keep late-success reconciliation, use
+  bounded due-time ordering/backoff and audit manual unpaid resolution. No transport
+  uncertainty alone unlocks a new payment. The 30-minute threshold requests human review,
+  not an unverified provider expiry claim. Mocked tests plus competing-connection CI
+  cover these paths. Keep Zibal disabled until separate provider acceptance.
+- **Scheduler:** source registration is not execution. `operations:status` distinguishes
+  missing/stale heartbeat, stale/review queues and cross-process cache support. Scheduled
+  provider work defaults OFF independently of cron installation. No cron was installed.

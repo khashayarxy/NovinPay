@@ -28,9 +28,10 @@ class ProductionTriggerContractTest extends TestCase
 
             return true;
         });
-        $contracts = json_decode(file_get_contents(base_path('scripts/release/trigger-contracts.json')), true, 32, JSON_THROW_ON_ERROR);
-        foreach (array_unique(array_column($contracts, 'migration')) as $name) {
-            (require database_path('migrations/'.$name.'.php'))->up();
+        foreach (glob(database_path('migrations/*.php')) as $path) {
+            if (str_contains(file_get_contents($path), 'CREATE TRIGGER')) {
+                (require $path)->up();
+            }
         }
         $expected = \NovinPay\Release\expectedTriggerContracts(\NovinPay\Release\migrationInventory(database_path('migrations')));
         $this->assertCount(count($expected), pr13VerifyTriggerContracts($rows, true));
