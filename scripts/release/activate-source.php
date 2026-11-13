@@ -118,6 +118,11 @@ try {
     $application = $manifest['format'] === 'novinpay-application-release-v1';
     $expected = $application && in_array($action, ['database-ready', 'ready'], true) ? $manifest['candidateMigrations'] : $manifest['migrations'];
     gate($migrations === $expected, 'migration_history');
+    if ($application && $action === 'preflight') {
+        $mixed = (int) $pdo->query('SELECT COUNT(*) FROM repair_cases c WHERE c.simple_workflow = 1 AND (EXISTS (SELECT 1 FROM repair_inspections i WHERE i.repair_case_id = c.id) OR EXISTS (SELECT 1 FROM repair_estimates e WHERE e.repair_case_id = c.id) OR EXISTS (SELECT 1 FROM repair_work_entries w WHERE w.repair_case_id = c.id))')->fetchColumn();
+        NovinPay\Release\requireGate($mixed === 0, 'mixed_repair_workflows_require_review', 'no ambiguous historically converted repair cases',
+            ['observedCount' => $mixed], 'Review these records privately; never rewrite historical workflow flags automatically.');
+    }
     if ($application && in_array($action, ['preflight', 'migrate-reviewed'], true)) {
         $credentialFile = '/home/novinpay/novinpay-releases/155fc9f30feb5b9d0c41445b33f1118d5e07da8e/.stage2-credentials.json';
         $rawCredentials = NovinPay\Release\privateRead($credentialFile);
@@ -146,12 +151,12 @@ try {
             gate(is_file($staged.'/'.$path) && ! is_link($staged.'/'.$path)
                 && hash_equals($sha, hash_file('sha256', $staged.'/'.$path)), 'staged_migration_integrity');
         }
-        NovinPay\Release\writeNew($journal.'/migration-started.json', json_encode(['manifestSha256' => $manifest['_sha256'], 'retrySafe' => false], JSON_THROW_ON_ERROR));
+        NovinPay\Release\reviewedMigrationReceipt($journal, 'started', $manifest);
         // The parent holds the exclusive shared operation flock throughout.
         $exit = Artisan::call('migrate', ['--database' => 'release_migrator',
             '--path' => [$staged.'/database/migrations'], '--realpath' => true, '--force' => true, '--no-interaction' => true]);
         gate($exit === 0, 'reviewed_migration_failed');
-        NovinPay\Release\writeNew($journal.'/migration-complete.json', json_encode(['manifestSha256' => $manifest['_sha256'], 'expectedMigrations' => $manifest['candidateMigrations']], JSON_THROW_ON_ERROR));
+        NovinPay\Release\reviewedMigrationReceipt($journal, 'complete', $manifest);
         echo "REVIEWED_MIGRATION_COMMAND_COMPLETE\n";
         exit(0);
     }

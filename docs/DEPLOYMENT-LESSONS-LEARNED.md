@@ -426,3 +426,29 @@ Regression coverage: `SupportChatTest` includes two real competing PHP workers i
 - **Scheduler:** source registration is not execution. `operations:status` distinguishes
   missing/stale heartbeat, stale/review queues and cross-process cache support. Scheduled
   provider work defaults OFF independently of cron installation. No cron was installed.
+
+
+### CI false-green and concurrent ledger snapshots
+
+The initial audit-remediation CI jobs were green although their raw logs contained
+`Failed: shop-payment-overlap expected outcomes`. Laravel's console exception handler
+renders an uncaught standalone exception without guaranteeing nonzero exit. The
+shared concurrency bootstrap now installs `exit-guard.php`; uncaught exceptions emit
+a redacted STOP and exit 1. `ConcurrencyExitGuardTest` proves a permissive prior handler
+cannot hide failure or leak exception payloads. Always require the harness completion
+receipt/count in addition to the job conclusion; do not relax expected race outcomes.
+
+The actual overlap failure came from `PaymentReview::inStore()` authorizing inside the
+transaction before waiting on the document lock. Those nonlocking permission queries
+established an InnoDB repeatable-read snapshot before the competing ledger committed.
+Acquire the existing document lock first, then authorize and reconcile. No new mutex,
+extra document lock, isolation change or weakened financial assertion was introduced.
+After correction both MySQL 8 and MariaDB 10.6.28 explicitly completed all 12 financial
+races, including overlapping receipts and concurrent Zibal start/verification.
+
+Offline activation review also caught a typed API mismatch: `writeNew()` takes an
+array, not pre-encoded JSON. Reviewed migration receipts now use a shared tested writer
+and reject replay. This defect never ran on production. Application preflight also
+counts mixed simple/full historical repairs and stops before maintenance/migration if
+any exist; it does not silently repair old flags. Keep production activation pending
+until the exact-head tests and explicit owner operation approval are present.

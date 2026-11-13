@@ -316,6 +316,16 @@ function preservedConfigurationDigest(array $configuration): string
     return hash('sha256', json_encode($sort($configuration), JSON_THROW_ON_ERROR));
 }
 
+function reviewedMigrationReceipt(string $journal, string $phase, array $manifest): void
+{
+    requireGate(in_array($phase, ['started', 'complete'], true), 'migration_receipt_phase', 'known migration phase', [], 'Preserve the journal.');
+    $receipt = ['manifestSha256' => $manifest['_sha256'], 'retrySafe' => false];
+    if ($phase === 'complete') {
+        $receipt['expectedMigrations'] = $manifest['candidateMigrations'];
+    }
+    writeNew($journal.'/migration-'.$phase.'.json', $receipt);
+}
+
 function sourceRecoveryEvidence(array $m): void
 {
     $proofBytes = privateRead($m['recoveryProof']['path']);

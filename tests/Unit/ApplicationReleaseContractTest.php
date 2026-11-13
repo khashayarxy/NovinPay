@@ -7,11 +7,34 @@ use PHPUnit\Framework\TestCase;
 
 use function NovinPay\Release\applicationReleasePlan;
 use function NovinPay\Release\preservedConfigurationDigest;
+use function NovinPay\Release\reviewedMigrationReceipt;
 
 require_once __DIR__.'/../../scripts/release/recovery-contract.php';
 
 class ApplicationReleaseContractTest extends TestCase
 {
+    public function test_migration_receipts_use_the_shared_durable_api_and_cannot_be_replayed(): void
+    {
+        $dir = sys_get_temp_dir().'/np-migration-journal-'.bin2hex(random_bytes(8));
+        mkdir($dir, 0700);
+        $manifest = ['_sha256' => str_repeat('a', 64), 'candidateMigrations' => ['synthetic']];
+        try {
+            reviewedMigrationReceipt($dir, 'started', $manifest);
+            reviewedMigrationReceipt($dir, 'complete', $manifest);
+            $receipt = json_decode(file_get_contents($dir.'/migration-complete.json'), true, 8, JSON_THROW_ON_ERROR);
+            $this->assertSame($manifest['_sha256'], $receipt['manifestSha256']);
+            $this->assertSame(['synthetic'], $receipt['expectedMigrations']);
+            $this->assertFalse($receipt['retrySafe']);
+            $this->expectExceptionMessage('receipt_exists');
+            reviewedMigrationReceipt($dir, 'started', $manifest);
+        } finally {
+            foreach (glob($dir.'/*.json') as $file) {
+                unlink($file);
+            }
+            rmdir($dir);
+        }
+    }
+
     private function plan(): array
     {
         $migration = '2026_11_13_000001_add_payment_resolution_metadata';
