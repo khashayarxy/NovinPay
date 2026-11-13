@@ -24,6 +24,12 @@ disabled. No real SMS/payment, new production product or deployment is authorize
   `session.gc_divisor=100`. A real subprocess regression reproduces the invalid host
   setting without altering global/web INI. Hosted effective INI origin and web-SAPI
   configuration remain unverified; see the deployment lessons.
+- **DEP-01, low, GHSA-63hm-g96r-2m2q:** exact-head CI surfaced a newly reported
+  `laravel/framework` advisory. The lock now updates only that package from 13.35.0
+  to the minimum patched 13.40.0; `composer audit --locked` reports zero advisories.
+  The documented exploit requires user-controlled task stdout through Laravel's
+  Concurrency facade; no such application caller was found. This is a confirmed
+  affected dependency, not proof of exploitation. Production is still unpatched.
 
 ### Gates and remaining work
 
@@ -43,6 +49,11 @@ existing migrator, exclusively on that schema. The new 24/13 recovery manifest w
 uploaded/read back and the existing quota/off-host coordinator is READY. Capture,
 isolated restore and independent off-host verification are **pending server execution**;
 no `DATABASE_RECOVERY_PASS` is claimed. Do not overwrite previous targets or artifacts.
+
+After the framework update, 186 focused tests / 1,618 assertions passed in the
+isolated runner (accounts, checkout/settlement, products, inventory, full/simple
+repairs and release contracts). These are local results. The four required CI
+jobs must pass on the final pushed head before any release is proposed.
 
 ---
 
