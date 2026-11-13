@@ -68,6 +68,7 @@ class CustomerPaymentMigrationTest extends TestCase
         // Only this disposable, event-free fixture: the older migration correctly
         // refuses teardown while payment history exists.
         $attempt->delete();
+        $account->delete();
     }
 
     public function test_empty_extension_rollback_and_reapply_preserve_original_financial_triggers(): void
