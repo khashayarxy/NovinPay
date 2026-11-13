@@ -397,6 +397,19 @@ class ProductCatalogTest extends TestCase
             ->assertDontSee('پس از تکمیل بخش مدیریت');
     }
 
+    public function test_catalogue_canonicals_use_configured_origin_and_never_include_private_query_input(): void
+    {
+        $product = $this->makeProduct(['slug' => 'canonical-product', 'is_sample' => false]);
+        $origin = rtrim(config('app.url'), '/');
+        $this->withServerVariables(['HTTP_HOST' => 'untrusted.example']);
+        $this->get('/?token=PRIVATE')->assertOk()->assertSee('rel="canonical" href="'.$origin.'/"', false);
+        $this->get('/products/'.$product->slug.'?token=PRIVATE')->assertOk()
+            ->assertSee('rel="canonical" href="'.$origin.'/products/canonical-product"', false)->assertDontSee('PRIVATE');
+        $this->get('/products?q=canonical&token=PRIVATE')->assertOk()
+            ->assertSee('rel="canonical" href="'.$origin.'/products"', false)
+            ->assertSee('content="noindex, follow"', false)->assertDontSee('PRIVATE');
+    }
+
     public function test_filter_validation_error_is_rendered_in_focusable_summary(): void
     {
         $this->from('/products')

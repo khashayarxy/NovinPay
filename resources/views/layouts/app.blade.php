@@ -9,15 +9,20 @@
         <link rel="canonical" href="{{ $contentSeo['canonical'] }}">
         <meta name="robots" content="{{ $contentSeo['robots'] }}">
     @else
+    @isset($canonical)<link rel="canonical" href="{{ $canonical }}">@endisset
     @hasSection('title')
         <title>@yield('title') | {{ config('app.name') }}</title>
     @else
         <title>{{ config('app.name') }} | فروش و تعمیر دستگاه کارتخوان</title>
     @endif
     <meta name="description" content="@yield('meta_description', 'فروش و تعمیر دستگاه‌های کارتخوان (POS) در شهریار')">
+    @isset($publicRobots)
+        <meta name="robots" content="{{ $publicRobots }}">
+    @else
     @if (request()->routeIs('repair*', 'consultation*', 'terms', 'privacy', 'account.*', 'payments.*', 'delivery.*', 'cart.*'))
         <meta name="robots" content="noindex, nofollow">
     @endif
+    @endisset
     @endisset
     <x-brand-head />
     @vite(['resources/css/app.css', 'resources/js/app.js'])

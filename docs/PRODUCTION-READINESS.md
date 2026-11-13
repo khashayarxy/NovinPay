@@ -4,7 +4,7 @@ Production remains `ecf672110214a24a9171d942a2730d9bfad5f65c`, with
 `APPLICATION_RELEASE_PASS`. The release gates checked 24 exact migrations and 13
 trigger contracts; the follow-up readback matched 55 changed source files and both
 asset checksums. Seven public HTTPS routes returned 200 with valid TLS and maintenance
-was OFF. This is execution/readback evidence, not a new independent SQL session.
+was OFF. Fresh recovery subsequently checked the exact 24/13 source inventory and an isolated restore; a separate read of the captured production SQL confirmed the three nullable payment-review columns.
 IPPanel remains active; Zibal, scheduled provider processing and SMS.ir sending stay
 disabled. No real SMS/payment, new production product or deployment is authorized here.
 
@@ -40,20 +40,85 @@ disabled. No real SMS/payment, new production product or deployment is authorize
 | Store lifecycle | PARTIAL | Existing isolated checkout, manual settlement, stock reservation and delivery tests pass; real catalogue/operator acceptance remains. Zibal and unverified billed postal processing stay unavailable. |
 | UX / SEO | PARTIAL | Existing catalogue/metadata regression checks pass; no redesign or new visual acceptance claimed. |
 | End-to-end | PARTIAL | Isolated HTTP/service lifecycle coverage reused; no real-provider or new browser acceptance claimed. |
-| Next production changes | BLOCKED | No deployment approval for these changes. A fresh 24/13 post-release backup and independent recovery must complete first. |
+| Next production changes | BLOCKED | Development changes require separate deployment authorization. Fresh 24/13 recovery has passed; do not repeat it for ordinary development. |
 
 The older encrypted recovery generation was independently verified at 23/13; it is
 preserved and is not a post-migration recovery point. Owner-approved isolated target
 `novinpay_restoreecf1` now exists with only SELECT, INSERT, CREATE and TRIGGER for the
-existing migrator, exclusively on that schema. The new 24/13 recovery manifest was
-uploaded/read back and the existing quota/off-host coordinator is READY. Capture,
-isolated restore and independent off-host verification are **pending server execution**;
-no `DATABASE_RECOVERY_PASS` is claimed. Do not overwrite previous targets or artifacts.
+existing migrator, exclusively on that schema. The fresh post-deployment generation completed `DATABASE_RECOVERY_PASS` with
+24 exact migrations / 13 triggers, matching schema, definers and every restored row.
+The encrypted off-host archive passed SHA-256, authenticated decryption and full
+archive validation. Snapshot time: 2026-11-14 00:18 Asia/Tehran; archive SHA-256:
+`c12b8ef38e9bd2183e28d289e32d276a6b65b39a4e713ba509980567d579e336`.
+The restore target is now occupied evidence, not an empty destination. Preserve it,
+all prior snapshots and the private completion receipts. The existing coordinator
+exited successfully. No further backup/restore/provisioning is needed during this
+development phase; apply the owner-approved 72-hour policy only for a future actual
+activation, together with the unchanged integrity/compatibility gates.
 
 After the framework update, 186 focused tests / 1,618 assertions passed in the
 isolated runner (accounts, checkout/settlement, products, inventory, full/simple
 repairs and release contracts). These are local results. The four required CI
 jobs must pass on the final pushed head before any release is proposed.
+
+
+### Phase 2: complete business paths and additional scoped corrections
+
+These changes remain development-only; production stays at `ecf6721`. No new
+migration, dependency, background service, cron, provider activation or backup cycle.
+
+| Finding | Evidence and correction | Regression |
+| --- | --- | --- |
+| CART-02, reliability | A repeated successful checkout returned 422 after its cart was cleared. Resolve the existing operation only after fresh account/session authorization; reject an unknown empty checkout or conflicting cart. A replay never clears a newly assembled cart. Serialize cart mutations with the existing Laravel session lock. | `SharedPaymentsTest`: lost response, empty/identical/different new cart, cross-account key and revoked session. |
+| SEC-02, medium | The full-workflow handover endpoint bypassed the password/finance checks already required by the simple and delivery-plan paths. Reproduce unauthorized completion, then apply the existing actor reauthentication inside the transaction for account-linked financial repairs. Forward the password from the existing dispatch path; never record it. Legacy non-account handover is unchanged. | `RepairOperationsTest`: missing/wrong password, insufficient permissions, unchanged case/plan on denial, successful authorized pickup/shipping and private password input. |
+| DEL-02, integrity | The full-workflow endpoint could mark carrier handover without tracking. Require the existing 3-200 character tracking contract before completing a non-pickup delivery plan. | Full repair lifecycle rejects direct untracked shipment and completes through the authorized dispatch path. |
+| TRACK-02, accuracy/privacy | Public tracking reported a carrier dispatch as final handover. After code+phone verification, select only the delivery state; reuse the customer timeline. Walk-in simple shipping also uses the recorded shipping method after closure. Never retrieve addresses, recipient or tracking data for public output. | Full pickup/shipping and simple shipping tracking; wrong-phone/privacy regressions retained. |
+| CART-03, usability/privacy | An unpublished cart item disappeared from the UI but blocked checkout with no removal control. Render only a generic unavailable row from its session slug, allow removal, and disable checkout until resolved. Missing/unrepresentable prices show an inquiry instead of a zero quote or misleading total; stored prices remain untouched. Never hydrate or show private product data. | `SharedPaymentsTest`: retained cart on failure, generic removal control, private name withheld, remaining cart preserved. |
+| SEO-02, missing functionality | Public homepage/catalogue canonicals and sitemap were absent. Add trusted-origin canonicals, noindex search/sample variants, and a bounded public sitemap index/parts. Use current published-product/article scopes, exclude private/sample/draft/future/inactive content, no stale sitemap cache, no fabricated lastmod/offers/ratings. | XML parsing, 1001-product pagination, unpublication, invalid paths, Host/query injection, published-only visibility. Existing private article/preview denials remain. |
+
+Acceptance now joins the previously separate HTTP and service boundaries:
+
+- **Full repair:** customer profile/request -> real intake -> diagnosis/estimate ->
+  recorded approval -> completed work -> actual isolated ledger charge/transfer ->
+  password/permission-protected pickup or tracked carrier dispatch -> account history
+  and public tracking. Existing rejection/return, fee, stale-version and audit tests stay.
+- **Simple repair:** intake -> reviewed CRM association -> repair/ready -> actual
+  isolated ledger charge and idempotent transfer -> handover -> tracking. Unpaid and
+  duplicate handovers are rejected; no fake payment flags or full-workflow records.
+- **Store:** admin product publication -> stock intake -> customer browsing/cart ->
+  checkout/retry -> reservation/confirmation -> invoice -> real isolated in-store receipt
+  -> authorized fulfillment -> customer history and ledger reconciliation. No live gateway.
+- The existing guarded MySQL/MariaDB harness adds same-cart, cleared-cart and
+  conflicting-cart checkout races to the original 12 financial races. Require the
+  **15 completed scenarios** and distinct competing connections, not just a green job.
+
+Public catalogue DOM checks at 320, 390, 768 and 1440 CSS pixels found no horizontal
+overflow; filter controls have labels and no visible button lacks a name. No new
+private authenticated browser acceptance or screenshot approval is claimed. An attempted
+screenshot file export was denied by the browser tool's private-root policy and was not
+retried through another path/tool. HTTP acceptance fixtures always use disposable tests,
+never the owner acceptance database. A real Tab key reached a named link with a visible focus indicator. Read-only production cookie configuration reported Secure=true, HttpOnly=true and SameSite=Lax. Herd's site inventory identifies the existing local
+site/PHP 8.4; its .env points at SQLite, so no local DB conversion or migration was attempted.
+
+### Remaining explicit policy/acceptance dependencies
+
+- Customer OTP retains per-IP 20/minute and 180/hour limits, per-phone 60-second
+  cooldown and 15 real dispatches/24h, two-minute expiry and five attempts. Approved
+  IPPanel/private-test reset behavior is covered with mocked HTTP. An aggregate
+  site-wide SMS budget has no owner-approved threshold; do not invent one or add
+  provider balance monitoring. No real SMS was sent.
+- Privileged MFA enrollment/enforcement/recovery policy is not defined. Existing
+  protected-owner rules, role/session revocation and sensitive-operation password
+  checks remain; do not claim MFA exists or roll out an improvised recovery path.
+- Notification templates and enabling scheduled notification delivery need separate
+  approved provider configuration. Durable events are tested; disabled delivery is
+  not proof of handset receipt. Zibal and scheduled provider processing remain OFF.
+- Keep existing manual settlement, carrier-paid delivery and refund-obligation records.
+  Do not invent live refunds, billed postal integration or unsupported bank instructions.
+- No known unresolved critical/high issue was identified in this scoped review; this
+  is not an exhaustive security certification. Final exact-head CI, owner operational
+  acceptance and a separately authorized production release remain distinct gates.
+  CI outcomes belong to the exact head in PR #22; keep it Draft/unmerged.
 
 ---
 

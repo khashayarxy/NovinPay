@@ -27,6 +27,7 @@ use App\Http\Controllers\Payments\PaymentController;
 use App\Http\Controllers\Payments\ReceiptController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SupportChatController;
 use App\Http\Middleware\EnsureAdminSession;
 use App\Http\Middleware\EnsureCustomerSession;
@@ -100,6 +101,9 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
 });
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
+Route::get('/sitemap-{type}-{page}.xml', [SitemapController::class, 'part'])
+    ->whereIn('type', ['pages', 'products', 'articles'])->where('page', '[1-9][0-9]{0,5}')->name('sitemap.part');
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $payment = PaymentController::class;
