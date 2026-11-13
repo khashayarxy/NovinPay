@@ -125,6 +125,14 @@ class SharedPaymentsTest extends TestCase
         $this->post($url, ['version' => 4, 'status' => 'ready', 'repair_notes' => 'Synthetic note'])->assertSessionHasNoErrors();
         $this->assertSame('in_person', $case->fresh()->settlement_method);
         $this->assertSame('planned', $plan->fresh()->state);
+        foreach (['in_person' => 'pickup', 'shipping' => 'courier'] as $method => $carrier) {
+            $case->refresh()->forceFill(['delivery_method' => $method, 'delivery_carrier' => $carrier])->save();
+            $plan->refresh()->forceFill(['method' => $carrier])->save();
+            $this->post($url, ['version' => $case->version, 'intent' => 'handover', 'handover_confirmed' => '1',
+                'shipment_tracking' => 'SYNTHETIC', 'confirmed_delivery_method' => $carrier])->assertForbidden();
+            $this->assertSame('ready', $case->fresh()->status->value);
+            $this->assertSame('planned', $plan->fresh()->state);
+        }
         app(DeliveryManagement::class)->dispatch($this->owner, 'password', $plan->public_id, 1, 'SYNTHETIC', 'Synthetic recipient');
         $this->assertSame('delivered', $case->fresh()->status->value);
         $this->assertSame('courier', $case->fresh()->delivery_carrier);

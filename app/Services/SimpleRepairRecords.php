@@ -128,9 +128,7 @@ final class SimpleRepairRecords
             app(FinancialOperations::class)->reconcile($document);
         }
         if ($case->customer_account_id && $document) {
-            if ($shipping && ! isset($data['confirmed_delivery_method'])) {
-                app(PaymentReview::class)->actor($actor, $data['current_password'] ?? '');
-            }
+            app(PaymentReview::class)->actor($actor, $data['current_password'] ?? '');
             $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->lockForUpdate()->first();
             abort_unless($plan && $plan->method === ($shipping ? $case->delivery_carrier : 'pickup')
                 && $plan->state === 'planned' && $plan->requested_method === null, 409, 'روش تحویل پرونده باید با برنامه تأییدشده یکسان باشد.');
