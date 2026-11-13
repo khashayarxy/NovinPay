@@ -65,6 +65,9 @@ class CustomerPaymentMigrationTest extends TestCase
         $addition->up();
         $this->assertEquals($snapshot, (array) DB::table('payment_attempts')->where('id', $attempt->id)->first());
         $this->assertNull($attempt->fresh()->resolved_at);
+        // Only this disposable, event-free fixture: the older migration correctly
+        // refuses teardown while payment history exists.
+        $attempt->delete();
     }
 
     public function test_empty_extension_rollback_and_reapply_preserve_original_financial_triggers(): void
