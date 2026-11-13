@@ -229,6 +229,18 @@ class ProductManagementTest extends TestCase
         $this->assertDatabaseHas('products', ['slug' => 'novin-pos-x', 'price' => 1500000]);
     }
 
+    public function test_catalogue_price_must_fit_the_existing_order_money_range(): void
+    {
+        $this->from(route('admin.products.create'))
+            ->post(route('admin.products.store'), $this->validPayload(['price' => '10000000000']))
+            ->assertSessionHasErrors('price');
+        $this->assertDatabaseCount('products', 0);
+
+        $this->post(route('admin.products.store'), $this->validPayload(['price' => '9999999999']))
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('products', ['price' => 9999999999]);
+    }
+
     public function test_store_saves_uploaded_image_on_the_public_disk(): void
     {
         Storage::fake('public');

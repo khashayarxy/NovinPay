@@ -492,6 +492,40 @@ class SharedPaymentsTest extends TestCase
         $this->assertDatabaseCount('payment_events', 0);
     }
 
+    public function test_explicit_order_account_ownership_is_not_overridden_by_a_different_crm_link(): void
+    {
+        $original = $this->account;
+        $otherCustomer = Customer::findOrFail($original->customer_id)->replicate();
+        $otherCustomer->public_id = (string) Str::uuid();
+        $otherCustomer->phone_digest = bin2hex(random_bytes(32));
+        $otherCustomer->identity_digest = bin2hex(random_bytes(32));
+        $otherCustomer->save();
+        $other = $original->replicate();
+        $other->public_id = (string) Str::uuid();
+        $other->phone = '09000000002';
+        $other->phone_digest = RepairIdentity::digest('customer-account-phone', $other->phone);
+        $other->customer_id = $otherCustomer->id;
+        $other->save();
+        $order = SalesOrder::findOrFail($this->document->sales_order_id);
+        $order->customer_id = $otherCustomer->id;
+        $order->save();
+        $path = '/account/orders/'.$order->public_id;
+
+        $this->actingAs($other, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get($path)->assertNotFound();
+        $this->get('/account?section=orders')->assertDontSee($order->public_id);
+
+        $this->actingAs($original, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get($path)->assertOk();
+
+        // Staff-origin history without an explicit account still uses the reviewed CRM link.
+        $order->customer_account_id = null;
+        $order->save();
+        $this->actingAs($other, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get($path)->assertOk();
+        Http::assertNothingSent();
+    }
+
     public function test_store_checkout_uses_server_price_and_existing_reservation_workflow(): void
     {
         $product = Product::create(['name' => 'Synthetic terminal', 'slug' => 'synthetic-terminal', 'category' => 'pos_terminal', 'is_published' => true, 'is_sample' => false, 'condition' => 'new', 'stock_status' => 'in_stock', 'price' => 10000]);
@@ -500,6 +534,12 @@ class SharedPaymentsTest extends TestCase
         $item = InventoryItem::findOrFail($id);
         $commerce->execute($this->owner, 'item.receive', ['operation_key' => (string) Str::uuid(), 'version' => $item->version, 'quantity' => 2, 'reason' => 'Synthetic opening stock'], $item);
         $checkout = app(StoreCheckout::class);
+        // Retain legacy catalogue data, but never advertise an unrepresentable offer.
+        $product->price = 10000000000;
+        $product->save();
+        $this->assertNull($checkout->offer($product));
+        $product->price = 10000;
+        $product->save();
         $key = (string) Str::uuid();
         $order = $checkout->create($this->account, [$product->slug => 2], $key);
         $this->assertSame('20000.00', $order->total);

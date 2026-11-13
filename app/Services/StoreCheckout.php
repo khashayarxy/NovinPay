@@ -17,7 +17,8 @@ class StoreCheckout
 {
     public function offer(Product $product, bool $lock = false): ?InventoryItem
     {
-        if (! $product->is_published || $product->is_sample || ! $product->price || $product->price <= 0 || $product->stock_status->value === 'out_of_stock') {
+        if (! $product->is_published || $product->is_sample || ! $product->price || $product->price <= 0
+            || $product->price > OrderMoney::MAX_UNIT_MAJOR || $product->stock_status->value === 'out_of_stock') {
             return null;
         }
         $query = InventoryItem::query()->where('product_id', $product->id)->where('condition', $product->condition->value)->orderBy('id');

@@ -11,6 +11,7 @@ use App\Models\InventoryItem;
 use App\Models\Product;
 use App\Support\AdminHistory;
 use App\Support\FaNumber;
+use App\Support\OrderMoney;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -170,7 +171,7 @@ class ProductController extends Controller
             'description' => ['nullable', 'string', 'max:20000'],
             'category' => ['required', 'string', Rule::enum(ProductCategory::class)],
             'condition' => ['required', 'string', Rule::enum(ProductCondition::class)],
-            'price' => ['nullable', 'integer', 'min:0'],
+            'price' => ['nullable', 'integer', 'min:0', 'max:'.OrderMoney::MAX_UNIT_MAJOR],
             'stock_status' => ['required', 'string', Rule::enum(StockStatus::class)],
             'spec_labels' => ['nullable', 'array', 'max:30'],
             'spec_labels.*' => ['nullable', 'string', 'max:100'],

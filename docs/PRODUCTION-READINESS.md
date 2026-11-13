@@ -1,4 +1,52 @@
-> Historical evidence, not current authorization. Use [DEPLOYMENT.md](DEPLOYMENT.md): local approval -> controlled production release -> owner acceptance. No hosted staging prerequisite.
+## Hardening checkpoint — 2026-11-14
+
+Production remains `ecf672110214a24a9171d942a2730d9bfad5f65c`, with
+`APPLICATION_RELEASE_PASS`. The release gates checked 24 exact migrations and 13
+trigger contracts; the follow-up readback matched 55 changed source files and both
+asset checksums. Seven public HTTPS routes returned 200 with valid TLS and maintenance
+was OFF. This is execution/readback evidence, not a new independent SQL session.
+IPPanel remains active; Zibal, scheduled provider processing and SMS.ir sending stay
+disabled. No real SMS/payment, new production product or deployment is authorized here.
+
+### Confirmed development corrections (not deployed)
+
+- **OWN-01, medium, conditional cross-account disclosure:** a staff draft edit could
+  change an online order's CRM customer while retaining the original account. The
+  account controller's OR scope then returned explicitly owned records to a different
+  CRM-linked account. Reproduced as HTTP 200 where 404 was required. The service now
+  refuses reassignment; the shared order/repair/request scope falls back to CRM only
+  when no explicit account exists. Original-account access, same-customer draft edits,
+  legacy CRM-only history, immutable events and normal profile flows are retained.
+- **STORE-01, reliability:** catalogue validation accepted prices outside the existing
+  ten-digit order-money range. New/edited prices now share that bound; legacy stored
+  prices remain unchanged and cannot be offered for checkout when unrepresentable.
+- **PHP CLI startup:** the private release wrapper uses invocation-level
+  `session.gc_divisor=100`. A real subprocess regression reproduces the invalid host
+  setting without altering global/web INI. Hosted effective INI origin and web-SAPI
+  configuration remain unverified; see the deployment lessons.
+
+### Gates and remaining work
+
+| Area | Status | Evidence / next step |
+| --- | --- | --- |
+| Security hardening | PARTIAL | Ownership regression fixed; required exact-head CI and remaining scoped security checks remain separate gates. No claim of an exhaustive clean audit. |
+| Repair lifecycle | PARTIAL | Full/simple workflow regression tests pass locally, including protected history, settlement and handover; final operational/browser acceptance remains. |
+| Store lifecycle | PARTIAL | Existing isolated checkout, manual settlement, stock reservation and delivery tests pass; real catalogue/operator acceptance remains. Zibal and unverified billed postal processing stay unavailable. |
+| UX / SEO | PARTIAL | Existing catalogue/metadata regression checks pass; no redesign or new visual acceptance claimed. |
+| End-to-end | PARTIAL | Isolated HTTP/service lifecycle coverage reused; no real-provider or new browser acceptance claimed. |
+| Next production changes | BLOCKED | No deployment approval for these changes. A fresh 24/13 post-release backup and independent recovery must complete first. |
+
+The older encrypted recovery generation was independently verified at 23/13; it is
+preserved and is not a post-migration recovery point. Owner-approved isolated target
+`novinpay_restoreecf1` now exists with only SELECT, INSERT, CREATE and TRIGGER for the
+existing migrator, exclusively on that schema. The new 24/13 recovery manifest was
+uploaded/read back and the existing quota/off-host coordinator is READY. Capture,
+isolated restore and independent off-host verification are **pending server execution**;
+no `DATABASE_RECOVERY_PASS` is claimed. Do not overwrite previous targets or artifacts.
+
+---
+
+> The following section is historical evidence, not current authorization. Use [DEPLOYMENT.md](DEPLOYMENT.md): local approval -> controlled production release -> owner acceptance. No hosted staging prerequisite.
 
 # Existing production upgrade: evidence and remaining checks
 

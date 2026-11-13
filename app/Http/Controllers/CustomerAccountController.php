@@ -334,7 +334,8 @@ class CustomerAccountController extends Controller
     private function owned(CustomerAccount $account): \Closure
     {
         return fn ($query) => $query->where('customer_account_id', $account->id)
-            ->when($account->customer_id, fn ($q) => $q->orWhere('customer_id', $account->customer_id));
+            ->when($account->customer_id, fn ($q) => $q->orWhere(fn ($legacy) => $legacy
+                ->whereNull('customer_account_id')->where('customer_id', $account->customer_id)));
     }
 
     public function repairRequest(string $record)
