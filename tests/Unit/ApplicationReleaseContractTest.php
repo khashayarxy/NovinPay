@@ -13,6 +13,33 @@ require_once __DIR__.'/../../scripts/release/recovery-contract.php';
 
 class ApplicationReleaseContractTest extends TestCase
 {
+    public function test_release_cli_overrides_invalid_host_session_divisor_before_php_startup(): void
+    {
+        $script = file_get_contents(__DIR__.'/../../scripts/release/activate-source.sh');
+        $this->assertSame(1, preg_match('/^p\(\) \{[^\r\n]+/m', $script, $function));
+        preg_match_all('/-d ([^ ]+)/', $function[0], $settings);
+        $ini = tempnam(sys_get_temp_dir(), 'np-session-ini-');
+        file_put_contents($ini, "session.gc_divisor=0\n");
+        try {
+            $args = [PHP_BINARY, '-c', $ini];
+            foreach ($settings[1] as $setting) {
+                array_push($args, '-d', $setting);
+            }
+            array_push($args, '-r', 'echo json_encode(["divisor" => (int) ini_get("session.gc_divisor"), "cliCache" => (bool) ini_get("opcache.enable_cli")]);');
+            $process = proc_open($args, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+            $this->assertIsResource($process);
+            $output = stream_get_contents($pipes[1]);
+            $errors = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $this->assertSame(0, proc_close($process));
+            $this->assertSame('', $errors);
+            $this->assertSame(['divisor' => 100, 'cliCache' => false], json_decode($output, true, flags: JSON_THROW_ON_ERROR));
+        } finally {
+            unlink($ini);
+        }
+    }
+
     public function test_migration_receipts_use_the_shared_durable_api_and_cannot_be_replayed(): void
     {
         $dir = sys_get_temp_dir().'/np-migration-journal-'.bin2hex(random_bytes(8));

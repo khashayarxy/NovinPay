@@ -11,7 +11,7 @@ phase=identity
 passed=false
 schema_changed=false
 trap 'if [[ "$passed" != true ]]; then if [[ -e "$app/storage/framework/down" ]]; then down=true; else down=false; fi; printf "{\"result\":\"SOURCE_RELEASE_STOP\",\"phase\":\"%s\",\"maintenanceActive\":%s,\"schemaMayHaveChanged\":%s,\"retrySafe\":false}\n" "$phase" "$down" "$schema_changed"; fi' EXIT
-p() { /opt/cpanel/ea-php84/root/usr/bin/php -d display_errors=0 -d log_errors=0 -d opcache.enable_cli=0 -d opcache.file_cache_only=0 -d opcache.file_cache= "$@"; }
+p() { /opt/cpanel/ea-php84/root/usr/bin/php -d session.gc_divisor=100 -d display_errors=0 -d log_errors=0 -d opcache.enable_cli=0 -d opcache.file_cache_only=0 -d opcache.file_cache= "$@"; }
 contract=$(p "$tools/activate-source.php" "$manifest" "$pin" contract)
 mapfile -t values <<<"$contract"
 test "${#values[@]}" -eq 7

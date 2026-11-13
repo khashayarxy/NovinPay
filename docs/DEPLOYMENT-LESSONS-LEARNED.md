@@ -1,5 +1,24 @@
 # Deployment lessons learned
 
+## PHP startup warning after successful application release (2026-11-14)
+
+**Signature:** `PHP Startup: session.gc_divisor must be greater than 0`.
+The successful `ecf6721` release appended 19 instances, without a fatal error.
+This is PHP startup configuration, before Laravel handles the request; neither
+the repository nor the inspected public `.user.ini`/`php.ini` sets this directive.
+The precise inherited host INI source and effective web-SAPI value remain unverified.
+Do not attribute an otherwise unexplained deployment failure to this warning alone.
+
+Use invocation-level `-d session.gc_divisor=100` for private release/recovery CLI
+commands. This uses PHP's documented positive default, leaves GC probability and
+global/web settings unchanged, and retains every opcode/integrity guard. The active
+`activate-source.sh` wrapper now includes it. `ApplicationReleaseContractTest` starts
+a real PHP subprocess against a synthetic INI containing zero and verifies clean
+startup, a positive divisor and disabled CLI opcode caching. Local PASS is not
+hosted correction: old private bundles are immutable; use the override in the next
+authorized command rather than rewriting a completed release. Never retry a prior
+non-retry-safe deployment to clear a startup warning.
+
 ## Current recovery correction, 2026-11-13
 
 The failed auth recovery created its private start marker but no backup directory. cPanel reports zero bytes for the approved restore target. The retired preview directory is absent, while both historical framework diagnostic files and their metadata/hashes match. The copied helper nevertheless requires that preview file in its exact untracked inventory. This contract necessarily rejects the observed filesystem state. Its wrapper replaces ordinary exception identifiers with `backup_preflight` and did not retain the original exception. The stale contract is confirmed, but an earlier Git-process failure cannot be conclusively excluded from the old output. The shared runner checks actual Git status before capture and reports controlled failure identifiers.
