@@ -28,10 +28,11 @@ class ProductionTriggerContractTest extends TestCase
 
             return true;
         });
-        foreach (['2026_10_21_000003_create_financial_tables', '2026_10_21_000004_create_article_tables',
-            '2026_11_03_000003_create_payment_records', '2026_11_04_000001_add_simple_repair_records'] as $name) {
+        $contracts = json_decode(file_get_contents(base_path('scripts/release/trigger-contracts.json')), true, 32, JSON_THROW_ON_ERROR);
+        foreach (array_unique(array_column($contracts, 'migration')) as $name) {
             (require database_path('migrations/'.$name.'.php'))->up();
         }
-        $this->assertCount(13, pr13VerifyTriggerContracts($rows, true));
+        $expected = \NovinPay\Release\expectedTriggerContracts(\NovinPay\Release\migrationInventory(database_path('migrations')));
+        $this->assertCount(count($expected), pr13VerifyTriggerContracts($rows, true));
     }
 }

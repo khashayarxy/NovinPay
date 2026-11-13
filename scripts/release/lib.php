@@ -8,6 +8,8 @@ use PDOException;
 use RuntimeException;
 use Throwable;
 
+require_once __DIR__.'/schema-contract.php';
+
 /** Only controlled identifiers and explicitly constructed metadata may reach stdout. */
 final class GateFailure extends RuntimeException
 {

@@ -265,6 +265,11 @@ function prepare(array $manifest, bool $withQuota = true): array
     }
     $GLOBALS['np_restore_empty'] = true;
     $GLOBALS['np_backup_check'] = 'source_trigger_contracts';
+    $manifestTriggers = [];
+    foreach ($manifest['triggers'] as $name => $contract) {
+        $manifestTriggers[] = ['name' => $name] + $contract;
+    }
+    \NovinPay\Release\verifyRecoveryTriggers($manifestTriggers, ['triggers' => \NovinPay\Release\expectedTriggerContracts($manifest['migrations'])]);
     $contracts = $source->query('SELECT TRIGGER_NAME name, EVENT_OBJECT_TABLE tableName, EVENT_MANIPULATION eventName, ACTION_TIMING timing, ACTION_STATEMENT body, DEFINER definer FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE()')->fetchAll();
     foreach ($contracts as &$contract) {
         $contract['bodySha256'] = hash('sha256', $contract['body']);
@@ -278,6 +283,7 @@ function prepare(array $manifest, bool $withQuota = true): array
     $expectedMigrations = $manifest['migrations'];
     sort($expectedMigrations);
     need($actualMigrations === $expectedMigrations, 'exact_baseline_migrations');
+    \NovinPay\Release\verifyMigrationInventory($actualMigrations, \NovinPay\Release\migrationInventory(APP.'/database/migrations'));
     need(is_link(APP.'/public/storage') && realpath(APP.'/public/storage') === APP.'/storage/app/public', 'public_storage_identity');
     $sourceFiles = [];
     foreach (explode("\0", \NovinPay\Release\recoveryGit(APP, ['ls-files', '-z'])) as $file) {

@@ -31,3 +31,21 @@ No routine hosted staging, staging Basic login, staging acceptance gate or new t
 SMS/notifications, Zibal live payments and Postex billing/shipment operations remain disabled unless separately authorized. Never copy ZizoLearn secrets/data or modify its website.
 
 References: [AGENTS](../AGENTS.md), [handoff](AI-PROJECT-HANDOFF.md), [lessons](DEPLOYMENT-LESSONS-LEARNED.md), [MariaDB compatibility](MARIADB-COMPATIBILITY.md), [maintenance recovery](admin-maintenance.md), and the exact separately approved release/rollback manifest. Prepared scripts are not proof of execution.
+
+## Current schema inventory and post-cleanup tools
+
+Use the shared `recover.php` / `activate-source.*` bundles, not removed standalone
+installers or historical PR13 activation commands. Package `schema-contract.php`
+and `trigger-contracts.json` alongside `lib.php`; validate the entire bundle checksum
+list before execution. The JSON file is the reviewed trigger contract, including
+introducing migration, body hash and definer. Migration identity is the sorted name
+set from the exact baseline/candidate `database/migrations`, never a historical count.
+`backup.php` verifies the live baseline names and exact reviewed trigger contracts;
+additive candidate migrations must be reviewed separately. A healthy HTTP response
+or an old restore receipt is not a fresh SQL inventory. Use the authorized migrator
+observer for trigger metadata; never expand runtime privileges.
+
+The older `pipeline.php` is not the supported production entry point. Standalone
+`login-submit-*` / `login-recovery-*` checksum lists left on the host reference removed
+helpers and must not be replayed. Current shared-tool syntax/checksum validation does
+not authorize an actual deployment, restore, migration, or cron installation.
