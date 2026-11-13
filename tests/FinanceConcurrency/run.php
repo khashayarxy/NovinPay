@@ -62,7 +62,7 @@ function financeRace(string $label, array $first, array $second, array $expected
     auditCheck(proc_close($processOne) === 0 && proc_close($processTwo) === 0, 'finance workers completed');
     $a = json_decode(file_get_contents($first['output']), true, flags: JSON_THROW_ON_ERROR);
     $b = json_decode(file_get_contents($second['output']), true, flags: JSON_THROW_ON_ERROR);
-    auditCheck([$a['status'], $b['status']] === $expected, $label.' expected outcomes');
+    auditCheck([$a['status'], $b['status']] === $expected, $label.' expected outcomes '.json_encode(['expected' => $expected, 'actual' => [$a['status'], $b['status']]]));
     auditCheck($a['pid'] !== $b['pid'] && $a['connection_id'] !== $b['connection_id'] && $b['elapsed_ms'] > 500, 'distinct competing finance connections actually waited');
 
     return ['scenario' => $label, 'first' => $a, 'second' => $b];
