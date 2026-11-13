@@ -54,8 +54,10 @@ class PaymentReview
     public function inStore(User $actor, string $password, string $documentId, int $amount, string $operation): PaymentTransaction
     {
         return DB::transaction(function () use ($actor, $password, $documentId, $amount, $operation): PaymentTransaction {
-            $actor = $this->actor($actor, $password);
             $document = FinancialDocument::query()->where('public_id', $documentId)->lockForUpdate()->firstOrFail();
+            // Acquire the serialization boundary before permission queries establish
+            // an InnoDB repeatable-read snapshot of the ledger being reconciled.
+            $actor = $this->actor($actor, $password);
             FinanceAccess::source($actor, $document->sales_order_id ? 'order' : 'repair');
 
             return app(PaymentSettlement::class)->record($document, $amount, 'in_store', 'SHOP-'.$operation, $operation, $actor->id);
