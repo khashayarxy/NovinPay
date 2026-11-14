@@ -209,4 +209,13 @@ class RuntimeReleaseContractTest extends TestCase
         $this->assertTrue(\NovinPay\Release\runtimeCompiledViewPath($actual));
         $this->assertFalse(\NovinPay\Release\runtimeCompiledViewPath('customer-upload.php'));
     }
+
+    public function test_private_cache_copy_does_not_broaden_permissions(): void
+    {
+        runtimeWrite($this->dir.'/private-cache.php', '<?php return [];', 0600);
+        if (PHP_OS_FAMILY !== 'Windows') {
+            $this->assertSame(0600, fileperms($this->dir.'/private-cache.php') & 0777);
+        }
+        $this->assertSame('<?php return [];', file_get_contents($this->dir.'/private-cache.php'));
+    }
 }

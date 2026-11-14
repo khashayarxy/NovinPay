@@ -369,8 +369,8 @@ Sources: [cPanel MySQL metadata](https://api.docs.cpanel.net/specifications/cpan
 
 ## Phase 5 runtime-updater qualification
 
-Status: **RELEASE MECHANISM NOT QUALIFIED** until the exact-head Linux activation and
-forced-rollback rehearsals pass and the final private artifacts are rebound. Existing
+Qualification rule: **RELEASE MECHANISM NOT QUALIFIED** unless exact-head Linux activation and
+forced-rollback rehearsals pass and final private artifacts are rebound. Existing
 application acceptance and business regression evidence from Phase 4 is reused;
 no production deployment, database capture/restore, provider request or migration
 was performed in this phase.
@@ -388,3 +388,10 @@ not be reported as production proof. Production remains at the separately verifi
 ecf6721 baseline. PR #22 remains Draft/unmerged. Required live SQL, cached config,
 public symlink/handler, fresh quota and still-eligible recovery evidence are checked
 again only for a future explicitly authorized activation; no routine backup cycle.
+The first Linux rehearsal installed the real candidate successfully and rejected all
+reviewed negative scenarios. It then caught an actual rollback defect: Laravel uses
+32-character xxh128 compiled-view names. Rollback now requires the recorded candidate
+view hash and the real framework filename format; it preserves original cache modes
+instead of broadening configuration-cache permissions. CI additionally compares the
+complete vendor/asset file-map digests with the existing private Phase 4 artifacts;
+equivalent dependency versions alone cannot qualify different package bytes.

@@ -118,7 +118,7 @@ function runtimeNoLinks(string $path): void
     }
 }
 
-function runtimeWrite(string $path, string $bytes): void
+function runtimeWrite(string $path, string $bytes, int $mode = 0644): void
 {
     runtimeNoLinks($path);
     if (! is_dir(dirname($path))) {
@@ -134,7 +134,7 @@ function runtimeWrite(string $path, string $bytes): void
             fclose($h);
         }
     }
-    chmod($tmp, 0644);
+    chmod($tmp, $mode);
     requireGate(rename($tmp, $path), 'runtime_publish', 'atomic same-directory publication', [], 'Keep maintenance and inspect publication.');
 }
 
@@ -348,9 +348,11 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         }
         runtimeVerify($journal.'/rollback-vendor', $baselineVendor, true);
         $cache = [];
+        $cacheModes = [];
         foreach (glob($app.'/bootstrap/cache/*.php') as $file) {
             $cache[basename($file)] = hash_file('sha256', $file);
-            runtimeWrite($journal.'/rollback-cache/'.basename($file), file_get_contents($file));
+            $cacheModes[basename($file)] = fileperms($file) & 0777;
+            runtimeWrite($journal.'/rollback-cache/'.basename($file), file_get_contents($file), 0600);
         }
         runtimeVerify($journal.'/rollback-cache', $cache, true);
         $views = runtimeInventory($app.'/storage/framework/views');
@@ -368,7 +370,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                 runtimeWrite($journal.'/rollback-assets/'.$path, file_get_contents($target));
             }
         }
-        writeNew($journal.'/rollback.json', ['cache' => $cache, 'views' => $views, 'assets' => $assets, 'vendor' => $baselineVendor]);
+        writeNew($journal.'/rollback.json', ['cache' => $cache, 'cacheModes' => $cacheModes, 'views' => $views, 'assets' => $assets, 'vendor' => $baselineVendor]);
         $hooks['quota'](); // Fresh evidence after staging, immediately before maintenance.
         runtimeVerify($app, $m['protectedFiles']);
         $phase = 'maintenance';
@@ -468,7 +470,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                     }
                 }
                 foreach ($plan['cache'] as $path => $hash) {
-                    runtimeWrite($app.'/bootstrap/cache/'.$path, file_get_contents($journal.'/rollback-cache/'.$path));
+                    runtimeWrite($app.'/bootstrap/cache/'.$path, file_get_contents($journal.'/rollback-cache/'.$path), $plan['cacheModes'][$path]);
                 }
                 foreach (runtimeInventory($app.'/storage/framework/views') as $path => $hash) {
                     if (! isset($plan['views'][$path])) {

@@ -57,6 +57,15 @@ foreach (['vendor' => [$root.'/candidate/vendor', 'vendor/'], 'assets' => [$repo
     $z->close();
     $archives[$kind] = ['file' => $kind.'.zip', 'sha256' => hash_file('sha256', $package.'/'.$kind.'.zip'), 'files' => $files];
 }
+// Public digests only, not a private deployment manifest. Rehearsal must use the
+// already prepared Phase 4 vendor/assets BYTES, not merely equivalent versions.
+foreach (['vendor' => '99c37e170854a4cf4c87ab6caea86e7043db8014606c2573af198d8bfea5b8a7',
+    'assets' => 'edce0360dcb5e9d02eb04b137f723a3117aa0ce31af8a53c4f11272f0e92c9e7'] as $kind => $expected) {
+    $files = $archives[$kind]['files'];
+    ksort($files);
+    $observed = hash('sha256', json_encode($files, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    requireGate(hash_equals($expected, $observed), 'rehearsal_exact_'.$kind.'_bytes', 'same file inventory as approved private Phase 4 artifact', ['observedInventorySha256' => $observed], 'Investigate build reproducibility; do not qualify a different payload.');
+}
 $migrations = migrationInventory($repo.'/database/migrations');
 $triggers = expectedTriggerContracts($migrations);
 $m = ['format' => 'novinpay-runtime-release-v1', 'baseline' => $base, 'target' => $target,

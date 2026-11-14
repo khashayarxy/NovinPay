@@ -178,7 +178,7 @@ local/CI contract test does not establish hosted activation: current live SQL in
 applicable encrypted recovery/rollback, exact artifact pins and explicit production
 operation approval remain release gates. No production activation was performed here.
 
-## Phase 5: schema-neutral locked runtime extension (qualification pending)
+## Phase 5: schema-neutral locked runtime extension
 
 The existing `activate-source.*` entry point dispatches the explicitly separate
 `novinpay-runtime-release-v1` contract to `runtime-release.php` and the fixed
@@ -223,7 +223,7 @@ forced file rollback against a synthetic isolated SQLite sentinel. cPanel quota,
 MariaDB trigger metadata, HTTPS and LiteSpeed OPcache are explicitly simulated there;
 actual hosting checks remain mandatory at a separately authorized activation.
 
-Qualification remains pending until that exact-head CI rehearsal succeeds and the
-private source artifact/inventory are rebound to the final SHA. Private manifests
+Qualification requires that exact-head CI rehearsal to succeed and the
+private source artifact/inventory to be rebound to the final SHA. Private manifests
 marked `activationReady: false` cannot execute through the hosting adapter. No upload
 or production activation is authorized by this Phase 5 preparation.
