@@ -137,11 +137,13 @@
         </div>
 
         <div class="admin-form-grid">
+            <input type="hidden" name="is_published" value="0">
             <label class="admin-checkbox">
                 <input type="checkbox" name="is_published" value="1" class="size-4 rounded border-slate-300"
                     @checked($isPublishedChecked)>
                 <span>منتشر شود (نمایش در وب‌سایت عمومی)</span>
             </label>
+            <input type="hidden" name="is_sample" value="0">
             <label class="admin-checkbox">
                 <input type="checkbox" name="is_sample" value="1" class="size-4 rounded border-slate-300"
                     @checked($isSampleChecked)>

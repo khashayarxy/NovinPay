@@ -229,6 +229,34 @@ class ProductManagementTest extends TestCase
         $this->assertDatabaseHas('products', ['slug' => 'novin-pos-x', 'price' => 1500000]);
     }
 
+    public function test_unchecked_publication_and_sample_flags_survive_an_unrelated_validation_error(): void
+    {
+        $product = $this->createProduct(['is_published' => true, 'is_sample' => true]);
+        $edit = route('admin.products.edit', $product);
+        $update = route('admin.products.update', $product);
+        $document = new \DOMDocument;
+        @$document->loadHTML($this->get($edit)->assertOk()->getContent());
+        $xpath = new \DOMXPath($document);
+        foreach (['is_published', 'is_sample'] as $flag) {
+            $this->assertSame(1, $xpath->query('//input[@type="hidden" and @name="'.$flag.'" and @value="0"]')->length);
+        }
+        $payload = $this->validPayload(['slug' => $product->slug, 'price' => '10000000000', 'is_published' => '0', 'is_sample' => '0']);
+        $this->from($edit)->put($update, $payload)->assertSessionHasErrors('price');
+        $product->refresh();
+        $this->assertTrue($product->is_published);
+        $this->assertTrue($product->is_sample);
+        @$document->loadHTML($this->get($edit)->assertOk()->getContent());
+        $xpath = new \DOMXPath($document);
+        foreach (['is_published', 'is_sample'] as $flag) {
+            $this->assertSame(0, $xpath->query('//input[@type="checkbox" and @name="'.$flag.'" and @checked]')->length);
+        }
+        $this->put($update, array_replace($payload, ['price' => '123456']))->assertSessionHasNoErrors();
+        $product->refresh();
+        $this->assertFalse($product->is_published);
+        $this->assertFalse($product->is_sample);
+        $this->assertSame(123456, $product->price);
+    }
+
     public function test_catalogue_price_must_fit_the_existing_order_money_range(): void
     {
         $this->from(route('admin.products.create'))
