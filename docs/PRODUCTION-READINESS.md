@@ -366,3 +366,25 @@ The schema-privilege filter handles escaped underscores/percent signs in MariaDB
 Required next evidence: actual table/trigger DDL and applied migration inventory; resolved symlink targets; effective web runtime/platform checks; actual-account grants and binary-log policy; local owner approval and relevant isolated schema/restore verification; verified full backup and restoration rehearsal. Preserve all triggers and history. Financial/article destructive down migrations are not the default live rollback plan. Protected merge and deployment each require separate approval.
 
 Sources: [cPanel MySQL metadata](https://api.docs.cpanel.net/specifications/cpanel.openapi/database-information/mysql-get_server_information), [database privileges](https://api.docs.cpanel.net/specifications/cpanel.openapi/user-management/mysql-get_privileges_on_database), [schema API](https://api.docs.cpanel.net/specifications/cpanel.openapi/database-management/mysql-dump_database_schema), [file metadata](https://api.docs.cpanel.net/specifications/cpanel.openapi/manage-files/fileman-get_file_information).
+
+## Phase 5 runtime-updater qualification
+
+Status: **RELEASE MECHANISM NOT QUALIFIED** until the exact-head Linux activation and
+forced-rollback rehearsals pass and the final private artifacts are rebound. Existing
+application acceptance and business regression evidence from Phase 4 is reused;
+no production deployment, database capture/restore, provider request or migration
+was performed in this phase.
+
+The new versioned contract supports exact production-only vendor, complete Vite and
+support asset graphs, and zero migrations. Legacy contract restrictions remain.
+Focused release tests cover corrupt/extra/missing ZIP entries, traversal and links,
+installed vendor tampering, package references, missing dynamic chunks, inode quota
+and unchanged legacy behavior. Real local rehearsal reached a Windows symlink
+permission denial; this is a capability limitation, not a passing rehearsal.
+
+The existing Linux CI job now runs the real baseline/candidate transaction and forced
+rollback; host-specific quota/HTTPS/OPcache/MariaDB metadata are simulated and must
+not be reported as production proof. Production remains at the separately verified
+ecf6721 baseline. PR #22 remains Draft/unmerged. Required live SQL, cached config,
+public symlink/handler, fresh quota and still-eligible recovery evidence are checked
+again only for a future explicitly authorized activation; no routine backup cycle.

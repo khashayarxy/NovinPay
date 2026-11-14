@@ -177,3 +177,53 @@ Before DDL, cancellation still requires verified baseline compatibility. A succe
 local/CI contract test does not establish hosted activation: current live SQL inventory,
 applicable encrypted recovery/rollback, exact artifact pins and explicit production
 operation approval remain release gates. No production activation was performed here.
+
+## Phase 5: schema-neutral locked runtime extension (qualification pending)
+
+The existing `activate-source.*` entry point dispatches the explicitly separate
+`novinpay-runtime-release-v1` contract to `runtime-release.php` and the fixed
+`runtime-host.php` adapter. Source-only v1 and additive-application v1 remain strict:
+Composer changes, multi-file assets and zero-migration plans are not silently admitted
+into those legacy formats. No retired activation pipeline is used.
+
+This contract is limited to the ecf6721 baseline, the approved 9f2e6a4 application
+payload, 24 unchanged migration names/bytes, 13 reviewed trigger bodies/definers and
+the sole Laravel 13.35.0 -> 13.40.0 production dependency change. Later commits may
+change only release tooling, tests, documentation and the existing CI workflow.
+Archives are SHA-256 pinned, bounded, checked member-by-member, and bound to real
+Git blobs and Composer package names/versions/source/dist references. Composer never
+runs on hosting. Generated runtime files, secrets, links and unlisted archive members
+are rejected; Git archive directory entries must be empty inventoried ancestors.
+
+A unique private journal and the existing exclusive operation lock prevent replay.
+Before maintenance, check eligible encrypted/off-host/isolated-restore evidence under
+the unchanged 72-hour policy, current byte quota, explicit account inode quota and
+physical inode capacity. Stage all files and verify a complete baseline vendor copy.
+Preserve the hosting root handler, public symlink, cached configuration, private
+support identity and persistent state. During Laravel maintenance, fast-forward
+source, switch staged vendor, publish complete assets with manifests last, rebuild
+routes/views, invalidate scoped application/vendor opcodes, verify the actual web
+framework version, inspect unchanged live SQL/trigger inventory, then admit traffic.
+Old hashed assets remain available. No migrations, seeds or database restores exist
+in this transaction. This is not a process-draining or global chat-write fence.
+
+Before traffic is admitted, a verified rollback restores matched baseline Git source
+(detached at the exact baseline, without moving branch history), original vendor,
+caches/views and prior mutable asset manifests. Only recorded operation-owned new
+assets may be removed. An uncertain rollback stays protected; a failed public smoke
+check attempts maintenance and requires explicit reconciliation, never database
+restoration. Interrupted/previous journals cannot be resumed or replayed automatically.
+
+The local rehearsal uses the same transaction and real baseline/candidate source,
+production-only vendor and complete assets. Windows denied native symlink creation;
+that check must not be faked. The existing Linux PHP SQLite CI job therefore runs
+`php scripts/release/prepare-runtime-rehearsal.php` after its normal build/tests.
+It exercises real Laravel caches/maintenance, symlink preservation, activation and
+forced file rollback against a synthetic isolated SQLite sentinel. cPanel quota,
+MariaDB trigger metadata, HTTPS and LiteSpeed OPcache are explicitly simulated there;
+actual hosting checks remain mandatory at a separately authorized activation.
+
+Qualification remains pending until that exact-head CI rehearsal succeeds and the
+private source artifact/inventory are rebound to the final SHA. Private manifests
+marked `activationReady: false` cannot execute through the hosting adapter. No upload
+or production activation is authorized by this Phase 5 preparation.

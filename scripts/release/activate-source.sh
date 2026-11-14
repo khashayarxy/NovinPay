@@ -22,6 +22,12 @@ target_branch="${values[3]}"
 asset="${values[4]}"
 success_result="${values[5]}"
 mode="${values[6]}"
+if [[ "$mode" == novinpay-runtime-release-v1 ]]; then
+    phase=runtime_extension
+    p "$tools/activate-source.php" "$manifest" "$pin" runtime-execute
+    passed=true
+    exit 0
+fi
 journal="$kit/$release-attempt"
 status() { curl -sS --connect-timeout 10 --max-time 25 -o /dev/null -w '%{http_code}' "https://novinpaypos.com$1"; }
 verify_ippanel() {

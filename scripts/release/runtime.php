@@ -161,9 +161,9 @@ function requestQuota(array $manifest, string $directory, string $purpose, int $
 }
 
 /** No raw argv/stderr is ever printed. Supports only caller-supplied reviewed argv. */
-function command(array $argv, string $cwd, string $operation, int $timeout = 180): array
+function command(array $argv, string $cwd, string $operation, int $timeout = 180, ?array $environment = null): array
 {
-    $p = proc_open($argv, [0 => ['file', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $cwd, null, ['bypass_shell' => true]);
+    $p = proc_open($argv, [0 => ['file', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $cwd, $environment, ['bypass_shell' => true]);
     requireGate(is_resource($p), $operation, 'native process starts', [], 'Inspect executable availability.');
     foreach ($pipes as $pipe) {
         stream_set_blocking($pipe, false);

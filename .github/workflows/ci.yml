@@ -38,6 +38,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0 # Real baseline/candidate release rehearsal in this existing job.
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
@@ -71,6 +72,8 @@ jobs:
         run: php artisan test --compact --display-warnings --fail-on-warning
       - name: Article upgrade rollback and reapply preservation
         run: php tests/ArticleMigration/run.php
+      - name: Schema-neutral runtime activation and forced file rollback
+        run: php scripts/release/prepare-runtime-rehearsal.php
 
   php-mysql:
     name: PHP MySQL 8

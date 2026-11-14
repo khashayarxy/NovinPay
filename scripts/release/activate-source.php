@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Services\CustomerLogin;
+use App\Services\CustomerOtpSms;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\ConfigurationUrlParser;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -26,16 +29,28 @@ function gate(bool $valid, string $check): void
 $action = $argv[3] ?? '';
 try {
     gate(PHP_SAPI === 'cli' && PHP_VERSION_ID >= 80401 && posix_geteuid() === 1321
-        && in_array($action, ['contract', 'migration-paths', 'migrate-reviewed', 'database-ready', 'baseline-files', 'smoke', 'preflight', 'ready', 'web-check', 'web-cache', 'quota'], true), 'execution_scope');
+        && in_array($action, ['contract', 'runtime-execute', 'migration-paths', 'migrate-reviewed', 'database-ready', 'baseline-files', 'smoke', 'preflight', 'ready', 'web-check', 'web-cache', 'quota'], true), 'execution_scope');
     require __DIR__.'/recovery-contract.php';
     $raw = NovinPay\Release\privateRead($argv[1]);
     $manifest = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
     $manifest['_sha256'] = hash('sha256', $raw);
     gate(count($argv) === 4 && preg_match('/\A[a-f0-9]{64}\z/D', $argv[2]) === 1 && hash_equals($argv[2], hash('sha256', $raw)), 'manifest_pin');
-    NovinPay\Release\sourceReleaseManifest($manifest);
+    $runtime = ($manifest['format'] ?? '') === 'novinpay-runtime-release-v1';
+    if ($runtime) {
+        require_once __DIR__.'/runtime-release.php';
+        NovinPay\Release\runtimeReleaseContract($manifest);
+    } else {
+        NovinPay\Release\sourceReleaseManifest($manifest);
+    }
+    if ($action === 'runtime-execute') {
+        gate($runtime, 'runtime_execution_contract');
+        require __DIR__.'/runtime-host.php';
+        echo json_encode(NovinPay\Release\runtimeHost($manifest, $argv[1], $argv[2]), JSON_THROW_ON_ERROR).PHP_EOL;
+        exit(0);
+    }
     if ($action === 'contract') {
         foreach (['baseline', 'target', 'releaseName', 'targetBranch', 'cssAsset', 'successResult'] as $key) {
-            echo $manifest[$key].PHP_EOL;
+            echo ($manifest[$key] ?? ($key === 'successResult' ? 'RUNTIME_RELEASE_PASS' : '-')).PHP_EOL;
         }
         echo $manifest['format'].PHP_EOL;
         exit(0);
@@ -63,7 +78,11 @@ try {
         exit(0);
     }
     if ($action === 'preflight') {
-        NovinPay\Release\sourceRecoveryEvidence($manifest);
+        if ($runtime) {
+            NovinPay\Release\runtimeRecoveryEvidence($manifest);
+        } else {
+            NovinPay\Release\sourceRecoveryEvidence($manifest);
+        }
     }
     if (in_array($action, ['web-check', 'web-cache'], true)) {
         $paths = [];
@@ -76,11 +95,27 @@ try {
                 $paths[] = ROOT.'/'.$path;
             }
             array_push($paths, ROOT.'/bootstrap/cache/config.php', ROOT.'/bootstrap/cache/routes-v7.php', ...glob(ROOT.'/storage/framework/views/*.php'));
+            if ($runtime) {
+                // Both candidate and retained baseline paths: rollback must evict
+                // the candidate's cached PHP as well, never reset global OPcache.
+                $old = json_decode(NovinPay\Release\privateRead(KIT.'/'.$manifest['releaseName'].'-attempt/baseline-vendor.json'), true, 512, JSON_THROW_ON_ERROR);
+                foreach (array_unique(array_merge(array_keys($old), array_map(fn ($p) => substr($p, 7), array_keys($manifest['archives']['vendor']['files'])))) as $path) {
+                    if (str_ends_with($path, '.php')) {
+                        NovinPay\Release\runtimePath($path);
+                        $paths[] = ROOT.'/vendor/'.$path;
+                    }
+                }
+            }
         }
         $token = bin2hex(random_bytes(32));
         $endpoint = ROOT.'/public/_np_admin_cache_'.bin2hex(random_bytes(12)).'.php';
         $source = '<?php ini_set("display_errors","0");if(!hash_equals('.var_export(hash('sha256', $token), true).',hash("sha256",$_SERVER["HTTP_X_NP_RELEASE"]??""))){http_response_code(404);exit;}header("Cache-Control: no-store");$ok=PHP_VERSION_ID>=80401&&class_exists("IntlDateFormatter");$paths='.var_export(array_values(array_unique($paths)), true).';if($ok&&$paths&&ini_get("opcache.enable")){$ok=function_exists("opcache_invalidate")&&function_exists("opcache_is_script_cached");foreach($paths as $p){if($ok&&opcache_is_script_cached($p)&&!opcache_invalidate($p,true)){$ok=false;break;}}}http_response_code($ok?200:503);echo $ok?"ADMIN_WEB_PASS":"ADMIN_WEB_STOP";';
         $handle = fopen($endpoint, 'xb');
+        if ($runtime) {
+            $expectedFramework = trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD'])) === $manifest['baseline'] ? '13.35.0' : '13.40.0';
+            $verifyFramework = 'if($ok){require '.var_export(ROOT.'/vendor/autoload.php', true).';$ok=Illuminate\\Foundation\\Application::VERSION==='.var_export($expectedFramework, true).';}';
+            $source = str_replace('http_response_code($ok?200:503);', $verifyFramework.'http_response_code($ok?200:503);', $source);
+        }
         gate(is_resource($handle), 'web_probe_create');
         try {
             gate(fwrite($handle, $source) === strlen($source) && fflush($handle) && fsync($handle), 'web_probe_write');
@@ -104,6 +139,16 @@ try {
     require ROOT.'/vendor/autoload.php';
     $app = require ROOT.'/bootstrap/app.php';
     $app->make(Kernel::class)->bootstrap();
+    if ($runtime) {
+        $version = trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD'])) === $manifest['baseline'] ? '13.35.0' : '13.40.0';
+        gate($version === Application::VERSION, 'runtime_framework_version');
+        $otp = app(CustomerOtpSms::class);
+        $login = app(CustomerLogin::class);
+        $testPhone = config('customer.test_sms_phone');
+        gate($app->configurationIsCached() && $otp->provider() === 'ippanel' && $otp->enabled() && $otp->configured()
+            && config('customer.sms_enabled') === false && config('customer.test_reset_on_logout') === true
+            && is_string($testPhone) && $login->testUsesSms($testPhone) && $login->privateTestCode($testPhone) === null, 'runtime_ippanel_preserved');
+    }
     gate($app->environment('production') && config('app.url') === 'https://novinpaypos.com', 'production_environment');
     foreach (['customer.notifications_enabled', 'payments.zibal.enabled', 'payments.zibal.live_requests', 'postex.enabled', 'postex.independent_postage_verified'] as $flag) {
         gate(config($flag) === false, 'provider_flag');

@@ -328,6 +328,13 @@ function reviewedMigrationReceipt(string $journal, string $phase, array $manifes
 
 function sourceRecoveryEvidence(array $m): void
 {
+    runtimeRecoveryEvidence($m);
+    sourceChangeEvidence($m);
+}
+
+/** Shared encrypted/off-host/isolated-restore gate, without source-mode assumptions. */
+function runtimeRecoveryEvidence(array $m): void
+{
     $proofBytes = privateRead($m['recoveryProof']['path']);
     requireGate(hash_equals($m['recoveryProof']['sha256'], hash('sha256', $proofBytes)), 'offhost_proof_pin', 'independently published proof bytes', [], 'Verify the off-host receipt before activation.');
     $proof = json_decode($proofBytes, true, 32, JSON_THROW_ON_ERROR);
@@ -343,6 +350,10 @@ function sourceRecoveryEvidence(array $m): void
     $archive = $m['backup']['directory'].'/backup.npb';
     requireGate(is_file($archive) && ! is_link($archive) && (fileperms($archive) & 0777) === 0600
         && hash_equals($proof['archiveSha256'], hash_file('sha256', $archive)), 'backup_checksum', 'encrypted backup still intact', [], 'Preserve the archive and investigate corruption.');
+}
+
+function sourceChangeEvidence(array $m): void
+{
     $forbidden = recoveryGit('/home/novinpay/novinpay', ['diff', '--name-only', $m['baseline'], $m['target'], '--', 'composer.json', 'composer.lock', 'package.json', 'package-lock.json', 'config', 'public/.htaccess', 'database/migrations', 'routes']);
     if ($m['format'] === 'novinpay-application-release-v1') {
         $paths = preg_split('/\r?\n/', trim($forbidden), -1, PREG_SPLIT_NO_EMPTY);

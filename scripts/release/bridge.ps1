@@ -14,9 +14,9 @@ $package='/home/novinpay/novinpay-release-pipeline-v1'
 $legacyScope=!$QuotaOnly -and $m.stateDirectory -ceq "$package/pipeline-pr12" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr12-v2'
 $pr13Scope=$QuotaOnly -and $m.stateDirectory -ceq "$package/pipeline-pr13-r2" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1' -and $m.backup.restoreDatabase -ceq 'novinpay_restore13r1' -and $m.baseline -ceq '1f39bb476fd31880600564e58599c4488622c4c0'
 $pr13Activation=$QuotaOnly -and $m.mode -ceq 'pr13-migration-activation-v1' -and $m.stateDirectory -ceq "$package/pipeline-pr13-activation-r4" -and $m.backup.directory -ceq '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1' -and $m.backup.restoreDatabase -ceq 'novinpay_restore13r1' -and $m.baseline -ceq '1f39bb476fd31880600564e58599c4488622c4c0' -and $m.candidate -ceq 'ded4e16302770f28f7bfe8e567e9a2de2314f99d'
-$modernScope=$QuotaOnly -and $m.format -cin @('novinpay-recovery-v1','novinpay-source-release-v1','novinpay-application-release-v1') -and $m.stateDirectory -ceq '/home/novinpay/novinpay-direct-pr13' -and $m.backup.directory -cmatch '^/home/novinpay/novinpay-private-backups/recovery-[a-z0-9-]{1,60}$' -and $m.backup.restoreDatabase -cmatch '^novinpay_restore[a-z0-9]+$' -and $m.baseline -cmatch '^[a-f0-9]{40}$' -and $m.target -cmatch '^[a-f0-9]{40}$'
+$modernScope=$QuotaOnly -and $m.format -cin @('novinpay-recovery-v1','novinpay-source-release-v1','novinpay-application-release-v1','novinpay-runtime-release-v1') -and $m.stateDirectory -ceq '/home/novinpay/novinpay-direct-pr13' -and $m.backup.directory -cmatch '^/home/novinpay/novinpay-private-backups/recovery-[a-z0-9-]{1,60}$' -and $m.backup.restoreDatabase -cmatch '^novinpay_restore[a-z0-9]+$' -and $m.baseline -cmatch '^[a-f0-9]{40}$' -and $m.target -cmatch '^[a-f0-9]{40}$'
 $recoveryScope=$modernScope -and $m.format -ceq 'novinpay-recovery-v1'
-$sourceScope=$modernScope -and $m.format -cin @('novinpay-source-release-v1','novinpay-application-release-v1') -and $m.releaseName -cmatch '^[a-z0-9-]{1,64}$'
+$sourceScope=$modernScope -and $m.format -cin @('novinpay-source-release-v1','novinpay-application-release-v1','novinpay-runtime-release-v1') -and $m.releaseName -cmatch '^[a-z0-9-]{1,64}$'
 if(!$legacyScope -and !$pr13Scope -and !$pr13Activation -and !$recoveryScope -and !$sourceScope){throw 'Bridge manifest scope mismatch'}
 if($modernScope){$package=$m.stateDirectory}
 $deadline=[DateTimeOffset]::UtcNow.AddHours($Hours)
@@ -124,6 +124,12 @@ try {
    $limit=[long][Math]::Floor([double]$v.megabyte_limit*1048576)
    if($q.requiredFreeBytes -lt 805306368 -or $free -lt [long]$q.requiredFreeBytes+2147483648 -or $used -lt 0 -or $free+$used -gt $limit+1048576){throw 'Quota reserve insufficient'}
    $proof=@{account='novinpay';apiHost='leda.asemanhost.com:2083';method='Quota/get_quota_info';httpsCertificateValidated=$true;underQuota=$true;sourceCommit=$m.baseline;nonce=$q.nonce;phase=$q.phase;manifestSha256=$pin;observedAtUnix=$server;freeBytes=$free;usedBytes=$used;limitBytes=$limit}
+   if($m.format -ceq 'novinpay-runtime-release-v1'){
+    if($null -eq $v.inode_limit -or $null -eq $v.inodes_remain -or [string]$v.under_inode_limit -cne '1'){throw 'Explicit inode quota evidence unavailable'}
+    $inodeLimit=[long]$v.inode_limit;$inodeRemaining=[long]$v.inodes_remain
+    if($inodeLimit -lt 0 -or $inodeRemaining -lt 0){throw 'Invalid inode quota evidence'}
+    $proof.inodeLimit=$inodeLimit;$proof.inodesRemaining=$inodeRemaining;$proof.underInodeQuota=$true;$proof.inodeUnlimited=($inodeLimit -eq 0)
+   }
    $bytes=[Text.Encoding]::UTF8.GetBytes(($proof|ConvertTo-Json -Compress))
    if(@($entries|Where-Object file -ceq ($base+'-reply.json')).Count){$done[$base]=$true;continue}
    $check='quota_reply_upload';$hash=UploadNewPrivate ($base+'-reply.json') $bytes $package
