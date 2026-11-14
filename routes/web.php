@@ -101,10 +101,13 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
 });
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/llms.txt', [PageController::class, 'discovery'])->name('public.discovery');
-Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
-Route::get('/sitemap-{type}-{page}.xml', [SitemapController::class, 'part'])
-    ->whereIn('type', ['pages', 'products', 'articles'])->where('page', '[1-9][0-9]{0,5}')->name('sitemap.part');
+// Public crawler documents contain no session/identity-dependent content.
+Route::withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])->group(function (): void {
+    Route::get('/llms.txt', [PageController::class, 'discovery'])->name('public.discovery');
+    Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
+    Route::get('/sitemap-{type}-{page}.xml', [SitemapController::class, 'part'])
+        ->whereIn('type', ['pages', 'products', 'articles'])->where('page', '[1-9][0-9]{0,5}')->name('sitemap.part');
+});
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $payment = PaymentController::class;

@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
+use App\Http\Middleware\PreviewAwareSession;
 use App\Models\Product;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class PublicPerformanceSeoTest extends TestCase
@@ -103,6 +105,15 @@ class PublicPerformanceSeoTest extends TestCase
         $this->assertCount(5, $matches[1]);
         foreach ($matches[1] as $path) {
             $this->get($path)->assertOk();
+        }
+    }
+
+    public function test_crawler_documents_do_not_create_or_refresh_customer_sessions(): void
+    {
+        foreach (['/llms.txt', '/sitemap.xml', '/sitemap-pages-1.xml'] as $path) {
+            $this->get($path)->assertOk()->assertHeaderMissing('Set-Cookie');
+            $route = app('router')->getRoutes()->match(Request::create($path));
+            $this->assertContains(PreviewAwareSession::class, $route->excludedMiddleware());
         }
     }
 }
