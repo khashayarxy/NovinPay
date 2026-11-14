@@ -32,6 +32,7 @@ function runtimeHost(array $m, string $manifestPath, string $pin): array
             $proof = json_decode(privateRead($m['recoveryProof']['path']), true, 32, JSON_THROW_ON_ERROR);
             requireGate(($proof['sourceCommit'] ?? '') === $m['baseline'], 'runtime_recovery_baseline', 'recovery point matches baseline', [], 'Reconcile recovery evidence.');
             $check('preflight');
+            $check('web-check'); // Independently verify web PHP before maintenance or switching.
         },
         'quota' => function () use ($m, $kit): void {
             $count = array_sum(array_map(fn ($a) => count($a['files']), $m['archives']));
