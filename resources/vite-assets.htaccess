@@ -1,0 +1,8 @@
+# Installed only in public/build/assets. Preserve the hosting-managed root
+# .htaccess/PHP handler, and never apply immutable caching to dynamic responses.
+<IfModule mod_setenvif.c>
+    SetEnvIf Request_URI "^/build/assets/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8,}\.(css|js|woff2)$" novinpay_immutable=1
+    <IfModule mod_headers.c>
+        Header set Cache-Control "public, max-age=31536000, immutable" env=novinpay_immutable
+    </IfModule>
+</IfModule>

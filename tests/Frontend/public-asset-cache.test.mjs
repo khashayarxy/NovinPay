@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 test('immutable cache matcher excludes dynamic, private and unversioned resources', () => {
-    const config = readFileSync(new URL('../../public/.htaccess', import.meta.url), 'utf8');
+    const config = readFileSync(new URL('../../resources/vite-assets.htaccess', import.meta.url), 'utf8');
+    assert.doesNotMatch(readFileSync(new URL('../../public/.htaccess', import.meta.url), 'utf8'), /novinpay_immutable/);
     const expression = config.match(/SetEnvIf Request_URI "([^"]+)" novinpay_immutable=1/);
     assert.ok(expression, 'Scoped cache rule must exist');
     const match = new RegExp(expression[1]);

@@ -20,6 +20,7 @@ test('static publication excludes private/configuration/PHP files and versions e
    return JSON.parse(readFileSync(path.join(root,'public/build/support-chat/manifest.json'),'utf8'));
   };
   const first=build();assert.deepEqual(first.files,['operator/app.js','support-widget.js']);
+  assert.equal(readFileSync(path.join(root,'public/build/assets/.htaccess'),'utf8'),readFileSync(path.resolve('resources/vite-assets.htaccess'),'utf8'));
   const published=readFileSync(path.join(root,'public/build/support-chat',first.version,'support-widget.js'),'utf8');
   assert.ok(published.includes("import './operator/app.js'"));
   assert.ok(published.includes("api.php?action=unchanged"));
