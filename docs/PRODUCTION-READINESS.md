@@ -395,3 +395,11 @@ view hash and the real framework filename format; it preserves original cache mo
 instead of broadening configuration-cache permissions. CI additionally compares the
 complete vendor/asset file-map digests with the existing private Phase 4 artifacts;
 equivalent dependency versions alone cannot qualify different package bytes.
+
+The exact-payload check also identified a reproducibility difference: the runner's
+floating Composer v2 resolved to 2.11.2, while the prepared Windows vendor used
+2.10.2. Only five generated Windows bin proxies differed. The rehearsal job pins
+Composer 2.10.2 and its documented full bin compatibility; the approved vendor/asset
+digests remain unchanged. Other CI jobs retain their existing Composer selection.
+Rehearsal now runs immediately after the existing asset build so a release-mechanism
+failure stops that job before its unrelated full regression suite.

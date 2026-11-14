@@ -44,7 +44,7 @@ jobs:
           php-version: '8.4'
           extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sqlite3, xml, xmlwriter, zip
           coverage: none
-          tools: composer:v2
+          tools: composer:2.10.2 # Match the prepared vendor's generator, including Windows proxies.
       - name: Generate disposable application key
         run: |
           touch .env
@@ -68,12 +68,12 @@ jobs:
           cache: npm
       - name: Build assets required by rendered PHP responses
         run: npm ci && npm run build
+      - name: Schema-neutral runtime activation and forced file rollback
+        run: php scripts/release/prepare-runtime-rehearsal.php
       - name: Full SQLite regression suite
         run: php artisan test --compact --display-warnings --fail-on-warning
       - name: Article upgrade rollback and reapply preservation
         run: php tests/ArticleMigration/run.php
-      - name: Schema-neutral runtime activation and forced file rollback
-        run: php scripts/release/prepare-runtime-rehearsal.php
 
   php-mysql:
     name: PHP MySQL 8
