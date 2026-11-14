@@ -54,12 +54,19 @@ file_put_contents($application.'/scripts/build-support-assets.mjs', runtimeGit($
 // These 48 existing Windows working-tree files had CRLF in the verified
 // artifact. Reproduce those bytes in this disposable build only. Source Git
 // blobs stay LF; no files or assertions are omitted from the exact-byte gate.
-foreach (json_decode(file_get_contents($repo.'/tests/Fixtures/runtime-release-support-eol.json'), true, 16, JSON_THROW_ON_ERROR) as $path) {
+foreach (json_decode(file_get_contents($repo.'/tests/Fixtures/runtime-release-support-eol.json'), true, 16, JSON_THROW_ON_ERROR) as $path => $runs) {
     NovinPay\Release\runtimePath($path);
     $file = $application.'/resources/support-chat/'.$path;
     $bytes = file_get_contents($file);
     requireGate(! str_contains($bytes, "\r"), 'rehearsal_eol_source', 'canonical LF source before explicit historical build transformation', [], 'Inspect changed source bytes.');
-    file_put_contents($file, str_replace("\n", "\r\n", $bytes));
+    $lines = explode("\n", $bytes);
+    foreach ($runs as [$first, $last]) {
+        for ($line = $first; $line <= $last; $line++) {
+            requireGate(isset($lines[$line]), 'rehearsal_eol_range', 'historical newline position exists', [], 'Inspect changed source.');
+            $lines[$line] .= "\r";
+        }
+    }
+    file_put_contents($file, implode("\n", $lines));
 }
 requireGate(symlink($repo.'/node_modules', $application.'/node_modules') && symlink($root.'/candidate/vendor', $application.'/vendor'),
     'rehearsal_build_links', 'existing locked build dependencies in the isolated approved application tree', [], 'Inspect local CI capabilities.');
@@ -97,6 +104,11 @@ foreach (['vendor' => '99c37e170854a4cf4c87ab6caea86e7043db8014606c2573af198d8bf
     if (! hash_equals($expected, $observed)) {
         $generated = $kind === 'assets' ? $files : array_filter($files, fn ($p) => str_starts_with($p, 'vendor/composer/') || str_starts_with($p, 'vendor/bin/'), ARRAY_FILTER_USE_KEY);
         echo json_encode(['result' => 'REHEARSAL_PAYLOAD_MISMATCH', 'kind' => $kind, 'files' => count($files), 'generatedFileHashes' => $generated], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL;
+        if ($kind === 'assets') {
+            foreach (glob($application.'/public/build/assets/app-*.css') as $css) {
+                echo json_encode(['result' => 'REHEARSAL_PUBLIC_CSS_DIAGNOSTIC', 'file' => basename($css), 'gzipBase64' => base64_encode(gzencode(file_get_contents($css), 9))], JSON_THROW_ON_ERROR).PHP_EOL;
+            }
+        }
     }
     requireGate(hash_equals($expected, $observed), 'rehearsal_exact_'.$kind.'_bytes', 'same file inventory as approved private Phase 4 artifact', ['observedInventorySha256' => $observed], 'Investigate build reproducibility; do not qualify a different payload.');
 }
