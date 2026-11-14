@@ -70,6 +70,10 @@ foreach (['vendor' => '99c37e170854a4cf4c87ab6caea86e7043db8014606c2573af198d8bf
     $files = $archives[$kind]['files'];
     ksort($files);
     $observed = hash('sha256', json_encode($files, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    if (! hash_equals($expected, $observed)) {
+        $generated = array_filter($files, fn ($p) => str_starts_with($p, 'vendor/composer/') || str_starts_with($p, 'vendor/bin/'), ARRAY_FILTER_USE_KEY);
+        echo json_encode(['result' => 'REHEARSAL_PAYLOAD_MISMATCH', 'kind' => $kind, 'files' => count($files), 'generatedFileHashes' => $generated], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL;
+    }
     requireGate(hash_equals($expected, $observed), 'rehearsal_exact_'.$kind.'_bytes', 'same file inventory as approved private Phase 4 artifact', ['observedInventorySha256' => $observed], 'Investigate build reproducibility; do not qualify a different payload.');
 }
 $migrations = migrationInventory($repo.'/database/migrations');

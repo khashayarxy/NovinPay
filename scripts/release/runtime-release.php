@@ -339,6 +339,12 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         }
         runtimeSourceContract($app, $m, $journal.'/source', $journal.'/vendor');
         runtimeAssets($journal.'/assets', $m['archives']['assets']['files']);
+        runtimeGit($app, ['archive', '--format=zip', '--output='.$journal.'/baseline-source.zip', $m['baseline']]);
+        $baselineSourceHash = hash_file('sha256', $journal.'/baseline-source.zip');
+        $baselineArchive = new \ZipArchive;
+        requireGate($baselineArchive->open($journal.'/baseline-source.zip', \ZipArchive::CHECKCONS) === true, 'runtime_baseline_source_archive', 'verified Git baseline rollback archive', [], 'Do not enter maintenance without source recovery material.');
+        $baselineArchive->close();
+        writeNew($journal.'/baseline-source.json', ['commit' => $m['baseline'], 'sha256' => $baselineSourceHash, 'hostingHandlerMustNotBeRestoredFromGit' => true]);
         $baselineVendor = runtimeInventory($app.'/vendor');
         runtimePackages(file_get_contents($app.'/composer.lock'), file_get_contents($app.'/vendor/composer/installed.json'));
         writeNew($journal.'/baseline-vendor.json', $baselineVendor);
@@ -370,7 +376,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                 runtimeWrite($journal.'/rollback-assets/'.$path, file_get_contents($target));
             }
         }
-        writeNew($journal.'/rollback.json', ['cache' => $cache, 'cacheModes' => $cacheModes, 'views' => $views, 'assets' => $assets, 'vendor' => $baselineVendor]);
+        writeNew($journal.'/rollback.json', ['sourceArchiveSha256' => $baselineSourceHash, 'cache' => $cache, 'cacheModes' => $cacheModes, 'views' => $views, 'assets' => $assets, 'vendor' => $baselineVendor]);
         $hooks['quota'](); // Fresh evidence after staging, immediately before maintenance.
         runtimeVerify($app, $m['protectedFiles']);
         $phase = 'maintenance';
@@ -441,6 +447,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
             try {
                 requireGate(is_file($app.'/storage/framework/down'), 'runtime_rollback_fence', 'maintenance still active', [], 'Reconcile the protected state.');
                 $plan = json_decode(privateRead($journal.'/rollback.json'), true, 512, JSON_THROW_ON_ERROR);
+                requireGate(hash_equals($plan['sourceArchiveSha256'], hash_file('sha256', $journal.'/baseline-source.zip')), 'runtime_rollback_source_archive', 'preserved exact baseline source backup', [], 'Keep maintenance and inspect recovery material.');
                 if ($switched) {
                     requireGate(trim(runtimeGit($app, ['rev-parse', 'HEAD'])) === $m['target'], 'runtime_rollback_head', 'owned target only', [], 'Inspect external changes.');
                     runtimeVerify($app, array_diff_key($m['archives']['source']['files'], ['public/.htaccess' => true]));
