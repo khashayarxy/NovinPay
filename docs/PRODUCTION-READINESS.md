@@ -1,3 +1,81 @@
+## Phase 3 development checkpoint — 2026-11-14 (not deployed)
+
+Continue from `8f30f82`; preserve Phase 2 and the `ecf6721` production baseline.
+No migration, provider operation, production change, backup cycle or merge in this phase.
+PR #22 stays Draft. Exact-head CI is recorded in the PR, separately from local evidence.
+
+| Area | Implemented and verified locally | Remaining qualification |
+| --- | --- | --- |
+| Neshan | Existing approved iframe URL now stays in inert configuration until the native activation button is used. No SDK/key/static-map API or tile copying. Noninteractive branded/location-pin preview, keyboard activation, fixed 260px/240px frame, once-only initialization, timeout/error retry and permanent external fallback. | A cross-origin `load` event does not establish usable provider content. Real provider/device availability remains external; simulated failure/retry and actual local keyboard activation pass. |
+| Hero | Add AVIF sources from the unchanged 853×933 owner artwork; retain original WebP sources/fallback, sizes, eager high priority and intrinsic ratio. Decode/review the generated image. | Physical-device visual acceptance; no claim that conversion is pixel-identical. |
+| Fonts/JS | Same licensed Vazirmatn variable face; static weight fallbacks retained for older browsers. Lazy-load calendar/numeric/repair-admin initialization only in the admin shell. | Authenticated admin browser acceptance; unit regressions retained. |
+| Cache | Immutable rule matches only content-hashed `/build/assets/*.css`, JS and WOFF2; regression rejects private/unversioned/HTML/manifest/chat paths. HTML/private cache policies unchanged. | Herd uses Nginx, not hosting LiteSpeed: effective `.htaccess` response headers require a separately authorized release verification. |
+| Browser security | HTTPS-only host-only HSTS `max-age=300`, no preload/includeSubDomains. Existing stronger headers preserved. Enforce object/base/frame restrictions without replacing endpoint-specific CSP. Permissions restrict unused device/payment capabilities, retain same-origin camera/microphone and WebOTP. | Full resource CSP is report-only, not an enforced XSS protection claim. No sensitive reporting endpoint or external telemetry. |
+| SEO | Reuse Phase 2 canonical/sitemap. Add contact canonical, public-only Open Graph/Twitter metadata and JSON-LD Organization/Service, published Product/BreadcrumbList and current published Article. Encode untrusted text safely. Exclude sample/private/draft/query variants. | No fabricated offers, ISO currency conversions, stock, ratings, reviews, authors, service areas or hours. Product data without offers is not a rich-result eligibility promise. |
+| Discovery | Optional `/llms.txt` points only to five real public destinations using configured origin; robots crawler policy unchanged. Sitemap/llms no longer create session cookies (confirmed before/after). Public content remains server-rendered. | This is navigation, not an official crawler requirement or ranking/recommendation guarantee. |
+
+### Resource and performance evidence
+
+Exact encoded image sizes (bytes), generated with the installed PHP 8.4 GD encoder:
+
+| Width | Existing WebP (retained) | WebP quality 85 candidate (not shipped) | AVIF quality 80 (shipped) |
+| --- | ---: | ---: | ---: |
+| 400 | 67,464 | 14,270 | 14,679 |
+| 640 | 151,594 | 24,940 | 25,148 |
+| 853 | 266,674 | 34,282 | 36,489 |
+
+AVIF retained alpha and had lower sampled RGBA error than the similarly sized WebP
+candidate; decoded artwork was inspected. The original WebP remains the compatibility
+fallback. The browser selected the 14,679-byte AVIF at the current 250px mobile and
+400px desktop display sizes. Do not compare against a hypothetical full-size mobile download.
+
+One actual pre-change local page observation loaded Neshan (2,158ms resource duration;
+cross-origin transfer size unavailable) and four font files totalling 203,856 bytes.
+After: zero Neshan requests until activation; one 111,152-byte font. Before/after admin
+splitting, the map-enabled public JS build fell from 13.94kB to 8.10kB uncompressed;
+the 7.17kB admin chunk was not requested on the public homepage. No GA/GTM initializer
+or tracking ID was found in scoped application assets/rendered dependencies. The
+provider's iframe dependencies are external; do not strip analytics inside its document.
+
+Three **after-change local** Chromium runs: 390×844, DPR1, no CPU/network throttling,
+cache-bypassing reload, warmed Herd PHP/site, metrics read 500ms after navigation:
+
+| Metric (ms unless stated) | Runs | Median |
+| --- | --- | ---: |
+| TTFB | 130.3 / 189.0 / 66.3 | 130.3 |
+| LCP | 200 / 272 / 148 | 200 |
+| Load event | 677.1 / 759.7 / 770.1 | 759.7 |
+| Observed long-task excess above 50ms | 104 / 147 / 132 | 132 |
+| CLS | 0 / 0 / 0 | 0 |
+
+These are not Lighthouse TBT/scores or production benchmarks. The initial cold
+pre-change TTFB was 4,078ms, but not a comparable three-run baseline; no TTFB/LCP
+speedup is claimed. Herd injects its own local debug assets, so hosting/network and
+application timing cannot be inferred from that cold sample. No hosting settings changed.
+
+Local browser checks: homepage 320/390/768/1440 has no horizontal overflow, RTL and
+responsive artwork preserved; map height unchanged on activation, visible keyboard
+focus/Enter activation, one chat loader, launcher present, no broken local images.
+Read-only GETs for home/catalogue/contact/login/repair/cart/admin-login/support and
+crawler documents succeeded. No authenticated submissions, messaging or physical-device
+acceptance is claimed. Prior screenshot-export restrictions were respected; no alternate
+export path/tool was used. Visual screenshot comparison remains pending.
+
+Regression commands: guarded `scripts/test.ps1` filtered to HomePage,
+PublicPerformanceSeo, SecurityHeaders, PublicArticles and ProductCatalog; native
+Chromium click-map test; public asset-cache matcher; existing admin-field/money tests.
+The single standard CI workflow remains responsible for the complete four-job matrix.
+
+Content outlines for owner review only (not published): repair intake/diagnosis/approval
+steps; factors affecting a repair estimate; device-specific symptoms and safe preparation
+before sending a terminal. Require a technician's verified facts/model details and
+approved service terms; do not manufacture turnaround promises or keyword landing pages.
+
+References: [CSP rollout](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP),
+[HSTS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security),
+[Organization](https://schema.org/Organization), [Service](https://schema.org/Service),
+[optional llms.txt proposal](https://llmstxt.org/).
+
 ## Hardening checkpoint — 2026-11-14
 
 Production remains `ecf672110214a24a9171d942a2730d9bfad5f65c`, with
