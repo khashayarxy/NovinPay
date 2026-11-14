@@ -30,6 +30,9 @@ test('Chromium: map stays inert until explicit activation, loads once and recove
           window.clearTimeout = id => timers.delete(id);
           initClickMap(); initClickMap();
           const button = document.querySelector('button'), root = document.querySelector('[data-map-preview]');
+          // The intercepted src leaves about:blank, whose synchronous native
+          // load is not the simulated remote provider response under test.
+          root.addEventListener('load', event => {if (event.isTrusted) event.stopImmediatePropagation();}, true);
           check(!button.hidden && !document.querySelector('iframe') && requested.length === 0, 'no eager provider request');
           root.dispatchEvent(new Event('touchmove', {bubbles: true, cancelable: true}));
           check(requested.length === 0, 'scroll must not activate');
@@ -46,6 +49,7 @@ test('Chromium: map stays inert until explicit activation, loads once and recove
           check(document.querySelector('a'), 'fallback survives cross-origin load');
           frame.dispatchEvent(new Event('error'));
           button.click();
+          frame = document.querySelector('iframe');
           [...timers.values()][0]();
           check(!document.querySelector('iframe') && !button.disabled, 'timeout restores a usable preview');
           frame.dispatchEvent(new Event('load'));
