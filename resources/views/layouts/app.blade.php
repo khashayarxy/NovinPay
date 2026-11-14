@@ -24,6 +24,7 @@
     @endif
     @endisset
     @endisset
+    <x-public-seo :canonical="$canonical ?? null" :content-seo="$contentSeo ?? null" :public-robots="$publicRobots ?? null" :product="$product ?? null" :article="$article ?? null" :version="$version ?? null" />
     <x-brand-head />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if(request()->routeIs('account.*'))

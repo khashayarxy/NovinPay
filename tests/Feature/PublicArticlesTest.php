@@ -59,6 +59,20 @@ final class PublicArticlesTest extends TestCase
         return new DOMXPath($document);
     }
 
+    public function test_article_social_schema_uses_only_the_current_published_snapshot(): void
+    {
+        $article = $this->article();
+        $this->command('save', $this->draft(['version' => $article->version, 'title' => 'PRIVATE NEW TITLE', 'summary' => 'PRIVATE SUMMARY']), $article->id);
+        $response = $this->get('/articles/'.$article->slug)->assertOk()->assertDontSee('PRIVATE NEW TITLE')->assertDontSee('PRIVATE SUMMARY');
+        $xpath = $this->xpath($response->getContent());
+        $schema = json_decode($xpath->query('//script[@type="application/ld+json"]')->item(0)->textContent, true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame('https://schema.org', $schema['@context']);
+        $this->assertSame('Article', $schema['@graph'][0]['@type']);
+        $this->assertSame('راهنمای عمومی کارتخوان', $schema['@graph'][0]['headline']);
+        $this->assertSame($article->published_at->toIso8601String(), $schema['@graph'][0]['datePublished']);
+        $this->get('/articles/'.$article->slug.'?mode=draft')->assertOk()->assertDontSee('application/ld+json', false);
+    }
+
     public function test_guest_can_read_only_the_current_published_snapshot_and_safe_renderer(): void
     {
         $article = $this->article();
