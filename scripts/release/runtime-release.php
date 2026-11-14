@@ -399,7 +399,11 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
             runtimeWrite($app.'/public/build/'.$path, file_get_contents($journal.'/assets/'.$path));
         }
         $phase = 'cache';
-        $hooks['cache']();
+        try {
+            $hooks['cache']();
+        } finally {
+            writeNew($journal.'/candidate-views.json', runtimeInventory($app.'/storage/framework/views'));
+        }
         $phase = 'web';
         $hooks['web']();
         $phase = 'ready';
@@ -468,7 +472,8 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                 }
                 foreach (runtimeInventory($app.'/storage/framework/views') as $path => $hash) {
                     if (! isset($plan['views'][$path])) {
-                        requireGate(preg_match('/\A[a-f0-9]{40}\.php\z/D', $path) === 1, 'runtime_rollback_view_ownership', 'known compiled Blade view only', [], 'Preserve unexpected view files.');
+                        $generated = json_decode(privateRead($journal.'/candidate-views.json'), true, 512, JSON_THROW_ON_ERROR);
+                        requireGate(runtimeCompiledViewPath($path) && isset($generated[$path]) && hash_equals($generated[$path], $hash), 'runtime_rollback_view_ownership', 'unchanged recorded compiled Blade view only', [], 'Preserve unexpected view files.');
                         unlink($app.'/storage/framework/views/'.$path);
                     }
                 }
@@ -485,7 +490,10 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                 $maintenance = false;
                 $restored = true;
                 writeNew($journal.'/rollback-complete.json', ['baseline' => $m['baseline'], 'databaseRestored' => false, 'sourceDetached' => $switched]);
-            } catch (\Throwable) {
+            } catch (\Throwable $rollbackError) {
+                if (! is_file($journal.'/rollback-stop.json')) {
+                    writeNew($journal.'/rollback-stop.json', ['check' => $rollbackError instanceof GateFailure ? $rollbackError->check : 'operation_failure', 'retrySafe' => false]);
+                }
                 // Preserve every stage and evidence. An interrupted journal is never replayed.
             }
         }
@@ -497,4 +505,9 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         flock($lock, LOCK_UN);
         fclose($lock);
     }
+}
+
+function runtimeCompiledViewPath(string $path): bool
+{
+    return preg_match('/\A[a-f0-9]{32}\.php\z/D', $path) === 1;
 }

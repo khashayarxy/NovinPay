@@ -190,6 +190,9 @@ try {
             throw $e;
         }
         $journal = $kit.'/'.$m['releaseName'].'-attempt';
+        if (is_file($journal.'/rollback-stop.json')) {
+            echo json_encode(['result' => 'RUNTIME_REHEARSAL_ROLLBACK_DETAILS', 'details' => json_decode(privateRead($journal.'/rollback-stop.json'), true)], JSON_THROW_ON_ERROR).PHP_EOL;
+        }
         requireGate(is_file($journal.'/rollback-complete.json') && ! is_file($app.'/storage/framework/down')
             && trim(runtimeGit($app, ['rev-parse', 'HEAD'])) === $m['baseline'], 'rehearsal_rollback', 'actual matched baseline recovered', [], 'Inspect the preserved failed rehearsal.');
         runtimeVerify($app.'/vendor', $baselineVendor, true);

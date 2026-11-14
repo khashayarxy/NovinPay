@@ -2,6 +2,8 @@
 
 namespace Tests\Unit;
 
+use Illuminate\Filesystem\Filesystem;
+use Illuminate\View\Compilers\BladeCompiler;
 use NovinPay\Release\GateFailure;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -198,5 +200,13 @@ class RuntimeReleaseContractTest extends TestCase
         $m['migrationsApplied'] = 1;
         $this->expectException(GateFailure::class);
         runtimeReleaseContract($m);
+    }
+
+    public function test_rollback_recognizes_actual_laravel_compiled_view_names(): void
+    {
+        $compiler = new BladeCompiler(new Filesystem, $this->dir);
+        $actual = basename($compiler->getCompiledPath('/synthetic/example.blade.php'));
+        $this->assertTrue(\NovinPay\Release\runtimeCompiledViewPath($actual));
+        $this->assertFalse(\NovinPay\Release\runtimeCompiledViewPath('customer-upload.php'));
     }
 }
