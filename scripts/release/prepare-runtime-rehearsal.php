@@ -41,6 +41,17 @@ foreach (['baseline' => $base, 'candidate' => $target] as $name => $sha) {
     requireGate($r['exit'] === 0, 'rehearsal_locked_vendor', 'locked production dependencies built on CI', [], 'Inspect Composer output privately.');
 }
 $archives = [];
+$application = $root.'/application-assets';
+mkdir($application, 0700);
+runtimeGit($repo, ['archive', '--format=zip', '--output='.$root.'/application-assets.zip', '9f2e6a48481c8527d538de9e4ba24a2ca211ee8f']);
+$applicationZip = new ZipArchive;
+requireGate($applicationZip->open($root.'/application-assets.zip') === true, 'rehearsal_application_archive', 'approved application payload', [], 'Preserve the application/qualification SHA distinction.');
+$applicationZip->extractTo($application);
+$applicationZip->close();
+requireGate(symlink($repo.'/node_modules', $application.'/node_modules') && symlink($root.'/candidate/vendor', $application.'/vendor'),
+    'rehearsal_build_links', 'existing locked build dependencies in the isolated approved application tree', [], 'Inspect local CI capabilities.');
+$buildAssets = command(['npm', 'run', 'build'], $application, 'rehearsal_approved_assets', 180);
+requireGate($buildAssets['exit'] === 0, 'rehearsal_approved_assets', 'compile approved application without later tooling entering Tailwind scanning', [], 'Inspect build reproducibility.');
 runtimeGit($repo, ['archive', '--format=zip', '--output='.$package.'/source.zip', $target]);
 $z = new ZipArchive;
 $z->open($package.'/source.zip');
@@ -52,7 +63,7 @@ for ($i = 0; $i < $z->numFiles; $i++) {
 }
 $z->close();
 $archives['source'] = ['file' => 'source.zip', 'sha256' => hash_file('sha256', $package.'/source.zip'), 'files' => $source];
-foreach (['vendor' => [$root.'/candidate/vendor', 'vendor/'], 'assets' => [$repo.'/public/build', '']] as $kind => [$dir, $prefix]) {
+foreach (['vendor' => [$root.'/candidate/vendor', 'vendor/'], 'assets' => [$application.'/public/build', '']] as $kind => [$dir, $prefix]) {
     $z = new ZipArchive;
     $z->open($package.'/'.$kind.'.zip', ZipArchive::CREATE | ZipArchive::EXCL);
     $files = [];
@@ -71,7 +82,7 @@ foreach (['vendor' => '99c37e170854a4cf4c87ab6caea86e7043db8014606c2573af198d8bf
     ksort($files);
     $observed = hash('sha256', json_encode($files, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
     if (! hash_equals($expected, $observed)) {
-        $generated = array_filter($files, fn ($p) => str_starts_with($p, 'vendor/composer/') || str_starts_with($p, 'vendor/bin/'), ARRAY_FILTER_USE_KEY);
+        $generated = $kind === 'assets' ? $files : array_filter($files, fn ($p) => str_starts_with($p, 'vendor/composer/') || str_starts_with($p, 'vendor/bin/'), ARRAY_FILTER_USE_KEY);
         echo json_encode(['result' => 'REHEARSAL_PAYLOAD_MISMATCH', 'kind' => $kind, 'files' => count($files), 'generatedFileHashes' => $generated], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL;
     }
     requireGate(hash_equals($expected, $observed), 'rehearsal_exact_'.$kind.'_bytes', 'same file inventory as approved private Phase 4 artifact', ['observedInventorySha256' => $observed], 'Investigate build reproducibility; do not qualify a different payload.');
