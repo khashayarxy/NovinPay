@@ -70,6 +70,14 @@ foreach (json_decode(file_get_contents($repo.'/tests/Fixtures/runtime-release-su
 }
 requireGate(symlink($repo.'/node_modules', $application.'/node_modules') && symlink($root.'/candidate/vendor', $application.'/vendor'),
     'rehearsal_build_links', 'existing locked build dependencies in the isolated approved application tree', [], 'Inspect local CI capabilities.');
+// The original build's explicit Tailwind storage/views source included these
+// framework error/health templates. Reproduce PUBLIC template inputs only, not
+// owner cache files, private paths, rendered responses or customer information.
+foreach (json_decode(file_get_contents($repo.'/tests/Fixtures/runtime-release-view-sources.json'), true, 16, JSON_THROW_ON_ERROR) as $path) {
+    NovinPay\Release\runtimePath($path);
+    requireGate(str_starts_with($path, 'src/Illuminate/'), 'rehearsal_view_source_scope', 'locked public framework view', [], 'Reject private cache inputs.');
+    NovinPay\Release\runtimeWrite($application.'/storage/framework/views/'.hash('sha256', $path).'.php', file_get_contents($root.'/candidate/vendor/laravel/framework/'.$path));
+}
 $buildAssets = command(['npm', 'run', 'build'], $application, 'rehearsal_approved_assets', 180);
 requireGate($buildAssets['exit'] === 0, 'rehearsal_approved_assets', 'compile approved application without later tooling entering Tailwind scanning', [], 'Inspect build reproducibility.');
 runtimeGit($repo, ['archive', '--format=zip', '--output='.$package.'/source.zip', $target]);
