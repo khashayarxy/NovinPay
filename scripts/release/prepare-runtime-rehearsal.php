@@ -78,8 +78,13 @@ foreach (json_decode(file_get_contents($repo.'/tests/Fixtures/runtime-release-vi
     requireGate(str_starts_with($path, 'src/Illuminate/'), 'rehearsal_view_source_scope', 'locked public framework view', [], 'Reject private cache inputs.');
     NovinPay\Release\runtimeWrite($application.'/storage/framework/views/'.hash('sha256', $path).'.php', file_get_contents($root.'/candidate/vendor/laravel/framework/'.$path));
 }
-$buildAssets = command(['npm', 'run', 'build'], $application, 'rehearsal_approved_assets', 180);
+// Keep logical node_modules font identities in manifest.json when reusing the
+// job's existing dependencies through a symlink. No deployed Vite config changes.
+file_put_contents($application.'/rehearsal-vite.config.mjs', 'import config from "./vite.config.js"; export default {...config, resolve: {...config.resolve, preserveSymlinks: true}};');
+$buildAssets = command(['node', $repo.'/node_modules/vite/bin/vite.js', 'build', '--config', $application.'/rehearsal-vite.config.mjs'], $application, 'rehearsal_approved_assets', 180);
 requireGate($buildAssets['exit'] === 0, 'rehearsal_approved_assets', 'compile approved application without later tooling entering Tailwind scanning', [], 'Inspect build reproducibility.');
+$buildSupport = command(['node', $application.'/scripts/build-support-assets.mjs'], $application, 'rehearsal_support_assets', 180);
+requireGate($buildSupport['exit'] === 0, 'rehearsal_support_assets', 'exact approved support asset builder', [], 'Inspect support asset reproduction.');
 runtimeGit($repo, ['archive', '--format=zip', '--output='.$package.'/source.zip', $target]);
 $z = new ZipArchive;
 $z->open($package.'/source.zip');
@@ -112,11 +117,6 @@ foreach (['vendor' => '99c37e170854a4cf4c87ab6caea86e7043db8014606c2573af198d8bf
     if (! hash_equals($expected, $observed)) {
         $generated = $kind === 'assets' ? $files : array_filter($files, fn ($p) => str_starts_with($p, 'vendor/composer/') || str_starts_with($p, 'vendor/bin/'), ARRAY_FILTER_USE_KEY);
         echo json_encode(['result' => 'REHEARSAL_PAYLOAD_MISMATCH', 'kind' => $kind, 'files' => count($files), 'generatedFileHashes' => $generated], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL;
-        if ($kind === 'assets') {
-            foreach (glob($application.'/public/build/assets/app-*.css') as $css) {
-                echo json_encode(['result' => 'REHEARSAL_PUBLIC_CSS_DIAGNOSTIC', 'file' => basename($css), 'gzipBase64' => base64_encode(gzencode(file_get_contents($css), 9))], JSON_THROW_ON_ERROR).PHP_EOL;
-            }
-        }
     }
     requireGate(hash_equals($expected, $observed), 'rehearsal_exact_'.$kind.'_bytes', 'same file inventory as approved private Phase 4 artifact', ['observedInventorySha256' => $observed], 'Investigate build reproducibility; do not qualify a different payload.');
 }
