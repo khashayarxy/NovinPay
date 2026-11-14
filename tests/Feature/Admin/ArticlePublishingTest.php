@@ -171,9 +171,14 @@ final class ArticlePublishingTest extends TestCase
         $this->publish($article);
         $this->get('/articles')->assertOk()->assertSee('&lt;script&gt;PRIVATE-TITLE&lt;/script&gt;', false)->assertDontSee('<script>PRIVATE', false);
         $this->get('/articles/terminal-guide')->assertOk()->assertSee('<strong>قوی</strong>', false)->assertDontSee('<script>PRIVATE', false);
-        foreach (['/blog', '/sitemap.xml', '/articles/terminal-guide/preview', '/articles/terminal-guide/versions/1'] as $url) {
+        foreach (['/blog', '/articles/terminal-guide/preview', '/articles/terminal-guide/versions/1'] as $url) {
             $this->get($url)->assertNotFound()->assertDontSee('PRIVATE-TITLE');
         }
+        // Phase 2 adds a public URL-only sitemap; preview/version routes stay private.
+        $this->get('/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
+            ->assertDontSee('PRIVATE-TITLE')->assertDontSee('/admin');
+        $this->get('/sitemap-articles-1.xml')->assertOk()->assertSee('/articles/terminal-guide')
+            ->assertDontSee('PRIVATE-TITLE')->assertDontSee('/preview')->assertDontSee('/versions/');
         $this->get('/admin/articles/'.$article->public_id.'/preview?mode=other')->assertSessionHasErrors('mode');
     }
 

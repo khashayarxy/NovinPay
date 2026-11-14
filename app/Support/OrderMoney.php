@@ -4,6 +4,8 @@ namespace App\Support;
 
 final class OrderMoney
 {
+    public const MAX_UNIT_MAJOR = 9_999_999_999;
+
     public static function minor(string $value): int
     {
         abort_unless(preg_match('/\A(?:0|[1-9][0-9]{0,9})(?:\.[0-9]{1,2})?\z/', $value), 422, 'مبلغ تومان معتبر وارد کنید.');

@@ -428,6 +428,15 @@ class CustomerAccountTest extends TestCase
         $other = app(CustomerLogin::class)->verify($challenge, $code);
         $this->actingAs($other, 'customer')->withSession(['customer_session_version' => 1]);
         $this->get($path)->assertNotFound();
+
+        // A CRM relink must not grant another account an explicitly owned request.
+        $this->post('/account/profile', ['name' => 'Synthetic Other Customer'])->assertRedirect();
+        $repair->customer_id = $other->fresh()->customer_id;
+        $repair->save();
+        $this->get($path)->assertNotFound();
+        $this->get('/account?section=repairs')->assertDontSee('SYNTHETIC');
+        $this->actingAs($account, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get($path)->assertOk();
     }
 
     public function test_addresses_are_private_and_customer_guard_cannot_enter_admin(): void

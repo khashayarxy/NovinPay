@@ -123,7 +123,7 @@ class DeliveryManagement
                 $order = SalesOrder::query()->findOrFail($document->sales_order_id);
                 app(CommerceManagement::class)->execute($actor, 'order.fulfill', ['operation_key' => (string) Str::uuid(), 'version' => $order->version, 'reason' => 'ثبت تحویل واقعی پس از تسویه', 'fulfillment_info' => $recipient.' / '.$tracking], $order);
             } else {
-                app(RepairOperations::class)->update($actor, $case, 'delivery', ['version' => $case->version, 'recipient_name' => $recipient, 'delivered_at' => RepairTime::input(), 'outcome_notes' => 'تحویل واقعی با مرجع '.$tracking, 'handover_confirmed' => true, 'amounts_confirmed' => true]);
+                app(RepairOperations::class)->update($actor, $case, 'delivery', ['version' => $case->version, 'recipient_name' => $recipient, 'delivered_at' => RepairTime::input(), 'outcome_notes' => 'تحویل واقعی با مرجع '.$tracking, 'handover_confirmed' => true, 'amounts_confirmed' => true, 'current_password' => $password]);
             }
         }, 3);
     }
@@ -132,6 +132,9 @@ class DeliveryManagement
     {
         $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->lockForUpdate()->first();
         abort_unless($plan && ! $plan->requested_method && $plan->state === 'planned', 409, 'روش تحویل باید تأیید شده باشد.');
+        $trackingLength = mb_strlen(trim((string) $plan->tracking));
+        abort_if($plan->method !== 'pickup' && ($trackingLength < 3 || $trackingLength > 200), 409,
+            'برای ثبت ارسال، شرکت ارسال و کد پیگیری را وارد کنید.');
         $plan->state = $plan->method === 'pickup' ? 'collected' : 'dispatched';
         $plan->version++;
         $plan->save();

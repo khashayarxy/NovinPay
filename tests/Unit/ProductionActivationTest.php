@@ -192,6 +192,7 @@ final class ProductionActivationTest extends TestCase
             'pr13-cancel-before-ddl.php' => 'pr13-cancel-before-ddl.php', 'pr13-activation-contract.php' => 'pr13-activation-contract.php',
             'pr13-rehearsal-v2.php' => 'pr13-rehearsal.php', 'pr13-recovery-v3.php' => 'pr13-recovery.php',
             'runtime.php' => 'runtime.php', 'lib.php' => 'lib.php', 'backup-policy.php' => 'backup-policy.php',
+            'schema-contract.php' => 'schema-contract.php', 'trigger-contracts.json' => 'trigger-contracts.json',
             'pr13-schema-contract.php' => 'pr13-schema-contract.php', 'pr13-maintenance-snapshot.php' => 'pr13-maintenance-snapshot.php'];
         foreach ($files as $to => $from) {
             copy($root.$from, $bundle.'/'.$to);

@@ -1,11 +1,11 @@
 <?php
 
-use App\Models\PaymentAttempt;
 use App\Services\CustomerLogin;
 use App\Services\CustomerNotifications;
 use App\Services\CustomerOtpSms;
 use App\Services\IndependentSupportOperators;
 use App\Services\IpPanel;
+use App\Services\OperationalReadiness;
 use App\Services\SmsIr;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
@@ -46,29 +46,32 @@ Artisan::command('payments:reconcile', function (ZibalPayments $payments, ZibalG
 
         return 0;
     }
-    $started = microtime(true);
-    foreach (PaymentAttempt::query()->whereIn('state', ['pending', 'uncertain', 'processing'])->whereNotNull('track_id')->where(fn ($q) => $q->whereNull('retry_at')->orWhere('retry_at', '<=', now()))->orderBy('id')->limit(40)->get() as $attempt) {
-        if (microtime(true) - $started > 180) {
-            break;
-        }
-        if ($attempt->attempts >= 1440) {
-            continue; // Retain evidence; manual review, never discard unresolved funds.
-        }
-        $payments->verify($attempt);
-    }
-    $this->info('Reconciliation completed; no transaction details printed.');
+    $this->info('Reconciliation processed: '.$payments->reconcile().'; no transaction details printed.');
 
     return 0;
 })->purpose('Reconcile known payment attempts without trusting browser callbacks');
 
-Schedule::command('payments:reconcile')->everyMinute()->withoutOverlapping(10);
+Schedule::command('payments:reconcile')->everyMinute()->withoutOverlapping(10)
+    ->when(fn () => config('operations.scheduled_payments'));
 
 Artisan::command('customers:notify', function (CustomerNotifications $notifications): int {
     $this->info('Provider-accepted notifications: '.$notifications->sendPending());
 
     return 0;
 })->purpose('Send configured customer notifications without exposing customer data');
-Schedule::command('customers:notify')->everyMinute()->withoutOverlapping(10);
+Schedule::command('customers:notify')->everyMinute()->withoutOverlapping(10)
+    ->when(fn () => config('operations.scheduled_notifications'));
+
+Schedule::call(fn () => app(OperationalReadiness::class)->heartbeat())
+    ->name('operations:heartbeat')->everyMinute()->withoutOverlapping(2);
+
+Artisan::command('operations:status', function (OperationalReadiness $operations): int {
+    $status = $operations->status();
+    $this->line(json_encode($status, JSON_THROW_ON_ERROR));
+
+    return $status['scheduler_recent'] && $status['cross_process_cache_locks']
+        && $status['stale_payment_attempts'] === 0 && $status['stale_notifications'] === 0 ? 0 : 1;
+})->purpose('Read-only scheduler and queue readiness; no provider requests');
 
 Artisan::command('customers:sms-status
     {--provider : Inspect the selected provider template}

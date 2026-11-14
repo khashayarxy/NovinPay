@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerAccount;
 use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
+use App\Models\PaymentAttempt;
 use App\Models\PaymentReceipt;
 use App\Models\PaymentTransaction;
 use App\Services\ZibalPayments;
@@ -25,7 +26,9 @@ class ReceiptController extends Controller
     {
         $document = $payments->ownedDocument(Auth::guard('customer')->user(), $document);
 
-        return view('account.payment', ['document' => $document, 'deliveryPlan' => DeliveryPlan::query()->where('financial_document_id', $document->id)->first(), 'receipts' => PaymentReceipt::query()->where('financial_document_id', $document->id)->where('customer_account_id', Auth::guard('customer')->id())->latest('id')->get(), 'payments' => PaymentTransaction::query()->where('financial_document_id', $document->id)->latest('id')->get(), 'credit' => DB::table('payment_credit_events')->where('financial_document_id', $document->id)->sum('amount_delta')]);
+        return view('account.payment', ['document' => $document,
+            'attempts' => PaymentAttempt::query()->where('financial_document_id', $document->id)->where('customer_account_id', Auth::guard('customer')->id())->latest('id')->limit(20)->get(),
+            'deliveryPlan' => DeliveryPlan::query()->where('financial_document_id', $document->id)->first(), 'receipts' => PaymentReceipt::query()->where('financial_document_id', $document->id)->where('customer_account_id', Auth::guard('customer')->id())->latest('id')->get(), 'payments' => PaymentTransaction::query()->where('financial_document_id', $document->id)->latest('id')->get(), 'credit' => DB::table('payment_credit_events')->where('financial_document_id', $document->id)->sum('amount_delta')]);
     }
 
     public function store(Request $request, string $document, ZibalPayments $payments)

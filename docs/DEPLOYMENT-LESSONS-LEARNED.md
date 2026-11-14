@@ -1,5 +1,36 @@
 # Deployment lessons learned
 
+## PHP startup warning after successful application release (2026-11-14)
+
+**Signature:** `PHP Startup: session.gc_divisor must be greater than 0`.
+The successful `ecf6721` release appended 19 instances, without a fatal error.
+This is PHP startup configuration, before Laravel handles the request; neither
+the repository nor the inspected public `.user.ini`/`php.ini` sets this directive.
+The precise inherited host INI source and effective web-SAPI value remain unverified.
+Do not attribute an otherwise unexplained deployment failure to this warning alone.
+
+Use invocation-level `-d session.gc_divisor=100` for private release/recovery CLI
+commands. This uses PHP's documented positive default, leaves GC probability and
+global/web settings unchanged, and retains every opcode/integrity guard. The active
+`activate-source.sh` wrapper now includes it. `ApplicationReleaseContractTest` starts
+a real PHP subprocess against a synthetic INI containing zero and verifies clean
+startup, a positive divisor and disabled CLI opcode caching. Local PASS is not
+hosted correction: old private bundles are immutable; use the override in the next
+authorized command rather than rewriting a completed release. Never retry a prior
+non-retry-safe deployment to clear a startup warning.
+
+## Current recovery correction, 2026-11-13
+
+The failed auth recovery created its private start marker but no backup directory. cPanel reports zero bytes for the approved restore target. The retired preview directory is absent, while both historical framework diagnostic files and their metadata/hashes match. The copied helper nevertheless requires that preview file in its exact untracked inventory. This contract necessarily rejects the observed filesystem state. Its wrapper replaces ordinary exception identifiers with `backup_preflight` and did not retain the original exception. The stale contract is confirmed, but an earlier Git-process failure cannot be conclusively excluded from the old output. The shared runner checks actual Git status before capture and reports controlled failure identifiers.
+
+A second source-reviewed incompatibility was caught before execution. The old backup requires the private test-account feature OFF, while current authentication uses it for the approved real-SMS test identity and logout reset. Recovery now verifies fresh/cached settings agree and preserves IPPanel and disabled SMS.ir. This is a prevented later failure, not an explanation of the first STOP.
+
+The prior date/cost quota companion recorded `STOP_read_quota_requests` without the underlying exception. That explains the missing response, but does not prove quota exhaustion or a provider outage. Shared companion diagnostics retain operation/category/HTTP status and retry only read-only transport/429/5xx failures within a bound. Quota evidence remains nonce/manifest/time/hash-bound. Incomplete publication is awaited within the existing deadline. Final hash mismatches and authorization/capacity failures still STOP. Local UAPI exit2 remains unresolved (KB25).
+
+Use the tracked recovery, capture, companion and source-update modules as one immutable private bundle. New generations change pinned manifests instead of copies of scripts. Inventories describe observed files, with exact migration and trigger contracts. Operation/advisory locks prevent overlapping capture, restoration and activation. Partial generations are preserved. Only pre-capture quota PENDING has an explicit revalidated resume path. Matching completed receipts prevent duplicate backups; independent proof publication is atomic.
+
+Regression coverage is in `RecoveryWorkflowTest`, the existing policy/pipeline/archive/maintenance tests, and `recovery-quota.test.mjs` with native PowerShell/Linux fixtures. Hosted recovery subsequently passed with 23 migrations, 13 triggers and matching schema, definers and rows. Independent off-host verification passed authenticated decryption, protected-file hashes, 82 persistent files and SQL row digests. Activation remains pending. The available cPanel file/quota APIs provide no authorized PHP execution channel here. An owner Terminal invocation remains necessary. Never create a public execution endpoint or copy API credentials onto hosting. Existing occupied restore databases cannot be cleared under this authorization.
+
 > Workflow superseded by owner decision (2026-11-06): local Herd development/owner approval, then explicitly approved controlled cPanel production release and owner production acceptance. Hosted staging is no longer a routine requirement. This document's staging commands and credentials/access instructions are historical evidence; do not execute them or recreate staging. Preserve recovery/incident evidence. Use [current deployment workflow](DEPLOYMENT.md).
 
 Review this document before preparing a package. Add each confirmed failure and a regression test when resolving it. Historical PASS receipts are not proof that a later attempt ran.
@@ -10,10 +41,12 @@ When an actual release resumes, keep the new runtime/library/policy and its impo
 
 ## Quick diagnosis: read before deployment, backup, restore or migration
 
-Use the matching row first, then its detailed evidence below. **C** = confirmed cause; **U** = exact underlying cause unresolved. These 31 signatures include four U entries; a workaround is not proof of their root cause. Retired staging references identify historical source/tests in Git/private receipts, not commands to run or a requirement to recreate staging. Keep manifests, secret locations and recovery contents in the private release workflow.
+Use the matching row first, then its detailed evidence below. **C** = confirmed cause; **U** = exact underlying cause unresolved. These 33 signatures include four U entries; a workaround is not proof of their root cause. Retired staging references identify historical source/tests in Git/private receipts, not commands to run or a requirement to recreate staging. Keep manifests, secret locations and recovery contents in the private release workflow.
 
 | ID / signature | Cause / quickest evidence | Safe correction and prevention / relevant checks | Retry boundary |
 | --- | --- | --- | --- |
+| KB33 Source-release quota subscription mismatch | C: source preparation found the shared companion accepted only recovery manifests while activation wrote its request into an unwatched nested directory. Caught before production activation. | Accept the explicitly scoped source-release format and use the same protected request directory, preserving nonce/manifest/phase/hash checks. `source-quota.ps1` exercises the complete source companion acknowledgement path. | No backup repetition. Keep completed recovery evidence and prepare activation with the corrected shared bundle. |
+| KB32 `DATABASE_RECOVERY_STOP / backup_preflight` | C: the current copied helper requires an obsolete preview file in its exact untracked inventory; hosted File Manager confirms that directory is absent. Its wrapper discards ordinary exception identifiers. The original exception was not recorded, so an earlier Git-process failure cannot be excluded from the old output alone. | Shared manifest-driven inventory and `failureReport` preserve named checks and safe counts. Current read-only Git preflight must pass before capture. `RecoveryWorkflowTest` reproduces the stale-file rejection and rejects unexpected work. | Preserve the old marker. New manifest and same approved restore target only after the old backup directory is absent and the target is SQL-verified empty. |
 | KB01 `existing_triggers` | C: restricted runtime cannot see trigger metadata; migrator sees complete definitions. Compare account identity and inventories once. | Observe through authorized migrator, read-only; keep runtime restricted. Exact names/table/event/timing/body/definer checks; historical trigger-inventory tests. | No installer replay; reconcile actual state first. |
 | KB02 `web_probe_http_401` | C: probe used DB/admin bootstrap fields as Basic credentials; wire test reproduced missing valid Authorization. | Validate the dedicated private Basic client source against active protection before HTTPS. Historical HTTP-auth contract/wire tests. | Corrected verifier only after source validation; never remove protection. |
 | KB03 `staging_bootstrap_identity` | C: diagnostic repeated the wrong credential-source/schema assumption before authentication. | Fix source selection, not passwords. Respect protected credential-operation denial; owner uses private cPanel editor if required. Historical Basic-source tests. | No credential reset or cross-tool bypass. |
@@ -387,3 +420,54 @@ The previous operator transcript rendered the current sender's optimistic row wi
 The owner-approved 300-second reply lease belongs inside the existing exclusive conversation transaction, after UUID replay lookup and before new reply/attachment acceptance. Acquiring on views/typing or renewing during replay would cause starvation; checking outside the store lock would permit simultaneous owners. Recheck uploads before publication as well as before decoding. Use native account version/activity to invalidate revoked/deleted owners and explicitly clear on closure/new episodes/authorized handoff. Do not use tab close or presence as a release signal. A blocked outbox must still reconcile already accepted receipts without resending or discarding its draft. No migrations, cron or new service is required.
 
 Regression coverage: `SupportChatTest` includes two real competing PHP workers in a fresh isolated fixture, renewal/expiry/replay, customers/automation and release conditions; frontend tests cover stale snapshots, local elapsed-time expiration, blocked retry/lost-ACK recovery and stable sender/UUID. Keep the original four-second sync and fresh-send fast path. Browser fixture access was denied by the tool's workspace policy; do not reroute the denied script through another tool. Local/hosted visual and two-operator acceptance remain separately reported until actually observed. A new public asset version must include `operator/reply-ownership.js`; copying only files from the previous build would omit this new dependency. Verify the entire new asset manifest before switching it, retain older versioned directories for open tabs, and preserve native authority/history.
+
+
+## Audit remediation regression prevention (2026-11-13)
+
+- **REP-01:** the simple-record service accepted full-workflow cases and price edits
+  enabled `simple_workflow`. Lock/recheck the persisted workflow type before any
+  mutation, never infer conversion from missing history, and render the retained
+  full-workflow view for legacy cases. Regression: `RepairOperationsTest` covers
+  incomplete/inspection/pending/rejected/work cases and original completion/billing.
+- **OPS-01:** legacy health/pipeline literals contradicted the current schema, while
+  the shared backup already consumed manifest inventories. Use `schema-contract.php`
+  and reviewed `trigger-contracts.json`, shipped with every new helper bundle.
+  Exact migration names and trigger SQL hashes/definers remain mandatory. Tests discover
+  trigger-emitting migrations independently of the JSON. Do not restore deleted helper
+  directories or run surviving standalone commands with incomplete checksum manifests.
+- **PAY-01–05:** a lost request response is not a rejection; missing track IDs and
+  retry-limit skips otherwise leave permanent blockers. Preserve uncertainty, require
+  bound provider evidence for cancellation, keep late-success reconciliation, use
+  bounded due-time ordering/backoff and audit manual unpaid resolution. No transport
+  uncertainty alone unlocks a new payment. The 30-minute threshold requests human review,
+  not an unverified provider expiry claim. Mocked tests plus competing-connection CI
+  cover these paths. Keep Zibal disabled until separate provider acceptance.
+- **Scheduler:** source registration is not execution. `operations:status` distinguishes
+  missing/stale heartbeat, stale/review queues and cross-process cache support. Scheduled
+  provider work defaults OFF independently of cron installation. No cron was installed.
+
+
+### CI false-green and concurrent ledger snapshots
+
+The initial audit-remediation CI jobs were green although their raw logs contained
+`Failed: shop-payment-overlap expected outcomes`. Laravel's console exception handler
+renders an uncaught standalone exception without guaranteeing nonzero exit. The
+shared concurrency bootstrap now installs `exit-guard.php`; uncaught exceptions emit
+a redacted STOP and exit 1. `ConcurrencyExitGuardTest` proves a permissive prior handler
+cannot hide failure or leak exception payloads. Always require the harness completion
+receipt/count in addition to the job conclusion; do not relax expected race outcomes.
+
+The actual overlap failure came from `PaymentReview::inStore()` authorizing inside the
+transaction before waiting on the document lock. Those nonlocking permission queries
+established an InnoDB repeatable-read snapshot before the competing ledger committed.
+Acquire the existing document lock first, then authorize and reconcile. No new mutex,
+extra document lock, isolation change or weakened financial assertion was introduced.
+After correction both MySQL 8 and MariaDB 10.6.28 explicitly completed all 12 financial
+races, including overlapping receipts and concurrent Zibal start/verification.
+
+Offline activation review also caught a typed API mismatch: `writeNew()` takes an
+array, not pre-encoded JSON. Reviewed migration receipts now use a shared tested writer
+and reject replay. This defect never ran on production. Application preflight also
+counts mixed simple/full historical repairs and stops before maintenance/migration if
+any exist; it does not silently repair old flags. Keep production activation pending
+until the exact-head tests and explicit owner operation approval are present.

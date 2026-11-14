@@ -27,6 +27,7 @@ use App\Http\Controllers\Payments\PaymentController;
 use App\Http\Controllers\Payments\ReceiptController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SupportChatController;
 use App\Http\Middleware\EnsureAdminSession;
 use App\Http\Middleware\EnsureCustomerSession;
@@ -100,6 +101,13 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
 });
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+// Public crawler documents contain no session/identity-dependent content.
+Route::withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])->group(function (): void {
+    Route::get('/llms.txt', [PageController::class, 'discovery'])->name('public.discovery');
+    Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
+    Route::get('/sitemap-{type}-{page}.xml', [SitemapController::class, 'part'])
+        ->whereIn('type', ['pages', 'products', 'articles'])->where('page', '[1-9][0-9]{0,5}')->name('sitemap.part');
+});
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $payment = PaymentController::class;
@@ -122,9 +130,9 @@ Route::get('/products/{product}', [ProductController::class, 'show'])->name('pro
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $cart = CartController::class;
     Route::get('/cart', [$cart, 'index'])->name('cart.index');
-    Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1')->name('cart.add');
-    Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1')->name('cart.remove');
-    Route::post('/cart/checkout', [$cart, 'checkout'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('cart.checkout');
+    Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1')->block(20, 15)->name('cart.add');
+    Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1')->block(20, 15)->name('cart.remove');
+    Route::post('/cart/checkout', [$cart, 'checkout'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->block(20, 15)->name('cart.checkout');
 });
 
 Route::middleware(PublicArticleResponse::class)->prefix('articles')->name('articles.')->group(function (): void {
@@ -173,6 +181,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
         Route::get('payments', [App\Http\Controllers\Admin\PaymentController::class, 'index'])->middleware('can:finance.view')->name('payments.index');
         Route::get('payments/receipts/{receipt}/image', [ReceiptController::class, 'image'])->middleware(['can:finance.receive', 'can:finance.details'])->name('payments.image');
         Route::post('payments/{receipt}/review', [App\Http\Controllers\Admin\PaymentController::class, 'review'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('payments.review');
+        Route::post('payments/attempts/{attempt}/resolve', [App\Http\Controllers\Admin\PaymentController::class, 'resolveAttempt'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:10,1'])->name('payments.attempt.resolve');
         Route::post('payments/receive', [App\Http\Controllers\Admin\PaymentController::class, 'store'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('payments.store');
         Route::post('payments/refund', [App\Http\Controllers\Admin\PaymentController::class, 'refund'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:15,1'])->name('payments.refund');
         Route::post('customer-accounts/link', function (Request $request, CustomerAccountLink $service) {

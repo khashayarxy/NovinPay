@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\AdminAccount;
 use App\Models\AdminActivity;
 use App\Models\Customer;
+use App\Models\CustomerAccount;
 use App\Models\InventoryItem;
 use App\Models\InventoryUnit;
 use App\Models\Product;
@@ -68,6 +69,42 @@ class OrdersInventoryTest extends TestCase
     private function transition(SalesOrder $order, string $action, array $extra = []): void
     {
         $this->command('order.'.$action, ['reason' => 'Synthetic operational review'] + $extra, $order);
+    }
+
+    public function test_customer_origin_order_cannot_be_reassigned_to_another_customer(): void
+    {
+        $item = $this->item();
+        $order = $this->order($item);
+        $account = new CustomerAccount;
+        foreach (['public_id' => (string) Str::uuid(), 'customer_id' => $this->customer->id,
+            'phone' => '09000000001', 'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000001'),
+            'verified_at' => now()] as $key => $value) {
+            $account->$key = $value;
+        }
+        $account->save();
+        $order->customer_account_id = $account->id;
+        $order->save();
+        $other = $this->customer->replicate();
+        $other->public_id = (string) Str::uuid();
+        $other->phone_digest = bin2hex(random_bytes(32));
+        $other->identity_digest = bin2hex(random_bytes(32));
+        $other->save();
+        $events = SalesOrderEvent::count();
+        $data = ['customer' => $other->public_id, 'lines' => [['item' => $item->public_id,
+            'quantity' => 2, 'unit_price' => '456.78']], 'reason' => 'Synthetic reassignment'];
+
+        $this->conflict(fn () => $this->command('order.save', $data, $order));
+
+        $this->assertSame($this->customer->id, $order->fresh()->customer_id);
+        $this->assertSame($account->id, $order->fresh()->customer_account_id);
+        $this->assertSame('123.45', $order->fresh()->total);
+        $this->assertSame($events, SalesOrderEvent::count());
+        $this->assertCount(1, $order->fresh()->lines);
+
+        // The ordinary draft edit remains available for the original customer.
+        $data['customer'] = $this->customer->public_id;
+        $this->command('order.save', $data, $order);
+        $this->assertSame('913.56', $order->fresh()->total);
     }
 
     private function conflict(callable $callback, int $status = 409): void

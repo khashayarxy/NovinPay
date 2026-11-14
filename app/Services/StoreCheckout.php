@@ -17,7 +17,8 @@ class StoreCheckout
 {
     public function offer(Product $product, bool $lock = false): ?InventoryItem
     {
-        if (! $product->is_published || $product->is_sample || ! $product->price || $product->price <= 0 || $product->stock_status->value === 'out_of_stock') {
+        if (! $product->is_published || $product->is_sample || ! $product->price || $product->price <= 0
+            || $product->price > OrderMoney::MAX_UNIT_MAJOR || $product->stock_status->value === 'out_of_stock') {
             return null;
         }
         $query = InventoryItem::query()->where('product_id', $product->id)->where('condition', $product->condition->value)->orderBy('id');
@@ -29,7 +30,7 @@ class StoreCheckout
 
     public function create(CustomerAccount $account, array $cart, string $key): SalesOrder
     {
-        abort_unless(Str::isUuid($key) && count($cart) > 0 && count($cart) <= 30, 422);
+        abort_unless(Str::isUuid($key) && count($cart) <= 30, 422);
         ksort($cart);
 
         return DB::transaction(function () use ($account, $cart, $key): SalesOrder {
@@ -40,10 +41,12 @@ class StoreCheckout
             abort_unless($customer->is_active && ! $customer->merged_into_id, 409);
             $previous = SalesOrder::query()->where('checkout_key', $key)->first();
             if ($previous) {
-                abort_unless($previous->customer_account_id === $fresh->id && hash_equals($previous->checkout_digest, $digest), 409);
+                abort_unless($previous->customer_account_id === $fresh->id
+                    && ($cart === [] || hash_equals($previous->checkout_digest, $digest)), 409);
 
                 return $previous;
             }
+            abort_if($cart === [], 422);
             $products = Product::query()->whereIn('slug', array_keys($cart))->orderBy('id')->lockForUpdate()->get();
             abort_unless($products->count() === count($cart), 409);
             $order = new SalesOrder;

@@ -8,6 +8,8 @@ use PDOException;
 use RuntimeException;
 use Throwable;
 
+require_once __DIR__.'/schema-contract.php';
+
 /** Only controlled identifiers and explicitly constructed metadata may reach stdout. */
 final class GateFailure extends RuntimeException
 {
@@ -22,6 +24,23 @@ function requireGate(bool $ok, string $check, string $expected, array $actual, s
     if (! $ok) {
         throw new GateFailure($check, $expected, $actual, $next);
     }
+}
+
+/** SQL metadata escapes literal underscores. Never interpret grant wildcards. */
+function databasePrivilegesPresent(array $rows, string $database, string $account, array $required): bool
+{
+    if (! preg_match('/\Anovinpay_[a-z0-9]+\z/D', $database) || $account !== 'novinpay_mig1@localhost' || $required === []) {
+        return false;
+    }
+    $scopes = [$database, str_replace('_', '\\_', $database)];
+    $found = [];
+    foreach ($rows as $row) {
+        if (($row['GRANTEE'] ?? null) === "'novinpay_mig1'@'localhost'" && in_array($row['TABLE_SCHEMA'] ?? null, $scopes, true)) {
+            $found[] = $row['PRIVILEGE_TYPE'] ?? null;
+        }
+    }
+
+    return array_diff($required, $found) === [];
 }
 
 function failureReport(Throwable $error, string $phase, string $check, bool $modified = false): array
@@ -89,6 +108,25 @@ function quotaGate(array $proof, int $now, string $nonce, string $commit, int $p
         'quota_headroom', 'measured requirement plus 2 GiB account reserve and sufficient physical space',
         ['freeBytes' => is_int($free) ? $free : null, 'physicalFreeBytes' => $physicalFree, 'requiredBytes' => $required],
         'Preserve recovery assets; inspect quota before further writes.');
+}
+
+/** Incomplete readiness publication may be awaited; an integrity mismatch fails. */
+function quotaReply(?string $ready, ?string $reply): ?array
+{
+    if ($ready === null || $reply === null) {
+        return null;
+    }
+    try {
+        $marker = json_decode($ready, true, 8, JSON_THROW_ON_ERROR);
+    } catch (\JsonException) {
+        return null;
+    }
+    if (! is_array($marker) || ! is_string($marker['sha256'] ?? null) || ! preg_match('/\A[a-f0-9]{64}\z/D', $marker['sha256'])) {
+        return null;
+    }
+    requireGate(hash_equals($marker['sha256'], hash('sha256', $reply)), 'quota_response_hash', 'complete authenticated quota reply', [], 'Preserve the mismatched reply; never retry an integrity failure.');
+
+    return json_decode($reply, true, 16, JSON_THROW_ON_ERROR);
 }
 
 /** Central owner policy; neither environment variables nor manifests override it. */

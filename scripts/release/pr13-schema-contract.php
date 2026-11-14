@@ -5,31 +5,13 @@ declare(strict_types=1);
 // Pure contracts for the migration-aware release. No entry point or DB writes.
 function pr13ExpectedTriggerContracts(bool $upgraded = false): array
 {
-    $contracts = [];
-    $add = static function (string $name, string $table, string $event, string $body) use (&$contracts): void {
-        $contracts[$name] = ['tableName' => $table, 'eventName' => $event, 'timing' => 'BEFORE',
-            'bodySha256' => hash('sha256', $body), 'definer' => 'novinpay_mig1@localhost'];
-    };
-    foreach (['UPDATE', 'DELETE'] as $event) {
-        $add('financial_entries_no_'.$event, 'financial_entries', $event, "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Financial history is immutable'");
-        $add('article_versions_no_'.$event, 'article_versions', $event, "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Article versions are immutable'");
-    }
-    $fields = ['public_id', 'customer_id', 'sales_order_id', 'repair_case_id', 'source_version', 'source_amount_minor', 'created_by', 'created_at'];
-    $changed = implode(' OR ', array_map(fn ($field) => "NOT (NEW.{$field} <=> OLD.{$field})", $fields));
-    $add('financial_document_identity', 'financial_documents', 'UPDATE', "BEGIN IF {$changed} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Financial identity is immutable'; END IF; END");
-    if ($upgraded) {
-        foreach (['payment_transactions', 'payment_credit_events', 'payment_events'] as $table) {
-            foreach (['update', 'delete'] as $event) {
-                $add($table.'_no_'.$event, $table, strtoupper($event), "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Payment history is immutable'");
-            }
-        }
-        foreach (['update', 'delete'] as $event) {
-            $add('repair_revisions_no_'.$event, 'repair_record_revisions', strtoupper($event), "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Repair revisions are immutable'");
-        }
-    }
-    ksort($contracts);
+    require_once __DIR__.'/schema-contract.php';
+    $contracts = json_decode(file_get_contents(__DIR__.'/trigger-contracts.json'), true, 32, JSON_THROW_ON_ERROR);
+    $migrations = $upgraded ? array_column($contracts, 'migration') : [
+        '2026_10_21_000003_create_financial_tables', '2026_10_21_000004_create_article_tables',
+    ];
 
-    return $contracts;
+    return \NovinPay\Release\expectedTriggerContracts($migrations);
 }
 
 function pr13VerifyTriggerContracts(array $rows, bool $upgraded = false): array

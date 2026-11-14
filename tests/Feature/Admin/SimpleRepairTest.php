@@ -3,15 +3,20 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\RepairBrand;
+use App\Models\Customer;
 use App\Models\CustomerAccount;
+use App\Models\FinancialDocument;
+use App\Models\FinancialEntry;
 use App\Models\RepairCase;
 use App\Models\RepairRecordRevision;
 use App\Models\User;
+use App\Services\FinancialOperations;
 use App\Support\RepairIdentity;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -140,6 +145,51 @@ class SimpleRepairTest extends TestCase
         $this->assertSame('received', $case->fresh()->status->value);
     }
 
+    public function test_simplified_repair_lifecycle_uses_a_real_isolated_ledger_before_handover(): void
+    {
+        Http::preventStrayRequests();
+        $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
+        $case = RepairCase::query()->sole();
+        $this->post('/admin/customers', ['name' => 'Synthetic Repair Customer', 'contact_phone' => '09000000000',
+            'is_active' => '1', 'identity_reviewed' => '1', 'reason' => 'Synthetic verified walk-in identity'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $customer = Customer::query()->sole();
+        $this->post('/admin/customers/'.$customer->public_id.'/link', ['version' => $customer->version,
+            'type' => 'case', 'record' => $case->public_id, 'unlink' => '0', 'identity_reviewed' => '1',
+            'reason' => 'Synthetic reviewed repair association'])->assertRedirect()->assertSessionHasNoErrors();
+        $url = route('admin.repair-cases.record', $case);
+        foreach (['repairing', 'ready'] as $status) {
+            $this->post($url, ['version' => $case->fresh()->version, 'status' => $status,
+                'repair_cost' => '۲۵٬۰۰۰', 'delivery_method' => 'in_person'])->assertRedirect()->assertSessionHasNoErrors();
+        }
+        $actor = auth('web')->user();
+        $finance = app(FinancialOperations::class);
+        $entry = $finance->execute($actor, 'issue', ['operation_key' => (string) Str::uuid(), 'password' => 'password',
+            'reason' => 'Synthetic simple repair invoice', 'source_type' => 'repair',
+            'source' => $case->public_id, 'source_version' => $case->fresh()->version]);
+        $document = FinancialDocument::findOrFail(FinancialEntry::findOrFail($entry)->financial_document_id);
+        $this->assertSame(2500000, $document->charged_minor);
+        $handover = ['version' => $case->fresh()->version, 'intent' => 'handover', 'handover_confirmed' => '1'];
+        $this->post($url, $handover)->assertConflict();
+        $receipt = ['operation_key' => (string) Str::uuid(), 'password' => 'password',
+            'reason' => 'Synthetic offline transfer recorded', 'document' => $document->public_id,
+            'version' => $document->version, 'amount' => '25000.00', 'method' => 'transfer', 'reference' => 'SYNTHETIC-SIMPLE'];
+        $id = $finance->execute($actor, 'receipt', $receipt);
+        $this->assertSame($id, $finance->execute($actor, 'receipt', $receipt));
+        $this->assertSame(2500000, $document->fresh()->paid_minor);
+        $this->post($url, $handover)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($url, $handover)->assertConflict();
+        $this->assertSame('delivered', $case->fresh()->status->value);
+        $this->assertDatabaseCount('repair_deliveries', 1);
+        $this->assertDatabaseCount('repair_estimates', 0);
+        $this->assertDatabaseCount('repair_work_entries', 0);
+        $this->assertDatabaseCount('financial_entries', 2);
+        $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000000'])
+            ->assertOk()->assertSee('تحویل ثبت شد');
+        $finance->reconcile($document->fresh());
+        Http::assertNothingSent();
+    }
+
     public function test_exact_amounts_and_concurrent_updates_remain_safe(): void
     {
         $this->post('/admin/repairs/intake', $this->payload())->assertRedirect();
@@ -193,6 +243,8 @@ class SimpleRepairTest extends TestCase
         $this->assertSame('delivered', $case->status->value);
         $this->assertSame('SYNTHETIC', $case->delivery->confirmation_reference);
         $this->get(route('admin.repair-cases.document', [$case, 'delivery']))->assertOk()->assertSee('رسید تحویل')->assertSee('SYNTHETIC');
+        $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000000'])
+            ->assertOk()->assertSee('ارسال به شرکت حمل ثبت شد')->assertDontSee('SYNTHETIC');
     }
 
     public function test_full_toman_amounts_are_stored_without_scaling(): void

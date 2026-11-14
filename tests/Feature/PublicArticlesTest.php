@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\ArticleVersion;
+use App\Models\Product;
 use App\Models\User;
 use App\Services\ArticlePublishing;
 use DOMDocument;
@@ -56,6 +57,20 @@ final class PublicArticlesTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
 
         return new DOMXPath($document);
+    }
+
+    public function test_article_social_schema_uses_only_the_current_published_snapshot(): void
+    {
+        $article = $this->article();
+        $this->command('save', $this->draft(['version' => $article->version, 'title' => 'PRIVATE NEW TITLE', 'summary' => 'PRIVATE SUMMARY']), $article->id);
+        $response = $this->get('/articles/'.$article->slug)->assertOk()->assertDontSee('PRIVATE NEW TITLE')->assertDontSee('PRIVATE SUMMARY');
+        $xpath = $this->xpath($response->getContent());
+        $schema = json_decode($xpath->query('//script[@type="application/ld+json"]')->item(0)->textContent, true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame('https://schema.org', $schema['@context']);
+        $this->assertSame('Article', $schema['@graph'][0]['@type']);
+        $this->assertSame('راهنمای عمومی کارتخوان', $schema['@graph'][0]['headline']);
+        $this->assertSame($article->published_at->toIso8601String(), $schema['@graph'][0]['datePublished']);
+        $this->get('/articles/'.$article->slug.'?mode=draft')->assertOk()->assertDontSee('application/ld+json', false);
     }
 
     public function test_guest_can_read_only_the_current_published_snapshot_and_safe_renderer(): void
@@ -171,7 +186,7 @@ final class PublicArticlesTest extends TestCase
     {
         $article = $this->article();
         $this->get('/admin/articles/'.$article->public_id.'/preview')->assertRedirect(route('admin.login'));
-        foreach (['/articles/pos-guide/preview', '/articles/pos-guide/versions/'.$article->published_version_id, '/articles/'.$article->public_id, '/blog', '/sitemap.xml'] as $uri) {
+        foreach (['/articles/pos-guide/preview', '/articles/pos-guide/versions/'.$article->published_version_id, '/articles/'.$article->public_id, '/blog'] as $uri) {
             $this->get($uri)->assertNotFound();
         }
         $this->post('/admin/articles/'.$article->public_id.'/publish', ['confirmed' => true])->assertRedirect(route('admin.login'));
@@ -179,6 +194,57 @@ final class PublicArticlesTest extends TestCase
         $this->get('/admin/articles/'.$article->public_id.'/preview')->assertForbidden();
         $this->post('/admin/articles/'.$article->public_id.'/unpublish', [])->assertForbidden();
         $this->get('/articles/pos-guide')->assertOk();
+    }
+
+    public function test_sitemap_exposes_only_current_public_slugs_from_the_trusted_origin(): void
+    {
+        $article = $this->article();
+        $draft = $this->article(['slug' => 'private-draft'], false);
+        foreach (['published-product' => [true, false], 'hidden-product' => [false, false], 'sample-product' => [true, true]] as $slug => [$published, $sample]) {
+            Product::create(['name' => 'Synthetic catalogue item', 'slug' => $slug, 'category' => 'pos_terminal',
+                'condition' => 'new', 'stock_status' => 'in_stock', 'is_published' => $published, 'is_sample' => $sample]);
+        }
+        $origin = rtrim(config('app.url'), '/');
+        $this->withServerVariables(['HTTP_HOST' => 'untrusted.example']);
+        $index = $this->get('/sitemap.xml?token=PRIVATE')->assertOk()
+            ->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private')->assertDontSee('untrusted.example')->assertDontSee('PRIVATE');
+        $xml = new DOMDocument;
+        $this->assertTrue($xml->loadXML($index->getContent()));
+        $this->assertSame('sitemapindex', $xml->documentElement->localName);
+        $this->get('/sitemap-products-1.xml')->assertOk()->assertSee($origin.'/products/published-product')
+            ->assertDontSee('hidden-product')->assertDontSee('sample-product')->assertDontSee('?slug=');
+        $this->get('/sitemap-articles-1.xml')->assertOk()->assertSee($origin.'/articles/pos-guide')
+            ->assertDontSee('private-draft')->assertDontSee($draft->public_id)->assertDontSee('?product=');
+        $this->get('/sitemap-pages-1.xml')->assertOk()->assertDontSee('/admin')->assertDontSee('/account')
+            ->assertDontSee('/support')->assertDontSee('/cart')->assertDontSee('/login')->assertDontSee('/repair/confirmation');
+        $this->command('unpublish', ['version' => $article->version, 'reviewed_version_id' => $article->published_version_id, 'confirmed' => true], $article->id);
+        $this->get('/sitemap-articles-1.xml')->assertNotFound();
+        $this->get('/sitemap.xml')->assertOk()->assertDontSee('/sitemap-articles-');
+    }
+
+    public function test_sitemap_partitions_catalogue_urls_and_rejects_unknown_or_out_of_range_parts(): void
+    {
+        $rows = [];
+        for ($i = 1; $i <= 1001; $i++) {
+            $rows[] = ['name' => 'Synthetic item', 'slug' => 'partition-'.$i, 'category' => 'pos_terminal',
+                'condition' => 'new', 'stock_status' => 'in_stock', 'is_published' => true, 'is_sample' => false];
+        }
+        foreach (array_chunk($rows, 250) as $chunk) {
+            Product::insert($chunk);
+        }
+        $this->get('/sitemap.xml')->assertOk()->assertSee('/sitemap-products-1.xml')->assertSee('/sitemap-products-2.xml');
+        $one = $this->get('/sitemap-products-1.xml')->assertOk();
+        $two = $this->get('/sitemap-products-2.xml')->assertOk();
+        foreach ([[$one, 1000], [$two, 1]] as [$response, $count]) {
+            $xml = new DOMDocument;
+            $this->assertTrue($xml->loadXML($response->getContent()));
+            $this->assertSame($count, $xml->getElementsByTagName('loc')->length);
+        }
+        $two->assertSee('/products/partition-1001');
+        foreach (['/sitemap-products-0.xml', '/sitemap-products-3.xml', '/sitemap-pages-2.xml', '/sitemap-customers-1.xml'] as $path) {
+            $this->get($path)->assertNotFound();
+        }
     }
 
     public function test_draft_writes_cannot_change_the_stable_public_slug(): void

@@ -46,6 +46,10 @@ class ProductController extends Controller
             'category' => $category,
             'categories' => ProductCategory::cases(),
             'hasFilters' => $term !== '' || $category !== null,
+            'canonical' => rtrim(config('app.url'), '/').route('products.index', [], false)
+                .($products->currentPage() > 1 ? '?page='.$products->currentPage() : ''),
+            'publicRobots' => $term !== '' || $category !== null || array_diff(array_keys($request->query()), ['page'])
+                ? 'noindex, follow' : 'index, follow',
         ]);
     }
 
@@ -55,6 +59,8 @@ class ProductController extends Controller
 
         return view('products.show', [
             'product' => $product,
+            'canonical' => rtrim(config('app.url'), '/').route('products.show', $product, false),
+            'publicRobots' => $product->is_sample ? 'noindex, follow' : 'index, follow',
         ]);
     }
 }

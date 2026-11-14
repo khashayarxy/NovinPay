@@ -161,8 +161,8 @@ class HomePageTest extends TestCase
         $response->assertDontSee('np-promotions')->assertDontSee('np-why');
         $response->assertDontSee('np-model-selection')->assertDontSee('np-model-focus');
         $response->assertSee('np-location__directions')->assertDontSee('np-hero-signature');
-        $response->assertSee('src="'.config('business.map_embed').'"', false);
-        $response->assertSee('loading="lazy"', false);
+        $response->assertSee('data-map-url="'.config('business.map_embed').'"', false);
+        $response->assertDontSee('<iframe', false);
         foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
             $response->assertSee(asset('brand/manufacturers/'.$brand.'.svg'));
         }
@@ -269,8 +269,10 @@ class HomePageTest extends TestCase
             $this->assertSame('noopener noreferrer', $link->getAttribute('rel'));
         }
         $this->assertSame(3, $links->length);
-        $this->assertSame(0, $xpath->query('//div[contains(@class,"np-location__directions")]//a')->length);
-        $this->assertSame(config('business.map_embed'), $xpath->query('//iframe')->item(0)->getAttribute('src'));
+        $this->assertSame(1, $xpath->query('//div[contains(@class,"np-location__directions")]//a')->length);
+        $this->assertSame(0, $xpath->query('//iframe')->length);
+        $this->assertSame(config('business.map_embed'), $xpath->query('//*[@data-map-preview]')->item(0)->getAttribute('data-map-url'));
+        $this->assertSame(config('business.maps.نشان'), $xpath->query('//a[@class="np-map-fallback"]')->item(0)->getAttribute('href'));
         $this->assertSame(1, $xpath->query('//button[@type="button" and @data-copy-address="visit-address" and @hidden]')->length);
         $this->assertSame(1, $xpath->query('//*[@id="address-copy-status" and @role="status" and @aria-live="polite"]')->length);
     }

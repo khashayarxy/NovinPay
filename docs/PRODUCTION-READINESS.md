@@ -1,4 +1,206 @@
-> Historical evidence, not current authorization. Use [DEPLOYMENT.md](DEPLOYMENT.md): local approval -> controlled production release -> owner acceptance. No hosted staging prerequisite.
+## Phase 3 development checkpoint — 2026-11-14 (not deployed)
+
+Continue from `8f30f82`; preserve Phase 2 and the `ecf6721` production baseline.
+No migration, provider operation, production change, backup cycle or merge in this phase.
+PR #22 stays Draft. Exact-head CI is recorded in the PR, separately from local evidence.
+
+| Area | Implemented and verified locally | Remaining qualification |
+| --- | --- | --- |
+| Neshan | Existing approved iframe URL now stays in inert configuration until the native activation button is used. No SDK/key/static-map API or tile copying. Noninteractive branded/location-pin preview, keyboard activation, fixed 260px/240px frame, once-only initialization, timeout/error retry and permanent external fallback. | A cross-origin `load` event does not establish usable provider content. Real provider/device availability remains external; simulated failure/retry and actual local keyboard activation pass. |
+| Hero | Add AVIF sources from the unchanged 853×933 owner artwork; retain original WebP sources/fallback, sizes, eager high priority and intrinsic ratio. Decode/review the generated image. | Physical-device visual acceptance; no claim that conversion is pixel-identical. |
+| Fonts/JS | Same licensed Vazirmatn variable face; static weight fallbacks retained for older browsers. Lazy-load calendar/numeric/repair-admin initialization only in the admin shell. | Authenticated admin browser acceptance; unit regressions retained. |
+| Cache | Immutable rule matches only content-hashed `/build/assets/*.css`, JS and WOFF2; regression rejects private/unversioned/HTML/manifest/chat paths. HTML/private cache policies unchanged. | Herd uses Nginx, not hosting LiteSpeed: effective `.htaccess` response headers require a separately authorized release verification. |
+| Browser security | HTTPS-only host-only HSTS `max-age=300`, no preload/includeSubDomains. Existing stronger headers preserved. Enforce object/base/frame restrictions without replacing endpoint-specific CSP. Permissions restrict unused device/payment capabilities, retain same-origin camera/microphone and WebOTP. | Full resource CSP is report-only, not an enforced XSS protection claim. No sensitive reporting endpoint or external telemetry. |
+| SEO | Reuse Phase 2 canonical/sitemap. Add contact canonical, public-only Open Graph/Twitter metadata and JSON-LD Organization/Service, published Product/BreadcrumbList and current published Article. Encode untrusted text safely. Exclude sample/private/draft/query variants. | No fabricated offers, ISO currency conversions, stock, ratings, reviews, authors, service areas or hours. Product data without offers is not a rich-result eligibility promise. |
+| Discovery | Optional `/llms.txt` points only to five real public destinations using configured origin; robots crawler policy unchanged. Sitemap/llms no longer create session cookies (confirmed before/after). Public content remains server-rendered. | This is navigation, not an official crawler requirement or ranking/recommendation guarantee. |
+
+### Resource and performance evidence
+
+Exact encoded image sizes (bytes), generated with the installed PHP 8.4 GD encoder:
+
+| Width | Existing WebP (retained) | WebP quality 85 candidate (not shipped) | AVIF quality 80 (shipped) |
+| --- | ---: | ---: | ---: |
+| 400 | 67,464 | 14,270 | 14,679 |
+| 640 | 151,594 | 24,940 | 25,148 |
+| 853 | 266,674 | 34,282 | 36,489 |
+
+AVIF retained alpha and had lower sampled RGBA error than the similarly sized WebP
+candidate; decoded artwork was inspected. The original WebP remains the compatibility
+fallback. The browser selected the 14,679-byte AVIF at the current 250px mobile and
+400px desktop display sizes. Do not compare against a hypothetical full-size mobile download.
+
+One actual pre-change local page observation loaded Neshan (2,158ms resource duration;
+cross-origin transfer size unavailable) and four font files totalling 203,856 bytes.
+After: zero Neshan requests until activation; one 111,152-byte font. Before/after admin
+splitting, the map-enabled public JS build fell from 13.94kB to 8.10kB uncompressed;
+the 7.17kB admin chunk was not requested on the public homepage. No GA/GTM initializer
+or tracking ID was found in scoped application assets/rendered dependencies. The
+provider's iframe dependencies are external; do not strip analytics inside its document.
+
+Three **after-change local** Chromium runs: 390×844, DPR1, no CPU/network throttling,
+cache-bypassing reload, warmed Herd PHP/site, metrics read 500ms after navigation:
+
+| Metric (ms unless stated) | Runs | Median |
+| --- | --- | ---: |
+| TTFB | 130.3 / 189.0 / 66.3 | 130.3 |
+| LCP | 200 / 272 / 148 | 200 |
+| Load event | 677.1 / 759.7 / 770.1 | 759.7 |
+| Observed long-task excess above 50ms | 104 / 147 / 132 | 132 |
+| CLS | 0 / 0 / 0 | 0 |
+
+These are not Lighthouse TBT/scores or production benchmarks. The initial cold
+pre-change TTFB was 4,078ms, but not a comparable three-run baseline; no TTFB/LCP
+speedup is claimed. Herd injects its own local debug assets, so hosting/network and
+application timing cannot be inferred from that cold sample. No hosting settings changed.
+
+Local browser checks: homepage 320/390/768/1440 has no horizontal overflow, RTL and
+responsive artwork preserved; map height unchanged on activation, visible keyboard
+focus/Enter activation, one chat loader, launcher present, no broken local images.
+Read-only GETs for home/catalogue/contact/login/repair/cart/admin-login/support and
+crawler documents succeeded. No authenticated submissions, messaging or physical-device
+acceptance is claimed. Prior screenshot-export restrictions were respected; no alternate
+export path/tool was used. Visual screenshot comparison remains pending.
+
+Regression commands: guarded `scripts/test.ps1` filtered to HomePage,
+PublicPerformanceSeo, SecurityHeaders, PublicArticles and ProductCatalog; native
+Chromium click-map test; public asset-cache matcher; existing admin-field/money tests.
+The single standard CI workflow remains responsible for the complete four-job matrix.
+
+Content outlines for owner review only (not published): repair intake/diagnosis/approval
+steps; factors affecting a repair estimate; device-specific symptoms and safe preparation
+before sending a terminal. Require a technician's verified facts/model details and
+approved service terms; do not manufacture turnaround promises or keyword landing pages.
+
+References: [CSP rollout](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP),
+[HSTS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security),
+[Organization](https://schema.org/Organization), [Service](https://schema.org/Service),
+[optional llms.txt proposal](https://llmstxt.org/).
+
+## Hardening checkpoint — 2026-11-14
+
+Production remains `ecf672110214a24a9171d942a2730d9bfad5f65c`, with
+`APPLICATION_RELEASE_PASS`. The release gates checked 24 exact migrations and 13
+trigger contracts; the follow-up readback matched 55 changed source files and both
+asset checksums. Seven public HTTPS routes returned 200 with valid TLS and maintenance
+was OFF. Fresh recovery subsequently checked the exact 24/13 source inventory and an isolated restore; a separate read of the captured production SQL confirmed the three nullable payment-review columns.
+IPPanel remains active; Zibal, scheduled provider processing and SMS.ir sending stay
+disabled. No real SMS/payment, new production product or deployment is authorized here.
+
+### Confirmed development corrections (not deployed)
+
+- **OWN-01, medium, conditional cross-account disclosure:** a staff draft edit could
+  change an online order's CRM customer while retaining the original account. The
+  account controller's OR scope then returned explicitly owned records to a different
+  CRM-linked account. Reproduced as HTTP 200 where 404 was required. The service now
+  refuses reassignment; the shared order/repair/request scope falls back to CRM only
+  when no explicit account exists. Original-account access, same-customer draft edits,
+  legacy CRM-only history, immutable events and normal profile flows are retained.
+- **STORE-01, reliability:** catalogue validation accepted prices outside the existing
+  ten-digit order-money range. New/edited prices now share that bound; legacy stored
+  prices remain unchanged and cannot be offered for checkout when unrepresentable.
+- **PHP CLI startup:** the private release wrapper uses invocation-level
+  `session.gc_divisor=100`. A real subprocess regression reproduces the invalid host
+  setting without altering global/web INI. Hosted effective INI origin and web-SAPI
+  configuration remain unverified; see the deployment lessons.
+- **DEP-01, low, GHSA-63hm-g96r-2m2q:** exact-head CI surfaced a newly reported
+  `laravel/framework` advisory. The lock now updates only that package from 13.35.0
+  to the minimum patched 13.40.0; `composer audit --locked` reports zero advisories.
+  The documented exploit requires user-controlled task stdout through Laravel's
+  Concurrency facade; no such application caller was found. This is a confirmed
+  affected dependency, not proof of exploitation. Production is still unpatched.
+
+### Gates and remaining work
+
+| Area | Status | Evidence / next step |
+| --- | --- | --- |
+| Security hardening | PARTIAL | Ownership regression fixed; required exact-head CI and remaining scoped security checks remain separate gates. No claim of an exhaustive clean audit. |
+| Repair lifecycle | PARTIAL | Full/simple workflow regression tests pass locally, including protected history, settlement and handover; final operational/browser acceptance remains. |
+| Store lifecycle | PARTIAL | Existing isolated checkout, manual settlement, stock reservation and delivery tests pass; real catalogue/operator acceptance remains. Zibal and unverified billed postal processing stay unavailable. |
+| UX / SEO | PARTIAL | Existing catalogue/metadata regression checks pass; no redesign or new visual acceptance claimed. |
+| End-to-end | PARTIAL | Isolated HTTP/service lifecycle coverage reused; no real-provider or new browser acceptance claimed. |
+| Next production changes | BLOCKED | Development changes require separate deployment authorization. Fresh 24/13 recovery has passed; do not repeat it for ordinary development. |
+
+The older encrypted recovery generation was independently verified at 23/13; it is
+preserved and is not a post-migration recovery point. Owner-approved isolated target
+`novinpay_restoreecf1` now exists with only SELECT, INSERT, CREATE and TRIGGER for the
+existing migrator, exclusively on that schema. The fresh post-deployment generation completed `DATABASE_RECOVERY_PASS` with
+24 exact migrations / 13 triggers, matching schema, definers and every restored row.
+The encrypted off-host archive passed SHA-256, authenticated decryption and full
+archive validation. Snapshot time: 2026-11-14 00:18 Asia/Tehran; archive SHA-256:
+`c12b8ef38e9bd2183e28d289e32d276a6b65b39a4e713ba509980567d579e336`.
+The restore target is now occupied evidence, not an empty destination. Preserve it,
+all prior snapshots and the private completion receipts. The existing coordinator
+exited successfully. No further backup/restore/provisioning is needed during this
+development phase; apply the owner-approved 72-hour policy only for a future actual
+activation, together with the unchanged integrity/compatibility gates.
+
+After the framework update, 186 focused tests / 1,618 assertions passed in the
+isolated runner (accounts, checkout/settlement, products, inventory, full/simple
+repairs and release contracts). These are local results. The four required CI
+jobs must pass on the final pushed head before any release is proposed.
+
+
+### Phase 2: complete business paths and additional scoped corrections
+
+These changes remain development-only; production stays at `ecf6721`. No new
+migration, dependency, background service, cron, provider activation or backup cycle.
+
+| Finding | Evidence and correction | Regression |
+| --- | --- | --- |
+| CART-02, reliability | A repeated successful checkout returned 422 after its cart was cleared. Resolve the existing operation only after fresh account/session authorization; reject an unknown empty checkout or conflicting cart. A replay never clears a newly assembled cart. Serialize cart mutations with the existing Laravel session lock. | `SharedPaymentsTest`: lost response, empty/identical/different new cart, cross-account key and revoked session. |
+| SEC-02, medium | The full-workflow handover endpoint bypassed the password/finance checks already required by the simple and delivery-plan paths. Reproduce unauthorized completion, then apply the existing actor reauthentication inside the transaction for account-linked financial repairs. Forward the password from the existing dispatch path; never record it. Legacy non-account handover is unchanged. | `RepairOperationsTest`: missing/wrong password, insufficient permissions, unchanged case/plan on denial, successful authorized pickup/shipping and private password input. |
+| DEL-02, integrity | The full-workflow endpoint could mark carrier handover without tracking. Require the existing 3-200 character tracking contract before completing a non-pickup delivery plan. | Full repair lifecycle rejects direct untracked shipment and completes through the authorized dispatch path. |
+| TRACK-02, accuracy/privacy | Public tracking reported a carrier dispatch as final handover. After code+phone verification, select only the delivery state; reuse the customer timeline. Walk-in simple shipping also uses the recorded shipping method after closure. Never retrieve addresses, recipient or tracking data for public output. | Full pickup/shipping and simple shipping tracking; wrong-phone/privacy regressions retained. |
+| CART-03, usability/privacy | An unpublished cart item disappeared from the UI but blocked checkout with no removal control. Render only a generic unavailable row from its session slug, allow removal, and disable checkout until resolved. Missing/unrepresentable prices show an inquiry instead of a zero quote or misleading total; stored prices remain untouched. Never hydrate or show private product data. | `SharedPaymentsTest`: retained cart on failure, generic removal control, private name withheld, remaining cart preserved. |
+| SEO-02, missing functionality | Public homepage/catalogue canonicals and sitemap were absent. Add trusted-origin canonicals, noindex search/sample variants, and a bounded public sitemap index/parts. Use current published-product/article scopes, exclude private/sample/draft/future/inactive content, no stale sitemap cache, no fabricated lastmod/offers/ratings. | XML parsing, 1001-product pagination, unpublication, invalid paths, Host/query injection, published-only visibility. Existing private article/preview denials remain. |
+
+Acceptance now joins the previously separate HTTP and service boundaries:
+
+- **Full repair:** customer profile/request -> real intake -> diagnosis/estimate ->
+  recorded approval -> completed work -> actual isolated ledger charge/transfer ->
+  password/permission-protected pickup or tracked carrier dispatch -> account history
+  and public tracking. Existing rejection/return, fee, stale-version and audit tests stay.
+- **Simple repair:** intake -> reviewed CRM association -> repair/ready -> actual
+  isolated ledger charge and idempotent transfer -> handover -> tracking. Unpaid and
+  duplicate handovers are rejected; no fake payment flags or full-workflow records.
+- **Store:** admin product publication -> stock intake -> customer browsing/cart ->
+  checkout/retry -> reservation/confirmation -> invoice -> real isolated in-store receipt
+  -> authorized fulfillment -> customer history and ledger reconciliation. No live gateway.
+- The existing guarded MySQL/MariaDB harness adds same-cart, cleared-cart and
+  conflicting-cart checkout races to the original 12 financial races. Require the
+  **15 completed scenarios** and distinct competing connections, not just a green job.
+
+Public catalogue DOM checks at 320, 390, 768 and 1440 CSS pixels found no horizontal
+overflow; filter controls have labels and no visible button lacks a name. No new
+private authenticated browser acceptance or screenshot approval is claimed. An attempted
+screenshot file export was denied by the browser tool's private-root policy and was not
+retried through another path/tool. HTTP acceptance fixtures always use disposable tests,
+never the owner acceptance database. A real Tab key reached a named link with a visible focus indicator. Read-only production cookie configuration reported Secure=true, HttpOnly=true and SameSite=Lax. Herd's site inventory identifies the existing local
+site/PHP 8.4; its .env points at SQLite, so no local DB conversion or migration was attempted.
+
+### Remaining explicit policy/acceptance dependencies
+
+- Customer OTP retains per-IP 20/minute and 180/hour limits, per-phone 60-second
+  cooldown and 15 real dispatches/24h, two-minute expiry and five attempts. Approved
+  IPPanel/private-test reset behavior is covered with mocked HTTP. An aggregate
+  site-wide SMS budget has no owner-approved threshold; do not invent one or add
+  provider balance monitoring. No real SMS was sent.
+- Privileged MFA enrollment/enforcement/recovery policy is not defined. Existing
+  protected-owner rules, role/session revocation and sensitive-operation password
+  checks remain; do not claim MFA exists or roll out an improvised recovery path.
+- Notification templates and enabling scheduled notification delivery need separate
+  approved provider configuration. Durable events are tested; disabled delivery is
+  not proof of handset receipt. Zibal and scheduled provider processing remain OFF.
+- Keep existing manual settlement, carrier-paid delivery and refund-obligation records.
+  Do not invent live refunds, billed postal integration or unsupported bank instructions.
+- No known unresolved critical/high issue was identified in this scoped review; this
+  is not an exhaustive security certification. Final exact-head CI, owner operational
+  acceptance and a separately authorized production release remain distinct gates.
+  CI outcomes belong to the exact head in PR #22; keep it Draft/unmerged.
+
+---
+
+> The following section is historical evidence, not current authorization. Use [DEPLOYMENT.md](DEPLOYMENT.md): local approval -> controlled production release -> owner acceptance. No hosted staging prerequisite.
 
 # Existing production upgrade: evidence and remaining checks
 

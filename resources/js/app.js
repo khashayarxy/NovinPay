@@ -1,15 +1,12 @@
-import { initSimpleRepair } from './admin-simple-repair';
 import { initMobileNavigation } from './mobile-navigation';
-import { initAdminCalendar } from './admin-calendar';
-import { initAdminDigits } from './admin-digits';
+import { initClickMap } from './click-map';
 
 document.addEventListener('DOMContentLoaded', () => {
+    initClickMap();
     initMobileNavigation();
-    initSimpleRepair();
     const admin = document.querySelector('.admin-site #main-content');
     if (admin) {
-        initAdminCalendar(admin);
-        initAdminDigits(admin);
+        import('./admin-fields.js').then(({initAdminFields}) => initAdminFields(admin));
     }
     const adminNavigation = document.querySelector('[data-admin-navigation]');
     if (adminNavigation instanceof HTMLDetailsElement) {

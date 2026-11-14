@@ -2,11 +2,17 @@
 
 require dirname(__DIR__).'/Concurrency/bootstrap.php';
 
+use App\Models\CustomerAccount;
+use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
 use App\Models\FinancialEntry;
+use App\Models\InventoryItem;
+use App\Models\PaymentAttempt;
 use App\Models\PaymentTransaction;
+use App\Models\Product;
 use App\Models\SalesOrder;
 use App\Models\User;
+use App\Services\CommerceManagement;
 use App\Services\FinancialOperations;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -20,19 +26,19 @@ function financeData(array $extra = []): array
 {
     return $extra + ['operation_key' => (string) Str::uuid(), 'password' => 'password', 'reason' => 'Synthetic finance concurrency evidence'];
 }
-function financeOrder(): SalesOrder
+function financeOrder(string $total = '100.00'): SalesOrder
 {
     $order = new SalesOrder;
-    foreach (['public_id' => (string) Str::uuid(), 'customer_id' => $GLOBALS['customer']->id, 'status' => 'fulfilled', 'currency' => 'TOMAN', 'total' => '100.00', 'created_by' => $GLOBALS['one']->id, 'version' => 1] as $key => $value) {
+    foreach (['public_id' => (string) Str::uuid(), 'customer_id' => $GLOBALS['customer']->id, 'status' => 'fulfilled', 'currency' => 'TOMAN', 'total' => $total, 'created_by' => $GLOBALS['one']->id, 'version' => 1] as $key => $value) {
         $order->$key = $value;
     }
     $order->save();
 
     return $order;
 }
-function financeDocument(): FinancialDocument
+function financeDocument(string $total = '100.00'): FinancialDocument
 {
-    $order = financeOrder();
+    $order = financeOrder($total);
     app(FinancialOperations::class)->execute($GLOBALS['one'], 'issue', financeData(['source_type' => 'order', 'source' => $order->public_id, 'source_version' => 1]));
 
     return FinancialDocument::where('sales_order_id', $order->id)->firstOrFail();
@@ -59,7 +65,11 @@ function financeRace(string $label, array $first, array $second, array $expected
     auditCheck(proc_close($processOne) === 0 && proc_close($processTwo) === 0, 'finance workers completed');
     $a = json_decode(file_get_contents($first['output']), true, flags: JSON_THROW_ON_ERROR);
     $b = json_decode(file_get_contents($second['output']), true, flags: JSON_THROW_ON_ERROR);
-    auditCheck([$a['status'], $b['status']] === $expected, $label.' expected outcomes');
+    if ([$a['status'], $b['status']] !== $expected) {
+        fwrite(STDERR, json_encode(['result' => 'FINANCIAL_RACE_MISMATCH', 'scenario' => $label,
+            'expected' => $expected, 'actual' => [$a['status'], $b['status']]], JSON_THROW_ON_ERROR).PHP_EOL);
+    }
+    auditCheck([$a['status'], $b['status']] === $expected, $label.' expected outcomes '.json_encode(['expected' => $expected, 'actual' => [$a['status'], $b['status']]]));
     auditCheck($a['pid'] !== $b['pid'] && $a['connection_id'] !== $b['connection_id'] && $b['elapsed_ms'] > 500, 'distinct competing finance connections actually waited');
 
     return ['scenario' => $label, 'first' => $a, 'second' => $b];
@@ -98,6 +108,49 @@ $document = financeDocument();
 $command = financeCommand($one, 'payment.in_store', ['document' => $document->public_id, 'amount_minor' => 1000]);
 $reports[] = financeRace('shop-payment-idempotency', $command, $command, [200, 200]);
 auditCheck($document->fresh()->paid_minor === 1000 && PaymentTransaction::where('financial_document_id', $document->id)->count() === 1, 'same payment operation records exactly once');
+$account = new CustomerAccount;
+$account->forceFill(['public_id' => (string) Str::uuid(), 'customer_id' => $customer->id, 'phone' => '09000000009',
+    'phone_digest' => hash('sha256', 'synthetic-concurrency'), 'verified_at' => now()])->save();
+foreach (['different-operation', 'same-operation'] as $scenario) {
+    $document = financeDocument('20000.00');
+    $plan = new DeliveryPlan;
+    $plan->forceFill(['public_id' => (string) Str::uuid(), 'financial_document_id' => $document->id,
+        'customer_account_id' => $account->id, 'method' => 'tipax'])->save();
+    $first = financeCommand($one, 'payment.zibal.start', ['document' => $document->public_id,
+        'account' => $account->id, 'amount_minor' => 1000000]);
+    $second = $scenario === 'same-operation' ? $first : financeCommand($two, 'payment.zibal.start',
+        ['document' => $document->public_id, 'account' => $account->id, 'amount_minor' => 1000000]);
+    $reports[] = financeRace('zibal-start-'.$scenario, $first, $second, [200, $scenario === 'same-operation' ? 200 : 409]);
+    $attempt = PaymentAttempt::where('financial_document_id', $document->id)->sole();
+    auditCheck($attempt->state === 'pending', 'one pending gateway session after competing starts');
+    $verify = financeCommand($one, 'payment.zibal.verify', ['document' => $document->public_id, 'attempt' => $attempt->id]);
+    $reports[] = financeRace('zibal-verify-'.$scenario, $verify, $verify, [200, 200]);
+    auditCheck(PaymentTransaction::where('payment_attempt_id', $attempt->id)->count() === 1
+        && $document->fresh()->paid_minor === 1000000, 'competing verifications settle exactly once');
+}
+$product = Product::create(['name' => 'Synthetic checkout race', 'slug' => 'synthetic-checkout-race',
+    'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'in_stock',
+    'is_published' => true, 'is_sample' => false, 'price' => 100]);
+$stockId = app(CommerceManagement::class)->execute($one, 'item.create', financeData([
+    'sku' => 'SYNTHETIC-CHECKOUT-RACE', 'name' => 'Synthetic stock', 'condition' => 'new',
+    'serialized' => false, 'product_id' => $product->id, 'low_stock_threshold' => 0]));
+$stock = InventoryItem::findOrFail($stockId);
+app(CommerceManagement::class)->execute($one, 'item.receive', financeData([
+    'version' => $stock->version, 'quantity' => 2]), $stock);
+foreach (['same-cart', 'cleared-cart', 'different-cart'] as $scenario) {
+    $first = financeCommand($one, 'store.checkout', ['account' => $account->id, 'cart' => [$product->slug => 1]]);
+    $second = $first;
+    $second['data']['cart'] = match ($scenario) {
+        'cleared-cart' => [], 'different-cart' => [$product->slug => 2], default => [$product->slug => 1],
+    };
+    $report = financeRace('checkout-'.$scenario, $first, $second, [200, $scenario === 'different-cart' ? 409 : 200]);
+    $reports[] = $report;
+    auditCheck($scenario === 'different-cart' || $report['first']['result'] === $report['second']['result'], 'successful replay returns the original order');
+    auditCheck(SalesOrder::where('checkout_key', $first['data']['operation_key'])->count() === 1, 'one order after competing checkout');
+    $order = SalesOrder::where('checkout_key', $first['data']['operation_key'])->sole();
+    auditCheck($order->lines()->count() === 1 && $order->total === '100.00', 'checkout lines and server price preserved');
+    auditCheck($stock->fresh()->reserved === 0 && $stock->fresh()->on_hand === 2, 'checkout never fakes reservation or fulfillment');
+}
 foreach (FinancialDocument::cursor() as $document) {
     app(FinancialOperations::class)->reconcile($document);
 }
