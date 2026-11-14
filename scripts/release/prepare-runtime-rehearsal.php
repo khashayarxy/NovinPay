@@ -30,6 +30,12 @@ foreach (['baseline' => $base, 'candidate' => $target] as $name => $sha) {
     requireGate($sourceZip->open($root.'/'.$name.'-source.zip') === true, 'rehearsal_source_zip', 'real Git archive', [], 'Inspect source preparation.');
     $sourceZip->extractTo($build);
     $sourceZip->close();
+    // The prepared archive was built on Windows. Composer's documented full
+    // bin compatibility reproduces its .bat proxies on this Linux rehearsal.
+    // This affects only the disposable build, never repository/server metadata.
+    $composer = json_decode(file_get_contents($build.'/composer.json'), true, 512, JSON_THROW_ON_ERROR);
+    $composer['config']['bin-compat'] = 'full';
+    file_put_contents($build.'/composer.json', json_encode($composer, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
     // Lock only; no scripts/plugins, no application boot and no database creation.
     $r = command(['composer', 'install', '--working-dir='.$build, '--no-dev', '--no-scripts', '--no-plugins', '--prefer-dist', '--optimize-autoloader', '--no-interaction', '--no-progress'], $repo, 'rehearsal_locked_vendor', 180);
     requireGate($r['exit'] === 0, 'rehearsal_locked_vendor', 'locked production dependencies built on CI', [], 'Inspect Composer output privately.');
