@@ -1,3 +1,80 @@
+## Phase 4 operational checkpoint — 2026-11-14 (development only)
+
+Continue from `4ef444b`. Production was independently read back as `ecf6721`, with
+no Laravel maintenance markers. No production deployment, migration, configuration,
+provider operation or new recovery cycle occurred. Keep PR #22 Draft/unmerged.
+
+### Confirmed defects corrected during real browser acceptance
+
+- **CART-04, release blocker:** the first customer checkout returned HTTP 429 after
+  ordinary background chat requests. Laravel's numeric throttle uses the same
+  user/domain-IP key without a prefix, so chat's 600/minute counter exhausted the
+  checkout's 10/minute budget. Regressions first failed, then separate prefixes
+  isolated chat, shared add/remove cart mutations and checkout. Limits remain
+  600/30/10; checkout locking, idempotency and OTP limits are unchanged. The same
+  preserved browser cart then created exactly one successful order.
+- **CATALOG-04, important:** clearing publication/sample checkboxes and failing
+  another field restored the previously checked values. Submit explicit hidden
+  zero values before the native checkboxes. A failing regression and actual browser
+  retry now preserve the unchecked states; unrelated validation leaves stored
+  records unchanged. Creation defaults are preserved.
+- **HOST-04, release compatibility:** current production root `.htaccess` contains
+  its hosting PHP handler and differs from Git. Move only the new immutable-cache
+  rule into generated `public/build/assets/.htaccess`, published by the existing
+  asset builder. The candidate root file is now byte-identical to the Git baseline;
+  its production customizations must remain untouched. Tests verify build publication
+  and exclusion of HTML, private, manifest, unversioned and chat paths.
+
+### Operational evidence and boundaries
+
+| Path | Actual acceptance | Limitation |
+| --- | --- | --- |
+| Admin | Native password login, persistent module navigation, logout and protected-route redirect. A native limited-staff login permits product listing but returns 403 for creation, finance, staff and repairs. Invalid financial reauthentication shows a validation error; correct password records the isolated receipt. | Expiry/replay and detailed permission matrix retain prior automated coverage, not a newly claimed physical-device acceptance. |
+| Customer | Native phone/Enter/password login and explicit logout; account access then redirects to the initial phone screen. No SMS sent. | Local real SMS is deliberately disabled; starting the SMS step reports unavailable before using the existing password link. |
+| Full repair | Browser-submitted request; browser assignment, diagnosis/estimate, recorded approval, repair/completion and password-protected pickup. Unpaid handover refused with no delivery row. Final delivered state, one handover and two balanced ledger entries. Account history and public tracking agree without exposing name/private issue. | Legacy full intake, reviewed CRM association, genuine synthetic ledger settlement and pickup-plan preparation used existing services in the isolated fixture. Do not call all ten steps browser-driven. |
+| Simple repair | Native intake, repairing/ready, Persian 25,000-toman input, delivery-method edits, settlement-method selection and tracked Tipax handover. Unpaid handover refused; tracking is required. Final delivered state, one handover, two balanced ledger entries and carrier-dispatch timeline. | Reviewed CRM association and synthetic charge/receipt used existing services. No carrier or payment provider contacted. |
+| Store | Native product create/edit, price validation, publication, inventory definition/receipt, customer product/cart/checkout, staff reservation/confirmation, financial issue/receipt and final fulfillment. Exactly one order; charged=paid, two ledger entries; final stock 1 physical / 0 reserved / 1 dispatched. Customer history accessible. Unpublication gives public 404. | Pickup plan used existing services. Browser image upload was explicitly denied by the tool's configured workspace-root check; no alternate tool/path/upload mechanism used. Image/MIME/storage regressions passed through the isolated HTTP suite. |
+| Responsive/admin JS | Dashboard, product edit, repair record, customer repair history, product detail, cart and tracking checked at 320/390/768/1440: RTL and no document overflow. Admin chunk loads; native calendar/money initialization works, empty cost stays empty, 25,000 remains unchanged after unrelated edits. | Screenshot export restriction respected. Screenshots and owner visual approval remain separate. Phase 3 unchanged map/hero/font checks are reused. |
+
+Local Herd identity was checked before writes: private dedicated SQLite acceptance
+database, APP_ENV local, SMS and Zibal disabled, existing private owner password valid.
+Its missing existing nullable-column migration was applied locally only, once, after
+an isolated SQLite checkpoint; hashes of every pre-existing business table's original
+columns/rows matched afterwards. Local inventory is now 24 migrations and 29 SQLite
+triggers (engine-specific; not the MariaDB 13-trigger contract). No shared Herd guard,
+production schema or original credentials changed. New synthetic records/credentials
+stay private and local; the acceptance product was unpublished afterwards.
+
+CSRF distinction: real local non-browser POST with no token/fetch metadata returned
+419. Same-origin secure browser fetch without a token reached validation (422), as
+Laravel 13 intentionally accepts trusted Sec-Fetch-Site; this is not evidence of a
+CSRF bypass. No exemptions or protection changes were introduced.
+
+Read-only cPanel evidence: production revision `ecf6721`, maintenance markers absent,
+public_html remains a link, 4,726.44 MiB quota headroom and quota/inode status flags
+within limits. Zibal live requests and both scheduled-provider switches remained
+false. Current live SQL, effective CLI/web PHP patch/extensions, symlink resolution,
+web-identity permission writes and new LiteSpeed headers still require the authorized
+release preflight; prior 24/13 SQL/restore evidence is not described as a new live query.
+
+### Release decision
+
+Application acceptance defects above are corrected. **NOT READY for production
+activation:** the current `activate-source.*` contract explicitly rejects this
+candidate's Composer change and accepts only a two-member CSS/manifest ZIP; its
+application mode requires a new migration although this release has none. Do not
+invoke it with a renamed manifest or bypass its rejection. A narrowly reviewed
+vendor/multiple-asset/no-migration extension or conventional compatible procedure
+must be qualified before an owner activation command can safely be issued. This is
+a tooling blocker, not permission to deploy, start another backup or use PR13 tools.
+See the concrete package/release checklist in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Owner acceptance still needed: image upload through the native file picker; visual
+review of dashboard/product/repair at mobile and desktop; service-availability behavior
+of Neshan; then approval of the exact release SHA and compatible activation procedure.
+Aggregate SMS budget, MFA/recovery and scheduled notifications remain separate policy
+decisions; optional scanners/AI metadata are not promoted to release blockers.
+
 ## Phase 3 development checkpoint — 2026-11-14 (not deployed)
 
 Continue from `8f30f82`; preserve Phase 2 and the `ecf6721` production baseline.

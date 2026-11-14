@@ -1,5 +1,72 @@
 # NovinPayPos: controlled cPanel production release
 
+## Phase 4 candidate: explicit compatibility STOP (2026-11-14)
+
+The baseline is `ecf672110214a24a9171d942a2730d9bfad5f65c`; the final candidate SHA
+belongs in the private release inventory, not a self-referencing tracked checksum.
+No production activation is authorized in this phase.
+
+The complete Git diff, not only Phases 2/3, confirms **zero migration additions,
+edits or removals**, unchanged 24 migration names and the same 13 MariaDB trigger
+contracts. Only `laravel/framework` changes in composer.lock: 13.35.0 -> 13.40.0
+(reviewed security correction). Composer/package metadata and the Node lock are
+unchanged. No environment variable, provider flag, APP_KEY or broad permission change
+is required. Keep IPPanel/test-reset settings and Zibal/scheduled providers unchanged.
+
+Prepare locally, outside Git/public directories, using the existing private release
+directory: candidate Git source archive; complete compiled Vite assets including the
+new admin JS chunk, fonts, generated scoped `.htaccess` and version manifests; locked
+production-only vendor archive; per-file SHA-256 inventories and package checksums.
+Never include `.env`, auth files, keys, SQLite files, storage, uploads or QA browser
+profiles. Compare the production-only installed package names/versions/references
+against composer.lock and verify source/archive and asset hashes independently.
+Do not upload or run a package merely because it was prepared.
+
+**The current shared updater cannot activate this package.** Its explicit dependency,
+asset-shape and nonempty-migration guards must remain intact for existing callers.
+Do not pass a fake additive migration, reuse only the CSS ZIP, keep old Laravel vendor
+files, or publish a PASS-looking command. Qualify the smallest reviewed extension of
+the existing workflow before requesting production authorization; do not revive the
+retired PR13 pipeline or start a new framework. Preparation is not execution proof.
+
+Required execution sequence after that compatibility work and exact-SHA approval:
+
+1. Read back production HEAD, protected file/config/cache hashes, original release
+   receipt, clean index/unexpected changes and public symlink identity. Preserve the
+   current root `.htaccess` and its ea-php84 handler; the candidate has no root-file
+   change. Confirm explicit CLI and web PHP >=8.4.1/extensions separately.
+2. Reuse the verified `recovery-ecf6721-postdeploy-1` generation while it passes the
+   72-hour policy, source/schema compatibility, archive/proof hashes and independent
+   restore/off-host evidence. No capture or restore at this development checkpoint.
+   Refresh only if actually necessary at the imminent approved activation. Obtain
+   current account quota/inode evidence through the existing coordinator.
+3. Bind the complete source/vendor/Vite inventories to the approved commit and a
+   unique journal. Verify 24 exact live migration names and 13 trigger bodies/definers
+   using the authorized read-only observer. **Execute no migrate/seed/down command.**
+4. Under the existing exclusive operation lock, preserve affected source, vendor,
+   asset manifests and configuration for file rollback; verify those copies before
+   a brief conventional Laravel maintenance boundary. Preserve uploads/chat/sessions,
+   provider settings and private maintenance audit/state. No schema/write-drain claim.
+5. Install only the approved source and locked production vendor, publish all referenced
+   hashed assets while retaining older versions, and rebuild compatible route/view
+   caches. Do not regenerate keys or clear all sessions/cache. Preserve config unless
+   an explicitly reviewed rebuild is needed. Use the existing scoped web OPcache
+   procedure, including changed vendor code; do not reset global hosting settings.
+6. Verify installed source/dependency/asset hashes, 24/13 unchanged database contracts,
+   IPPanel settings and provider-OFF switches before reopening. Check redirects/private
+   no-store headers, hashed CSS/JS/fonts immutable cache and manifest freshness on actual
+   LiteSpeed; HSTS host-only 300 seconds, CSP report-only, map activation, WebOTP and chat.
+7. Public HTTPS and existing authenticated owner smoke acceptance must pass with
+   maintenance OFF. No synthetic production orders/payments/SMS for smoke tests.
+   Any uncertainty is STOP/PENDING, not PASS. No blind retry of a partial journal.
+
+Rollback for this **schema-neutral** candidate restores the checked matching baseline
+source AND vendor, route/view caches and prior asset manifests; remove only exact
+candidate additions recorded in the journal. Preserve old hashed assets for open tabs.
+Never restore an old database or discard newer customer/chat/financial records.
+If compatibility/file restore cannot be verified, remain protected and use forward
+recovery. Merge PR #22 only after separately authorized deployment and acceptance.
+
 ## Shared tooling
 
 Use the tracked `scripts/release/recover.php` with an explicit private manifest and its SHA-256. `inspect` performs read-only production/database checks; `capture` checks an empty approved restore target, obtains live quota evidence, captures durable storage plus transactional SQL, restores only the isolated target, and publishes an encrypted receipt. The Linux `capture.py` monitor rejects any durable-storage mutation, including a write followed by restoration of the same bytes. The companion `bridge.ps1 -QuotaOnly` consumes that same pinned manifest and performs quota response, encrypted transfer and independent verification through `transfer.ps1` and `verify-offhost.ps1`.
