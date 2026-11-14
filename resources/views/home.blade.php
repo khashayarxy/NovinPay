@@ -63,8 +63,14 @@
                 </nav>
                 <p id="address-copy-status" class="np-copy-status" role="status" aria-live="polite"></p>
             </div>
-            <div class="np-location__directions">
-                <iframe class="np-location__map" src="{{ config('business.map_embed') }}" title="موقعیت نوین‌پی در نقشهٔ نشان" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+            <div class="np-location__directions" data-map-preview data-map-url="{{ config('business.map_embed') }}">
+                <div class="np-map-preview np-location__map" data-map-placeholder>
+                    <x-home.icon name="map-pin" />
+                    <p>موقعیت فروشگاه نوین‌پی</p>
+                    <button type="button" class="np-button np-button--outline" data-map-activate hidden>مشاهده در نقشه</button>
+                </div>
+                <p class="np-map-status" data-map-status role="status" aria-live="polite"></p>
+                <a class="np-map-fallback" href="{{ config('business.maps.نشان') }}" target="_blank" rel="noopener noreferrer">باز کردن در نشان<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
             </div>
         </div>
     </section>

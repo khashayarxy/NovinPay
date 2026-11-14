@@ -1,11 +1,4 @@
 /* Homepage composition; all rules are scoped to the Phase 3 home components. */
-@font-face {
-    font-family: 'Vazirmatn';
-    src: url('../../node_modules/vazirmatn/fonts/webfonts/Vazirmatn-ExtraBold.woff2') format('woff2');
-    font-weight: 800;
-    font-style: normal;
-    font-display: swap;
-}
 .homepage { background: #fff; color: #121d47; }
 .homepage h1, .homepage h2, .homepage h3 { color: #101a43; }
 .np-container { width: min(100% - 64px, 1200px); margin-inline: auto; }
@@ -33,6 +26,7 @@
 .np-artwork { min-width: 0; display: grid; place-items: center; border: 1px dashed #bed5ed; border-radius: 18px; background: #eaf3fc; color: #44698e; overflow: hidden; }
 .np-artwork--ready { background: transparent; border: 0; }
 .np-artwork img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.np-artwork picture { display: block; width: 100%; }
 .np-hero__art { position: absolute; inset-inline-end: 0; top: 16px; width: calc(46% - 19px); height: 350px; background: #e5f1fd; z-index: 1; }
 .np-trust { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: min(calc((100% - 64px) * .56), 672px); margin-inline-start: max(32px, calc((100% - 1200px) / 2)); margin-inline-end: auto; padding-block: 20px; }
 .np-trust__item { text-align: center; padding-inline: 12px; }
@@ -157,8 +151,14 @@
 .homepage .np-location__grid { border: 1px solid #dce9f7; border-radius: 18px; background: #fff; gap: 0; overflow: hidden; min-height: 200px; box-shadow: 0 5px 22px #173b6508; }
 .homepage .np-location__copy { background: transparent; border: 0; border-radius: 0; padding: 26px; }
 .homepage .np-location address { max-width: 480px; font-size: 13px; line-height: 2.1; margin-block: 12px; }
-.np-location__directions { display: flex; align-items: center; justify-content: center; flex-direction: column; background: #f5faff; padding: 0; text-align: center; }
+.np-location__directions { position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; background: #f5faff; padding: 0; text-align: center; }
 .np-location__map { display: block; width: 100%; height: 260px; border: 0; }
+.np-map-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #edf5fc; touch-action: pan-y; }
+.np-map-preview[hidden] { display: none; }
+.np-map-preview > .np-icon { width: 36px; height: 36px; color: var(--color-brand-700); }
+.np-map-status { position: absolute; bottom: 36px; inset-inline: 8px; margin: 0; background: #f5faffed; font-size: 12px; padding-inline: 12px; pointer-events: none; }
+.np-map-status:empty { display: none; }
+.np-map-fallback { position: absolute; bottom: 0; inset-inline: 0; background: #f5faffed; font-size: 12px; color: var(--color-brand-700); padding: 8px 12px; }
 .homepage .np-location__maps { width: 100%; margin: 0; padding: 12px; }
 .homepage .np-location__maps a { min-height: 44px; background: #fff; }
 .np-location__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
