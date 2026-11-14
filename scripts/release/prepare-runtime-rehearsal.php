@@ -54,7 +54,7 @@ file_put_contents($application.'/scripts/build-support-assets.mjs', runtimeGit($
 // These 48 existing Windows working-tree files had CRLF in the verified
 // artifact. Reproduce those bytes in this disposable build only. Source Git
 // blobs stay LF; no files or assertions are omitted from the exact-byte gate.
-foreach (json_decode(file_get_contents($repo.'/tests/fixtures/runtime-release-support-eol.json'), true, 16, JSON_THROW_ON_ERROR) as $path) {
+foreach (json_decode(file_get_contents($repo.'/tests/Fixtures/runtime-release-support-eol.json'), true, 16, JSON_THROW_ON_ERROR) as $path) {
     NovinPay\Release\runtimePath($path);
     $file = $application.'/resources/support-chat/'.$path;
     $bytes = file_get_contents($file);
