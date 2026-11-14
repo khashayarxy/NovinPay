@@ -59,10 +59,6 @@ foreach (['vendor' => [$root.'/candidate/vendor', 'vendor/'], 'assets' => [$repo
 }
 $migrations = migrationInventory($repo.'/database/migrations');
 $triggers = expectedTriggerContracts($migrations);
-foreach ($triggers as &$trigger) {
-    $trigger['definer'] = 'synthetic@localhost';
-}
-unset($trigger);
 $m = ['format' => 'novinpay-runtime-release-v1', 'baseline' => $base, 'target' => $target,
     'applicationCommit' => '9f2e6a48481c8527d538de9e4ba24a2ca211ee8f', 'sourceBranch' => 'synthetic', 'targetBranch' => 'codex/confirmed-audit-remediation',
     'releaseName' => 'runtime-ci', 'stateDirectory' => '/home/novinpay/novinpay-direct-pr13', 'publicLink' => '/home/novinpay/novinpay/public',

@@ -43,16 +43,14 @@ function runtimeReleaseContract(array $m): void
             requireGate(preg_match('/\A[a-f0-9]{64}\z/D', $hash) === 1, 'runtime_protected_hash', 'protected hash', [], 'Reconcile protected files.');
         }
     }
-    foreach (['.env', 'public/.htaccess', 'bootstrap/cache/config.php', 'storage/app/private/support-chat/installation.env'] as $path) {
+    foreach (['.env', 'public/.htaccess', 'bootstrap/cache/config.php', 'storage/app/private/support-chat/installation.env', 'storage/framework/site-maintenance/state.json', 'storage/framework/site-maintenance/audit.jsonl'] as $path) {
         requireGate(isset($m['protectedFiles'][$path]), 'runtime_protected_required', 'environment, handler, cached configuration and support identity pinned', [], 'Reconcile the protected inventory.');
+    }
+    foreach (['state.json', 'audit.jsonl'] as $file) {
+        requireGate($m['protectedFiles']['storage/framework/site-maintenance/'.$file] === $m['maintenanceHashes'][$file], 'runtime_maintenance_pin', 'same exact maintenance evidence', [], 'Reconcile state and preserved audit history.');
     }
     requireGate(($m['publicLink'] ?? null) === '/home/novinpay/novinpay/public', 'runtime_public_link', 'unchanged hosting link target', [], 'Inspect hosting identity.');
     $triggers = $m['triggers'];
-    foreach ($triggers as &$trigger) {
-        requireGate(is_string($trigger['definer'] ?? null), 'runtime_trigger_definer', 'retained trigger definer', [], 'Reconcile database contracts.');
-        unset($trigger['definer']);
-    }
-    unset($trigger);
     ksort($triggers);
     requireGate($triggers === expectedTriggerContracts($m['migrations']), 'runtime_trigger_contract', 'reviewed unchanged trigger bodies', [], 'Reject trigger contract drift.');
     requireGate(is_array($m['httpChecks'] ?? null) && isset($m['httpChecks']['/'], $m['httpChecks']['/login']), 'runtime_http_contract', 'explicit public HTTPS acceptance', [], 'Prepare read-only smoke checks.');
@@ -308,6 +306,9 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
     $lockPath = $kit.'/.operation.lock';
     runtimeNoLinks($lockPath);
     $lock = fopen($lockPath, 'c+b');
+    if (PHP_OS_FAMILY !== 'Windows') {
+        requireGate(is_resource($lock) && fileowner($lockPath) === posix_geteuid() && (fileperms($lockPath) & 0777) === 0600, 'runtime_lock_identity', 'same-UID private operation lock', [], 'Preserve and inspect the existing lock.');
+    }
     requireGate(is_resource($lock) && flock($lock, LOCK_EX | LOCK_NB), 'runtime_operation_locked', 'exclusive shared operation lock', [], 'Do not terminate or overlap an operation.');
     $journal = $kit.'/'.$m['releaseName'].'-attempt';
     $phase = 'identity';
@@ -351,6 +352,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
             $cache[basename($file)] = hash_file('sha256', $file);
             runtimeWrite($journal.'/rollback-cache/'.basename($file), file_get_contents($file));
         }
+        runtimeVerify($journal.'/rollback-cache', $cache, true);
         $views = runtimeInventory($app.'/storage/framework/views');
         foreach ($views as $path => $hash) {
             runtimeWrite($journal.'/rollback-views/'.$path, file_get_contents($app.'/storage/framework/views/'.$path));
@@ -379,6 +381,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         runtimeGit($app, ['merge', '--ff-only', '--no-edit', $m['target']]);
         $switched = true;
         $phase = 'vendor';
+        runtimeVerify($app.'/vendor', $baselineVendor, true);
         requireGate(rename($app.'/vendor', $journal.'/original-vendor'), 'runtime_vendor_move', 'baseline vendor retained', [], 'Keep maintenance.');
         $vendorMoved = true;
         requireGate(rename($journal.'/vendor/vendor', $app.'/vendor'), 'runtime_vendor_switch', 'staged vendor switch', [], 'Restore matched baseline before reopening.');

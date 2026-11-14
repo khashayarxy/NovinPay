@@ -53,6 +53,8 @@ try {
     runtimeWrite($app.'/public/.htaccess', file_get_contents($app.'/public/.htaccess')."\n# synthetic hosting-managed handler: preserve exactly\n");
     runtimeWrite($app.'/storage/app/private/support-chat/installation.env', "SYNTHETIC_REHEARSAL=true\n");
     runtimeWrite($app.'/storage/app/private/persistent-sentinel', random_bytes(32));
+    runtimeWrite($app.'/storage/framework/site-maintenance/state.json', '{"synthetic":true}');
+    runtimeWrite($app.'/storage/framework/site-maintenance/audit.jsonl', "{\"synthetic\":true}\n");
     $db = new PDO('sqlite:'.$root.'/business.sqlite');
     $db->exec('CREATE TABLE migrations (migration TEXT PRIMARY KEY); CREATE TABLE preservation (id INTEGER PRIMARY KEY, value TEXT); INSERT INTO preservation VALUES (1,\'synthetic unchanged record\')');
     $insert = $db->prepare('INSERT INTO migrations VALUES (?)');
@@ -80,8 +82,11 @@ try {
         $m['baselineFiles'][$p] = hash_file('sha256', $app.'/'.$p);
     }
     $m['protectedFiles'] = [];
-    foreach (['.env', 'public/.htaccess', 'bootstrap/cache/config.php', 'storage/app/private/support-chat/installation.env', 'storage/app/private/persistent-sentinel'] as $p) {
+    foreach (['.env', 'public/.htaccess', 'bootstrap/cache/config.php', 'storage/app/private/support-chat/installation.env', 'storage/app/private/persistent-sentinel', 'storage/framework/site-maintenance/state.json', 'storage/framework/site-maintenance/audit.jsonl'] as $p) {
         $m['protectedFiles'][$p] = hash_file('sha256', $app.'/'.$p);
+    }
+    foreach (['state.json', 'audit.jsonl'] as $file) {
+        $m['maintenanceHashes'][$file] = $m['protectedFiles']['storage/framework/site-maintenance/'.$file];
     }
     $baselineVendor = runtimeInventory($app.'/vendor');
     $hooks = [
@@ -115,13 +120,16 @@ try {
         },
     ];
     $negativeChecks = [];
+    umask(0077);
     if (! ($c['forceFailure'] ?? false)) {
-        foreach (['corrupt', 'vendor-changed', 'missing-chunk', 'wrong-candidate', 'stale-baseline', 'quota', 'interrupted'] as $scenario) {
+        foreach (['corrupt', 'vendor-changed', 'missing-chunk', 'migration-change', 'wrong-candidate', 'stale-baseline', 'quota', 'interrupted'] as $scenario) {
             $bad = $m;
             $bad['releaseName'] .= '-'.$scenario;
             $badHooks = $hooks;
-            if (in_array($scenario, ['corrupt', 'vendor-changed', 'missing-chunk'], true)) {
-                $kind = $scenario === 'missing-chunk' ? 'assets' : 'vendor';
+            if (in_array($scenario, ['corrupt', 'vendor-changed', 'missing-chunk', 'migration-change'], true)) {
+                $kind = match ($scenario) {
+                    'missing-chunk' => 'assets', 'migration-change' => 'source', default => 'vendor'
+                };
                 $old = $m['archives'][$kind]['file'];
                 $file = $scenario.'.zip';
                 copy($kit.'/'.$old, $kit.'/'.$file);
@@ -133,6 +141,11 @@ try {
                     $z->open($kit.'/'.$file);
                     if ($scenario === 'vendor-changed') {
                         $z->addFromString('vendor/autoload.php', '<?php /* altered */');
+                    } elseif ($scenario === 'migration-change') {
+                        $path = 'database/migrations/'.$m['migrations'][0].'.php';
+                        $bytes = $z->getFromName($path)."\n// synthetic unauthorized migration edit\n";
+                        $z->addFromString($path, $bytes);
+                        $bad['archives']['source']['files'][$path] = hash('sha256', $bytes);
                     } else {
                         // Select a real hashed JS chunk from the pinned complete inventory.
                         $path = array_values(array_filter(array_keys($bad['archives']['assets']['files']), fn ($p) => str_starts_with($p, 'assets/') && str_ends_with($p, '.js')))[0];
@@ -156,6 +169,10 @@ try {
                 runtimeActivate($app, $kit, $link, $bad, $badHooks);
                 throw new RuntimeException('negative_scenario_was_accepted');
             } catch (GateFailure $e) {
+                $expected = ['corrupt' => 'runtime_archive_hash', 'vendor-changed' => 'runtime_archive_file_hash', 'missing-chunk' => 'runtime_asset_dependency',
+                    'migration-change' => 'runtime_source_blob', 'wrong-candidate' => 'runtime_git', 'stale-baseline' => 'runtime_baseline',
+                    'quota' => 'runtime_inode_headroom', 'interrupted' => 'runtime_attempt_exists'];
+                requireGate($e->check === $expected[$scenario], 'rehearsal_wrong_rejection', 'specific scenario failed at its intended guard', ['scenario' => $scenario, 'observedCheck' => $e->check], 'Fix the actual mismatch; do not accept an unrelated STOP as coverage.');
                 $negativeChecks[$scenario] = $e->check;
             } finally {
                 if ($scenario === 'stale-baseline') {

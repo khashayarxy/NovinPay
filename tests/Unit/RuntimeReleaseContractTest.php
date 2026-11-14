@@ -13,6 +13,7 @@ use function NovinPay\Release\runtimeInodes;
 use function NovinPay\Release\runtimeInventory;
 use function NovinPay\Release\runtimePackages;
 use function NovinPay\Release\runtimePath;
+use function NovinPay\Release\runtimeReleaseContract;
 use function NovinPay\Release\runtimeVerify;
 use function NovinPay\Release\runtimeWrite;
 use function NovinPay\Release\sourceReleaseManifest;
@@ -164,5 +165,38 @@ class RuntimeReleaseContractTest extends TestCase
     {
         $this->expectException(GateFailure::class);
         runtimeGit($this->dir, ['rev-parse', 'HEAD']);
+    }
+
+    public function test_exact_schema_neutral_contract_preserves_trigger_definers_and_rejects_migrations(): void
+    {
+        $zero = str_repeat('0', 64);
+        $names = \NovinPay\Release\migrationInventory(__DIR__.'/../../database/migrations');
+        $m = ['format' => 'novinpay-runtime-release-v1', 'baseline' => 'ecf672110214a24a9171d942a2730d9bfad5f65c',
+            'target' => str_repeat('a', 40), 'applicationCommit' => '9f2e6a48481c8527d538de9e4ba24a2ca211ee8f',
+            'releaseName' => 'unit-runtime', 'sourceBranch' => 'synthetic', 'targetBranch' => 'codex/synthetic',
+            'stateDirectory' => '/home/novinpay/novinpay-direct-pr13', 'publicLink' => '/home/novinpay/novinpay/public',
+            'backup' => ['directory' => '/home/novinpay/novinpay-private-backups/recovery-synthetic', 'restoreDatabase' => 'novinpay_restoresynthetic', 'serverKeySha256' => $zero],
+            'credentialsSha256' => $zero, 'maintenanceHashes' => ['state.json' => $zero, 'audit.jsonl' => $zero], 'retainedFiles' => [],
+            'migrations' => $names, 'triggers' => \NovinPay\Release\expectedTriggerContracts($names), 'expectedTriggers' => 13, 'migrationsApplied' => 0,
+            'productionPackages' => array_fill(0, 76, []), 'dependencyChanges' => ['laravel/framework' => ['13.35.0', '13.40.0']],
+            'baselineFiles' => array_fill_keys(['one', 'two', 'three'], $zero),
+            'protectedFiles' => array_fill_keys(['.env', 'public/.htaccess', 'bootstrap/cache/config.php', 'storage/app/private/support-chat/installation.env', 'storage/framework/site-maintenance/state.json', 'storage/framework/site-maintenance/audit.jsonl'], $zero),
+            'httpChecks' => ['/' => ['status' => 200], '/login' => ['status' => 200]]];
+        foreach (['source' => 'README.md', 'vendor' => 'vendor/autoload.php', 'assets' => 'manifest.json'] as $kind => $path) {
+            $m['archives'][$kind] = ['file' => $kind.'.zip', 'sha256' => $zero, 'files' => [$path => $zero]];
+        }
+        runtimeReleaseContract($m);
+        $this->addToAssertionCount(1);
+        $changed = $m;
+        $changed['triggers'][array_key_first($m['triggers'])]['definer'] = 'other@localhost';
+        try {
+            runtimeReleaseContract($changed);
+            $this->fail('Definer drift accepted');
+        } catch (GateFailure $e) {
+            $this->assertSame('runtime_trigger_contract', $e->check);
+        }
+        $m['migrationsApplied'] = 1;
+        $this->expectException(GateFailure::class);
+        runtimeReleaseContract($m);
     }
 }

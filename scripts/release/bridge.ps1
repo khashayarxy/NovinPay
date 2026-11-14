@@ -97,6 +97,7 @@ function Read-QuotaEntries([string]$directory) {
   }
  }
 }
+$runtimeQuotaResponses=0
 $opened=$false;$done=@{};$check='open_authenticated_access'
 try {
  . OpenAccess; $opened=$true
@@ -135,7 +136,10 @@ try {
    $check='quota_reply_upload';$hash=UploadNewPrivate ($base+'-reply.json') $bytes $package
    $null=UploadNewPrivate ($base+'-ready.json') ([Text.Encoding]::UTF8.GetBytes((@{sha256=$hash}|ConvertTo-Json -Compress))) $package
    $done[$base]=$true;Status ('QUOTA_'+$q.phase.ToUpperInvariant())
-   if($sourceScope){Status 'ACTIVATION_QUOTA_PASS';exit 0}
+   if($sourceScope){
+    $runtimeQuotaResponses++
+    if($m.format -cne 'novinpay-runtime-release-v1' -or $runtimeQuotaResponses -ge 2){Status 'ACTIVATION_QUOTA_PASS';exit 0}
+   }
   }
   if($QuotaOnly){
    if($recoveryScope -and @(Get-Entries '/home/novinpay/novinpay-private-backups'|Where-Object file -ceq ([IO.Path]::GetFileName($m.backup.directory))).Count){
