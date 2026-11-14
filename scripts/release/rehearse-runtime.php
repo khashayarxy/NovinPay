@@ -121,6 +121,18 @@ try {
     ];
     $negativeChecks = [];
     umask(0077);
+    $heldLock = fopen($kit.'/.operation.lock', 'c+b');
+    requireGate(flock($heldLock, LOCK_EX | LOCK_NB), 'rehearsal_lock_setup', 'fixture owns operation lock', [], 'Inspect local locking support.');
+    try {
+        runtimeActivate($app, $kit, $link, $m, $hooks);
+        throw new RuntimeException('overlapping_operation_accepted');
+    } catch (GateFailure $e) {
+        requireGate($e->check === 'runtime_operation_locked', 'rehearsal_lock_rejection', 'second operation rejected by real flock', [], 'Preserve exclusive locking.');
+        $negativeChecks['concurrent-operation'] = $e->check;
+    } finally {
+        flock($heldLock, LOCK_UN);
+        fclose($heldLock);
+    }
     if (! ($c['forceFailure'] ?? false)) {
         foreach (['corrupt', 'vendor-changed', 'missing-chunk', 'migration-change', 'wrong-candidate', 'stale-baseline', 'quota', 'interrupted'] as $scenario) {
             $bad = $m;

@@ -120,6 +120,19 @@ class RuntimeReleaseContractTest extends TestCase
         runtimeExtract($path, $c, $this->dir.'/stage');
     }
 
+    public function test_zip_traversal_is_rejected_before_any_destination_is_created(): void
+    {
+        [$path, $c] = $this->archive(['../escaped' => 'must not publish']);
+        try {
+            runtimeExtract($path, $c, $this->dir.'/stage');
+            $this->fail('Traversal ZIP accepted');
+        } catch (GateFailure $e) {
+            $this->assertSame('runtime_unsafe_path', $e->check);
+            $this->assertFileDoesNotExist($this->dir.'/escaped');
+            $this->assertDirectoryDoesNotExist($this->dir.'/stage');
+        }
+    }
+
     public function test_reference_versions_are_validated_not_only_package_names(): void
     {
         $p = ['name' => 'vendor/package', 'version' => '1.0.0', 'source' => ['reference' => 'ref-a'], 'dist' => ['reference' => 'ref-a']];

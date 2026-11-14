@@ -43,11 +43,24 @@ foreach (['baseline' => $base, 'candidate' => $target] as $name => $sha) {
 $archives = [];
 $application = $root.'/application-assets';
 mkdir($application, 0700);
-runtimeGit($repo, ['archive', '--format=zip', '--output='.$root.'/application-assets.zip', '9f2e6a48481c8527d538de9e4ba24a2ca211ee8f']);
+// The approved Vite archive was built at c9b2220; 9f2e6a4 subsequently
+// refreshed ONLY the support builder/cache policy, not Vite CSS/JS.
+runtimeGit($repo, ['archive', '--format=zip', '--output='.$root.'/application-assets.zip', 'c9b222013d216f0bba310a9c2f2e882f7b08a903']);
 $applicationZip = new ZipArchive;
 requireGate($applicationZip->open($root.'/application-assets.zip') === true, 'rehearsal_application_archive', 'approved application payload', [], 'Preserve the application/qualification SHA distinction.');
 $applicationZip->extractTo($application);
 $applicationZip->close();
+file_put_contents($application.'/scripts/build-support-assets.mjs', runtimeGit($repo, ['show', '9f2e6a48481c8527d538de9e4ba24a2ca211ee8f:scripts/build-support-assets.mjs']));
+// These 48 existing Windows working-tree files had CRLF in the verified
+// artifact. Reproduce those bytes in this disposable build only. Source Git
+// blobs stay LF; no files or assertions are omitted from the exact-byte gate.
+foreach (json_decode(file_get_contents($repo.'/tests/fixtures/runtime-release-support-eol.json'), true, 16, JSON_THROW_ON_ERROR) as $path) {
+    NovinPay\Release\runtimePath($path);
+    $file = $application.'/resources/support-chat/'.$path;
+    $bytes = file_get_contents($file);
+    requireGate(! str_contains($bytes, "\r"), 'rehearsal_eol_source', 'canonical LF source before explicit historical build transformation', [], 'Inspect changed source bytes.');
+    file_put_contents($file, str_replace("\n", "\r\n", $bytes));
+}
 requireGate(symlink($repo.'/node_modules', $application.'/node_modules') && symlink($root.'/candidate/vendor', $application.'/vendor'),
     'rehearsal_build_links', 'existing locked build dependencies in the isolated approved application tree', [], 'Inspect local CI capabilities.');
 $buildAssets = command(['npm', 'run', 'build'], $application, 'rehearsal_approved_assets', 180);
