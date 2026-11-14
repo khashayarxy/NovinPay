@@ -29,5 +29,6 @@ test('static publication excludes private/configuration/PHP files and versions e
   writeFileSync(path.join(source,'operator/app.js'),'/* changed public bytes */');
   assert.notEqual(build().version,first.version);
   assert.match(readFileSync(path.join(root,'public/build/support-chat/.htaccess'),'utf8'),/max-age=31536000, immutable/);
+  assert.match(readFileSync(path.join(root,'public/build/support-chat/.htaccess'),'utf8'),/<Files "manifest\.json">\nHeader set Cache-Control "no-cache, max-age=0, must-revalidate"/);
  }finally{rmSync(root,{recursive:true,force:true});}
 });

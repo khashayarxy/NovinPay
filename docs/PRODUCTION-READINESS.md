@@ -23,7 +23,9 @@ provider operation or new recovery cycle occurred. Keep PR #22 Draft/unmerged.
   rule into generated `public/build/assets/.htaccess`, published by the existing
   asset builder. The candidate root file is now byte-identical to the Git baseline;
   its production customizations must remain untouched. Tests verify build publication
-  and exclusion of HTML, private, manifest, unversioned and chat paths.
+  and exclusion of HTML, private, manifest, unversioned and chat paths. The separate
+  existing support asset rule also gave its unversioned manifest immutable caching;
+  explicitly revalidate only that manifest while preserving hashed chat assets.
 
 ### Operational evidence and boundaries
 
