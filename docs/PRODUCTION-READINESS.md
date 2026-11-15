@@ -162,7 +162,7 @@ Production remains `ecf672110214a24a9171d942a2730d9bfad5f65c`, with
 trigger contracts; the follow-up readback matched 55 changed source files and both
 asset checksums. Seven public HTTPS routes returned 200 with valid TLS and maintenance
 was OFF. Fresh recovery subsequently checked the exact 24/13 source inventory and an isolated restore; a separate read of the captured production SQL confirmed the three nullable payment-review columns.
-IPPanel remains active; Zibal, scheduled provider processing and SMS.ir sending stay
+IPPanel remains the sole provider; Zibal and scheduled provider processing stay
 disabled. No real SMS/payment, new production product or deployment is authorized here.
 
 ### Confirmed development corrections (not deployed)

@@ -29,11 +29,11 @@ class CustomerAccountTest extends TestCase
 
     private function otp(string $phone = '09000000000'): array
     {
-        config(['customer.sms_enabled' => true, 'customer.sms_api_key' => 'test-placeholder', 'customer.otp_template' => 1, 'customer.otp_parameter' => 'CODE', 'customer.approved_template_ids' => [1]]);
+        config(['customer.ippanel' => ['enabled' => true, 'api_key' => 'synthetic-key', 'pattern_code' => 'syntheticpattern', 'parameter' => 'code', 'sender' => '+983000505']]);
         Http::preventStrayRequests();
-        Http::fake(['api.sms.ir/*' => Http::response(['status' => 1, 'data' => ['messageId' => 123]])]);
+        Http::fake(['https://edge.ippanel.com/v1/api/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [123]]])]);
         $challenge = app(CustomerLogin::class)->issue($phone);
-        $code = Http::recorded()[0][0]['parameters'][0]['value'];
+        $code = Http::recorded()[0][0]['params']['code'];
 
         return [$challenge, $code];
     }
@@ -62,7 +62,7 @@ class CustomerAccountTest extends TestCase
         $phone = '09000000000';
         [$realChallenge, $realCode] = $this->otp($phone);
         $real = app(CustomerLogin::class)->verify($realChallenge, $realCode);
-        config(['customer.sms_enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
+        config(['customer.ippanel.enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
         Http::fake();
         $this->get('/account/login')->assertRedirect('/login');
         config(['support_chat.enabled' => true]);
@@ -109,7 +109,7 @@ class CustomerAccountTest extends TestCase
         $this->assertAuthenticatedAs($admin, 'web');
         $this->assertGuest('customer');
 
-        config(['customer.sms_enabled' => false]);
+        config(['customer.ippanel.enabled' => false]);
         $this->post('/account/start', ['phone' => $account->phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasErrors('code');
         $this->post('/account/password-login', ['password' => $original])->assertRedirect('/account');
         $this->post('/account/password', ['password' => $changed, 'password_confirmation' => $changed, 'current_password' => 'wrong password'])
@@ -129,7 +129,7 @@ class CustomerAccountTest extends TestCase
     public function test_admin_can_repeat_registration_and_reset_three_times_without_reusing_sessions(): void
     {
         $phone = '09000000000';
-        config(['customer.sms_enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
+        config(['customer.ippanel.enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
         Http::fake();
         $owner = User::factory()->superAdmin()->create();
         $login = app(CustomerLogin::class);
@@ -282,7 +282,7 @@ class CustomerAccountTest extends TestCase
     {
         [$challenge, $code] = $this->otp();
         $real = app(CustomerLogin::class)->verify($challenge, $code);
-        config(['customer.sms_enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => ['09000000000']]);
+        config(['customer.ippanel.enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => ['09000000000']]);
         $login = app(CustomerLogin::class);
         $test = $login->verify($login->issue('09000000000'), $login->privateTestCode('09000000000'));
         $this->actingAs($test, 'customer')->withSession(['customer_session_version' => 1]);

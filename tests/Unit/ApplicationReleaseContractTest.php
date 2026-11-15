@@ -105,14 +105,32 @@ class ApplicationReleaseContractTest extends TestCase
         $baseline = ['app' => ['key' => 'synthetic-secret'], 'customer' => ['sms_provider' => 'ippanel'],
             'payments' => ['zibal' => ['enabled' => false, 'live_requests' => false]], 'database' => ['default' => 'mariadb']];
         $after = $baseline;
-        $after['operations'] = ['scheduled_payments' => false, 'scheduled_notifications' => false];
+        $after['operations'] = ['scheduled_payments' => false];
         $after['payments']['zibal']['review_after_minutes'] = 30;
         $after['payments']['zibal']['reconciliation_limit'] = 8;
         $this->assertSame(preservedConfigurationDigest($baseline), preservedConfigurationDigest($after));
-        foreach (['app' => ['key' => 'changed'], 'customer' => ['sms_provider' => 'smsir'], 'database' => ['default' => 'wrong']] as $section => $value) {
+        foreach (['app' => ['key' => 'changed'], 'customer' => ['sms_provider' => 'unsupported-value'], 'database' => ['default' => 'wrong']] as $section => $value) {
             $changed = $after;
             $changed[$section] = $value;
             $this->assertNotSame(preservedConfigurationDigest($baseline), preservedConfigurationDigest($changed));
         }
+    }
+
+    public function test_retired_sms_settings_may_disappear_but_active_ippanel_and_identity_remain_bound(): void
+    {
+        $current = ['customer' => ['sms_provider' => 'ippanel', 'test_reset_on_logout' => true,
+            'ippanel' => ['enabled' => true, 'api_key' => 'synthetic-key', 'pattern_code' => 'syntheticpattern']]];
+        $old = $current;
+        $old['customer'] += ['sms_enabled' => false, 'sms_api_key' => 'retired-synthetic-key', 'otp_template' => 1,
+            'otp_parameter' => 'CODE', 'approved_template_ids' => [1], 'notifications_enabled' => false,
+            'notification_parameter' => 'URL', 'notification_templates' => []];
+        $this->assertSame(preservedConfigurationDigest($old), preservedConfigurationDigest($current));
+        foreach (['enabled' => false, 'api_key' => 'changed', 'pattern_code' => 'changed'] as $key => $value) {
+            $changed = $current;
+            $changed['customer']['ippanel'][$key] = $value;
+            $this->assertNotSame(preservedConfigurationDigest($current), preservedConfigurationDigest($changed));
+        }
+        $current['customer']['test_reset_on_logout'] = false;
+        $this->assertNotSame(preservedConfigurationDigest($old), preservedConfigurationDigest($current));
     }
 }

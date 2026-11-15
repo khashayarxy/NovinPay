@@ -679,41 +679,14 @@ class SharedPaymentsTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_notifications_are_durable_but_disabled_without_configuration(): void
+    public function test_in_account_notifications_are_durable_and_never_send_sms(): void
     {
         Http::fake();
         $service = app(CustomerNotifications::class);
         $service->record($this->account->id, 'payment_confirmed', 'synthetic-operation');
         $service->record($this->account->id, 'payment_confirmed', 'synthetic-operation');
         $this->assertDatabaseCount('customer_notifications', 1);
-        $this->assertSame(0, $service->sendPending());
-        Http::assertNothingSent();
-    }
-
-    public function test_missing_notification_templates_do_not_starve_configured_events(): void
-    {
-        config(['customer.notifications_enabled' => true, 'customer.sms_api_key' => 'synthetic-key', 'customer.notification_templates.payment_confirmed' => 12, 'customer.notification_parameter' => 'URL', 'customer.approved_template_ids' => [12]]);
-        Http::fake(['api.sms.ir/*' => Http::response(['status' => 1, 'data' => ['messageId' => 123]])]);
-        $service = app(CustomerNotifications::class);
-        for ($i = 0; $i < 21; $i++) {
-            $service->record($this->account->id, 'repair_registered', 'unconfigured-'.$i);
-        }
-        $service->record($this->account->id, 'payment_confirmed', 'configured-one');
-        $this->assertSame(1, $service->sendPending());
-        $this->assertSame(21, DB::table('customer_notifications')->where('state', 'pending')->count());
-        $this->assertSame(0, $service->sendPending());
-        Http::assertSentCount(1);
-        Http::assertSent(fn ($request) => $request['templateId'] === 12 && $request['parameters'][0]['name'] === 'URL');
-    }
-
-    public function test_interrupted_notification_is_reviewed_without_resending(): void
-    {
-        config(['customer.notifications_enabled' => true, 'customer.sms_api_key' => 'synthetic-key', 'customer.notification_templates.payment_confirmed' => 12, 'customer.notification_parameter' => 'URL', 'customer.approved_template_ids' => [12]]);
-        Http::fake();
-        app(CustomerNotifications::class)->record($this->account->id, 'payment_confirmed', 'interrupted');
-        DB::table('customer_notifications')->update(['state' => 'sending', 'claimed_at' => now()->subMinutes(11)]);
-        $this->assertSame(0, app(CustomerNotifications::class)->sendPending());
-        $this->assertSame('review', DB::table('customer_notifications')->value('state'));
+        $this->assertFalse(method_exists($service, 'sendPending'));
         Http::assertNothingSent();
     }
 

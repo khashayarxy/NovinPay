@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\CustomerLogin;
+use App\Services\CustomerOtpSms;
 use App\Services\IpPanel;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -273,10 +274,9 @@ class IpPanelOtpTest extends TestCase
         Http::assertSentCount(1);
     }
 
-    public function test_timeout_does_not_retry_or_fall_back_to_smsir(): void
+    public function test_timeout_does_not_retry_or_switch_provider(): void
     {
         $this->designateSmsTestPhone('09120000000');
-        config(['customer.sms_enabled' => true, 'customer.approved_template_ids' => [123]]);
         $attempts = 0;
         Http::fake([self::BASE.'/send' => function () use (&$attempts) {
             $attempts++;
@@ -386,9 +386,21 @@ class IpPanelOtpTest extends TestCase
         $this->assertDatabaseCount('customer_login_challenges', 0);
     }
 
+    public function test_ippanel_is_the_only_provider_and_status_does_not_send(): void
+    {
+        config(['customer.sms_provider' => 'unsupported-value']);
+        $this->assertSame('ippanel', app(CustomerOtpSms::class)->provider());
+        Http::fake([self::BASE.'/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [123]]])]);
+        $this->artisan('customers:sms-status')->expectsOutputToContain('"active_provider":"ippanel"')->assertSuccessful();
+        Http::assertNothingSent();
+        $this->assertSame('accepted', app(CustomerOtpSms::class)->sendOutcome('09120000000', '123456'));
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request->url() === self::BASE.'/send');
+    }
+
     public function test_read_only_pattern_status_checks_metadata_and_literal_webotp_line(): void
     {
-        config(['app.url' => 'https://novinpaypos.com', 'customer.sms_provider' => 'smsir', 'customer.ippanel.enabled' => false]);
+        config(['app.url' => 'https://novinpaypos.com', 'customer.ippanel.enabled' => false]);
         Http::fake([self::BASE.'/patterns/syntheticpattern' => Http::response([
             'meta' => ['status' => true],
             'data' => [

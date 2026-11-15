@@ -25,7 +25,9 @@ final class OperationalReadiness
         $due = PaymentAttempt::query()->whereIn('state', ['requesting', 'pending', 'uncertain', 'processing', 'verified'])
             ->where(fn ($q) => $q->whereNull('retry_at')->orWhere('retry_at', '<=', now()))
             ->where('created_at', '<=', now()->subMinutes((int) config('operations.queue_stale_minutes')))->count();
-        $notifications = DB::table('customer_notifications')->whereIn('state', ['pending', 'sending'])
+        // Historical interrupted external dispatches still require review. New
+        // in-account notifications are not an external-delivery queue.
+        $notifications = DB::table('customer_notifications')->where('state', 'sending')
             ->where('created_at', '<=', now()->subMinutes((int) config('operations.queue_stale_minutes')))->count();
 
         return [
@@ -37,7 +39,7 @@ final class OperationalReadiness
             'stale_notifications' => $notifications,
             'notification_review_count' => DB::table('customer_notifications')->where('state', 'review')->count(),
             'payment_worker_enabled' => (bool) config('operations.scheduled_payments'),
-            'notification_worker_enabled' => (bool) config('operations.scheduled_notifications'),
+            'notification_worker_enabled' => false,
             'provider_requests_executed' => false,
         ];
     }

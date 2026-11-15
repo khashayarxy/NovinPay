@@ -34,8 +34,8 @@ class OperationalReadinessTest extends TestCase
     {
         $this->artisan('schedule:list', ['--json' => true])->assertSuccessful();
         $commands = collect(Schedule::events())->filter(fn ($event) => isset($event->command)
-            && (str_contains($event->command, 'payments:reconcile') || str_contains($event->command, 'customers:notify')));
-        $this->assertCount(2, $commands);
+            && str_contains($event->command, 'payments:reconcile'));
+        $this->assertCount(1, $commands);
         foreach ($commands as $event) {
             $this->assertTrue($event->withoutOverlapping);
             $this->assertFalse($event->filtersPass($this->app));

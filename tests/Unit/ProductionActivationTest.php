@@ -449,7 +449,7 @@ final class ProductionActivationTest extends TestCase
 
     public function test_only_chat_flag_changes_and_duplicate_environment_keys_fail_closed(): void
     {
-        $before = "APP_KEY=synthetic\nDB_PASSWORD=synthetic\nSMSIR_ENABLED=false\nSUPPORT_CHAT_ENABLED=false\n";
+        $before = "APP_KEY=synthetic\nDB_PASSWORD=synthetic\nIPPANEL_ENABLED=false\nSUPPORT_CHAT_ENABLED=false\n";
         $after = enabledChatEnvironment($before);
         $this->assertSame(str_replace('SUPPORT_CHAT_ENABLED=false', 'SUPPORT_CHAT_ENABLED=true', $before), $after);
         $this->assertSame($after, enabledChatEnvironment($after));

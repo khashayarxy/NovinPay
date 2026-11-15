@@ -68,7 +68,7 @@ try {
     $identity = $db->query('SELECT DATABASE() db,CURRENT_USER() account,VERSION() version,@@session.foreign_key_checks fk,@@session.check_constraint_checks ck,@@session.explicit_defaults_for_timestamp ts')->fetch(PDO::FETCH_ASSOC);
     $need($identity['db'] === 'novinpay_restore13r1' && $identity['account'] === 'novinpay_mig1@localhost'
         && str_starts_with($identity['version'], '10.6.28') && (int) $identity['fk'] === 1 && (int) $identity['ck'] === 1 && (int) $identity['ts'] === 1, $phase);
-    foreach (['payments.zibal.enabled', 'payments.zibal.live_requests', 'customer.sms_enabled', 'customer.notifications_enabled', 'postex.enabled', 'postex.independent_postage_verified'] as $flag) {
+    foreach (['payments.zibal.enabled', 'payments.zibal.live_requests', 'customer.ippanel.enabled', 'postex.enabled', 'postex.independent_postage_verified'] as $flag) {
         $need(config($flag) === false, 'providers_disabled');
     }
     $actual = $db->query('SELECT migration FROM migrations ORDER BY migration')->fetchAll(PDO::FETCH_COLUMN);

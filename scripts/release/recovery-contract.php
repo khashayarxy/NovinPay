@@ -123,10 +123,7 @@ function environmentBoolean(mixed $value): bool
 function recoveryCustomerConfiguration(array $env, array $cached): array
 {
     $c = $cached['customer'] ?? [];
-    requireGate(! environmentBoolean($env['SMSIR_ENABLED'] ?? 'false') && ! environmentBoolean($env['SMSIR_NOTIFICATIONS_ENABLED'] ?? 'false')
-        && ($c['sms_enabled'] ?? null) === false && ($c['notifications_enabled'] ?? null) === false,
-        'smsir_remains_disabled', 'SMS.ir sending and notifications remain disabled', [], 'Preserve the approved production provider configuration.');
-    requireGate(($env['SMS_PROVIDER'] ?? '') === 'ippanel' && environmentBoolean($env['IPPANEL_ENABLED'] ?? 'false')
+    requireGate(environmentBoolean($env['IPPANEL_ENABLED'] ?? 'false')
         && ($c['sms_provider'] ?? null) === 'ippanel' && ($c['ippanel']['enabled'] ?? null) === true,
         'active_ippanel_configuration', 'approved IPPanel environment and cache agree', [], 'Inspect effective and fresh flags without changing credentials.');
     $test = environmentBoolean($env['CUSTOMER_TEST_OTP_ENABLED'] ?? 'false');
@@ -143,7 +140,7 @@ function recoveryCustomerConfiguration(array $env, array $cached): array
     requireGate(environmentBoolean($env['CUSTOMER_TEST_RESET_ON_LOGOUT'] ?? 'true') && ($c['test_reset_on_logout'] ?? null) === true,
         'test_reset_preservation', 'approved logout-reset feature retained', [], 'Preserve reset configuration and protected-record checks.');
 
-    return ['result' => 'HOSTED_CUSTOMER_AUTH_GATE_PASS', 'activeProvider' => 'ippanel', 'smsirSendingEnabled' => false,
+    return ['result' => 'HOSTED_CUSTOMER_AUTH_GATE_PASS', 'activeProvider' => 'ippanel',
         'testAccountFeatureEnabled' => $test, 'testAccountUsesSms' => $test, 'allowlistConfigured' => $phones !== ''];
 }
 
@@ -301,6 +298,12 @@ function preservedConfigurationDigest(array $configuration): string
     // Only the reviewed new defaults may differ. Provider/identity/secrets remain bound.
     unset($configuration['operations']);
     unset($configuration['payments']['zibal']['review_after_minutes'], $configuration['payments']['zibal']['reconciliation_limit']);
+    // Owner-approved retirement of the unused legacy SMS settings. Active
+    // IPPanel credentials/pattern and every customer identity setting stay hashed.
+    foreach (['sms_enabled', 'sms_api_key', 'otp_template', 'otp_parameter', 'approved_template_ids',
+        'notifications_enabled', 'notification_parameter', 'notification_templates'] as $retired) {
+        unset($configuration['customer'][$retired]);
+    }
     $sort = static function (array $value) use (&$sort): array {
         foreach ($value as &$item) {
             if (is_array($item)) {

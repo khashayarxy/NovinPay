@@ -41,8 +41,6 @@ verify_ippanel() {
         if (!$app->environment("production") || !$app->configurationIsCached()
             || $app->getCachedConfigPath() !== getcwd()."/bootstrap/cache/config.php"
             || $otp->provider() !== "ippanel" || !$otp->enabled() || !$otp->configured()
-            || config("customer.sms_enabled") !== false
-            || config("customer.notifications_enabled") !== false
             || config("customer.test_reset_on_logout") !== true
             || !is_string($testPhone) || !$login->testUsesSms($testPhone) || $login->privateTestCode($testPhone) !== null) {
             fwrite(STDERR, "IPPANEL_CONFIGURATION_MISMATCH\n");
@@ -175,6 +173,6 @@ phase=https_acceptance
 p "$tools/activate-source.php" "$manifest" "$pin" smoke
 sha256sum --check --strict "$journal/protected.sha256"
 verify_ippanel
-printf '{"result":"%s","commit":"%s","migrationsApplied":%s,"smsConfigurationPreserved":true,"activeProvider":"ippanel","otpReady":true,"smsirSendingEnabled":false,"testResetOnLogoutPreserved":true,"testSmsDeliveryPreserved":true,"sendingExecuted":false}\n' "$success_result" "$target" "${#migration_paths[@]}" >"$journal/complete.json"
+printf '{"result":"%s","commit":"%s","migrationsApplied":%s,"smsConfigurationPreserved":true,"activeProvider":"ippanel","otpReady":true,"testResetOnLogoutPreserved":true,"testSmsDeliveryPreserved":true,"sendingExecuted":false}\n' "$success_result" "$target" "${#migration_paths[@]}" >"$journal/complete.json"
 cat "$journal/complete.json"
 passed=true

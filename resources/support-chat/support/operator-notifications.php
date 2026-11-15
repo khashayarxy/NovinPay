@@ -57,7 +57,8 @@ function support_alert_ready(string $kind): bool {
     if(getenv('SUPPORT_OPERATOR_NOTIFICATION_PROVIDER')==='fake')return support_alert_test();
     if(getenv($prefix.'_REAL_ENABLED')!=='1'||!function_exists('curl_exec'))return false;
     if($kind==='push')return is_file(support_alert_dir().'/vapid.pem')&&str_starts_with(getenv('SUPPORT_PUSH_CONTACT')?:'','mailto:');
-    return (bool)getenv('SUPPORT_OPERATOR_SMS_RECIPIENTS_FILE')&&preg_match('/^[a-zA-Z0-9_-]{16,256}$/D',getenv('SMSIR_API_KEY')?:'')===1&&preg_match('/^[1-9][0-9]{0,8}$/D',getenv('SUPPORT_OPERATOR_SMS_TEMPLATE_ID')?:'')===1;
+    // No approved operator-alert pattern exists. In-app and push alerts remain available.
+    return false;
 }
 function support_alert_plan(): array {
     $ops=support_ops_store(function(array &$s){return $s;});
@@ -114,15 +115,10 @@ final class SupportPrivateOperatorAlerts implements SupportOperatorAlertTranspor
         if($kind==='push'){
             $endpoint=$payload['endpoint']??'';$u=support_push_endpoint($endpoint);$addresses=gethostbynamel($u['host']);if(!$addresses)return 'rejected';foreach($addresses as $ip)if(!filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE))return 'rejected';
             $vapid=support_push_vapid($endpoint,$this->audience);$url=$endpoint;$body='';$headers=['Authorization: vapid t='.$vapid['jwt'].',k='.$vapid['key'],'TTL: 60','Urgency: normal','Topic: support-awaiting','Content-Length: 0'];$resolve=[$u['host'].':443:'.$addresses[0]];
-        }else{
-            $file=getenv('SUPPORT_OPERATOR_SMS_RECIPIENTS_FILE')?:'';$real=realpath($file);$web=realpath(getenv('SUPPORT_PUBLIC_ROOT')?:__DIR__.'/..');$doc=realpath($_SERVER['DOCUMENT_ROOT']??'');if(!$real||is_link($file)||!is_file($real)||filesize($real)>16384||str_starts_with(str_replace('\\','/',$real),str_replace('\\','/',$web).'/')||($doc&&str_starts_with(str_replace('\\','/',$real),str_replace('\\','/',$doc).'/')))return 'rejected';
-            $recipients=json_decode((string)file_get_contents($real),true,8,JSON_THROW_ON_ERROR);$mobile=$recipients[$job['operator']]??null;if(!is_string($mobile)||!preg_match('/^09[0-9]{9}$/D',$mobile))return 'rejected';
-            $url='https://api.sms.ir/v1/send/verify';$body=json_encode(SupportSmsIr::payload($mobile,'پیام تازهٔ پشتیبانی',(int)getenv('SUPPORT_OPERATOR_SMS_TEMPLATE_ID'),getenv('SUPPORT_OPERATOR_SMS_PARAMETER')?:'ALERT'),JSON_THROW_ON_ERROR);$headers=['X-API-KEY: '.getenv('SMSIR_API_KEY'),'Content-Type: application/json'];$resolve=[];
-        }
+        }else{return 'rejected';}
         $curl=curl_init($url);if(!$curl)return 'rejected';$response='';
         try{curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$body,CURLOPT_HTTPHEADER=>$headers,CURLOPT_CONNECTTIMEOUT=>3,CURLOPT_TIMEOUT=>5,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_RESOLVE=>$resolve,CURLOPT_WRITEFUNCTION=>static function($h,string $chunk)use(&$response){if(strlen($response)+strlen($chunk)>16384)return 0;$response.=$chunk;return strlen($chunk);}]);
             if(curl_exec($curl)===false)return 'timeout';$http=curl_getinfo($curl,CURLINFO_RESPONSE_CODE);
-            if($kind==='sms')return SupportSmsIr::result($http,$response)==='accepted'?'accepted':'rejected';
             return in_array($http,[201,202],true)?'accepted':(in_array($http,[404,410],true)?'gone':(in_array($http,[429,503],true)?'retry':'rejected'));
         }finally{curl_close($curl);}
     }

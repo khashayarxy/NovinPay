@@ -146,14 +146,14 @@ try {
         $login = app(CustomerLogin::class);
         $testPhone = config('customer.test_sms_phone');
         gate($app->configurationIsCached() && $otp->provider() === 'ippanel' && $otp->enabled() && $otp->configured()
-            && config('customer.sms_enabled') === false && config('customer.test_reset_on_logout') === true
+            && config('customer.test_reset_on_logout') === true
             && is_string($testPhone) && $login->testUsesSms($testPhone) && $login->privateTestCode($testPhone) === null, 'runtime_ippanel_preserved');
     }
     gate($app->environment('production') && config('app.url') === 'https://novinpaypos.com', 'production_environment');
-    foreach (['customer.notifications_enabled', 'payments.zibal.enabled', 'payments.zibal.live_requests', 'postex.enabled', 'postex.independent_postage_verified'] as $flag) {
+    foreach (['payments.zibal.enabled', 'payments.zibal.live_requests', 'postex.enabled', 'postex.independent_postage_verified'] as $flag) {
         gate(config($flag) === false, 'provider_flag');
     }
-    foreach (['operations.scheduled_payments', 'operations.scheduled_notifications'] as $flag) {
+    foreach (['operations.scheduled_payments'] as $flag) {
         gate(config($flag, false) === false, 'scheduled_provider_flag');
     }
     $pdo = DB::connection()->getPdo();

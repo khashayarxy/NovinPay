@@ -1,12 +1,10 @@
 <?php
 
 use App\Services\CustomerLogin;
-use App\Services\CustomerNotifications;
 use App\Services\CustomerOtpSms;
 use App\Services\IndependentSupportOperators;
 use App\Services\IpPanel;
 use App\Services\OperationalReadiness;
-use App\Services\SmsIr;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
 use App\Support\Chat\ChatBridge;
@@ -54,14 +52,6 @@ Artisan::command('payments:reconcile', function (ZibalPayments $payments, ZibalG
 Schedule::command('payments:reconcile')->everyMinute()->withoutOverlapping(10)
     ->when(fn () => config('operations.scheduled_payments'));
 
-Artisan::command('customers:notify', function (CustomerNotifications $notifications): int {
-    $this->info('Provider-accepted notifications: '.$notifications->sendPending());
-
-    return 0;
-})->purpose('Send configured customer notifications without exposing customer data');
-Schedule::command('customers:notify')->everyMinute()->withoutOverlapping(10)
-    ->when(fn () => config('operations.scheduled_notifications'));
-
 Schedule::call(fn () => app(OperationalReadiness::class)->heartbeat())
     ->name('operations:heartbeat')->everyMinute()->withoutOverlapping(2);
 
@@ -74,30 +64,22 @@ Artisan::command('operations:status', function (OperationalReadiness $operations
 })->purpose('Read-only scheduler and queue readiness; no provider requests');
 
 Artisan::command('customers:sms-status
-    {--provider : Inspect the selected provider template}
-    {--ippanel : Inspect IPPanel even when it is inactive}
-    {--delivery= : Inspect one IPPanel outbox reference without revealing message or recipient}', function (SmsIr $sms, CustomerOtpSms $otp, IpPanel $ipPanelClient): int {
+    {--provider : Inspect the IPPanel pattern}
+    {--ippanel : Inspect the IPPanel pattern}
+    {--delivery= : Inspect one IPPanel outbox reference without revealing message or recipient}', function (CustomerOtpSms $otp, IpPanel $ipPanelClient): int {
     $status = [
         'active_provider' => $otp->provider(),
         'otp_enabled' => $otp->enabled(),
         'otp_configured' => $otp->configured(),
-        'otp_approved_configuration' => $otp->provider() === 'smsir' && $otp->configured(),
-        'notifications_enabled' => (bool) config('customer.notifications_enabled'),
-        'ready_notification_templates' => count(array_filter(config('customer.notification_templates', []), fn ($id) => $sms->ready($id, config('customer.notification_parameter')))),
+        'otp_approved_configuration' => false, // Provider approval is checked only when explicitly requested.
         'sending_executed' => false,
     ];
     $ok = true;
     if ($this->option('provider')) {
-        $status['otp_provider_metadata'] = match ($otp->provider()) {
-            'smsir' => $sms->inspect(config('customer.otp_template'), config('customer.otp_parameter')),
-            'ippanel' => $ipPanelClient->inspect(),
-            default => ['accessible' => false, 'reason' => 'unsupported_provider'],
-        };
+        $status['otp_provider_metadata'] = $ipPanelClient->inspect();
         $metadata = $status['otp_provider_metadata'];
         $ok = $metadata['accessible'] && ($metadata['exact_parameter_match'] ?? false) && ($metadata['pattern_active'] ?? true);
-        if ($otp->provider() === 'ippanel') {
-            $status['otp_approved_configuration'] = $ok;
-        }
+        $status['otp_approved_configuration'] = $ok;
     }
     if ($this->option('ippanel')) {
         $metadata = $status['ippanel_pattern_metadata'] = $ipPanelClient->inspect();

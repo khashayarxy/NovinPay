@@ -30,7 +30,7 @@ return static function (string $root): array {
         'LARAVEL_STORAGE_PATH' => $root.'/storage', 'APP_CONFIG_CACHE' => $root.'/config.php',
         'APP_ROUTES_CACHE' => $root.'/routes.php', 'APP_EVENTS_CACHE' => $root.'/events.php',
         'CACHE_STORE' => 'file', 'SESSION_DRIVER' => 'database', 'SESSION_CONNECTION' => 'sqlite', 'SESSION_SECURE_COOKIE' => 'true',
-        'SUPPORT_CHAT_ENABLED' => 'true', 'SMSIR_ENABLED' => 'false', 'SMSIR_NOTIFICATIONS_ENABLED' => 'false',
+        'SUPPORT_CHAT_ENABLED' => 'true',
         'ZIBAL_ENABLED' => 'false', 'ZIBAL_LIVE_REQUESTS' => 'false',
         'POSTEX_QUOTES_ENABLED' => 'false', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'false',
         'QUEUE_CONNECTION' => 'sync', 'MAIL_MAILER' => 'array',
@@ -49,6 +49,12 @@ return static function (string $root): array {
         || str_replace('\\', '/', (string) realpath($root.'/storage')) !== $root.'/storage') {
         $fail();
     }
+
+    // Older private local settings need no rewrite. Never inherit a live OTP switch.
+    if (isset($settings['IPPANEL_ENABLED']) && $settings['IPPANEL_ENABLED'] !== 'false') {
+        $fail();
+    }
+    $settings['IPPANEL_ENABLED'] = 'false';
 
     return $settings;
 };

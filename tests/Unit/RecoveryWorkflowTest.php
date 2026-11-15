@@ -186,14 +186,14 @@ class RecoveryWorkflowTest extends TestCase
 
     public function test_real_sms_test_account_configuration_is_preserved_without_disabling_its_feature_flag(): void
     {
-        $env = ['SMS_PROVIDER' => 'ippanel', 'IPPANEL_ENABLED' => 'true', 'CUSTOMER_TEST_OTP_ENABLED' => 'true',
+        $env = ['IPPANEL_ENABLED' => 'true', 'CUSTOMER_TEST_OTP_ENABLED' => 'true',
             'CUSTOMER_TEST_OTP_PHONES' => '09120000000', 'CUSTOMER_TEST_SMS_PHONE' => '09120000000'];
-        $cached = ['customer' => ['sms_enabled' => false, 'notifications_enabled' => false, 'sms_provider' => 'ippanel',
+        $cached = ['customer' => ['sms_provider' => 'ippanel',
             'ippanel' => ['enabled' => true], 'test_otp_enabled' => true, 'test_otp_phones' => ['09120000000'],
             'test_sms_phone' => '09120000000', 'test_reset_on_logout' => true]];
         $r = recoveryCustomerConfiguration($env, $cached);
         $this->assertTrue($r['testAccountUsesSms']);
-        $this->assertFalse($r['smsirSendingEnabled']);
+        $this->assertSame('ippanel', $r['activeProvider']);
         $this->assertStringNotContainsString('09120000000', json_encode($r));
         $cached['customer']['test_otp_enabled'] = false;
         $this->expectExceptionMessage('test_customer_cache_consistency');

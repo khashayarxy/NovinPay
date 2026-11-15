@@ -62,7 +62,7 @@ try {
         && $db->query('SELECT CURRENT_USER()')->fetchColumn() === ($migration ? 'novinpay_mig1@localhost' : 'novinpay_app1@localhost'), 'live_connected_identity');
     $settings = $db->query('SELECT @@session.time_zone zone,@@session.explicit_defaults_for_timestamp ts,@@session.foreign_key_checks fk,@@session.check_constraint_checks ck')->fetch(PDO::FETCH_ASSOC);
     need($settings['zone'] === '+00:00' && (int) $settings['ts'] === 1 && (int) $settings['fk'] === 1 && (int) $settings['ck'] === 1, 'live_connection_integrity_settings');
-    foreach (['payments.zibal.enabled', 'payments.zibal.live_requests', 'customer.sms_enabled', 'customer.notifications_enabled', 'postex.enabled', 'postex.independent_postage_verified'] as $flag) {
+    foreach (['payments.zibal.enabled', 'payments.zibal.live_requests', 'customer.ippanel.enabled', 'postex.enabled', 'postex.independent_postage_verified'] as $flag) {
         need(config($flag) === false, 'live_providers_must_remain_disabled');
     }
     if (! $migration) {

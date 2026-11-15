@@ -132,8 +132,7 @@ After separate owner authorization, use this cPanel cron once per minute:
 `operations:status` is read-only and reports heartbeat age, stale/review counts and
 cache-lock capability, without customer identifiers or network calls. Missing/stale
 heartbeat is not scheduler success. The heartbeat should update within three minutes.
-Payment and notification schedules retain overlap locks, but default to disabled via
-`OPERATIONS_SCHEDULED_PAYMENTS=false` and `OPERATIONS_SCHEDULED_NOTIFICATIONS=false`.
+Payment processing retains overlap locks and defaults to disabled via `OPERATIONS_SCHEDULED_PAYMENTS=false`. Customer notifications stay in-account; there is no external notification worker.
 Enabling cron does not authorize provider processing; payment live switches and
 notification configuration remain separate gates. Never enable them by implication.
 

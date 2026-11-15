@@ -12,6 +12,7 @@ use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
@@ -27,6 +28,33 @@ class SupportChatTest extends TestCase
     use RefreshDatabase;
 
     private string $private;
+
+    public function test_phone_recovery_reuses_only_ippanel_with_explicit_cli_gates(): void
+    {
+        app(ChatBridge::class)->begin();
+        require_once resource_path('support-chat/support/sms.php');
+        $names = ['SUPPORT_SMS_PROVIDER', 'SUPPORT_SMS_REAL_DELIVERY_ENABLED', 'SUPPORT_PHONE_RECOVERY_ENABLED'];
+        $before = array_combine($names, array_map('getenv', $names));
+        try {
+            putenv('SUPPORT_SMS_PROVIDER=ippanel');
+            putenv('SUPPORT_SMS_REAL_DELIVERY_ENABLED=1');
+            putenv('SUPPORT_PHONE_RECOVERY_ENABLED=1');
+            config(['customer.ippanel' => ['enabled' => true, 'api_key' => 'synthetic-key', 'pattern_code' => 'syntheticpattern', 'parameter' => 'code', 'sender' => '+983000505']]);
+            Http::preventStrayRequests();
+            Http::fake(['https://edge.ippanel.com/v1/api/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [123]]])]);
+            $this->assertTrue(support_sms_ready());
+            $this->assertSame('accepted', (new \SupportIpPanel)->send('09120000000', '123456'));
+            Http::assertSentCount(1);
+            config(['customer.ippanel.enabled' => false]);
+            $this->assertFalse(support_sms_ready());
+            $this->expectException(\SupportFailure::class);
+            (new \SupportIpPanel)->send('09120000000', '123456');
+        } finally {
+            foreach ($before as $key => $value) {
+                putenv($value === false ? $key : $key.'='.$value);
+            }
+        }
+    }
 
     protected function setUp(): void
     {

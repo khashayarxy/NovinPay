@@ -185,7 +185,7 @@ try {
         'DB_CONNECTION' => 'mariadb', 'DB_HOST' => 'localhost', 'DB_PORT' => '3306', 'DB_DATABASE' => 'novinpay_restore13r1',
         'DB_USERNAME' => $credential['user'], 'DB_PASSWORD' => $credential['password'], 'DB_SOCKET' => '', 'DB_URL' => 'mariadb://localhost/novinpay_restore13r1?timezone=%2B00%3A00',
         'CACHE_STORE' => 'file', 'SESSION_DRIVER' => 'file', 'QUEUE_CONNECTION' => 'sync', 'MAIL_MAILER' => 'log', 'ZIBAL_ENABLED' => 'false', 'ZIBAL_LIVE_REQUESTS' => 'false',
-        'SMSIR_ENABLED' => 'false', 'SMSIR_NOTIFICATIONS_ENABLED' => 'false', 'POSTEX_QUOTES_ENABLED' => 'false', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'false'];
+        'IPPANEL_ENABLED' => 'false', 'POSTEX_QUOTES_ENABLED' => 'false', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'false'];
     $previous = [];
     try {
         foreach ($overrides as $key => $value) {

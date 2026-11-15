@@ -25,7 +25,7 @@ class LocalHerdEnvironmentTest extends TestCase
             'LARAVEL_STORAGE_PATH' => $this->root.'/storage', 'APP_CONFIG_CACHE' => $this->root.'/config.php',
             'APP_ROUTES_CACHE' => $this->root.'/routes.php', 'APP_EVENTS_CACHE' => $this->root.'/events.php',
             'CACHE_STORE' => 'file', 'SESSION_DRIVER' => 'database', 'SESSION_CONNECTION' => 'sqlite', 'SESSION_SECURE_COOKIE' => 'true',
-            'SUPPORT_CHAT_ENABLED' => 'true', 'SMSIR_ENABLED' => 'false', 'SMSIR_NOTIFICATIONS_ENABLED' => 'false',
+            'SUPPORT_CHAT_ENABLED' => 'true', 'IPPANEL_ENABLED' => 'false',
             'ZIBAL_ENABLED' => 'false', 'ZIBAL_LIVE_REQUESTS' => 'false',
             'POSTEX_QUOTES_ENABLED' => 'false', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'false',
             'QUEUE_CONNECTION' => 'sync', 'MAIL_MAILER' => 'array',
@@ -63,7 +63,7 @@ class LocalHerdEnvironmentTest extends TestCase
     {
         $load = require dirname(__DIR__, 2).'/scripts/local/herd-environment.php';
         $original = $this->settings;
-        foreach (['DB_CONNECTION' => 'mysql', 'DB_DATABASE' => '/other/database.sqlite', 'DB_URL' => 'mysql://invalid', 'APP_ENV' => 'production', 'APP_URL' => 'https://novinpaypos.com', 'LARAVEL_STORAGE_PATH' => '/other/storage', 'CACHE_STORE' => 'database', 'SMSIR_ENABLED' => 'true', 'ZIBAL_LIVE_REQUESTS' => 'true', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'true'] as $key => $value) {
+        foreach (['DB_CONNECTION' => 'mysql', 'DB_DATABASE' => '/other/database.sqlite', 'DB_URL' => 'mysql://invalid', 'APP_ENV' => 'production', 'APP_URL' => 'https://novinpaypos.com', 'LARAVEL_STORAGE_PATH' => '/other/storage', 'CACHE_STORE' => 'database', 'IPPANEL_ENABLED' => 'true', 'ZIBAL_LIVE_REQUESTS' => 'true', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'true'] as $key => $value) {
             $this->settings = array_replace($original, [$key => $value]);
             $this->writeSettings();
             try {
