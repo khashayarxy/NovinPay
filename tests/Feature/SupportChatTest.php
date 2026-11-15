@@ -40,6 +40,8 @@ class SupportChatTest extends TestCase
             putenv('SUPPORT_SMS_REAL_DELIVERY_ENABLED=1');
             putenv('SUPPORT_PHONE_RECOVERY_ENABLED=1');
             config(['customer.ippanel' => ['enabled' => true, 'api_key' => 'synthetic-key', 'pattern_code' => 'syntheticpattern', 'parameter' => 'code', 'sender' => '+983000505']]);
+            // CI logs to stderr; an isolated PHPUnit child must not emit provider diagnostics.
+            Log::spy();
             Http::preventStrayRequests();
             Http::fake(['https://edge.ippanel.com/v1/api/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [123]]])]);
             $this->assertTrue(support_sms_ready());
