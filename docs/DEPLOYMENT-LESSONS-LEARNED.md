@@ -1,5 +1,26 @@
 # Deployment lessons learned
 
+## Sitemap XML declaration survives Blade compilation (2026-11-15)
+
+**Confirmed:** production sitemap index and pages partition returned 500 with a
+`ViewException`/`ParseError` at compiled-view line 1. The cached first line still
+contained the raw Blade XML-declaration expression. PHP 8.4 compilation reproduces
+that exact result with `short_open_tag=1`; with the setting off it compiles normally.
+The host's original compilation-time INI source was not independently queried.
+
+Blade tokenizes the template before compiling its echo expressions. A literal XML
+opening delimiter inside that expression can therefore enter PHP short-tag parsing
+before Blade transforms it. Split the constant opening delimiter in the template;
+the emitted XML declaration remains identical. Do not change global PHP settings.
+`PublicArticlesTest` compiles and executes both index and URL-set templates in real
+PHP children with short tags on/off, parses XML and checks dynamic-value escaping.
+Existing HTTP tests cover status, MIME, trusted origin and pagination.
+
+For release, use a new source-only manifest bound to the current source/vendor/Vite
+baseline, not the completed dependency-upgrade manifest. Rebuild the compiled views
+and use existing scoped web OPcache handling during separately authorized activation.
+Require actual sitemap HTTPS success afterward; local/CI success is not a hosted fix.
+
 ## Public assets inaccessible after a successful runtime release (2026-11-15)
 
 **Confirmed:** `1db132a` installed successfully, but three new AVIF images and
@@ -67,10 +88,11 @@ When an actual release resumes, keep the new runtime/library/policy and its impo
 
 ## Quick diagnosis: read before deployment, backup, restore or migration
 
-Use the matching row first, then its detailed evidence below. **C** = confirmed cause; **U** = exact underlying cause unresolved. These 34 signatures include four U entries; a workaround is not proof of their root cause. Retired staging references identify historical source/tests in Git/private receipts, not commands to run or a requirement to recreate staging. Keep manifests, secret locations and recovery contents in the private release workflow.
+Use the matching row first, then its detailed evidence below. **C** = confirmed cause; **U** = exact underlying cause unresolved. These 35 signatures include four U entries; a workaround is not proof of their root cause. Retired staging references identify historical source/tests in Git/private receipts, not commands to run or a requirement to recreate staging. Keep manifests, secret locations and recovery contents in the private release workflow.
 
 | ID / signature | Cause / quickest evidence | Safe correction and prevention / relevant checks | Retry boundary |
 | --- | --- | --- | --- |
+| KB35 Sitemap 500 / compiled Blade ParseError | C: a literal XML opening delimiter is tokenized as PHP before Blade echo compilation when short tags are enabled. Hosted compiled header and local PHP 8.4 reproduction match. | Split the constant delimiter; test compilation AND execution with both settings. `sitemap.blade.php`, `PublicArticlesTest`. | New source-only release and view-cache refresh after authorization; never replay the completed runtime upgrade. |
 | KB34 Public assets 403/404 after runtime PASS | C: private umask reached Git worktree and public directory creation; hash checks missed web-worker permissions. | Inspect exact public modes/ownership, repair only approved 0644 files/0755 directories, then verify every affected HTTPS asset and widget. `runtime-release.php`, `RuntimeReleaseContractTest`. | Never replay the completed activation; scoped permission repair only after reconciliation. |
 | KB33 Source-release quota subscription mismatch | C: source preparation found the shared companion accepted only recovery manifests while activation wrote its request into an unwatched nested directory. Caught before production activation. | Accept the explicitly scoped source-release format and use the same protected request directory, preserving nonce/manifest/phase/hash checks. `source-quota.ps1` exercises the complete source companion acknowledgement path. | No backup repetition. Keep completed recovery evidence and prepare activation with the corrected shared bundle. |
 | KB32 `DATABASE_RECOVERY_STOP / backup_preflight` | C: the current copied helper requires an obsolete preview file in its exact untracked inventory; hosted File Manager confirms that directory is absent. Its wrapper discards ordinary exception identifiers. The original exception was not recorded, so an earlier Git-process failure cannot be excluded from the old output alone. | Shared manifest-driven inventory and `failureReport` preserve named checks and safe counts. Current read-only Git preflight must pass before capture. `RecoveryWorkflowTest` reproduces the stale-file rejection and rejects unexpected work. | Preserve the old marker. New manifest and same approved restore target only after the old backup directory is absent and the target is SQL-verified empty. |

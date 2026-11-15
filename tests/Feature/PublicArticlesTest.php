@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 final class PublicArticlesTest extends TestCase
@@ -221,6 +222,67 @@ final class PublicArticlesTest extends TestCase
         $this->command('unpublish', ['version' => $article->version, 'reviewed_version_id' => $article->published_version_id, 'confirmed' => true], $article->id);
         $this->get('/sitemap-articles-1.xml')->assertNotFound();
         $this->get('/sitemap.xml')->assertOk()->assertDontSee('/sitemap-articles-');
+    }
+
+    public static function sitemapPhpConfigurations(): array
+    {
+        return [
+            'short tags off, index' => ['0', true],
+            'short tags on, index' => ['1', true],
+            'short tags off, URL set' => ['0', false],
+            'short tags on, URL set' => ['1', false],
+        ];
+    }
+
+    #[DataProvider('sitemapPhpConfigurations')]
+    public function test_sitemap_compiles_and_renders_valid_escaped_xml_with_either_short_tag_setting(string $shortTags, bool $index): void
+    {
+        // short_open_tag affects token_get_all during Blade compilation and cannot
+        // be switched reliably with ini_set. Compile AND execute in a real child.
+        $code = <<<'PHP'
+require $argv[1];
+if ((bool) ini_get('short_open_tag') !== ($argv[3] === '1')) {
+    throw new RuntimeException('Requested PHP configuration was not applied');
+}
+$compiler = new Illuminate\View\Compilers\BladeCompiler(new Illuminate\Filesystem\Filesystem, sys_get_temp_dir());
+$compiled = $compiler->compileString(file_get_contents($argv[2]));
+$__env = new Illuminate\View\Factory(new Illuminate\View\Engines\EngineResolver,
+    new Illuminate\View\FileViewFinder(new Illuminate\Filesystem\Filesystem, [dirname($argv[2])]),
+    new Illuminate\Events\Dispatcher);
+$index = $argv[4] === '1';
+$urls = json_decode($argv[5], true, 16, JSON_THROW_ON_ERROR);
+$path = tempnam(sys_get_temp_dir(), 'np-sitemap-');
+try {
+    if ($path === false || file_put_contents($path, $compiled) !== strlen($compiled)) {
+        throw new RuntimeException('Unable to create isolated compiled view');
+    }
+    require $path;
+} finally {
+    if (is_string($path) && is_file($path)) {
+        unlink($path);
+    }
+}
+PHP;
+        $urls = ['https://novinpaypos.test/products/example?label=الف&filter=<tag>"\''];
+        $root = dirname(__DIR__, 2);
+        $process = new Process([PHP_BINARY, '-d', 'short_open_tag='.$shortTags,
+            '-d', 'opcache.enable_cli=0', '-d', 'opcache.file_cache_only=0', '-d', 'opcache.file_cache=',
+            '-d', 'display_errors=stderr', '-d', 'log_errors=0', '-r', $code,
+            $root.'/vendor/autoload.php', $root.'/resources/views/sitemap.blade.php', $shortTags,
+            $index ? '1' : '0', json_encode($urls, JSON_THROW_ON_ERROR)], $root);
+        $process->setTimeout(20)->run();
+        $this->assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        $xml = $process->getOutput();
+        $this->assertStringStartsWith('<?xml version="1.0" encoding="UTF-8"?>', $xml);
+        $this->assertStringNotContainsString('{!!', $xml);
+        $this->assertStringNotContainsString('@foreach', $xml);
+        $this->assertStringContainsString('&amp;', $xml);
+        $this->assertStringContainsString('&lt;tag&gt;', $xml);
+        $document = new DOMDocument;
+        $this->assertTrue($document->loadXML($xml, LIBXML_NONET));
+        $this->assertSame($index ? 'sitemapindex' : 'urlset', $document->documentElement->localName);
+        $this->assertSame('http://www.sitemaps.org/schemas/sitemap/0.9', $document->documentElement->namespaceURI);
+        $this->assertSame($urls[0], $document->getElementsByTagName('loc')->item(0)->textContent);
     }
 
     public function test_sitemap_partitions_catalogue_urls_and_rejects_unknown_or_out_of_range_parts(): void
