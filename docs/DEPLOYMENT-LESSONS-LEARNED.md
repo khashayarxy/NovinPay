@@ -1,5 +1,31 @@
 # Deployment lessons learned
 
+## Public assets inaccessible after a successful runtime release (2026-11-15)
+
+**Confirmed:** `1db132a` installed successfully, but three new AVIF images and
+`robots.txt` returned 403; 83 versioned chat assets returned 404. The runtime PHP
+transaction inherited `umask 0077` into its Git fast-forward, unlike the older
+shell path's scoped `umask 022`. Recursive `mkdir(..., 0755)` was also masked to
+0700. Four public files were 0600 and eight public asset directories were 0700.
+Same-UID hash checks passed while LiteSpeed's static worker could not read them.
+
+Reconcile the installed commit, approved asset inventory, ownership and parent
+traversal first. Repair only those exact public files to 0644 and directories to
+0755 through the supported cPanel operation; never recursively chmod the app or
+relax private files. Preserve completed activation receipts: this is not permission
+to replay an activation. Retest every affected URL, MIME type and content hash,
+then open the actual widget; a successful installer receipt alone is insufficient.
+
+Development tooling now scopes umask 0022 to Git worktree transitions and explicit
+public-directory creation, restoring the private mask in `finally`. Managed private
+directories default to 0700; explicitly private files retain 0600. A pre-admission
+gate checks public file read bits and ancestor execute bits independently of hashes.
+`RuntimeReleaseContractTest` covers real Git publication/rollback, nested public
+assets, private configuration, exception-path mask restoration and rejection of
+same-UID-readable but web-inaccessible files. Unix mode assertions require Linux;
+Windows skips are not proof of hosted permission behavior. Keep frozen completed
+release bundles unchanged and qualify the tooling change separately.
+
 ## PHP startup warning after successful application release (2026-11-14)
 
 **Signature:** `PHP Startup: session.gc_divisor must be greater than 0`.
@@ -41,10 +67,11 @@ When an actual release resumes, keep the new runtime/library/policy and its impo
 
 ## Quick diagnosis: read before deployment, backup, restore or migration
 
-Use the matching row first, then its detailed evidence below. **C** = confirmed cause; **U** = exact underlying cause unresolved. These 33 signatures include four U entries; a workaround is not proof of their root cause. Retired staging references identify historical source/tests in Git/private receipts, not commands to run or a requirement to recreate staging. Keep manifests, secret locations and recovery contents in the private release workflow.
+Use the matching row first, then its detailed evidence below. **C** = confirmed cause; **U** = exact underlying cause unresolved. These 34 signatures include four U entries; a workaround is not proof of their root cause. Retired staging references identify historical source/tests in Git/private receipts, not commands to run or a requirement to recreate staging. Keep manifests, secret locations and recovery contents in the private release workflow.
 
 | ID / signature | Cause / quickest evidence | Safe correction and prevention / relevant checks | Retry boundary |
 | --- | --- | --- | --- |
+| KB34 Public assets 403/404 after runtime PASS | C: private umask reached Git worktree and public directory creation; hash checks missed web-worker permissions. | Inspect exact public modes/ownership, repair only approved 0644 files/0755 directories, then verify every affected HTTPS asset and widget. `runtime-release.php`, `RuntimeReleaseContractTest`. | Never replay the completed activation; scoped permission repair only after reconciliation. |
 | KB33 Source-release quota subscription mismatch | C: source preparation found the shared companion accepted only recovery manifests while activation wrote its request into an unwatched nested directory. Caught before production activation. | Accept the explicitly scoped source-release format and use the same protected request directory, preserving nonce/manifest/phase/hash checks. `source-quota.ps1` exercises the complete source companion acknowledgement path. | No backup repetition. Keep completed recovery evidence and prepare activation with the corrected shared bundle. |
 | KB32 `DATABASE_RECOVERY_STOP / backup_preflight` | C: the current copied helper requires an obsolete preview file in its exact untracked inventory; hosted File Manager confirms that directory is absent. Its wrapper discards ordinary exception identifiers. The original exception was not recorded, so an earlier Git-process failure cannot be excluded from the old output alone. | Shared manifest-driven inventory and `failureReport` preserve named checks and safe counts. Current read-only Git preflight must pass before capture. `RecoveryWorkflowTest` reproduces the stale-file rejection and rejects unexpected work. | Preserve the old marker. New manifest and same approved restore target only after the old backup directory is absent and the target is SQL-verified empty. |
 | KB01 `existing_triggers` | C: restricted runtime cannot see trigger metadata; migrator sees complete definitions. Compare account identity and inventories once. | Observe through authorized migrator, read-only; keep runtime restricted. Exact names/table/event/timing/body/definer checks; historical trigger-inventory tests. | No installer replay; reconcile actual state first. |

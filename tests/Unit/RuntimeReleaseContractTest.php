@@ -15,6 +15,8 @@ use function NovinPay\Release\runtimeInodes;
 use function NovinPay\Release\runtimeInventory;
 use function NovinPay\Release\runtimePackages;
 use function NovinPay\Release\runtimePath;
+use function NovinPay\Release\runtimePublicAccess;
+use function NovinPay\Release\runtimePublicCreation;
 use function NovinPay\Release\runtimeReleaseContract;
 use function NovinPay\Release\runtimeVerify;
 use function NovinPay\Release\runtimeWrite;
@@ -37,6 +39,10 @@ class RuntimeReleaseContractTest extends TestCase
         // Exact test-owned directory; never operate on the application or owner DB.
         $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->dir, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST);
         foreach ($it as $file) {
+            if (PHP_OS_FAMILY === 'Windows' && $file->isFile() && ! $file->isLink()) {
+                // Git makes disposable object files read-only on Windows.
+                chmod($file->getPathname(), 0600);
+            }
             $file->isDir() && ! $file->isLink() ? rmdir($file->getPathname()) : unlink($file->getPathname());
         }
         rmdir($this->dir);
@@ -230,5 +236,116 @@ class RuntimeReleaseContractTest extends TestCase
             $this->assertSame(0600, fileperms($this->dir.'/private-cache.php') & 0777);
         }
         $this->assertSame('<?php return [];', file_get_contents($this->dir.'/private-cache.php'));
+    }
+
+    public function test_public_creation_restores_private_mask_even_after_failure(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Windows PHP does not implement Unix umask semantics.');
+        }
+        $previous = umask(0077);
+        try {
+            try {
+                runtimePublicCreation(function () {
+                    $this->assertSame(0022, umask());
+                    throw new \RuntimeException('synthetic creation failure');
+                });
+                $this->fail('Creation failure was swallowed');
+            } catch (\RuntimeException $e) {
+                $this->assertSame('synthetic creation failure', $e->getMessage());
+            }
+            $this->assertSame(0077, umask());
+        } finally {
+            umask($previous);
+        }
+    }
+
+    public function test_nested_assets_are_public_under_private_umask_without_exposing_private_files(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Unix permission bits require the existing Linux CI jobs.');
+        }
+        $previous = umask(0077);
+        try {
+            mkdir($this->dir.'/public', 0755);
+            chmod($this->dir.'/public', 0755);
+            runtimeWrite($this->dir.'/private/credentials', 'synthetic private data', 0600);
+            runtimeWrite($this->dir.'/public/build/support-chat/version/operator/app.js', '/* public asset */', 0644, 0755);
+            $this->assertSame(0077, umask());
+            foreach (['build', 'build/support-chat', 'build/support-chat/version', 'build/support-chat/version/operator'] as $dir) {
+                $this->assertSame(0755, fileperms($this->dir.'/public/'.$dir) & 0777);
+            }
+            $this->assertSame(0644, fileperms($this->dir.'/public/build/support-chat/version/operator/app.js') & 0777);
+            $this->assertSame(0700, fileperms($this->dir.'/private') & 0777);
+            $this->assertSame(0600, fileperms($this->dir.'/private/credentials') & 0777);
+            runtimePublicAccess($this->dir.'/public', ['build/support-chat/version/operator/app.js' => 'unused-by-access-check']);
+        } finally {
+            umask($previous);
+        }
+    }
+
+    public function test_real_git_worktree_creation_is_public_and_does_not_change_private_configuration(): void
+    {
+        $previous = umask(0077);
+        try {
+            runtimeGit($this->dir, ['init', '-b', 'test-baseline']);
+            runtimeGit($this->dir, ['config', 'user.name', 'Synthetic release test']);
+            runtimeGit($this->dir, ['config', 'user.email', 'synthetic@example.invalid']);
+            runtimeWrite($this->dir.'/baseline', 'baseline');
+            runtimeWrite($this->dir.'/public/robots.txt', 'baseline robots', 0644, 0755);
+            runtimeGit($this->dir, ['add', 'baseline', 'public']);
+            runtimeGit($this->dir, ['commit', '-m', 'synthetic baseline']);
+            $baseline = trim(runtimeGit($this->dir, ['rev-parse', 'HEAD']));
+            runtimeGit($this->dir, ['switch', '-c', 'test-candidate']);
+            runtimeWrite($this->dir.'/public/images/hero.avif', 'synthetic public image');
+            runtimeWrite($this->dir.'/public/robots.txt', 'candidate robots');
+            runtimeGit($this->dir, ['add', 'public']);
+            runtimeGit($this->dir, ['commit', '-m', 'synthetic public asset']);
+            runtimeGit($this->dir, ['switch', '--detach', $baseline]);
+            runtimeWrite($this->dir.'/.env', 'synthetic secret', 0600);
+            runtimePublicCreation(fn () => runtimeGit($this->dir, ['merge', '--ff-only', 'test-candidate']));
+            $this->assertSame('synthetic public image', file_get_contents($this->dir.'/public/images/hero.avif'));
+            $this->assertSame('synthetic secret', file_get_contents($this->dir.'/.env'));
+            file_put_contents($this->dir.'/private-after', 'synthetic private data');
+            if (PHP_OS_FAMILY !== 'Windows') {
+                $this->assertSame(0077, umask());
+                $this->assertSame(0644, fileperms($this->dir.'/public/images/hero.avif') & 0777);
+                $this->assertSame(0755, fileperms($this->dir.'/public/images') & 0777);
+                $this->assertSame(0600, fileperms($this->dir.'/.env') & 0777);
+                $this->assertSame(0600, fileperms($this->dir.'/private-after') & 0777);
+                runtimePublicAccess($this->dir.'/public', ['images/hero.avif' => 'unused']);
+            }
+            runtimePublicCreation(fn () => runtimeGit($this->dir, ['switch', '--detach', $baseline]));
+            $this->assertSame('baseline robots', file_get_contents($this->dir.'/public/robots.txt'));
+            if (PHP_OS_FAMILY !== 'Windows') {
+                $this->assertSame(0644, fileperms($this->dir.'/public/robots.txt') & 0777);
+                $this->assertSame(0600, fileperms($this->dir.'/.env') & 0777);
+            }
+        } finally {
+            umask($previous);
+        }
+    }
+
+    #[DataProvider('unreadablePublicPaths')]
+    public function test_public_access_rejects_same_uid_readable_but_web_inaccessible_assets(bool $blockedDirectory): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Unix permission bits require the existing Linux CI jobs.');
+        }
+        runtimeWrite($this->dir.'/public/nested/app.js', 'synthetic public asset');
+        chmod($this->dir.'/public/nested', $blockedDirectory ? 0700 : 0755);
+        chmod($this->dir.'/public/nested/app.js', $blockedDirectory ? 0644 : 0600);
+        $this->assertSame('synthetic public asset', file_get_contents($this->dir.'/public/nested/app.js'));
+        try {
+            runtimePublicAccess($this->dir.'/public', ['nested/app.js' => 'unused']);
+            $this->fail('Same-UID readability accepted as web readability');
+        } catch (GateFailure $e) {
+            $this->assertSame($blockedDirectory ? 'runtime_public_directory_traverse' : 'runtime_public_file_read', $e->check);
+        }
+    }
+
+    public static function unreadablePublicPaths(): array
+    {
+        return [[true], [false]];
     }
 }

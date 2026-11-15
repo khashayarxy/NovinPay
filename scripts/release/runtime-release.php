@@ -118,11 +118,25 @@ function runtimeNoLinks(string $path): void
     }
 }
 
-function runtimeWrite(string $path, string $bytes, int $mode = 0644): void
+/** Public worktree/directory creation only; private journals retain the caller's mask. */
+function runtimePublicCreation(callable $create): mixed
+{
+    $previous = umask(0022);
+    try {
+        return $create();
+    } finally {
+        umask($previous);
+    }
+}
+
+function runtimeWrite(string $path, string $bytes, int $mode = 0644, int $directoryMode = 0700): void
 {
     runtimeNoLinks($path);
     if (! is_dir(dirname($path))) {
-        mkdir(dirname($path), 0755, true);
+        requireGate(in_array($directoryMode, [0700, 0755], true), 'runtime_directory_mode', 'explicit private or public directory mode', [], 'Inspect the managed destination.');
+        $create = fn () => mkdir(dirname($path), $directoryMode, true);
+        requireGate($directoryMode === 0755 ? runtimePublicCreation($create) : $create(),
+            'runtime_directory_create', 'explicit managed directories', [], 'Inspect the managed destination.');
     }
     $tmp = dirname($path).'/.np-'.bin2hex(random_bytes(12));
     $h = fopen($tmp, 'xb');
@@ -134,8 +148,30 @@ function runtimeWrite(string $path, string $bytes, int $mode = 0644): void
             fclose($h);
         }
     }
-    chmod($tmp, $mode);
+    requireGate(chmod($tmp, $mode), 'runtime_file_mode', 'explicit destination file permissions', [], 'Keep maintenance and inspect the destination.');
     requireGate(rename($tmp, $path), 'runtime_publish', 'atomic same-directory publication', [], 'Keep maintenance and inspect publication.');
+}
+
+/** Hash verification alone cannot establish readability by LiteSpeed's static worker. */
+function runtimePublicAccess(string $root, array $files): void
+{
+    runtimeNoLinks($root);
+    foreach (array_keys($files) as $path) {
+        runtimePath($path);
+        $file = $root.'/'.$path;
+        runtimeNoLinks($file);
+        clearstatcache(true, $file);
+        requireGate(is_file($file) && (fileperms($file) & 0004) === 0004,
+            'runtime_public_file_read', 'public file readable by the web worker', [], 'Inspect only the approved public path; never relax private permissions.');
+        for ($dir = dirname($file); ; $dir = dirname($dir)) {
+            clearstatcache(true, $dir);
+            requireGate(is_dir($dir) && (fileperms($dir) & 0001) === 0001,
+                'runtime_public_directory_traverse', 'public ancestors traversable through the public root', [], 'Inspect the approved public directory.');
+            if ($dir === $root) {
+                break;
+            }
+        }
+    }
 }
 
 function runtimeInventory(string $root): array
@@ -386,7 +422,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         requireGate(is_file($app.'/storage/framework/down'), 'runtime_down_unconfirmed', 'maintenance established', [], 'Keep traffic closed.');
         writeNew($journal.'/maintenance.json', ['confirmed' => true]);
         $phase = 'source';
-        runtimeGit($app, ['merge', '--ff-only', '--no-edit', $m['target']]);
+        runtimePublicCreation(fn () => runtimeGit($app, ['merge', '--ff-only', '--no-edit', $m['target']]));
         $switched = true;
         $phase = 'vendor';
         runtimeVerify($app.'/vendor', $baselineVendor, true);
@@ -404,7 +440,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         $paths = array_keys($assets);
         usort($paths, fn ($a, $b) => (int) str_ends_with($a, 'manifest.json') <=> (int) str_ends_with($b, 'manifest.json'));
         foreach ($paths as $path) {
-            runtimeWrite($app.'/public/build/'.$path, file_get_contents($journal.'/assets/'.$path));
+            runtimeWrite($app.'/public/build/'.$path, file_get_contents($journal.'/assets/'.$path), 0644, 0755);
         }
         $phase = 'cache';
         try {
@@ -418,6 +454,16 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         runtimeVerify($app, $m['protectedFiles']);
         runtimeVerify($app, array_diff_key($m['archives']['source']['files'], ['public/.htaccess' => true]));
         runtimeVerify($app.'/public/build', $m['archives']['assets']['files']);
+        if (PHP_OS_FAMILY !== 'Windows') {
+            $publicSource = [];
+            foreach ($m['archives']['source']['files'] as $path => $hash) {
+                if (str_starts_with($path, 'public/')) {
+                    $publicSource[substr($path, 7)] = $hash;
+                }
+            }
+            runtimePublicAccess($app.'/public', $publicSource);
+            runtimePublicAccess($app.'/public/build', $m['archives']['assets']['files']);
+        }
         requireGate(trim(runtimeGit($app, ['rev-parse', 'HEAD'])) === $m['target'] && str_replace('\\', '/', readlink($publicLink)) === $app.'/public', 'runtime_final_identity', 'exact final source and public link', [], 'Keep maintenance.');
         $hooks['ready']();
         writeNew($journal.'/ready.json', ['target' => $m['target'], 'migrationsApplied' => 0]);
@@ -451,7 +497,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                 if ($switched) {
                     requireGate(trim(runtimeGit($app, ['rev-parse', 'HEAD'])) === $m['target'], 'runtime_rollback_head', 'owned target only', [], 'Inspect external changes.');
                     runtimeVerify($app, array_diff_key($m['archives']['source']['files'], ['public/.htaccess' => true]));
-                    runtimeGit($app, ['switch', '--detach', $m['baseline']]);
+                    runtimePublicCreation(fn () => runtimeGit($app, ['switch', '--detach', $m['baseline']]));
                 }
                 if ($vendorInstalled) {
                     requireGate(! file_exists($journal.'/failed-vendor') && rename($app.'/vendor', $journal.'/failed-vendor'), 'runtime_rollback_vendor_stage', 'preserved candidate vendor', [], 'Inspect vendor paths.');
@@ -463,7 +509,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                 foreach ($plan['assets'] as $path => $pin) {
                     $file = $app.'/public/build/'.$path;
                     if ($pin['before'] !== null && is_file($journal.'/rollback-assets/'.$path)) {
-                        runtimeWrite($file, file_get_contents($journal.'/rollback-assets/'.$path));
+                        runtimeWrite($file, file_get_contents($journal.'/rollback-assets/'.$path), 0644, 0755);
                     } elseif ($pin['before'] === null && is_file($file)) {
                         requireGate(hash_equals($pin['after'], hash_file('sha256', $file)) && ! is_link($file), 'runtime_rollback_asset_ownership', 'operation-owned addition only', [], 'Preserve unexpected files.');
                         unlink($file);

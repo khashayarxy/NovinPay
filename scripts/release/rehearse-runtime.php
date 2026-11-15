@@ -41,7 +41,7 @@ try {
     }
     foreach (['storage/framework/views', 'storage/framework/sessions', 'storage/framework/cache', 'storage/logs', 'bootstrap/cache', 'public/build'] as $dir) {
         if (! is_dir($app.'/'.$dir)) {
-            mkdir($app.'/'.$dir, 0700, true);
+            mkdir($app.'/'.$dir, $dir === 'public/build' ? 0755 : 0700, true);
         }
     }
     $link = $root.'/public_html';
@@ -74,8 +74,8 @@ try {
     $artisan(['config:cache']);
     $artisan(['route:cache']);
     runtimeWrite($app.'/public/build/manifest.json', '{"old-entry":{"file":"assets/old-hash.js"}}');
-    runtimeWrite($app.'/public/build/assets/old-hash.js', '/* retained open-tab asset */');
-    runtimeWrite($app.'/public/build/support-chat/manifest.json', '{"version":"synthetic-baseline"}');
+    runtimeWrite($app.'/public/build/assets/old-hash.js', '/* retained open-tab asset */', 0644, 0755);
+    runtimeWrite($app.'/public/build/support-chat/manifest.json', '{"version":"synthetic-baseline"}', 0644, 0755);
     // Hosted hashes are intentionally NOT reused for synthetic local configuration.
     $m['baselineFiles'] = [];
     foreach (['public/build/manifest.json', 'public/build/support-chat/manifest.json', 'bootstrap/cache/routes-v7.php'] as $p) {
