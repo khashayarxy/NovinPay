@@ -107,7 +107,7 @@ class CustomerAccountController extends Controller
     public function restart(Request $request)
     {
         $this->checkFlow($request);
-        $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt']);
+        $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt', 'customer_send_attempts']);
 
         return redirect()->route('account.login');
     }
@@ -119,7 +119,7 @@ class CustomerAccountController extends Controller
         $rules = ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']];
         $data = $request->expectsJson() ? $request->validate($rules) : $this->validatePrivate($request, $rules);
         if ($request->session()->get('customer_login_phone') !== $data['phone']) {
-            $request->session()->forget(['customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt']);
+            $request->session()->forget(['customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt', 'customer_send_attempts']);
         }
         $request->session()->put('customer_login_phone', $data['phone']);
 
@@ -151,7 +151,8 @@ class CustomerAccountController extends Controller
         if ($attempt !== null) {
             $rules = ['request_id' => ['required', 'uuid']];
             $request->expectsJson() ? $request->validate($rules) : $this->validatePrivate($request, $rules);
-            if (hash_equals((string) $request->session()->get('customer_send_attempt'), $attempt)) {
+            if (hash_equals((string) $request->session()->get('customer_send_attempt'), $attempt)
+                || in_array($attempt, $request->session()->get('customer_send_attempts', []), true)) {
                 return $this->codeScreen($request, 'وضعیت همان درخواست بررسی شد.');
             }
         }
@@ -161,6 +162,10 @@ class CustomerAccountController extends Controller
                 $request->session()->put('customer_resend_at', now()->addSeconds(CustomerLogin::RESEND_SECONDS)->timestamp);
                 if (is_string($attempt)) {
                     $request->session()->put('customer_send_attempt', $attempt);
+                    $attempts = $request->session()->get('customer_send_attempts', []);
+                    $attempts[] = $attempt;
+                    // More than the real-SMS daily quota; bounded to this login flow.
+                    $request->session()->put('customer_send_attempts', array_slice($attempts, -20));
                 }
                 CustomerLoginFlow::token($request);
                 $request->session()->save();
@@ -277,7 +282,7 @@ class CustomerAccountController extends Controller
         }
         Auth::guard('customer')->login($account);
         $request->session()->regenerate(true);
-        $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt', 'customer_otp_at', 'customer_password_offer']);
+        $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt', 'customer_send_attempts', 'customer_otp_at', 'customer_password_offer']);
         $request->session()->put('customer_session_version', $account->session_version);
         if ($otp) {
             $request->session()->put('customer_otp_at', now()->timestamp);

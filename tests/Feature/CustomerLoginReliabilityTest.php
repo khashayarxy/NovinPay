@@ -121,4 +121,20 @@ class CustomerLoginReliabilityTest extends TestCase
         Http::assertNothingSent();
         $this->assertDatabaseCount('customer_login_challenges', 0);
     }
+
+    public function test_delayed_older_request_cannot_send_again_after_a_newer_explicit_resend(): void
+    {
+        Http::fake(['https://edge.ippanel.com/v1/api/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [123]]])]);
+        $first = (string) Str::uuid();
+        $this->postJson('/account/start', ['phone' => '09120000000', 'request_id' => $first])->assertOk();
+        $flow = session('customer_login_flow');
+        $this->travel(61)->seconds();
+        $this->postJson('/account/otp', ['flow' => $flow, 'request_id' => (string) Str::uuid()])->assertOk();
+        $current = session('customer_challenge');
+        $this->travel(61)->seconds();
+        $this->postJson('/account/otp', ['flow' => $flow, 'request_id' => $first])->assertOk();
+        Http::assertSentCount(2);
+        $this->assertSame($current, session('customer_challenge'));
+        $this->assertSame($current, DB::table('customer_login_challenges')->value('challenge_id'));
+    }
 }
