@@ -21,7 +21,10 @@ mkdir($root, 0700, true);
 $package = $root.'/package';
 mkdir($package, 0700);
 $base = 'ecf672110214a24a9171d942a2730d9bfad5f65c';
-$target = trim(runtimeGit($repo, ['rev-parse', 'HEAD']));
+// Immutable dependency-upgrade fixture, not a manifest for later application
+// changes. The current transaction implementation is still exercised below;
+// current application behavior is covered by the normal regression suites.
+$target = '9541f538da29c1acbee9bb1ef642a6237e241286';
 foreach (['baseline' => $base, 'candidate' => $target] as $name => $sha) {
     $build = $root.'/'.$name;
     mkdir($build, 0700);
