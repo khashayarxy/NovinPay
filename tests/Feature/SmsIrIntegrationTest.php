@@ -128,7 +128,7 @@ class SmsIrIntegrationTest extends TestCase
     }
 
     #[DataProvider('rejectedResponses')]
-    public function test_rejected_or_unknown_provider_response_cannot_leave_a_usable_otp(int $status, array $response): void
+    public function test_unconfirmed_legacy_provider_response_preserves_the_bounded_challenge_without_logging_in(int $status, array $response): void
     {
         Http::fake(['api.sms.ir/*' => Http::response($response, $status)]);
         try {
@@ -136,7 +136,12 @@ class SmsIrIntegrationTest extends TestCase
             $this->fail('Rejected send was accepted');
         } catch (HttpException $e) {
             $this->assertSame(503, $e->getStatusCode());
-            $this->assertNull(DB::table('customer_login_challenges')->value('code_hash'));
+            // The legacy boolean adapter reports every non-acceptance as uncertain.
+            // It cannot prove that a delivered code should be revoked. This does
+            // not accept delivery, authenticate a session, or replay the send.
+            $challenge = DB::table('customer_login_challenges')->value('challenge_id');
+            $this->assertTrue(app(CustomerLogin::class)->activeChallenge('09000000000', $challenge));
+            $this->assertGuest('customer');
             $this->assertDatabaseCount('customer_accounts', 0);
             Http::assertSentCount(1);
         }
