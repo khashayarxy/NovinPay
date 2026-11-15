@@ -43,11 +43,13 @@ test('Chromium: map stays inert until explicit activation, loads once and recove
           check(frame.title && frame.referrerPolicy === 'strict-origin-when-cross-origin', 'accessible approved frame');
           frame.dispatchEvent(new Event('error'));
           check(!document.querySelector('iframe') && !button.disabled && !document.querySelector('[data-map-placeholder]').hidden && root.dataset.mapState === 'error' && root.getAttribute('aria-busy') === 'false', 'error recovery');
+          check(document.activeElement === button, 'failed keyboard activation restores focus');
           check(document.querySelector('[data-map-status]').textContent.includes('بارگذاری نشد') && document.querySelector('a').href, 'useful external fallback');
           button.click(); frame = document.querySelector('iframe'); frame.dispatchEvent(new Event('load'));
           check(requested.length === 2 && timers.size === 0 && root.dataset.mapState === 'ready' && root.getAttribute('aria-busy') === 'false', 'retry loads once and clears timer');
           check(document.querySelector('a'), 'fallback survives cross-origin load');
-          frame.dispatchEvent(new Event('error'));
+          document.querySelector('a').focus();frame.dispatchEvent(new Event('error'));
+          check(document.activeElement === document.querySelector('a'), 'late failure must not steal focus from fallback');
           button.click();
           frame = document.querySelector('iframe');
           [...timers.values()][0]();

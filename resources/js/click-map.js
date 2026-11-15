@@ -26,12 +26,13 @@ export function initClickMap(root = document) {
                 if (!active) return;
                 active = false;
                 window.clearTimeout(timer);
+                const restoreFocus = event.detail === 0 && document.activeElement === frame;
                 frame.remove();
                 container.dataset.mapState = 'error';
                 container.setAttribute('aria-busy', 'false');
                 placeholder.hidden = false;
                 button.disabled = false;
-                if (event.detail === 0) button.focus({preventScroll: true});
+                if (restoreFocus) button.focus({preventScroll: true});
                 status.textContent = 'نقشه بارگذاری نشد. دوباره تلاش کنید یا لینک نشان را باز کنید.';
             };
             // Cross-origin load cannot prove the provider rendered its map. The
