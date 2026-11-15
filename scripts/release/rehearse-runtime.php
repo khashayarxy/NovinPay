@@ -74,6 +74,14 @@ try {
         requireGate($r['exit'] === 0, 'rehearsal_artisan', 'real isolated Laravel command succeeds', ['command' => $args[0]], 'Inspect private rehearsal output without exposing environment values.');
     };
     $artisan(['config:cache']);
+    if (NovinPay\Release\runtimeNeutral($m)) {
+        // Actual hosting retained a 13.35 cache during the already deployed
+        // 13.40 upgrade. Model the missing inactive default, not a freshly
+        // regenerated baseline that would miss this production-only contract.
+        $baselineConfiguration = require $app.'/bootstrap/cache/config.php';
+        unset($baselineConfiguration['broadcasting']['connections']['mercure']['async']);
+        runtimeWrite($app.'/bootstrap/cache/config.php', '<?php return '.var_export($baselineConfiguration, true).';'.PHP_EOL, 0600);
+    }
     $artisan(['route:cache']);
     $baselineView = 'storage/framework/views/'.str_repeat('a', 32).'.php';
     runtimeWrite($app.'/'.$baselineView, '<?php // private baseline compiled view', 0600);

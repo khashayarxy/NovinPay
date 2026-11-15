@@ -325,6 +325,48 @@ class RuntimeReleaseContractTest extends TestCase
         \NovinPay\Release\runtimeConfigurationMatches($this->dir.'/before.php', $this->dir.'/after.php', str_repeat('0', 64));
     }
 
+    public function test_retained_framework_cache_admits_only_missing_inactive_mercure_false_default(): void
+    {
+        $before = ['broadcasting' => ['default' => null, 'connections' => ['mercure' => ['driver' => 'mercure']]],
+            'customer' => ['ippanel' => ['api_key' => 'synthetic-unchanged']]];
+        $after = $before;
+        $after['broadcasting']['connections']['mercure']['async'] = false;
+        $cases = [[$before, $before, true], [$before, $after, true]];
+        $changed = $after;
+        $changed['broadcasting']['connections']['mercure']['async'] = true;
+        $cases[] = [$before, $changed, false];
+        $activeBefore = $before;
+        $activeBefore['broadcasting']['default'] = 'mercure';
+        $activeAfter = $after;
+        $activeAfter['broadcasting']['default'] = 'mercure';
+        $cases[] = [$activeBefore, $activeAfter, false];
+        $cases[] = [$after, $changed, false]; // Existing false must stay false.
+        $cases[] = [$changed, $after, false]; // Existing true cannot be normalized.
+        $cases[] = [$after, $before, false]; // Existing setting cannot disappear.
+        $changed = $after;
+        $changed['customer']['ippanel']['api_key'] = 'changed';
+        $cases[] = [$before, $changed, false];
+        $changed = $after;
+        $changed['queue']['connections']['background']['driver'] = 'background';
+        $cases[] = [$before, $changed, false]; // No general framework-default exemption.
+        $changed = $before;
+        unset($changed['broadcasting']['connections']['mercure']);
+        $cases[] = [$changed, $after, false];
+        foreach ($cases as $index => [$original, $candidate, $allowed]) {
+            $a = $this->dir.'/original-'.$index.'.php';
+            $b = $this->dir.'/candidate-'.$index.'.php';
+            runtimeWrite($a, '<?php return '.var_export($original, true).';', 0600);
+            runtimeWrite($b, '<?php return '.var_export($candidate, true).';', 0600);
+            try {
+                \NovinPay\Release\runtimeConfigurationMatches($a, $b, hash_file('sha256', $a));
+                $this->assertTrue($allowed, 'Unsafe configuration accepted: '.$index);
+            } catch (GateFailure $error) {
+                $this->assertFalse($allowed, 'Compatible inactive default rejected: '.$index);
+                $this->assertSame('runtime_configuration_changed', $error->check);
+            }
+        }
+    }
+
     public function test_rollback_recognizes_actual_laravel_compiled_view_names(): void
     {
         $compiler = new BladeCompiler(new Filesystem, $this->dir);

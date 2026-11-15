@@ -52,8 +52,22 @@ function runtimeProtected(string $app, array $m, ?string $baselineCache = null):
 function runtimeConfigurationMatches(string $before, string $after, string $pin): void
 {
     requireGate(hash_equals($pin, hash_file('sha256', $before)), 'runtime_original_config_pin', 'exact private baseline cache', [], 'Preserve rollback evidence.');
-    requireGate(runtimeConfigurationDigest(require $before) === runtimeConfigurationDigest(require $after),
-        'runtime_configuration_changed', 'only reviewed retired settings disappear; active secrets and all other settings identical', [], 'Keep maintenance and inspect configuration privately.');
+    $original = require $before;
+    $candidate = require $after;
+    // The retained 13.35 cache predates this 13.40 default. Admit ONLY its
+    // exact false addition to an existing inactive connection; never normalize
+    // an existing value, an active Mercure driver or any other new setting.
+    $connection = $original['broadcasting']['connections']['mercure'] ?? null;
+    if (is_array($connection) && ! array_key_exists('async', $connection)
+        && ($candidate['broadcasting']['connections']['mercure']['async'] ?? null) === false
+        && array_key_exists('default', $original['broadcasting'] ?? [])
+        && $original['broadcasting']['default'] !== 'mercure'
+        && array_key_exists('default', $candidate['broadcasting'] ?? [])
+        && $candidate['broadcasting']['default'] === $original['broadcasting']['default']) {
+        unset($candidate['broadcasting']['connections']['mercure']['async']);
+    }
+    requireGate(runtimeConfigurationDigest($original) === runtimeConfigurationDigest($candidate),
+        'runtime_configuration_changed', 'only reviewed removals and inactive Mercure false default; all retained settings identical', [], 'Keep maintenance and inspect configuration privately.');
 }
 
 function runtimeRecoveryCompatibility(string $app, array $m, array $proof): void

@@ -516,6 +516,23 @@ races, including overlapping receipts and concurrent Zibal start/verification.
 
 ### Dependency-neutral application release profile
 
+**Confirmed hosted STOP:** `runtime_configuration_changed` during readiness. The
+baseline retained its Laravel 13.35 config cache after the 13.40 vendor upgrade;
+fresh 13.40 configuration adds `broadcasting.connections.mercure.async=false`.
+A read-only reconstruction matched the recorded candidate cache hash exactly and
+reported only this key. Guarded rollback completed, without SQL restore, leaving
+baseline c9c46dc online. Admit only this missing false default on an existing
+inactive Mercure connection with an unchanged default driver. Reject active
+Mercure, existing-value changes, other new defaults and all credential/provider
+drift. Model the retained older cache in the existing neutral rehearsal; a fresh
+same-version baseline cache missed this production condition. Preserve the stopped
+journal; a separately named, newly qualified attempt is required, never replay.
+
+Checksum lists written on Windows must use explicit LF bytes. The editor-content
+API has a 1 MiB limit; use the established authenticated provider download action
+for complete binary readback. Preserve partial-upload evidence and reuse only
+hash-verified existing files. Neither limitation permits skipping verification.
+
 `runtime-release.php` retains the frozen framework-upgrade contract. Its separate
 `application-neutral-6eb8e00` profile binds only c9c46dc -> 6eb8e00, zero migrations
 and byte-identical dependency locks. Never substitute the application/migration
