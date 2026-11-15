@@ -7,6 +7,17 @@ use Illuminate\Support\Str;
 
 final class CustomerLoginFlow
 {
+    public static function token(Request $request): string
+    {
+        $token = $request->session()->get('customer_login_flow');
+        if (! is_string($token)) {
+            $token = Str::random(32);
+            $request->session()->put('customer_login_flow', $token);
+        }
+
+        return $token;
+    }
+
     public static function matches(Request $request, mixed $value): bool
     {
         $token = $request->session()->get('customer_login_flow');
@@ -19,11 +30,7 @@ final class CustomerLoginFlow
         if (! is_string($request->session()->get('customer_login_phone'))) {
             return [];
         }
-        $token = $request->session()->get('customer_login_flow');
-        if (! is_string($token)) {
-            $token = Str::random(32);
-            $request->session()->put('customer_login_flow', $token);
-        }
+        $token = self::token($request);
 
         return $method === null ? ['flow' => $token] : ['flow' => $token, 'method' => $method];
     }

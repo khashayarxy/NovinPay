@@ -3,6 +3,120 @@
     window.addEventListener('pageshow', function (event) {
         if (event.persisted) window.location.reload();
     });
+    var canRequest = window.fetch && window.FormData && window.AbortController && window.URL;
+    function diagnostic(operation, outcome, started) {
+        var log = window.CustomerLoginDiagnostics || {events: []};
+        log.events.push({operation: operation, outcome: outcome, ms: Math.max(0, Date.now() - started)});
+        log.events = log.events.slice(-30);
+        window.CustomerLoginDiagnostics = log;
+    }
+    // Bound both headers and JSON-body reads; an aborted response may still arrive.
+    function boundedJSON(url, options, operation, milliseconds) {
+        return new Promise(function (resolve, reject) {
+            var controller = new AbortController(), signal = options.signal, settled = false, started = Date.now();
+            function finish(error, value) {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timer);
+                if (signal) signal.removeEventListener('abort', abort);
+                diagnostic(operation, error ? error.message : 'http_' + value.response.status, started);
+                if (error) reject(error); else resolve(value);
+            }
+            function abort() { controller.abort(); finish(new Error('cancelled')); }
+            var timer = window.setTimeout(function () { controller.abort(); finish(new Error('deadline')); }, milliseconds || 12000);
+            if (signal) {
+                if (signal.aborted) { abort(); return; }
+                signal.addEventListener('abort', abort, {once: true});
+            }
+            options.signal = controller.signal;
+            window.fetch(url, options).then(function (response) {
+                return response.json().then(function (body) { finish(null, {response: response, body: body}); });
+            }).catch(function () { finish(new Error('transport')); });
+        });
+    }
+    function destination(value) {
+        var url = new URL(value, window.location.href);
+        if (url.origin !== window.location.origin) throw new Error('foreign_destination');
+        return url.href;
+    }
+    function reconcile(form) {
+        if (!form.getAttribute('data-login-state')) return Promise.reject(new Error('no_state_endpoint'));
+        var url = new URL(form.getAttribute('data-login-state'), window.location.href);
+        if (url.origin !== window.location.origin) return Promise.reject(new Error('foreign_state_endpoint'));
+        url.searchParams.set('flow', form.elements.flow ? form.elements.flow.value : '');
+        if (form.elements.request_id) url.searchParams.set('request_id', form.elements.request_id.value);
+        if (form.elements.recover) url.searchParams.set('recover', form.elements.recover.value);
+        function read(attempt) {
+            if (window.navigator && window.navigator.onLine === false) return Promise.reject(new Error('offline'));
+            return boundedJSON(url.href, {credentials: 'same-origin', cache: 'no-store', redirect: 'error', headers: {Accept: 'application/json'}}, 'state', 8000)
+                .then(function (result) {
+                    if ([401, 403, 409, 419].indexOf(result.response.status) >= 0) return {state: 'expired'};
+                    if (result.response.status === 429) throw new Error('state_limited');
+                    if (!result.response.ok) throw new Error('state_unavailable');
+                    if (['authenticated', 'challenge', 'expired', 'idle'].indexOf(result.body.state) < 0) throw new Error('state_contract');
+                    return result.body;
+                }).catch(function (error) {
+                    if (attempt >= 2 || error.message === 'offline' || error.message === 'state_limited') throw error;
+                    return new Promise(function (resolve) { window.setTimeout(resolve, 500 * Math.pow(2, attempt) + Math.floor(Math.random() * 250)); })
+                        .then(function () { return read(attempt + 1); });
+                });
+        }
+        return read(0);
+    }
+    document.querySelectorAll('[data-account-send]').forEach(function (sendForm) {
+        if (!canRequest) return;
+        var submit = sendForm.querySelector('button[type="submit"]'), status = sendForm.querySelector('[data-send-status]');
+        var alive = true, job = null, uncertain = false, restart = false, locked = false, original = submit.textContent;
+        function notify(text) { if (status) { status.hidden = false; status.textContent = text; } }
+        function navigate(state) {
+            if (state.state === 'authenticated' || state.state === 'challenge') {
+                window.location.assign(destination(state.redirect));
+                return true;
+            }
+            return false;
+        }
+        function recover() {
+            notify('در حال بررسی وضعیت درخواست…');
+            return reconcile(sendForm).then(function (state) {
+                if (!alive || navigate(state)) return;
+                uncertain = state.state !== 'idle';
+                restart = state.state === 'expired';
+                notify(state.state === 'idle' ? 'درخواستی ثبت نشده است. می‌توانید دوباره ادامه دهید.' : 'مهلت این مرحله تمام شده است. صفحهٔ ورود را دوباره باز کنید.');
+            });
+        }
+        function submitOnce(recoverOnly) {
+            if (!alive || job || submit.disabled) return;
+            if (restart) { window.location.assign(destination('/login')); return; }
+            var controller = new AbortController(); job = controller;
+            sendForm.setAttribute('aria-busy', 'true'); submit.disabled = true;
+            notify('در حال بررسی درخواست…');
+            var task = recoverOnly || uncertain ? recover() : boundedJSON(sendForm.action, {
+                method: 'POST', body: new FormData(sendForm), credentials: 'same-origin', headers: {Accept: 'application/json'}, redirect: 'error', signal: controller.signal
+            }, 'send').then(function (result) {
+                if (!alive) return;
+                if (typeof result.body.redirect === 'string' && (result.response.ok || result.body.state === 'challenge')) {
+                    navigate({state: 'challenge', redirect: result.body.redirect}); return;
+                }
+                if (result.response.status === 422) { notify('شماره موبایل را بررسی کنید.'); return; }
+                if (result.response.status === 429) {
+                    countdown(submit, function (waiting) { locked = waiting; submit.disabled = locked || !!job; })(Number(result.response.headers.get('Retry-After')) || Number(result.body.retry_after));
+                    notify(typeof result.body.message === 'string' ? result.body.message : 'برای تلاش دوباره کمی صبر کنید.'); return;
+                }
+                if ([401, 403, 419].indexOf(result.response.status) >= 0) { restart = true; notify('مهلت نشست تمام شده است. صفحهٔ ورود را دوباره باز کنید.'); return; }
+                uncertain = true; throw new Error('send_unknown');
+            }).catch(function () { if (alive) { uncertain = true; return recover(); } });
+            task.catch(function () { if (alive) { uncertain = true; notify('ارتباط برقرار نشد. پس از اتصال، وضعیت درخواست را بررسی کنید.'); } }).then(function () {
+                if (job !== controller) return;
+                job = null;
+                if (!alive) return;
+                sendForm.setAttribute('aria-busy', 'false'); submit.disabled = locked;
+                if (!locked) submit.textContent = restart ? 'شروع دوباره' : uncertain ? 'بررسی وضعیت' : original;
+            });
+        }
+        sendForm.addEventListener('submit', function (event) { event.preventDefault(); submitOnce(false); });
+        window.addEventListener('online', function () { if (uncertain && !job) submitOnce(true); });
+        window.addEventListener('pagehide', function () { alive = false; if (job) job.abort(); });
+    });
     function countdown(button, onChange) {
         var until = 0;
         var timer;
@@ -31,6 +145,7 @@
     document.querySelectorAll('[data-account-submit]').forEach(function (form) {
         var button = form.querySelector('button[type="submit"]');
         form.addEventListener('submit', function (event) {
+            if (canRequest && form.hasAttribute('data-account-send')) return;
             if (button.disabled || form.getAttribute('aria-busy') === 'true') {
                 event.preventDefault();
                 return;
@@ -60,9 +175,10 @@
     var active = true;
     var navigating = false;
     var verifyLocked = false;
+    var otpExpired = false;
     var lockVerify = countdown(button, function (locked) {
         verifyLocked = locked;
-        button.disabled = locked || !!request;
+        button.disabled = locked || otpExpired || !!request;
     });
     lockVerify(Number(button.getAttribute('data-verify-wait')));
 
@@ -87,7 +203,7 @@
     }
 
     function busy(value) {
-        button.disabled = value || verifyLocked;
+        button.disabled = value || verifyLocked || otpExpired;
         input.readOnly = value;
         pending.hidden = !value;
         form.setAttribute('aria-busy', String(value));
@@ -107,10 +223,39 @@
         input.setAttribute('aria-invalid', 'true');
     }
 
+    var expiresAt = Number(form.getAttribute('data-otp-expires'));
+    var serverNow = Number(form.getAttribute('data-server-now'));
+    var expiryTimer = null;
+    if (expiresAt > 0 && serverNow > 0) {
+        var deadline = Date.now() + Math.max(0, expiresAt - serverNow) * 1000;
+        var expiryText = document.getElementById('code-expiry');
+        var tickExpiry = function () {
+            otpExpired = Date.now() >= deadline;
+            if (otpExpired && expiryText) expiryText.textContent = 'مهلت این کد تمام شد. کد تازه درخواست کنید.';
+            button.disabled = otpExpired || verifyLocked || !!request;
+            if (!otpExpired) expiryTimer = window.setTimeout(tickExpiry, 1000);
+        };
+        tickExpiry();
+    }
+
+    function reconcileVerification(controller) {
+        return reconcile(form).then(function (state) {
+            if (!active || request !== controller) return;
+            if (state.state === 'authenticated' || state.state === 'challenge' && form.elements.challenge && state.challenge !== form.elements.challenge.value) {
+                window.location.assign(destination(state.redirect)); navigating = true;
+            } else if (state.state === 'challenge') {
+                showError('نتیجهٔ درخواست قبلی تأیید نشد. همان کد را دوباره بررسی کنید.');
+            } else {
+                retryable = false;
+                showError('مهلت این مرحله تمام شده است. ورود را دوباره شروع کنید.');
+            }
+        }).catch(function () { if (active && request === controller) showError('ارتباط برقرار نشد. کد حفظ شده است؛ دوباره بررسی کنید.'); });
+    }
+
     function verify(manual) {
         window.clearTimeout(scheduled);
         var code = input.value;
-        if (!active || request || navigating || verifyLocked || !/^[0-9]{6}$/.test(code)
+        if (!active || request || navigating || verifyLocked || otpExpired || !/^[0-9]{6}$/.test(code)
             || (code === lastAttempt && (!manual || !retryable))) return;
         lastAttempt = code;
         retryable = false;
@@ -121,20 +266,18 @@
         var payload = new FormData(form);
         busy(true);
 
-        window.fetch(form.action, {
+        boundedJSON(form.action, {
             method: 'POST',
             body: payload,
             credentials: 'same-origin',
             headers: {Accept: 'application/json'},
             redirect: 'error',
             signal: controller.signal
-        }).then(function (response) {
-            return response.json().catch(function () { return {}; }).then(function (body) {
+        }, 'verify').then(function (result) {
+            var response = result.response, body = result.body;
                 if (!active || request !== controller) return;
                 if (response.ok && typeof body.redirect === 'string') {
-                    var destination = new URL(body.redirect, window.location.href);
-                    if (destination.origin !== window.location.origin) throw new Error();
-                    window.location.assign(destination.href);
+                    window.location.assign(destination(body.redirect));
                     navigating = true;
                     return;
                 }
@@ -144,16 +287,15 @@
                     retryable = true;
                     lockVerify(Number(response.headers.get('Retry-After')) || Number(body.retry_after));
                     showError(typeof body.message === 'string' ? body.message : 'تعداد تلاش‌ها زیاد است. دوباره تلاش کنید.');
-                } else if (response.status === 419) {
-                    showError('مهلت نشست تمام شده است. صفحه را تازه کنید و دوباره کد بگیرید.');
+                } else if ([409, 419].indexOf(response.status) >= 0) {
+                    throw new Error('reconcile_session');
                 } else {
                     throw new Error();
                 }
-            });
         }).catch(function () {
             if (active && request === controller) {
                 retryable = true;
-                showError('بررسی کد انجام نشد. دوباره تلاش کنید.');
+                return reconcileVerification(controller);
             }
         }).then(function () {
             if (request !== controller) return;
@@ -192,6 +334,15 @@
     input.addEventListener('animationstart', function (event) {
         if (event.animationName === 'np-otp-autofill') onCodeChange();
     });
+    window.addEventListener('online', function () {
+        if (!active || request || navigating || !retryable) return;
+        var controller = new AbortController(); request = controller; busy(true);
+        reconcileVerification(controller).then(function () {
+            if (request !== controller) return;
+            request = null;
+            if (!navigating) busy(false);
+        });
+    });
     input.addEventListener('paste', function (event) {
         if (!event.clipboardData) return;
         var value = digits(event.clipboardData.getData('text'));
@@ -220,6 +371,7 @@
     window.addEventListener('pagehide', function () {
         active = false;
         window.clearTimeout(scheduled);
+        window.clearTimeout(expiryTimer);
         stopAutofill();
         if (request) request.abort();
         request = null;

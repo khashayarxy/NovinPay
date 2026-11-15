@@ -80,6 +80,7 @@ Route::get('/login', [CustomerAccountController::class, 'login'])->block(20, 15)
 Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('account.')->group(function (): void {
     $controller = CustomerAccountController::class;
     Route::get('login', fn () => redirect()->route('account.login'))->name('login.legacy');
+    Route::get('login-state', [$controller, 'loginState'])->block(20, 15)->middleware('throttle:60,1')->name('login.state');
     Route::post('start', [$controller, 'start'])->block(20, 15)->middleware('throttle:customer-otp')->name('start');
     Route::post('restart', [$controller, 'restart'])->block(20, 15)->name('restart');
     Route::post('otp', [$controller, 'send'])->block(20, 15)->middleware('throttle:customer-otp')->name('otp');

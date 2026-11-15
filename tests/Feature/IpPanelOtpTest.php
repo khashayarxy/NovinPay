@@ -247,12 +247,14 @@ class IpPanelOtpTest extends TestCase
         }
         $reply = Http::response([], 502);
         for ($index = 0; $index < 15; $index++) {
-            $this->postJson('/account/start', ['phone' => $phone])->assertStatus(503);
+            // Explicit new sends exercise the daily quota. Re-entering start now
+            // correctly reuses a still-valid ambiguous challenge instead.
+            $this->postJson('/account/otp')->assertStatus(503);
             $this->travel(61)->seconds();
         }
-        $this->postJson('/account/start', ['phone' => $phone])->assertTooManyRequests()->assertJsonPath('reason', 'daily_sms_limit');
+        $this->postJson('/account/otp')->assertTooManyRequests()->assertJsonPath('reason', 'daily_sms_limit');
         Http::assertSentCount(31);
-        $this->assertNull(DB::table('customer_login_challenges')->value('code_hash'));
+        $this->assertTrue(app(CustomerLogin::class)->activeChallenge($phone, session('customer_challenge')));
     }
 
     public function test_password_throttle_keeps_the_existing_phone_and_otp_challenge(): void
@@ -288,7 +290,8 @@ class IpPanelOtpTest extends TestCase
             $this->assertSame(503, $exception->getStatusCode());
         }
         $this->assertSame(1, $attempts);
-        $this->assertNull(DB::table('customer_login_challenges')->value('code_hash'));
+        $row = DB::table('customer_login_challenges')->first();
+        $this->assertTrue(app(CustomerLogin::class)->activeChallenge('09120000000', $row->challenge_id));
     }
 
     private function designateSmsTestPhone(string $phone): void
