@@ -48,7 +48,9 @@ try {
     requireGate(symlink($app.'/public', $link), 'rehearsal_public_symlink', 'real local symlink', [], 'Report missing local symlink capability; do not simulate a passing check.');
     // Synthetic private environment; never copied from owner/production .env.
     $key = 'base64:'.base64_encode(random_bytes(32));
-    $env = "APP_ENV=testing\nAPP_DEBUG=false\nAPP_URL=https://rehearsal.invalid\nAPP_KEY=".$key."\nDB_CONNECTION=sqlite\nDB_DATABASE=".$root."/business.sqlite\nSESSION_DRIVER=array\nCACHE_STORE=array\nMAIL_MAILER=array\nQUEUE_CONNECTION=sync\n";
+    // Production already selects IPPanel; do not model an unauthorized provider
+    // switch from the retired default while testing strict config preservation.
+    $env = "APP_ENV=testing\nAPP_DEBUG=false\nAPP_URL=https://rehearsal.invalid\nSMS_PROVIDER=ippanel\nAPP_KEY=".$key."\nDB_CONNECTION=sqlite\nDB_DATABASE=".$root."/business.sqlite\nSESSION_DRIVER=array\nCACHE_STORE=array\nMAIL_MAILER=array\nQUEUE_CONNECTION=sync\n";
     runtimeWrite($app.'/.env', $env);
     runtimeWrite($app.'/public/.htaccess', file_get_contents($app.'/public/.htaccess')."\n# synthetic hosting-managed handler: preserve exactly\n");
     runtimeWrite($app.'/storage/app/private/support-chat/installation.env', "SYNTHETIC_REHEARSAL=true\n");
@@ -64,7 +66,7 @@ try {
     $databaseHash = hash_file('sha256', $root.'/business.sqlite');
     $environment = array_merge(getenv(), ['APP_ENV' => 'testing', 'APP_DEBUG' => 'false', 'APP_URL' => 'https://rehearsal.invalid', 'APP_KEY' => $key,
         'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => $root.'/business.sqlite', 'DB_URL' => 'sqlite:///'.$root.'/business.sqlite',
-        'SESSION_DRIVER' => 'array', 'CACHE_STORE' => 'array', 'MAIL_MAILER' => 'array', 'QUEUE_CONNECTION' => 'sync', 'APP_MAINTENANCE_DRIVER' => 'file',
+        'SESSION_DRIVER' => 'array', 'CACHE_STORE' => 'array', 'MAIL_MAILER' => 'array', 'QUEUE_CONNECTION' => 'sync', 'APP_MAINTENANCE_DRIVER' => 'file', 'SMS_PROVIDER' => 'ippanel',
         'APP_CONFIG_CACHE' => $app.'/bootstrap/cache/config.php', 'APP_ROUTES_CACHE' => $app.'/bootstrap/cache/routes-v7.php', 'APP_PACKAGES_CACHE' => $app.'/bootstrap/cache/packages.php',
         'APP_SERVICES_CACHE' => $app.'/bootstrap/cache/services.php', 'APP_EVENTS_CACHE' => $app.'/bootstrap/cache/events.php']);
     $artisan = function (array $args) use ($app, $environment): void {
