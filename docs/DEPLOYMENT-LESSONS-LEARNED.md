@@ -533,6 +533,16 @@ API has a 1 MiB limit; use the established authenticated provider download actio
 for complete binary readback. Preserve partial-upload evidence and reuse only
 hash-verified existing files. Neither limitation permits skipping verification.
 
+**Confirmed next hosted STOP:** `runtime_public_file_read` treated the two PHP
+entry points `public/index.php` and `public/maintenance.php` (owner-readable 0600)
+as static downloads. Read-only inventory found no other unreadable public files
+or untraversable public directories; guarded rollback again restored baseline.
+Never chmod private PHP merely to satisfy a static-asset guard. Only the pinned
+source inventory may admit these two same-owner, owner-readable, non-group/world-
+writable entry points. Static assets and arbitrary PHP paths keep the original
+world-read/traversal checks. Model real 0600 entry points in the existing rehearsal;
+test that static 0600 files, unknown PHP and writable entry points still fail.
+
 `runtime-release.php` retains the frozen framework-upgrade contract. Its separate
 `application-neutral-6eb8e00` profile binds only c9c46dc -> 6eb8e00, zero migrations
 and byte-identical dependency locks. Never substitute the application/migration

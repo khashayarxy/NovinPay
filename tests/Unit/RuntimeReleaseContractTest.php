@@ -494,4 +494,30 @@ class RuntimeReleaseContractTest extends TestCase
     {
         return [[true], [false]];
     }
+
+    public function test_private_php_entry_points_do_not_relax_static_asset_or_arbitrary_php_guards(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Real LSAPI/private Unix modes require Linux CI.');
+        }
+        $root = $this->dir.'/public';
+        foreach (['index.php', 'maintenance.php', 'unexpected.php', 'app.js'] as $path) {
+            runtimeWrite($root.'/'.$path, 'synthetic source', 0600, 0755);
+        }
+        runtimePublicAccess($root, ['index.php' => 'pinned', 'maintenance.php' => 'pinned'], true);
+        $this->assertSame(0600, fileperms($root.'/index.php') & 0777);
+        foreach ([['index.php', false], ['unexpected.php', true], ['app.js', true]] as [$path, $entryPoints]) {
+            try {
+                runtimePublicAccess($root, [$path => 'pinned'], $entryPoints);
+                $this->fail('Unapproved private public-root file accepted: '.$path);
+            } catch (GateFailure $error) {
+                $this->assertSame('runtime_public_file_read', $error->check);
+                $this->assertSame($path, $error->actual['path']);
+            }
+        }
+        chmod($root.'/index.php', 0666);
+        clearstatcache();
+        $this->expectException(GateFailure::class);
+        runtimePublicAccess($root, ['index.php' => 'pinned'], true);
+    }
 }

@@ -53,6 +53,9 @@ try {
     $env = "APP_ENV=testing\nAPP_DEBUG=false\nAPP_URL=https://rehearsal.invalid\nSMS_PROVIDER=ippanel\nAPP_KEY=".$key."\nDB_CONNECTION=sqlite\nDB_DATABASE=".$root."/business.sqlite\nSESSION_DRIVER=array\nCACHE_STORE=array\nMAIL_MAILER=array\nQUEUE_CONNECTION=sync\n";
     runtimeWrite($app.'/.env', $env);
     runtimeWrite($app.'/public/.htaccess', file_get_contents($app.'/public/.htaccess')."\n# synthetic hosting-managed handler: preserve exactly\n");
+    foreach (['index.php', 'maintenance.php'] as $entryPoint) {
+        requireGate(chmod($app.'/public/'.$entryPoint, 0600), 'rehearsal_private_php_mode', 'actual private LSAPI entry-point permissions', [], 'Never model every public-root file as static.');
+    }
     runtimeWrite($app.'/storage/app/private/support-chat/installation.env', "SYNTHETIC_REHEARSAL=true\n");
     runtimeWrite($app.'/storage/app/private/persistent-sentinel', random_bytes(32));
     runtimeWrite($app.'/storage/framework/site-maintenance/state.json', '{"synthetic":true}');

@@ -251,7 +251,7 @@ function runtimeWrite(string $path, string $bytes, int $mode = 0644, int $direct
 }
 
 /** Hash verification alone cannot establish readability by LiteSpeed's static worker. */
-function runtimePublicAccess(string $root, array $files): void
+function runtimePublicAccess(string $root, array $files, bool $allowPrivateEntryPoints = false): void
 {
     runtimeNoLinks($root);
     foreach (array_keys($files) as $path) {
@@ -259,8 +259,17 @@ function runtimePublicAccess(string $root, array $files): void
         $file = $root.'/'.$path;
         runtimeNoLinks($file);
         clearstatcache(true, $file);
-        requireGate(is_file($file) && (fileperms($file) & 0004) === 0004,
-            'runtime_public_file_read', 'public file readable by the web worker', [], 'Inspect only the approved public path; never relax private permissions.');
+        $mode = is_file($file) ? fileperms($file) & 0777 : 0;
+        // Only the source inventory may include these two pinned PHP entry
+        // points. LSAPI executes them as their owner; they are not static
+        // downloads. Keep 0600 instead of broadening private PHP permissions.
+        $entryPoint = $allowPrivateEntryPoints && in_array($path, ['index.php', 'maintenance.php'], true);
+        $readable = $entryPoint
+            ? is_readable($file) && fileowner($file) === posix_geteuid() && ($mode & 0400) === 0400 && ($mode & 0022) === 0
+            : ($mode & 0004) === 0004;
+        requireGate(is_file($file) && $readable,
+            'runtime_public_file_read', 'public static file readable, or explicitly pinned PHP entry point privately owner-readable',
+            ['path' => $path, 'mode' => sprintf('%04o', $mode)], 'Inspect only the approved public path; never relax private permissions.');
         for ($dir = dirname($file); ; $dir = dirname($dir)) {
             clearstatcache(true, $dir);
             requireGate(is_dir($dir) && (fileperms($dir) & 0001) === 0001,
@@ -612,7 +621,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                     $publicSource[substr($path, 7)] = $hash;
                 }
             }
-            runtimePublicAccess($app.'/public', $publicSource);
+            runtimePublicAccess($app.'/public', $publicSource, true);
             runtimePublicAccess($app.'/public/build', $m['archives']['assets']['files']);
         }
         requireGate(trim(runtimeGit($app, ['rev-parse', 'HEAD'])) === $m['target'] && str_replace('\\', '/', readlink($publicLink)) === $app.'/public', 'runtime_final_identity', 'exact final source and public link', [], 'Keep maintenance.');
