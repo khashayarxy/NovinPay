@@ -4,6 +4,7 @@ export const apiHealth={sequence:0,success:0,at:0,failures:0,state:'unknown',
  finish(id,error=null){if(id<this.success)return;if(!error||error.status>=400&&error.status<500&&![401,403,426].includes(error.status)){this.success=id;this.at=Date.now();this.failures=0;this.state=error?.status===429?'limited':'reachable';}else if([401,403,426].includes(error.status)){this.state='authentication';}else{this.failures++;this.state=this.failures>=3?'unavailable':'degraded';}globalThis.dispatchEvent?.(new Event('support-api-health'));}
 };
 import {validUUID, validReceipt, backoff} from './outbox.js?v=team1';
+import {reconnectDelay} from './reconnect.js';
 export class RequestError extends Error {
     constructor(message,status=0,code='',retryAfter=0){super(message);Object.assign(this,{status,code,retryAfter});}
 }
@@ -47,7 +48,7 @@ export class Transport {
             if(body.code==='customer_send_limited')body.message='ارسال زیاد است؛ '+Math.ceil(retryAfter(response.headers.get('Retry-After'),this.now())/1000)+' ثانیه صبر کنید. لطفاً پرسش‌هایتان را در یک پیام کامل بنویسید.';
             if(!response.ok || body.status==='error'){const failure=new RequestError(typeof body.message==='string'?body.message.slice(0,400):'درخواست انجام نشد؛ متن حفظ شده است.',response.status,body.code||'',retryAfter(response.headers.get('Retry-After'),this.now()));if(this.role==='operator'&&body.code==='conversation_owned')failure.replyOwnership=body.reply_ownership;throw failure;}
             outcome='ok';if(observed)apiHealth.finish(ticket);return body;
-        }catch(error){const failure=error instanceof RequestError?error:new RequestError('ارتباط قطع یا انتظار تمام شد؛ نتیجه هنوز مشخص نیست.');outcome=/^[a-z_]{1,64}$/.test(failure.code)?failure.code:'unavailable';if(observed&&!signal?.aborted)apiHealth.finish(ticket,failure);throw failure;}
+        }catch(error){const failure=error instanceof RequestError?error:new RequestError('ارتباط قطع یا انتظار تمام شد؛ نتیجه هنوز مشخص نیست.',0,error?.name==='AbortError'?'timeout':'network');outcome=/^[a-z_]{1,64}$/.test(failure.code)?failure.code:'unavailable';if(observed&&!signal?.aborted)apiHealth.finish(ticket,failure);throw failure;}
         finally{clearTimeout(timer);if(signal&&abort)signal.removeEventListener('abort',abort);
             const operation=data?.send_message||data?.action==='send_reply'?'send':path.includes('get_csrf=')?'identity':path.includes('get_conversation=')?'sync':path.includes('receipts=')?'receipt':path.includes('get_session=')?'session':'auxiliary';
             const metrics=globalThis.SupportDeliveryMetrics||{};metrics.requests=[...(metrics.requests||[]),{operation,http,outcome,ms:Math.round(performance.now()-started),controller_ms:serverMs}].slice(-80);globalThis.SupportDeliveryMetrics=metrics;
@@ -82,19 +83,24 @@ export class Transport {
     }
 }
 export class Poller {
-    constructor(work,{visible=()=>!document.hidden,now=Date.now,random=Math.random,setTimer=(fn,delay)=>setTimeout(fn,delay),clearTimer=id=>clearTimeout(id),active=4000,idle=5000,hidden=9000,onerror=()=>{}}={}){
-        Object.assign(this,{work,visible,now,random,setTimer,clearTimer,active,idle,hidden,onerror});
+    constructor(work,{visible=()=>!document.hidden,now=Date.now,random=Math.random,setTimer=(fn,delay)=>setTimeout(fn,delay),clearTimer=id=>clearTimeout(id),active=4000,idle=5000,hidden=9000,onerror=()=>{},customerRecovery=false,shouldRetry=()=>true,online=()=>true}={}){
+        Object.assign(this,{work,visible,now,random,setTimer,clearTimer,active,idle,hidden,onerror,customerRecovery,shouldRetry,online});
+        this.exhausted=false;
         this.timer=null;this.running=false;this.stopped=true;this.failures=0;this.lastChange=now();this.again=false;this.notBefore=0;
     }
-    start(){this.stopped=false;this.wake();}
+    start(){this.stopped=false;this.exhausted=false;this.failures=0;this.wake();}
+    resumeTransient(){if(this.exhausted&&this.online()){this.start();return true;}return false;}
     stop(){this.stopped=true;this.clearTimer(this.timer);}
     wake(){if(this.stopped)return;if(this.running){this.again=true;return;}this.clearTimer(this.timer);this.timer=this.setTimer(()=>this.tick(),Math.max(0,this.notBefore-this.now()));}
     async tick(){
         if(this.running||this.stopped)return;
+        if(this.customerRecovery&&!this.online()){this.exhausted=true;this.stopped=true;this.onerror(new RequestError('در انتظار اتصال…',0,'network'));return;}
         if(this.now()<this.notBefore){this.clearTimer(this.timer);this.timer=this.setTimer(()=>this.tick(),this.notBefore-this.now());return;}
         this.running=true;let delay=this.active;
         try{const changed=await this.work();this.failures=0;this.notBefore=0;if(changed)this.lastChange=this.now();delay=!this.visible()?(this.now()-this.lastChange>180000?Math.min(this.hidden*3,30000):this.hidden):this.now()-this.lastChange>60000?this.idle:this.active;}
-        catch(error){this.failures++;delay=Math.max(backoff(this.failures,this.random),error.retryAfter||0);this.notBefore=this.now()+delay;this.onerror(error);if([401,403,426].includes(error.status))this.stopped=true;}
+        catch(error){this.failures++;delay=this.customerRecovery?reconnectDelay(this.failures,this.random,error.retryAfter):Math.max(backoff(this.failures,this.random),error.retryAfter||0);this.notBefore=this.now()+delay;
+            if(this.customerRecovery&&(!this.shouldRetry(error)||this.failures>=6)){this.stopped=true;this.exhausted=this.shouldRetry(error);}
+            this.onerror(error);if([401,403,426].includes(error.status))this.stopped=true;}
         finally{this.running=false;if(!this.stopped){if(this.again){this.again=false;delay=Math.max(0,this.failures?delay:0);}this.timer=this.setTimer(()=>this.tick(),delay);}}
     }
 }

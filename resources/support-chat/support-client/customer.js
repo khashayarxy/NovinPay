@@ -13,6 +13,7 @@ import {visibleReads,DeviceAlerts,notificationSettings,messageViewport} from './
 import {unreadJump} from './unread-jump.js?v=latest2';
 import {replyControls} from './reply.js?v=bplus1';
 import {satisfaction} from './satisfaction.js?v=flow1';
+import {CustomerReconnect,transientFailure} from './reconnect.js';
 // Older embedded shells remain compatible; no cookie/storage migration is needed.
 export function customerInitHost(win=document.getElementById('chatWindow')){
     let init=document.getElementById('supportInit');if(init)return init;
@@ -59,9 +60,21 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
     const deferDraftSync=()=>!openedInPage&&!hasConversation;
     const pageQueue=new Map();let recovery=null,phone=null,issuance=null,attachments=null;
     const cooldown=sendCooldown({host:d.area,button:d.win.querySelector('.chat-send'),current:()=>engine});
-    // Only localized application messages reach the customer; raw exception
-    // text stays in the console for diagnosis and never enters the header area.
-    const warn=(message,kind='chat')=>{const localized=typeof message==='string'&&/[\u0600-\u06FF]/.test(message);if(!localized){diagnostics.events.push({stage:'operation',code:'unexpected',ms:Math.round(performance.now())});diagnostics.events=diagnostics.events.slice(-12);}d.error.dataset.kind=kind;d.error.textContent=localized?message:'این عملیات انجام نشد؛ پیش‌نویس شما حفظ شده است. دوباره تلاش کنید.';d.error.style.display='block';};
+    // Transport failures have a safe recovery presentation, never raw server text.
+    const warn=(message,kind='chat')=>{if(kind==='connectivity'||transientFailure(message)){showRecovery(message instanceof Error?message:null);return;}if(message instanceof Error)message=message.status===0?null:message.message;const localized=typeof message==='string'&&/[\u0600-\u06FF]/.test(message);if(!localized){diagnostics.events.push({stage:'operation',code:'unexpected',ms:Math.round(performance.now())});diagnostics.events=diagnostics.events.slice(-12);}d.error.dataset.kind=kind;d.error.textContent=localized?message:'این عملیات انجام نشد؛ پیش‌نویس شما حفظ شده است. دوباره تلاش کنید.';d.error.style.display='block';};
+    function showRecovery(error=null,stopped=false){
+        clearTimeout(historyTimer);
+        diagnostics.events.push({stage:'reconnect',code:transientFailure(error)?'transient':error?'terminal':'waiting',ms:Math.round(performance.now())});diagnostics.events=diagnostics.events.slice(-12);
+        if(d.error.dataset.kind==='connectivity'){d.error.textContent='';d.error.style.display='none';}
+        if(d.win.dataset.initState==='ready'||d.win.dataset.connectionState){
+            d.win.dataset.connectionState=stopped?'paused':'reconnecting';init.hidden=false;
+            initText.textContent=stopped?'اتصال دوباره برقرار نشد. دوباره بررسی کنید.':'در حال اتصال دوباره…';initRetry.hidden=!stopped;initRef.textContent='';
+        }else{
+            initState(stopped?'failed':'initializing','connection',stopped?'unavailable':'recovering');
+            initText.textContent=stopped?'گفتگو در دسترس نیست. دوباره بررسی کنید.':'در حال اتصال دوباره…';initRef.textContent='';
+        }
+    }
+    function clearRecovery(){delete d.win.dataset.connectionState;if(d.win.dataset.initState==='ready')init.hidden=true;}
     function setComposerDisabled(disabled){
         composerLocked=!!disabled;d.win.classList.toggle('support-composer-locked',composerLocked);
         d.area.querySelectorAll('textarea,input').forEach(el=>{el.disabled=composerLocked;});
@@ -85,11 +98,13 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
         reads?.destroy();alerts?.destroy();notificationSection?.permissionCleanup?.();notificationSection?.remove();engine?.destroy();navigation?.reset();setUnread(0);unreadCount=0;
         engine=new ChatEngine('customer',{
             queued:()=>navigation?.outgoing(),visible:()=>shown(),deferSync:deferDraftSync,pollError:error=>{
+                if(transientFailure(error)){showRecovery(error,engine.poller.exhausted&&navigator.onLine!==false);return true;}
                 const failed=failInitialHistory();
+                if(!failed)showRecovery(error,true);
                 return failed&&![401,403,426].includes(error.status);
             },cooldown:()=>cooldown.refresh(),
             gap:async()=>{let h=await engine.transport.request('customer-notifications.php?action=hint');if(h.attention?.scope!==engine.context.scope_id||h.attention?.epoch!==engine.context.session_epoch){engine.freeze();identity('نشست تغییر کرده است؛ صفحه را تازه کنید.');return;}h=engine.sync.mergeAttention(h);unreadCount=h.customer_unread??h.unread??0;setUnread(unreadCount);alerts?.update(h.sequence,h.store_epoch);},
-            warning:(message,kind)=>{if(kind==='storage'&&!stable){initState('partial','storage','unavailable');return;}if(stable&&d.win.dataset.initState!=='ready')return;warn(message,kind);},recovered:()=>{if(d.error.dataset.kind==='connectivity'){d.error.textContent='';d.error.style.display='none';}},identity,mode:value=>{ui.opt.checked=value;},stranded:count=>{ui.clearOld.hidden=count===0;},connection:message=>{ui.connection.textContent=message;},
+            warning:(message,kind)=>{if(kind==='storage'&&!stable){initState('partial','storage','unavailable');return;}if(stable&&d.win.dataset.initState!=='ready')return;warn(message,kind);},recovered:()=>{clearRecovery();if(d.error.dataset.kind==='connectivity'){d.error.textContent='';d.error.style.display='none';}},identity,mode:value=>{ui.opt.checked=value;},stranded:count=>{ui.clearOld.hidden=count===0;},connection:message=>{ui.connection.textContent=message;},
             presence:data=>{d.status.textContent=data.admin_online===true?'آنلاین':data.admin_online===false?'آفلاین':'وضعیت حضور نامشخص';d.status.title='وضعیت فعالیت اخیر اپراتورها؛ زمان پاسخ تضمین نمی‌شود.';d.status.classList.toggle('online',data.admin_online===true);presentation?.presence?.(data);},
             messages:(messages,history,page)=>{if(page){clearTimeout(historyTimer);if(!stable&&(d.win.dataset.initState==='initializing'||d.win.dataset.initState==='partial'&&!engine.storageDegraded)){initState('ready','history');d.win.setAttribute('aria-busy','false');}d.win.dataset.historyState='ready';rating?.page(page.satisfaction,page.lifecycle);availability.hidden=!page.availability?.outside;availability.textContent=page.availability?.text||'';unreadCount=page.customer_unread||0;setUnread(unreadCount);alerts?.observe(messages,page,history);if(!stable||d.win.dataset.initState==='ready')setComposerDisabled(!!page.lifecycle?.resolved);}reads?.messages(messages);typing?.received?.(messages);if(messages.length)hasConversation=true;if(page?.lifecycle){const episode=page.lifecycle.episode||1;if(welcomeEpisode!==episode){if(welcomeEpisode!==null)welcomeHasMessages=false;welcomeEpisode=episode;}if(messages.some(m=>['user','admin'].includes(m.type)&&(m.episode||1)===episode))welcomeHasMessages=true;}welcome.hidden=welcomeHasMessages;transcript.messages(messages,history);presentation?.messages?.(messages,page);reply?.refresh();if(stable&&page&&d.win.dataset.initState==='initializing'){setComposerDisabled(!!page.lifecycle?.resolved);initState('ready','history');}older.hidden=!engine.sync.hasOlder;older.disabled=loadingHistory||!engine.sync.hasOlder;navigation.tail(engine.sync.hasNewer);if(page?.history_removed_at){retentionNotice.hidden=false;menu.summary.textContent='اطلاعات گفتگو · بخشی از سابقه حذف شده';}},
             accepted:(row,ack)=>{if(row.conversation!==engine.sync.id)return;hasConversation=true;startButton.disabled=false;shell?.session();engine.draftConversation=null;transcript.accepted(row,ack);presentation?.accepted?.(row,ack);recovery?.refresh();phone?.refresh();issuance?.refresh();if(!engine.frozen&&row.scope===engine.scope&&row.conversation===engine.sync.id){ui.clear();d.error.style.display='none';}},
@@ -114,7 +129,7 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
                         };
                         notice.append(p,fresh);setComposerDisabled(true);
                     }
-                }catch(e){warn(e.message);}
+                }catch(e){warn(e);}
             },
         });
         engine.box.memory=pageQueue;
@@ -127,8 +142,8 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
         background.onclick=async()=>{try{const s=await engine.transport.request('customer-notifications.php?action=status');if(!s.push_enabled){backgroundStatus.textContent='اعلان پس‌زمینه در این نصب خاموش است.';return;}if(!hasConversation||!('serviceWorker'in navigator)||!('PushManager'in window))throw Error('ابتدا گفتگو را شروع کنید؛ این دستگاه باید Push را پشتیبانی کند.');if(await alerts.permission()!=='granted')throw Error('اجازهٔ اعلان لازم است.');const key=await engine.transport.request('customer-notifications.php?action=key');const registration=await navigator.serviceWorker.register(new URL('support-client/customer-sw.js',document.baseURI),{scope:new URL('support-client/',document.baseURI).pathname,updateViaCache:'none'});await new Promise(resolve=>{if(registration.active)return resolve();const worker=registration.installing||registration.waiting;worker?.addEventListener('statechange',()=>{if(worker.state==='activated')resolve();});});const bytes=Uint8Array.from(atob(key.key.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));const sub=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes});await engine.transport.request('customer-notifications.php',{data:{action:'subscribe',user_id:engine.sync.id,subscription:JSON.stringify(sub.toJSON())}});await alerts.save({background:true});backgroundStatus.textContent=s.external_delivery?'اشتراک ثبت شد؛ دریافت تضمین نمی‌شود.':'اشتراک ثبت شد؛ ارسال بیرونی خاموش است.';}catch(e){backgroundStatus.textContent=e.message;}};
         presentation?.bind?.(engine);cooldown.refresh();return engine;
     };
-    ui.opt.addEventListener('change',()=>engine.setPersistence(ui.opt.checked).then(value=>{ui.opt.checked=value;}).catch(e=>{ui.opt.checked=engine.box.persistent;warn(e.message);}));
-    ui.clearOld.addEventListener('click',()=>engine.clearStranded().catch(e=>warn(e.message)));
+    ui.opt.addEventListener('change',()=>engine.setPersistence(ui.opt.checked).then(value=>{ui.opt.checked=value;}).catch(e=>{ui.opt.checked=engine.box.persistent;warn(e);}));
+    ui.clearOld.addEventListener('click',()=>engine.clearStranded().catch(e=>warn(e)));
     const older=document.createElement('button');older.type='button';older.hidden=true;older.textContent='پیام‌های قدیمی‌تر';older.className='support-older';let loadingHistory=false;
     older.addEventListener('click',async()=>{
         if(loadingHistory)return;loadingHistory=true;older.disabled=true;const id=engine.sync.id,scope=engine.scope,deadline=Date.now()+15000;
@@ -139,18 +154,18 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
             if(engine.sync.id!==id||engine.scope!==scope||engine.frozen)return;
             if(engine.sync.busy)throw new Error('دریافت سابقه طول کشید؛ دوباره امتحان کنید.');
             await engine.sync.sync(true);
-        }catch(e){warn(e.message);}finally{loadingHistory=false;older.disabled=!engine.sync.hasOlder;}
+        }catch(e){warn(e);}finally{loadingHistory=false;older.disabled=!engine.sync.hasOlder;}
     });region.insertBefore(older,d.messages);
 
     const receiveLatest=async()=>{const scope=engine.scope,id=engine.sync.id,deadline=Date.now()+15000;while(engine.sync.busy&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,20));if(engine.frozen||scope!==engine.scope||id!==engine.sync.id)return;if(engine.sync.busy)throw Error('دریافت پیام‌ها طول کشید؛ دوباره تلاش کنید.');if(engine.sync.hasNewer)await engine.sync.latest();};
-    navigation=unreadJump({host:d.messages,region,compact:document.documentElement.dataset.supportSurface==='customer-v2',restoreOlder:true,latest:()=>receiveLatest().catch(e=>{warn(e.message);throw e;})});
+    navigation=unreadJump({host:d.messages,region,compact:document.documentElement.dataset.supportSurface==='customer-v2',restoreOlder:true,latest:()=>receiveLatest().catch(e=>{warn(e);throw e;})});
 
     const startHistory=id=>{
         clearTimeout(historyTimer);
         d.win.dataset.historyState='loading';
         historyTimer=setTimeout(()=>{
             if(engine?.sync.id!==id||d.win.dataset.historyState==='ready')return;
-            if(stable)failInitialHistory();
+            if(stable){engine.sync.controller?.abort();showRecovery();}
             else{d.win.dataset.historyState='failed';initState('partial','history','timeout');}
         },10000);
     };
@@ -170,7 +185,7 @@ d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(docu
         if(composerLocked)return;if(engine?.sendWait()){cooldown.refresh();return;}if(preparing||revision===lastQueuedRevision)return;preparing=true;
         const draft={text:d.input.value,revision,selection,reply:reply?.id||null};lastQueuedRevision=revision;
         try{const images=await attachments.upload();await engine.enqueue(draft.text,images,draft.reply);attachments.consume(images);if(draft.revision===revision&&draft.selection===selection&&d.input.value===draft.text){typing?.stop();reply?.clear();d.input.value='';presentation?.queued?.();growth.resize();revision++;lastQueuedRevision=-1;}welcome.hidden=true;d.error.style.display='none';}
-        catch(e){lastQueuedRevision=-1;if(e.code==='send_cooldown')cooldown.refresh();else warn(e.message);}
+        catch(e){lastQueuedRevision=-1;if(e.code==='send_cooldown')cooldown.refresh();else warn(e);}
         finally{preparing=false;}
     };
     window.sendMessage=send;
@@ -182,15 +197,15 @@ d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(docu
             await engine.transport.request('api.php',{data:{update_contact:'1',user_id:engine.sync.id,name:document.getElementById('userName').value,email:document.getElementById('userEmail').value,phone:window.NovinPayMobile?.ascii(document.getElementById('userPhone').value)??document.getElementById('userPhone').value}});
             menu.close();
             phone?.prefill(document.getElementById('userPhone')?.value||'');
-        }catch(e){warn(e.message);}
+        }catch(e){warn(e);}
     };
-    window.logout=async()=>{try{if(await engine.logout()){menu.close();await create();const s=await engine.transport.request('api.php?get_session=1');contactValues(s);hasConversation=!!s.user_id;activate(s.user_id||s.draft_user_id);d.input.focus();}}catch(e){warn(e.message);}};
+    window.logout=async()=>{try{if(await engine.logout()){menu.close();await create();const s=await engine.transport.request('api.php?get_session=1');contactValues(s);hasConversation=!!s.user_id;activate(s.user_id||s.draft_user_id);d.input.focus();}}catch(e){warn(e);}};
     window.toggleChat=()=>{
         const open=!d.win.classList.contains('active');d.win.style.display=open?'flex':'none';d.win.classList.toggle('active',open);
-        if(open){d.win.setAttribute('aria-hidden','false');shell?.open();if(shell?.chat)navigation?.open();rating?.refresh();if(engine?.sync.hasNewer)receiveLatest().catch(e=>warn(e.message));engine?.poller.wake();if(matchMedia('(pointer:fine)').matches){if(shell?.chat)d.input.focus({preventScroll:true});else shell?.start.focus({preventScroll:true});}}
+        if(open){d.win.setAttribute('aria-hidden','false');shell?.open();if(shell?.chat)navigation?.open();rating?.refresh();if(engine?.sync.hasNewer)receiveLatest().catch(e=>warn(e));engine?.poller.wake();if(matchMedia('(pointer:fine)').matches){if(shell?.chat)d.input.focus({preventScroll:true});else shell?.start.focus({preventScroll:true});}}
         else{navigation?.close();rating?.refresh();menu.close();d.win.setAttribute('aria-hidden','true');document.querySelector('[aria-label="پشتیبانی"]')?.focus();}
     };
-    let widgetWasVisible=false;window.addEventListener('support-widget-visibility',event=>{const visible=!!event.detail?.visible;if(visible===widgetWasVisible)return;widgetWasVisible=visible;if(visible){openedInPage=true;if(engine?.sync.id&&d.win.dataset.historyState==='deferred')startHistory(engine.sync.id);if(!stable||!engine?.sync.busy||d.win.dataset.initState==='ready')engine?.poller.wake();shell?.open();if(shell?.chat)navigation?.open();rating?.refresh();if(engine?.sync.hasNewer)receiveLatest().catch(e=>warn(e.message));}else navigation?.close();});
+    let widgetWasVisible=false;window.addEventListener('support-widget-visibility',event=>{const visible=!!event.detail?.visible;if(visible===widgetWasVisible)return;widgetWasVisible=visible;if(visible){openedInPage=true;if(engine?.sync.id&&d.win.dataset.historyState==='deferred')startHistory(engine.sync.id);if(!stable||!engine?.sync.busy||d.win.dataset.initState==='ready')engine?.poller.wake();shell?.open();if(shell?.chat)navigation?.open();rating?.refresh();if(engine?.sync.hasNewer)receiveLatest().catch(e=>warn(e));}else navigation?.close();});
     window.addEventListener('message',event=>{if(parent!==window&&event.origin===location.origin&&event.source===parent&&event.data?.type==='support-widget-attention')engine?.poller.wake();});
     window.closeChat=()=>{if(onClose){onClose();return;}if(d.win.classList.contains('active'))window.toggleChat();};
     const growth=composerSize(d.input);d.input.addEventListener('input',()=>{revision++;});
@@ -224,15 +239,18 @@ d.win.querySelector('.chat-send').addEventListener('pointerdown',event=>{if(docu
             const id=session.user_id||session.draft_user_id;
             if(engine.sync.id!==id)activate(id);
             else if(stable&&hasConversation&&!engine.sync.lastPage){startHistory(id);engine.poller.start();}
-            else engine.poller.wake();
+            else if(!engine.poller.resumeTransient())engine.poller.wake();
             attachments.recover();
             if(stable&&hasConversation&&!engine.sync.lastPage)return;
             setComposerDisabled(!!engine.sync.lastPage?.lifecycle?.resolved);
             initState(!stable&&(engine.storageDegraded||d.win.dataset.historyState==='failed')?'partial':'ready',engine.storageDegraded?'storage':'session',engine.storageDegraded?'unavailable':'');
-        })().catch(e=>{initState('failed','session',e.code==='storage_timeout'?'storage_timeout':e.status===401?'authentication':e.status===403?'csrf':e.status>=500?'server':e.status===0?'network':'initialization');setComposerDisabled(true);})
+        })().catch(e=>{showRecovery(e,!transientFailure(e));setComposerDisabled(true);throw e;})
         .finally(()=>{if(!stable)d.win.setAttribute('aria-busy','false');startButton.disabled=!hasConversation;initRetry.disabled=false;shell?.ready();if(bootJob===job)bootJob=null;});bootJob=job;return job;
     };
-    initRetry.onclick=boot;await boot();
+    const startupRecovery=new CustomerReconnect(boot,{state:(state,error)=>{if(['waiting','offline'].includes(state))showRecovery(error);if(['terminal','exhausted'].includes(state))showRecovery(error,true);}});
+    initRetry.onclick=()=>{if(engine?.poller.exhausted){engine.poller.resumeTransient();showRecovery();}else startupRecovery.start(true);};
+    window.addEventListener('online',()=>{if(startupRecovery.failures||!engine?.initialized)startupRecovery.onlineAgain();});
+    await startupRecovery.start();
     navigator.serviceWorker?.addEventListener('message',event=>{if(['support-customer-push','support-customer-open'].includes(event.data?.type))engine?.poller.wake();});
     return engine;
 }
