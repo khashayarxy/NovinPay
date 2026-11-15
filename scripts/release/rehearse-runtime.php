@@ -75,6 +75,8 @@ try {
     };
     $artisan(['config:cache']);
     $artisan(['route:cache']);
+    $baselineView = 'storage/framework/views/'.str_repeat('a', 32).'.php';
+    runtimeWrite($app.'/'.$baselineView, '<?php // private baseline compiled view', 0600);
     runtimeWrite($app.'/public/build/manifest.json', '{"old-entry":{"file":"assets/old-hash.js"}}');
     runtimeWrite($app.'/public/build/assets/old-hash.js', '/* retained open-tab asset */', 0644, 0755);
     runtimeWrite($app.'/public/build/support-chat/manifest.json', '{"version":"synthetic-baseline"}', 0644, 0755);
@@ -260,6 +262,9 @@ try {
         }
         if ($rollback) {
             runtimeVerify($app, $m['baselineFiles']);
+            requireGate(file_get_contents($app.'/'.$baselineView) === '<?php // private baseline compiled view'
+                && (PHP_OS_FAMILY === 'Windows' || (fileperms($app.'/'.$baselineView) & 0777) === 0600),
+                'rehearsal_private_view_mode', 'original private compiled-view bytes and mode restored', [], 'Do not broaden private view permissions.');
         }
     }
     requireGate(hash_file('sha256', $root.'/business.sqlite') === $databaseHash && is_file($app.'/public/build/assets/old-hash.js')

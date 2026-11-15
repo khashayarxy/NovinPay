@@ -525,7 +525,9 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         }
         runtimeVerify($journal.'/rollback-cache', $cache, true);
         $views = runtimeInventory($app.'/storage/framework/views');
+        $viewModes = [];
         foreach ($views as $path => $hash) {
+            $viewModes[$path] = fileperms($app.'/storage/framework/views/'.$path) & 0777;
             runtimeWrite($journal.'/rollback-views/'.$path, file_get_contents($app.'/storage/framework/views/'.$path));
         }
         foreach ($m['archives']['assets']['files'] as $path => $hash) {
@@ -539,7 +541,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                 runtimeWrite($journal.'/rollback-assets/'.$path, file_get_contents($target));
             }
         }
-        writeNew($journal.'/rollback.json', ['sourceArchiveSha256' => $baselineSourceHash, 'cache' => $cache, 'cacheModes' => $cacheModes, 'views' => $views, 'assets' => $assets, 'vendor' => $baselineVendor]);
+        writeNew($journal.'/rollback.json', ['sourceArchiveSha256' => $baselineSourceHash, 'cache' => $cache, 'cacheModes' => $cacheModes, 'views' => $views, 'viewModes' => $viewModes, 'assets' => $assets, 'vendor' => $baselineVendor]);
         $hooks['quota'](); // Fresh evidence after staging, immediately before maintenance.
         runtimeVerify($app, $m['protectedFiles']);
         $phase = 'maintenance';
@@ -683,7 +685,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                         requireGate(! is_link($app.'/storage/framework/views/'.$path) && in_array(hash_file('sha256', $app.'/storage/framework/views/'.$path), [$hash, $generated[$path] ?? null], true),
                             'runtime_rollback_view_changed', 'recorded compiled view only', [], 'Preserve unrelated view changes.');
                     }
-                    runtimeWrite($app.'/storage/framework/views/'.$path, file_get_contents($journal.'/rollback-views/'.$path));
+                    runtimeWrite($app.'/storage/framework/views/'.$path, file_get_contents($journal.'/rollback-views/'.$path), $plan['viewModes'][$path]);
                 }
                 runtimeVerify($app.'/vendor', $plan['vendor'], true);
                 runtimeVerify($app, $m['protectedFiles']);
