@@ -145,3 +145,37 @@ foreach (['success' => false, 'rollback' => true] as $name => $force) {
     echo $result['stdout'];
     requireGate($result['exit'] === 0, 'rehearsal_'.$name, 'real release rehearsal passes', [], 'Preserve runner evidence and inspect the named failure.');
 }
+
+// Qualify the reviewed dependency-neutral pair through the SAME transaction.
+// Reuse the existing locked vendor and complete historical asset fixture above;
+// no extra Composer/Vite build. Exact 6eb8e00 production asset bytes are checked
+// separately against the private frozen inventory, not claimed as this fixture.
+$neutral = $m;
+$neutral['profile'] = 'application-neutral-6eb8e00';
+$neutral['baseline'] = 'c9c46dc39f79aad59601045cb44e342168536e9c';
+$neutral['target'] = $neutral['applicationCommit'] = '6eb8e00c6e46b342df5eea15cebea90e85cc86f2';
+$neutral['recoverySourceCommit'] = $base;
+$neutral['reuseVendor'] = $neutral['refreshConfiguration'] = true;
+$neutral['dependencyChanges'] = [];
+$neutral['releaseName'] = 'neutral-ci';
+runtimeGit($repo, ['archive', '--format=zip', '--output='.$package.'/neutral-source.zip', $neutral['target']]);
+$z = new ZipArchive;
+requireGate($z->open($package.'/neutral-source.zip') === true, 'rehearsal_neutral_archive', 'exact approved Git source', [], 'Inspect source preparation.');
+$files = [];
+for ($i = 0; $i < $z->numFiles; $i++) {
+    if (! str_ends_with($z->getNameIndex($i), '/')) {
+        $files[$z->getNameIndex($i)] = hash('sha256', $z->getFromIndex($i));
+    }
+}
+$z->close();
+$neutral['archives']['source'] = ['file' => 'neutral-source.zip', 'sha256' => hash_file('sha256', $package.'/neutral-source.zip'), 'files' => $files];
+writeNew($package.'/neutral-ci.json', $neutral);
+foreach (['neutral-success' => false, 'neutral-rollback' => true, 'neutral-foreign-asset' => 'foreign-asset',
+    'neutral-foreign-cache' => 'foreign-cache', 'neutral-foreign-view' => 'foreign-view'] as $name => $force) {
+    $config = ['repository' => $repo, 'manifest' => $package.'/neutral-ci.json', 'package' => $package,
+        'baselineVendor' => $root.'/candidate/vendor', 'workspace' => $root.'/'.$name, 'forceFailure' => $force];
+    writeNew($root.'/'.$name.'-config.json', $config);
+    $result = command([PHP_BINARY, __DIR__.'/rehearse-runtime.php', $root.'/'.$name.'-config.json'], $repo, 'rehearsal_'.$name, 300);
+    echo $result['stdout'];
+    requireGate($result['exit'] === 0, 'rehearsal_'.$name, 'neutral source/caches/manifests and rollback verified', [], 'Preserve runner evidence.');
+}

@@ -6,6 +6,78 @@ namespace NovinPay\Release;
 
 require_once __DIR__.'/recovery-contract.php';
 
+/** An explicit reviewed profile, not a replacement for the frozen upgrade contract. */
+function runtimeNeutral(array $m): bool
+{
+    return ($m['profile'] ?? '') === 'application-neutral-6eb8e00';
+}
+
+function runtimeFramework(array $m, bool $baseline): string
+{
+    return runtimeNeutral($m) || ! $baseline ? '13.40.0' : '13.35.0';
+}
+
+function runtimeConfigurationDigest(array $configuration): string
+{
+    foreach (['sms_enabled', 'sms_api_key', 'otp_template', 'otp_parameter', 'approved_template_ids',
+        'notifications_enabled', 'notification_parameter', 'notification_templates'] as $retired) {
+        unset($configuration['customer'][$retired]);
+    }
+    unset($configuration['operations']['scheduled_notifications']);
+    $sort = static function (array $value) use (&$sort): array {
+        foreach ($value as &$item) {
+            if (is_array($item)) {
+                $item = $sort($item);
+            }
+        }
+        unset($item);
+        ksort($value);
+
+        return $value;
+    };
+
+    return hash('sha256', json_encode($sort($configuration), JSON_THROW_ON_ERROR));
+}
+
+function runtimeProtected(string $app, array $m, ?string $baselineCache = null): void
+{
+    $pins = $m['protectedFiles'];
+    if ($baselineCache !== null && runtimeNeutral($m)) {
+        runtimeConfigurationMatches($baselineCache, $app.'/bootstrap/cache/config.php', $pins['bootstrap/cache/config.php']);
+        unset($pins['bootstrap/cache/config.php']);
+    }
+    runtimeVerify($app, $pins);
+}
+
+function runtimeConfigurationMatches(string $before, string $after, string $pin): void
+{
+    requireGate(hash_equals($pin, hash_file('sha256', $before)), 'runtime_original_config_pin', 'exact private baseline cache', [], 'Preserve rollback evidence.');
+    requireGate(runtimeConfigurationDigest(require $before) === runtimeConfigurationDigest(require $after),
+        'runtime_configuration_changed', 'only reviewed retired settings disappear; active secrets and all other settings identical', [], 'Keep maintenance and inspect configuration privately.');
+}
+
+function runtimeRecoveryCompatibility(string $app, array $m, array $proof): void
+{
+    $source = $proof['sourceCommit'] ?? '';
+    if (! runtimeNeutral($m)) {
+        requireGate($source === $m['baseline'], 'runtime_recovery_baseline', 'recovery point matches baseline', [], 'Reconcile recovery evidence.');
+
+        return;
+    }
+    requireGate($source === 'ecf672110214a24a9171d942a2730d9bfad5f65c' && ($m['recoverySourceCommit'] ?? '') === $source,
+        'runtime_recovery_provenance', 'explicit original ecf6721 snapshot; never relabelled', [], 'Reconcile the pinned recovery generation.');
+    runtimeGit($app, ['merge-base', '--is-ancestor', $source, $m['baseline']]);
+    requireGate(trim(runtimeGit($app, ['diff', '--name-only', $source, $m['target'], '--', 'database/migrations'])) === '',
+        'runtime_recovery_schema', 'identical migration bytes from recovery source through candidate', [], 'Require reviewed schema-compatible recovery.');
+    foreach (['.env'] as $path) {
+        requireGate(($proof['protectedFileHashes'][$path] ?? null) === $m['protectedFiles'][$path],
+            'runtime_recovery_configuration', 'recovery credentials/identity match protected production pins', [], 'Reconcile private recovery compatibility.');
+    }
+    requireGate(($proof['allProtectedFileHashesMatch'] ?? null) === true && ($proof['schemaAndDefinersMatch'] ?? null) === true
+        && ($proof['databaseDumpRowDigestMatches'] ?? null) === true,
+        'runtime_recovery_compatibility_proof', 'independent protected-file, schema/definer and row verification retained', [], 'Preserve and verify independent recovery evidence.');
+}
+
 /** Explicit schema-neutral extension; neither legacy contract accepts this format. */
 function runtimeReleaseContract(array $m): void
 {
@@ -16,10 +88,20 @@ function runtimeReleaseContract(array $m): void
     requireGate(preg_match('/\A[a-z0-9-]{1,64}\z/D', $m['releaseName'] ?? '') === 1
         && preg_match('~\Acodex/[a-z0-9/-]+\z~D', $m['targetBranch'] ?? '') === 1,
         'runtime_identity', 'safe release and branch names', [], 'Reject an unbound release.');
-    requireGate(count($m['migrations']) === 24 && $m['expectedTriggers'] === 13
+    requireGate(in_array($m['profile'] ?? '', ['', 'application-neutral-6eb8e00'], true), 'runtime_profile', 'known reviewed profile', [], 'Do not infer new release scope.');
+    $neutral = runtimeNeutral($m);
+    if ($neutral) {
+        requireGate($m['baseline'] === 'c9c46dc39f79aad59601045cb44e342168536e9c'
+            && $m['target'] === '6eb8e00c6e46b342df5eea15cebea90e85cc86f2' && $m['applicationCommit'] === $m['target']
+            && ($m['reuseVendor'] ?? null) === true && ($m['refreshConfiguration'] ?? null) === true
+            && count($m['migrations']) === 24 && $m['expectedTriggers'] === 13 && ($m['migrationsApplied'] ?? null) === 0,
+            'runtime_neutral_identity', 'reviewed c9c46dc to 6eb8e00; zero schema/dependency operations', [], 'Reject any other release.');
+    } else {
+        requireGate(count($m['migrations']) === 24 && $m['expectedTriggers'] === 13
         && ($m['migrationsApplied'] ?? null) === 0 && ($m['applicationCommit'] ?? '') === '9f2e6a48481c8527d538de9e4ba24a2ca211ee8f'
         && ($m['baseline'] ?? '') === 'ecf672110214a24a9171d942a2730d9bfad5f65c',
-        'runtime_schema_neutral', 'approved baseline, application and unchanged 24/13 schema', [], 'Review a different release separately.');
+            'runtime_schema_neutral', 'approved baseline, application and unchanged 24/13 schema', [], 'Review a different release separately.');
+    }
     foreach (['source', 'vendor', 'assets'] as $kind) {
         $a = $m['archives'][$kind] ?? [];
         requireGate(preg_match('/\A[a-z0-9-]+\.zip\z/D', $a['file'] ?? '') === 1
@@ -31,10 +113,12 @@ function runtimeReleaseContract(array $m): void
             requireGate(preg_match('/\A[a-f0-9]{64}\z/D', $hash) === 1, 'runtime_file_pin', 'SHA-256 file pin', [], 'Reject incomplete inventory.');
             requireGate($kind !== 'vendor' || str_starts_with($path, 'vendor/'), 'runtime_vendor_prefix', 'vendor-only archive', [], 'Reject unexpected archive destinations.');
             requireGate($kind !== 'assets' || $path === 'manifest.json' || str_starts_with($path, 'assets/') || str_starts_with($path, 'support-chat/'), 'runtime_asset_prefix', 'build assets only', [], 'Reject unexpected public paths.');
+            requireGate(! $neutral || $kind !== 'assets' || preg_match('/\.(?:js|css|woff2?|png|svg|avif|webp|json|htaccess)\z/D', $path) === 1,
+                'runtime_neutral_asset_type', 'public static assets only', [], 'Reject executable or private artifact members.');
         }
     }
     requireGate(count($m['productionPackages'] ?? []) === 76
-        && ($m['dependencyChanges'] ?? []) === ['laravel/framework' => ['13.35.0', '13.40.0']],
+        && ($m['dependencyChanges'] ?? []) === ($neutral ? [] : ['laravel/framework' => ['13.35.0', '13.40.0']]),
         'runtime_dependency_scope', 'only approved framework update; 76 production packages', [], 'Review dependency changes.');
     foreach (['baselineFiles', 'protectedFiles'] as $key) {
         requireGate(is_array($m[$key] ?? null) && count($m[$key]) >= 3, 'runtime_protected_inventory', 'explicit protected baseline pins', [], 'Reconcile protected files.');
@@ -279,6 +363,15 @@ function runtimeSourceContract(string $app, array $m, string $source, string $ve
     }
     requireGate(trim(runtimeGit($app, ['diff', '--name-only', $m['baseline'], $m['target'], '--', 'database/migrations', 'composer.json', 'package.json', 'package-lock.json', 'public/.htaccess'])) === '',
         'runtime_schema_diff', 'unchanged migrations, root handler and dependency metadata', [], 'Reject schema or unrelated dependency changes.');
+    if (runtimeNeutral($m)) {
+        requireGate(trim(runtimeGit($app, ['diff', '--name-only', $m['baseline'], $m['target'], '--', 'composer.lock'])) === '',
+            'runtime_neutral_lock_changed', 'byte-identical dependency lock', [], 'Reject dependency drift.');
+        foreach (runtimeSourceDelta($app, $m) as $path => $status) {
+            if ($status === 'A') {
+                requireGate(! file_exists($app.'/'.$path) && ! is_link($app.'/'.$path), 'runtime_addition_collision', 'new tracked path is unoccupied', [], 'Preserve unrelated files.');
+            }
+        }
+    }
     $tree = preg_split('/\r?\n/', trim(runtimeGit($app, ['ls-tree', '-r', $m['target']])), -1, PREG_SPLIT_NO_EMPTY);
     $objects = [];
     foreach ($tree as $line) {
@@ -317,6 +410,32 @@ function runtimeSourceContract(string $app, array $m, string $source, string $ve
     }
     requireGate($changed === $m['dependencyChanges'] && ($before['packages-dev'] ?? []) === ($after['packages-dev'] ?? []),
         'runtime_lock_delta', 'framework-only lock delta; development dependencies unchanged', [], 'Review unexpected lock changes.');
+}
+
+function runtimeSourceDelta(string $app, array $m): array
+{
+    $rows = trim(runtimeGit($app, ['diff', '--no-renames', '--name-status', $m['baseline'], $m['target']]));
+    $out = [];
+    foreach (preg_split('/\r?\n/', $rows, -1, PREG_SPLIT_NO_EMPTY) as $row) {
+        [$status, $path] = explode("\t", $row, 2);
+        runtimePath($path);
+        requireGate(in_array($status, ['A', 'M', 'D'], true), 'runtime_source_delta_type', 'regular additions, modifications or deletions', [], 'Reject unsafe source changes.');
+        $out[$path] = $status;
+    }
+
+    return $out;
+}
+
+function runtimeDeletedSource(string $app, array $m): void
+{
+    if (! runtimeNeutral($m)) {
+        return;
+    }
+    foreach (runtimeSourceDelta($app, $m) as $path => $status) {
+        if ($status === 'D') {
+            requireGate(! file_exists($app.'/'.$path) && ! is_link($app.'/'.$path), 'runtime_deleted_source_present', 'deleted tracked source absent', [], 'Preserve unexpected files and keep maintenance.');
+        }
+    }
 }
 
 function runtimeInodes(array $proof, int $required): void
@@ -384,11 +503,19 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         $baselineVendor = runtimeInventory($app.'/vendor');
         runtimePackages(file_get_contents($app.'/composer.lock'), file_get_contents($app.'/vendor/composer/installed.json'));
         writeNew($journal.'/baseline-vendor.json', $baselineVendor);
-        // Full verified rollback copy exists BEFORE any vendor is moved.
-        foreach ($baselineVendor as $path => $hash) {
-            runtimeWrite($journal.'/rollback-vendor/'.$path, file_get_contents($app.'/vendor/'.$path));
+        // A neutral release verifies/reuses the exact installed vendor without moving it.
+        if (! runtimeNeutral($m)) {
+            foreach ($baselineVendor as $path => $hash) {
+                runtimeWrite($journal.'/rollback-vendor/'.$path, file_get_contents($app.'/vendor/'.$path));
+            }
+            runtimeVerify($journal.'/rollback-vendor', $baselineVendor, true);
+        } else {
+            $expectedVendor = [];
+            foreach ($m['archives']['vendor']['files'] as $path => $hash) {
+                $expectedVendor[substr($path, 7)] = $hash;
+            }
+            runtimeVerify($app.'/vendor', $expectedVendor, true);
         }
-        runtimeVerify($journal.'/rollback-vendor', $baselineVendor, true);
         $cache = [];
         $cacheModes = [];
         foreach (glob($app.'/bootstrap/cache/*.php') as $file) {
@@ -426,10 +553,12 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
         $switched = true;
         $phase = 'vendor';
         runtimeVerify($app.'/vendor', $baselineVendor, true);
-        requireGate(rename($app.'/vendor', $journal.'/original-vendor'), 'runtime_vendor_move', 'baseline vendor retained', [], 'Keep maintenance.');
-        $vendorMoved = true;
-        requireGate(rename($journal.'/vendor/vendor', $app.'/vendor'), 'runtime_vendor_switch', 'staged vendor switch', [], 'Restore matched baseline before reopening.');
-        $vendorInstalled = true;
+        if (! runtimeNeutral($m)) {
+            requireGate(rename($app.'/vendor', $journal.'/original-vendor'), 'runtime_vendor_move', 'baseline vendor retained', [], 'Keep maintenance.');
+            $vendorMoved = true;
+            requireGate(rename($journal.'/vendor/vendor', $app.'/vendor'), 'runtime_vendor_switch', 'staged vendor switch', [], 'Restore matched baseline before reopening.');
+            $vendorInstalled = true;
+        }
         $vendorFiles = [];
         foreach ($m['archives']['vendor']['files'] as $path => $hash) {
             requireGate(str_starts_with($path, 'vendor/'), 'runtime_vendor_prefix', 'vendor-only artifact', [], 'Reject unexpected package paths.');
@@ -447,12 +576,18 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
             $hooks['cache']();
         } finally {
             writeNew($journal.'/candidate-views.json', runtimeInventory($app.'/storage/framework/views'));
+            $generatedCaches = [];
+            foreach (glob($app.'/bootstrap/cache/*.php') as $file) {
+                $generatedCaches[basename($file)] = hash_file('sha256', $file);
+            }
+            writeNew($journal.'/candidate-cache.json', $generatedCaches);
         }
         $phase = 'web';
         $hooks['web']();
         $phase = 'ready';
-        runtimeVerify($app, $m['protectedFiles']);
+        runtimeProtected($app, $m, $journal.'/rollback-cache/config.php');
         runtimeVerify($app, array_diff_key($m['archives']['source']['files'], ['public/.htaccess' => true]));
+        runtimeDeletedSource($app, $m);
         runtimeVerify($app.'/public/build', $m['archives']['assets']['files']);
         if (PHP_OS_FAMILY !== 'Windows') {
             $publicSource = [];
@@ -497,6 +632,7 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                 if ($switched) {
                     requireGate(trim(runtimeGit($app, ['rev-parse', 'HEAD'])) === $m['target'], 'runtime_rollback_head', 'owned target only', [], 'Inspect external changes.');
                     runtimeVerify($app, array_diff_key($m['archives']['source']['files'], ['public/.htaccess' => true]));
+                    runtimeDeletedSource($app, $m);
                     runtimePublicCreation(fn () => runtimeGit($app, ['switch', '--detach', $m['baseline']]));
                 }
                 if ($vendorInstalled) {
@@ -508,6 +644,11 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                 }
                 foreach ($plan['assets'] as $path => $pin) {
                     $file = $app.'/public/build/'.$path;
+                    runtimeNoLinks($file);
+                    if (is_file($file)) {
+                        requireGate(! is_link($file) && in_array(hash_file('sha256', $file), array_filter([$pin['before'], $pin['after']]), true),
+                            'runtime_rollback_asset_changed', 'only recorded baseline/candidate asset bytes', [], 'Preserve unexpected changes.');
+                    }
                     if ($pin['before'] !== null && is_file($journal.'/rollback-assets/'.$path)) {
                         runtimeWrite($file, file_get_contents($journal.'/rollback-assets/'.$path), 0644, 0755);
                     } elseif ($pin['before'] === null && is_file($file)) {
@@ -515,7 +656,11 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                         unlink($file);
                     }
                 }
+                $generatedCaches = is_file($journal.'/candidate-cache.json') ? json_decode(privateRead($journal.'/candidate-cache.json'), true, 512, JSON_THROW_ON_ERROR) : [];
                 foreach (glob($app.'/bootstrap/cache/*.php') as $file) {
+                    $name = basename($file);
+                    requireGate(! is_link($file) && in_array(hash_file('sha256', $file), array_filter([$plan['cache'][$name] ?? null, $generatedCaches[$name] ?? null]), true),
+                        'runtime_rollback_cache_changed', 'recorded baseline/candidate cache only', [], 'Preserve unrelated cache changes.');
                     if (! isset($plan['cache'][basename($file)])) {
                         // Only known framework-generated caches may be removed.
                         requireGate(in_array(basename($file), ['packages.php', 'services.php', 'routes-v7.php', 'events.php'], true) && ! is_link($file), 'runtime_rollback_cache_ownership', 'known generated cache only', [], 'Preserve unexpected cache files.');
@@ -533,6 +678,11 @@ function runtimeActivate(string $app, string $kit, string $publicLink, array $m,
                     }
                 }
                 foreach ($plan['views'] as $path => $hash) {
+                    if (is_file($app.'/storage/framework/views/'.$path)) {
+                        $generated = is_file($journal.'/candidate-views.json') ? json_decode(privateRead($journal.'/candidate-views.json'), true, 512, JSON_THROW_ON_ERROR) : [];
+                        requireGate(! is_link($app.'/storage/framework/views/'.$path) && in_array(hash_file('sha256', $app.'/storage/framework/views/'.$path), [$hash, $generated[$path] ?? null], true),
+                            'runtime_rollback_view_changed', 'recorded compiled view only', [], 'Preserve unrelated view changes.');
+                    }
                     runtimeWrite($app.'/storage/framework/views/'.$path, file_get_contents($journal.'/rollback-views/'.$path));
                 }
                 runtimeVerify($app.'/vendor', $plan['vendor'], true);

@@ -60,6 +60,55 @@ class RuntimeReleaseContractTest extends TestCase
         runtimePath($path);
     }
 
+    public function test_source_deletions_preserve_unexpected_recreated_files(): void
+    {
+        runtimeGit($this->dir, ['init']);
+        runtimeGit($this->dir, ['config', 'user.email', 'fixture@example.invalid']);
+        runtimeGit($this->dir, ['config', 'user.name', 'Isolated fixture']);
+        runtimeWrite($this->dir.'/old.php', '<?php // old');
+        runtimeGit($this->dir, ['add', 'old.php']);
+        runtimeGit($this->dir, ['commit', '-m', 'baseline']);
+        $base = trim(runtimeGit($this->dir, ['rev-parse', 'HEAD']));
+        runtimeGit($this->dir, ['rm', 'old.php']);
+        runtimeWrite($this->dir.'/new.php', '<?php // new');
+        runtimeGit($this->dir, ['add', 'new.php']);
+        runtimeGit($this->dir, ['commit', '-m', 'candidate']);
+        $m = ['profile' => 'application-neutral-6eb8e00', 'baseline' => $base, 'target' => trim(runtimeGit($this->dir, ['rev-parse', 'HEAD']))];
+        $this->assertSame(['new.php' => 'A', 'old.php' => 'D'], \NovinPay\Release\runtimeSourceDelta($this->dir, $m));
+        \NovinPay\Release\runtimeDeletedSource($this->dir, $m);
+        runtimeWrite($this->dir.'/old.php', 'unrelated work');
+        try {
+            \NovinPay\Release\runtimeDeletedSource($this->dir, $m);
+            $this->fail('Recreated deleted file accepted');
+        } catch (GateFailure $e) {
+            $this->assertSame('runtime_deleted_source_present', $e->check);
+            $this->assertSame('unrelated work', file_get_contents($this->dir.'/old.php'));
+        }
+    }
+
+    public function test_recovery_provenance_is_explicit_and_schema_and_credentials_must_match(): void
+    {
+        $repo = dirname(__DIR__, 2);
+        $probe = \NovinPay\Release\command(['git', 'cat-file', '-e', 'ecf672110214a24a9171d942a2730d9bfad5f65c'], $repo, 'fixture_history');
+        if ($probe['exit'] !== 0) {
+            $this->markTestSkipped('Full Git history is exercised by the existing SQLite release rehearsal job.');
+        }
+        $m = $this->neutral();
+        $proof = ['sourceCommit' => $m['recoverySourceCommit'], 'protectedFileHashes' => ['.env' => $m['protectedFiles']['.env']],
+            'allProtectedFileHashesMatch' => true, 'schemaAndDefinersMatch' => true, 'databaseDumpRowDigestMatches' => true];
+        \NovinPay\Release\runtimeRecoveryCompatibility($repo, $m, $proof);
+        foreach (['sourceCommit' => $m['baseline'], 'protectedFileHashes' => ['.env' => str_repeat('f', 64)], 'schemaAndDefinersMatch' => false] as $key => $value) {
+            $bad = $proof;
+            $bad[$key] = $value;
+            try {
+                \NovinPay\Release\runtimeRecoveryCompatibility($repo, $m, $bad);
+                $this->fail('Unverified recovery accepted');
+            } catch (GateFailure $e) {
+                $this->assertContains($e->check, ['runtime_recovery_provenance', 'runtime_recovery_configuration', 'runtime_recovery_compatibility_proof']);
+            }
+        }
+    }
+
     private function archive(array $entries): array
     {
         $path = $this->dir.'/test.zip';
@@ -188,7 +237,7 @@ class RuntimeReleaseContractTest extends TestCase
         runtimeGit($this->dir, ['rev-parse', 'HEAD']);
     }
 
-    public function test_exact_schema_neutral_contract_preserves_trigger_definers_and_rejects_migrations(): void
+    private function manifest(): array
     {
         $zero = str_repeat('0', 64);
         $names = \NovinPay\Release\migrationInventory(__DIR__.'/../../database/migrations');
@@ -206,6 +255,13 @@ class RuntimeReleaseContractTest extends TestCase
         foreach (['source' => 'README.md', 'vendor' => 'vendor/autoload.php', 'assets' => 'manifest.json'] as $kind => $path) {
             $m['archives'][$kind] = ['file' => $kind.'.zip', 'sha256' => $zero, 'files' => [$path => $zero]];
         }
+
+        return $m;
+    }
+
+    public function test_exact_schema_neutral_contract_preserves_trigger_definers_and_rejects_migrations(): void
+    {
+        $m = $this->manifest();
         runtimeReleaseContract($m);
         $this->addToAssertionCount(1);
         $changed = $m;
@@ -219,6 +275,54 @@ class RuntimeReleaseContractTest extends TestCase
         $m['migrationsApplied'] = 1;
         $this->expectException(GateFailure::class);
         runtimeReleaseContract($m);
+    }
+
+    private function neutral(): array
+    {
+        return array_replace($this->manifest(), ['profile' => 'application-neutral-6eb8e00',
+            'baseline' => 'c9c46dc39f79aad59601045cb44e342168536e9c', 'target' => '6eb8e00c6e46b342df5eea15cebea90e85cc86f2',
+            'applicationCommit' => '6eb8e00c6e46b342df5eea15cebea90e85cc86f2', 'reuseVendor' => true, 'refreshConfiguration' => true,
+            'recoverySourceCommit' => 'ecf672110214a24a9171d942a2730d9bfad5f65c', 'dependencyChanges' => []]);
+    }
+
+    public function test_neutral_profile_accepts_only_reviewed_pair_without_weakening_legacy_contract(): void
+    {
+        $m = $this->neutral();
+        runtimeReleaseContract($m);
+        $this->assertSame('13.40.0', \NovinPay\Release\runtimeFramework($m, true));
+        foreach (['baseline' => str_repeat('f', 40), 'target' => str_repeat('a', 40), 'applicationCommit' => str_repeat('b', 40),
+            'reuseVendor' => false, 'refreshConfiguration' => false, 'migrationsApplied' => 1, 'profile' => 'unknown'] as $key => $value) {
+            try {
+                runtimeReleaseContract(array_replace($m, [$key => $value]));
+                $this->fail('Unreviewed release accepted: '.$key);
+            } catch (GateFailure) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $m['dependencyChanges'] = ['laravel/framework' => ['13.35.0', '13.40.0']];
+        $this->expectException(GateFailure::class);
+        runtimeReleaseContract($m);
+    }
+
+    public function test_config_refresh_preserves_active_secrets_and_every_unrelated_setting(): void
+    {
+        $before = ['customer' => ['ippanel' => ['api_key' => 'synthetic', 'sender' => '+983000505', 'enabled' => true], 'test_reset_on_logout' => true, 'sms_enabled' => false],
+            'operations' => ['scheduled_payments' => false, 'scheduled_notifications' => false], 'database' => ['default' => 'mariadb'], 'app' => ['key' => 'synthetic-key']];
+        $after = $before;
+        unset($after['customer']['sms_enabled'], $after['operations']['scheduled_notifications']);
+        $digest = \NovinPay\Release\runtimeConfigurationDigest($before);
+        $this->assertSame($digest, \NovinPay\Release\runtimeConfigurationDigest($after));
+        foreach ([['customer', ['ippanel' => ['api_key' => 'changed']]], ['operations', ['scheduled_payments' => true]], ['database', ['default' => 'sqlite']], ['app', ['key' => 'changed']]] as [$key, $value]) {
+            $changed = $after;
+            $changed[$key] = $value;
+            $this->assertNotSame($digest, \NovinPay\Release\runtimeConfigurationDigest($changed));
+        }
+        runtimeWrite($this->dir.'/before.php', '<?php return '.var_export($before, true).';', 0600);
+        runtimeWrite($this->dir.'/after.php', '<?php return '.var_export($after, true).';', 0600);
+        \NovinPay\Release\runtimeConfigurationMatches($this->dir.'/before.php', $this->dir.'/after.php', hash_file('sha256', $this->dir.'/before.php'));
+        file_put_contents($this->dir.'/before.php', '<?php return [];');
+        $this->expectException(GateFailure::class);
+        \NovinPay\Release\runtimeConfigurationMatches($this->dir.'/before.php', $this->dir.'/after.php', str_repeat('0', 64));
     }
 
     public function test_rollback_recognizes_actual_laravel_compiled_view_names(): void

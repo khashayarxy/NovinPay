@@ -97,22 +97,37 @@ try {
         // adapter simulations; they are NOT reported as hosted verification.
         'quota' => fn () => NovinPay\Release\runtimeInodes(['underInodeQuota' => true, 'inodeLimit' => 1000000, 'inodesRemaining' => 900000], 30000),
         'down' => fn () => $artisan(['down', '--retry=60']),
-        'cache' => function () use ($artisan, $c): void {
+        'cache' => function () use ($artisan, $c, $m): void {
+            if (NovinPay\Release\runtimeNeutral($m)) {
+                $artisan(['config:cache']);
+            }
             $artisan(['route:cache']);
             $artisan(['view:cache']);
             if (($c['forceFailure'] ?? false) === true) {
                 throw new RuntimeException('synthetic_forced_failure');
             }
         },
-        'web' => function (): void {},
+        'web' => function () use ($app, $c): void {
+            $failure = $c['forceFailure'] ?? false;
+            $path = match ($failure) {
+                'foreign-asset' => 'public/build/manifest.json',
+                'foreign-cache' => 'bootstrap/cache/routes-v7.php',
+                'foreign-view' => 'storage/framework/views/'.basename(glob($app.'/storage/framework/views/*.php')[0]),
+                default => null,
+            };
+            if ($path !== null) {
+                runtimeWrite($app.'/'.$path, 'unrelated-concurrent-writer');
+                throw new RuntimeException('synthetic_foreign_write');
+            }
+        },
         'ready' => function () use ($app): void {
             $r = command([PHP_BINARY, '-r', 'require "vendor/autoload.php"; echo Illuminate\\Foundation\\Application::VERSION;'], $app, 'rehearsal_framework');
             requireGate($r['exit'] === 0 && $r['stdout'] === '13.40.0', 'rehearsal_candidate_vendor', 'real new framework autoloads', [], 'Reject mixed dependencies.');
         },
-        'baselineReady' => function () use ($app, $baselineVendor): void {
+        'baselineReady' => function () use ($app, $baselineVendor, $m): void {
             runtimeVerify($app.'/vendor', $baselineVendor, true);
             $r = command([PHP_BINARY, '-r', 'require "vendor/autoload.php"; echo Illuminate\\Foundation\\Application::VERSION;'], $app, 'rehearsal_baseline_framework');
-            requireGate($r['exit'] === 0 && $r['stdout'] === '13.35.0', 'rehearsal_baseline_vendor', 'real baseline framework restored', [], 'Keep maintenance on uncertainty.');
+            requireGate($r['exit'] === 0 && $r['stdout'] === NovinPay\Release\runtimeFramework($m, true), 'rehearsal_baseline_vendor', 'real baseline framework restored', [], 'Keep maintenance on uncertainty.');
         },
         'up' => fn () => $artisan(['up']),
         'smoke' => function () use ($app): void {
@@ -182,7 +197,7 @@ try {
                 throw new RuntimeException('negative_scenario_was_accepted');
             } catch (GateFailure $e) {
                 $expected = ['corrupt' => 'runtime_archive_hash', 'vendor-changed' => 'runtime_archive_file_hash', 'missing-chunk' => 'runtime_asset_dependency',
-                    'migration-change' => 'runtime_source_blob', 'wrong-candidate' => 'runtime_git', 'stale-baseline' => 'runtime_baseline',
+                    'migration-change' => 'runtime_source_blob', 'wrong-candidate' => NovinPay\Release\runtimeNeutral($m) ? 'runtime_neutral_identity' : 'runtime_git', 'stale-baseline' => 'runtime_baseline',
                     'quota' => 'runtime_inode_headroom', 'interrupted' => 'runtime_attempt_exists'];
                 requireGate($e->check === $expected[$scenario], 'rehearsal_wrong_rejection', 'specific scenario failed at its intended guard', ['scenario' => $scenario, 'observedCheck' => $e->check], 'Fix the actual mismatch; do not accept an unrelated STOP as coverage.');
                 $negativeChecks[$scenario] = $e->check;
@@ -202,6 +217,23 @@ try {
             throw $e;
         }
         $journal = $kit.'/'.$m['releaseName'].'-attempt';
+        if (is_string($c['forceFailure'] ?? null)) {
+            $check = match ($c['forceFailure']) {
+                'foreign-asset' => 'runtime_rollback_asset_changed',
+                'foreign-cache' => 'runtime_rollback_cache_changed',
+                'foreign-view' => 'runtime_rollback_view_ownership',
+            };
+            $stop = json_decode(privateRead($journal.'/rollback-stop.json'), true, 16, JSON_THROW_ON_ERROR);
+            requireGate($stop['check'] === $check && is_file($app.'/storage/framework/down')
+                && ! is_file($journal.'/rollback-complete.json') && hash_file('sha256', $root.'/business.sqlite') === $databaseHash,
+                'rehearsal_foreign_preservation', 'unexpected data preserved; maintenance and journal retained; no SQL restore', [], 'Inspect rollback ownership guards.');
+            $foreign = array_filter(array_merge(runtimeInventory($app.'/bootstrap/cache'), runtimeInventory($app.'/storage/framework/views'),
+                ['asset-manifest' => hash_file('sha256', $app.'/public/build/manifest.json')]), fn ($hash) => $hash === hash('sha256', 'unrelated-concurrent-writer'));
+            requireGate(count($foreign) === 1, 'rehearsal_foreign_not_overwritten', 'foreign file remains untouched', [], 'Never overwrite unrelated changes.');
+            runtimeVerify($app, array_intersect_key($m['protectedFiles'], array_flip(['.env', 'storage/app/private/persistent-sentinel'])));
+            echo json_encode(['result' => 'RUNTIME_PROTECTED_STOP_REHEARSAL_PASS', 'scenario' => $c['forceFailure'], 'check' => $check, 'databaseRestored' => false], JSON_THROW_ON_ERROR).PHP_EOL;
+            exit(0);
+        }
         if (is_file($journal.'/rollback-stop.json')) {
             echo json_encode(['result' => 'RUNTIME_REHEARSAL_ROLLBACK_DETAILS', 'details' => json_decode(privateRead($journal.'/rollback-stop.json'), true)], JSON_THROW_ON_ERROR).PHP_EOL;
         }
@@ -210,7 +242,24 @@ try {
         runtimeVerify($app.'/vendor', $baselineVendor, true);
         $receipt = ['result' => 'RUNTIME_FORCED_ROLLBACK_REHEARSAL_PASS'];
     }
-    runtimeVerify($app, $m['protectedFiles']);
+    if (NovinPay\Release\runtimeNeutral($m) && ! ($c['forceFailure'] ?? false)) {
+        NovinPay\Release\runtimeProtected($app, $m, $kit.'/'.$m['releaseName'].'-attempt/rollback-cache/config.php');
+        NovinPay\Release\runtimeDeletedSource($app, $m);
+    } else {
+        runtimeVerify($app, $m['protectedFiles']);
+    }
+    if (NovinPay\Release\runtimeNeutral($m)) {
+        $rollback = (bool) ($c['forceFailure'] ?? false);
+        foreach (NovinPay\Release\runtimeSourceDelta($app, $m) as $path => $status) {
+            if ($status === 'A' || $status === 'D') {
+                requireGate(is_file($app.'/'.$path) === ($rollback ? $status === 'D' : $status === 'A'),
+                    'rehearsal_source_addition_deletion', 'tracked additions/deletions reversed exactly on rollback', [], 'Inspect source rollback.');
+            }
+        }
+        if ($rollback) {
+            runtimeVerify($app, $m['baselineFiles']);
+        }
+    }
     requireGate(hash_file('sha256', $root.'/business.sqlite') === $databaseHash && is_file($app.'/public/build/assets/old-hash.js')
         && str_replace('\\', '/', readlink($link)) === $app.'/public', 'rehearsal_preservation', 'database, old assets, configuration and public link unchanged', [], 'Inspect the preserved fixture.');
     $before = runtimeInventory($kit.'/'.$m['releaseName'].'-attempt');

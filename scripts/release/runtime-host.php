@@ -30,7 +30,7 @@ function runtimeHost(array $m, string $manifestPath, string $pin): array
     return runtimeActivate($app, $kit, '/home/novinpay/public_html', $m, [
         'preflight' => function () use ($m, $check): void {
             $proof = json_decode(privateRead($m['recoveryProof']['path']), true, 32, JSON_THROW_ON_ERROR);
-            requireGate(($proof['sourceCommit'] ?? '') === $m['baseline'], 'runtime_recovery_baseline', 'recovery point matches baseline', [], 'Reconcile recovery evidence.');
+            runtimeRecoveryCompatibility('/home/novinpay/novinpay', $m, $proof);
             $check('preflight');
             $check('web-check'); // Independently verify web PHP before maintenance or switching.
         },
@@ -53,9 +53,12 @@ function runtimeHost(array $m, string $manifestPath, string $pin): array
             curl_close($c);
             requireGate($ok, 'runtime_maintenance_https', 'public traffic fenced by Laravel', [], 'Keep maintenance and reconcile routing.');
         },
-        // Preserve cached production configuration byte-for-byte. Route and view
-        // compilation use the newly installed vendor in separate CLI processes.
-        'cache' => function () use ($artisan): void {
+        // Legacy upgrade preserves the original cache bytes. The neutral profile
+        // refreshes config under the exact retained-settings digest guard.
+        'cache' => function () use ($artisan, $m): void {
+            if (runtimeNeutral($m)) {
+                $artisan(['config:cache']);
+            }
             $artisan(['route:cache']);
             $artisan(['view:cache']);
         },

@@ -112,7 +112,7 @@ try {
         $source = '<?php ini_set("display_errors","0");if(!hash_equals('.var_export(hash('sha256', $token), true).',hash("sha256",$_SERVER["HTTP_X_NP_RELEASE"]??""))){http_response_code(404);exit;}header("Cache-Control: no-store");$ok=PHP_VERSION_ID>=80401&&class_exists("IntlDateFormatter");$paths='.var_export(array_values(array_unique($paths)), true).';if($ok&&$paths&&ini_get("opcache.enable")){$ok=function_exists("opcache_invalidate")&&function_exists("opcache_is_script_cached");foreach($paths as $p){if($ok&&opcache_is_script_cached($p)&&!opcache_invalidate($p,true)){$ok=false;break;}}}http_response_code($ok?200:503);echo $ok?"ADMIN_WEB_PASS":"ADMIN_WEB_STOP";';
         $handle = fopen($endpoint, 'xb');
         if ($runtime) {
-            $expectedFramework = trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD'])) === $manifest['baseline'] ? '13.35.0' : '13.40.0';
+            $expectedFramework = NovinPay\Release\runtimeFramework($manifest, trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD'])) === $manifest['baseline']);
             $verifyFramework = 'if($ok){require '.var_export(ROOT.'/vendor/autoload.php', true).';$ok=Illuminate\\Foundation\\Application::VERSION==='.var_export($expectedFramework, true).';}';
             $source = str_replace('http_response_code($ok?200:503);', $verifyFramework.'http_response_code($ok?200:503);', $source);
         }
@@ -140,7 +140,7 @@ try {
     $app = require ROOT.'/bootstrap/app.php';
     $app->make(Kernel::class)->bootstrap();
     if ($runtime) {
-        $version = trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD'])) === $manifest['baseline'] ? '13.35.0' : '13.40.0';
+        $version = NovinPay\Release\runtimeFramework($manifest, trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD'])) === $manifest['baseline']);
         gate($version === Application::VERSION, 'runtime_framework_version');
         $otp = app(CustomerOtpSms::class);
         $login = app(CustomerLogin::class);
@@ -163,6 +163,10 @@ try {
     $application = $manifest['format'] === 'novinpay-application-release-v1';
     $expected = $application && in_array($action, ['database-ready', 'ready'], true) ? $manifest['candidateMigrations'] : $manifest['migrations'];
     gate($migrations === $expected, 'migration_history');
+    if ($runtime && NovinPay\Release\runtimeNeutral($manifest) && $action === 'ready'
+        && trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD'])) === $manifest['target']) {
+        gate(Route::has('account.login.state'), 'login_reconciliation_route');
+    }
     if ($application && $action === 'preflight') {
         $mixed = (int) $pdo->query('SELECT COUNT(*) FROM repair_cases c WHERE c.simple_workflow = 1 AND (EXISTS (SELECT 1 FROM repair_inspections i WHERE i.repair_case_id = c.id) OR EXISTS (SELECT 1 FROM repair_estimates e WHERE e.repair_case_id = c.id) OR EXISTS (SELECT 1 FROM repair_work_entries w WHERE w.repair_case_id = c.id))')->fetchColumn();
         NovinPay\Release\requireGate($mixed === 0, 'mixed_repair_workflows_require_review', 'no ambiguous historically converted repair cases',

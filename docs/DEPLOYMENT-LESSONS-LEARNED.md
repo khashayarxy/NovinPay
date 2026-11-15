@@ -514,6 +514,30 @@ extra document lock, isolation change or weakened financial assertion was introd
 After correction both MySQL 8 and MariaDB 10.6.28 explicitly completed all 12 financial
 races, including overlapping receipts and concurrent Zibal start/verification.
 
+### Dependency-neutral application release profile
+
+`runtime-release.php` retains the frozen framework-upgrade contract. Its separate
+`application-neutral-6eb8e00` profile binds only c9c46dc -> 6eb8e00, zero migrations
+and byte-identical dependency locks. Never substitute the application/migration
+or CSS-only contract, fabricate a migration, or change old commit pins to admit it.
+The existing transaction stages and verifies the entire source, vendor and asset
+inventory, reuses the installed vendor, and preserves old hashed assets for open
+tabs. Tracked deletions must remain absent; new tracked paths must be unoccupied.
+
+Config refresh may remove only the reviewed retired provider/notification keys;
+all remaining configuration, including IPPanel, payment/scheduler flags and secrets,
+must match the original cache. Rollback restores original cache bytes/modes, views,
+source and mutable manifests before reopening. Unexpected concurrent asset/cache/
+view changes cause a protected STOP, never silent overwrite. No SQL snapshot is
+automatically restored, including after traffic admission. An ecf6721 recovery
+proof remains labelled ecf6721: require ancestry, unchanged migrations, matching
+environment pin, independent recovery proof and the existing 72-hour age gate.
+
+The existing CI rehearsal covers both profiles, success, forced rollback and foreign
+asset/cache/view interference. Its neutral asset graph is the reused historical
+fixture, not the private 6eb8e00 build. Independently verify the frozen private
+production ZIP inventory; exact payload CI and hosted activation gates remain separate.
+
 Offline activation review also caught a typed API mismatch: `writeNew()` takes an
 array, not pre-encoded JSON. Reviewed migration receipts now use a shared tested writer
 and reject replay. This defect never ran on production. Application preflight also
