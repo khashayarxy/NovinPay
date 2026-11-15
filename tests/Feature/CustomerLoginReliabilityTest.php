@@ -50,7 +50,8 @@ class CustomerLoginReliabilityTest extends TestCase
         Http::assertSentCount(1);
         $this->postJson('/account/verify', ['flow' => session('customer_login_flow'), 'challenge' => $challenge, 'code' => $code])->assertOk();
         $this->assertAuthenticated('customer');
-        $this->getJson('/account/login-state?flow='.$flow)->assertOk()->assertJsonPath('state', 'authenticated');
+        $this->getJson('/account/login-state?flow='.$flow)->assertOk()->assertJsonPath('state', 'authenticated')
+            ->assertJsonPath('redirect', route('account.index', ['section' => 'security']));
     }
 
     public function test_delayed_delivery_does_not_extend_expiry_or_replace_the_valid_challenge(): void
@@ -110,5 +111,14 @@ class CustomerLoginReliabilityTest extends TestCase
         $this->postJson('/account/otp', ['request_id' => $attempt])->assertOk();
         Http::assertSentCount(1);
         $this->assertGuest('customer');
+    }
+
+    public function test_inline_send_validation_returns_json_without_issuing_or_replacing_a_challenge(): void
+    {
+        Http::fake();
+        $this->postJson('/account/start', ['phone' => 'invalid'])->assertUnprocessable()->assertJsonValidationErrors('phone');
+        $this->postJson('/account/start', ['phone' => '09120000000', 'request_id' => 'invalid'])->assertUnprocessable()->assertJsonValidationErrors('request_id');
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('customer_login_challenges', 0);
     }
 }

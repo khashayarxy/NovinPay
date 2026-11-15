@@ -85,7 +85,8 @@ class CustomerAccountController extends Controller
         $account = Auth::guard('customer')->user();
         if ($account && $account->is_active && $account->session_version === $request->session()->get('customer_session_version')
             && ($account->verified_at || $login->testAllowed($account->phone))) {
-            return response()->json(['state' => 'authenticated', 'redirect' => route('account.index')]);
+            return response()->json(['state' => 'authenticated', 'redirect' => route('account.index',
+                $request->boolean('recover') || $request->session()->get('customer_password_offer') ? ['section' => 'security'] : [])]);
         }
         $attempt = $request->query('request_id');
         $reservedAttempt = $request->session()->get('customer_send_attempt');
@@ -115,7 +116,8 @@ class CustomerAccountController extends Controller
     {
         $this->checkFlow($request);
         $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
-        $data = $this->validatePrivate($request, ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']]);
+        $rules = ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']];
+        $data = $request->expectsJson() ? $request->validate($rules) : $this->validatePrivate($request, $rules);
         if ($request->session()->get('customer_login_phone') !== $data['phone']) {
             $request->session()->forget(['customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt']);
         }
@@ -136,7 +138,8 @@ class CustomerAccountController extends Controller
             return $this->requestCode($request, $login, $sessionPhone);
         }
         $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
-        $data = $this->validatePrivate($request, ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']]);
+        $rules = ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']];
+        $data = $request->expectsJson() ? $request->validate($rules) : $this->validatePrivate($request, $rules);
         $request->session()->put('customer_login_phone', $data['phone']);
 
         return $this->requestCode($request, $login, $data['phone']);
@@ -146,7 +149,8 @@ class CustomerAccountController extends Controller
     {
         $attempt = $request->input('request_id');
         if ($attempt !== null) {
-            $this->validatePrivate($request, ['request_id' => ['required', 'uuid']]);
+            $rules = ['request_id' => ['required', 'uuid']];
+            $request->expectsJson() ? $request->validate($rules) : $this->validatePrivate($request, $rules);
             if (hash_equals((string) $request->session()->get('customer_send_attempt'), $attempt)) {
                 return $this->codeScreen($request, 'وضعیت همان درخواست بررسی شد.');
             }
