@@ -273,8 +273,12 @@ class HomePageTest extends TestCase
         $this->assertSame(0, $xpath->query('//iframe')->length);
         $this->assertSame(config('business.map_embed'), $xpath->query('//*[@data-map-preview]')->item(0)->getAttribute('data-map-url'));
         $this->assertSame(config('business.maps.نشان'), $xpath->query('//a[@class="np-map-fallback"]')->item(0)->getAttribute('href'));
-        $this->assertSame(1, $xpath->query('//button[@type="button" and @data-copy-address="visit-address" and @hidden]')->length);
-        $this->assertSame(1, $xpath->query('//*[@id="address-copy-status" and @role="status" and @aria-live="polite"]')->length);
+        $this->assertSame(0, $xpath->query('//button[@data-copy-address]')->length);
+        $this->assertStringContainsString('گوگل مپ', $links->item(0)->textContent);
+        $this->assertStringContainsString('لطفاً پیش از مراجعه حضوری، تماس بگیرید.', $copy->textContent);
+        $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"نمایش نقشه")]')->length);
+        $this->assertSame(1, $xpath->query('//*[@data-map-placeholder]//*[local-name()="svg"]')->length);
+        $this->assertSame(0, $xpath->query('//*[@id="address-copy-status"]')->length);
     }
 
     public function test_public_pages_share_homepage_chrome_while_admin_remains_separate(): void

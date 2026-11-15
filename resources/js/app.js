@@ -75,19 +75,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (window.isSecureContext && navigator.clipboard?.writeText) {
-        document.querySelectorAll('[data-copy-address], [data-copy-account]').forEach((button) => {
+        document.querySelectorAll('[data-copy-account]').forEach((button) => {
             button.hidden = false;
             button.addEventListener('click', async () => {
-                const isAccount = button.hasAttribute('data-copy-account');
-                const source = document.getElementById(button.dataset.copyAccount ?? button.dataset.copyAddress);
+                const source = document.getElementById(button.dataset.copyAccount);
                 const status = document.getElementById(button.getAttribute('aria-describedby'));
                 if (!source || !status) return;
                 status.textContent = '';
                 try {
                     await navigator.clipboard.writeText(source.textContent.trim());
-                    status.textContent = isAccount ? 'شناسه کپی شد.' : 'نشانی کپی شد.';
+                    status.textContent = 'شناسه کپی شد.';
                 } catch {
-                    status.textContent = isAccount ? 'کپی خودکار انجام نشد. شناسه را انتخاب و کپی کنید.' : 'کپی خودکار انجام نشد؛ نشانی را انتخاب و کپی کنید.';
+                    status.textContent = 'کپی خودکار انجام نشد. شناسه را انتخاب و کپی کنید.';
                 }
             });
         });

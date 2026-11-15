@@ -10,9 +10,11 @@ export function initClickMap(root = document) {
         if (url.origin !== 'https://neshan.org' || !url.pathname.startsWith('/maps/iframe/places/')) return;
         container.dataset.mapBound = '1';
         button.hidden = false;
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (event) => {
             if (container.querySelector('iframe')) return;
             button.disabled = true;
+            container.dataset.mapState = 'loading';
+            container.setAttribute('aria-busy', 'true');
             status.textContent = 'در حال بارگذاری نقشه…';
             const frame = document.createElement('iframe');
             frame.className = 'np-location__map';
@@ -25,8 +27,11 @@ export function initClickMap(root = document) {
                 active = false;
                 window.clearTimeout(timer);
                 frame.remove();
+                container.dataset.mapState = 'error';
+                container.setAttribute('aria-busy', 'false');
                 placeholder.hidden = false;
                 button.disabled = false;
+                if (event.detail === 0) button.focus({preventScroll: true});
                 status.textContent = 'نقشه بارگذاری نشد. دوباره تلاش کنید یا لینک نشان را باز کنید.';
             };
             // Cross-origin load cannot prove the provider rendered its map. The
@@ -34,6 +39,8 @@ export function initClickMap(root = document) {
             frame.addEventListener('load', () => {
                 if (!active) return;
                 window.clearTimeout(timer);
+                container.dataset.mapState = 'ready';
+                container.setAttribute('aria-busy', 'false');
                 status.textContent = 'اگر نقشه نمایش داده نشد، لینک نشان را باز کنید.';
             }, {once: true});
             frame.addEventListener('error', failed, {once: true});
@@ -41,6 +48,7 @@ export function initClickMap(root = document) {
             frame.src = url.href;
             placeholder.hidden = true;
             container.insertBefore(frame, status);
+            if (event.detail === 0) frame.focus({preventScroll: true});
         });
     });
 }

@@ -37,15 +37,15 @@ test('Chromium: map stays inert until explicit activation, loads once and recove
           root.dispatchEvent(new Event('touchmove', {bubbles: true, cancelable: true}));
           check(requested.length === 0, 'scroll must not activate');
           button.focus(); button.click();
-          check(requested.length === 1 && button.disabled, 'explicit activation');
+          check(requested.length === 1 && button.disabled && root.dataset.mapState === 'loading' && root.getAttribute('aria-busy') === 'true', 'explicit activation with loading state');
           button.click(); check(requested.length === 1, 'no duplicate initialization');
           let frame = document.querySelector('iframe');
           check(frame.title && frame.referrerPolicy === 'strict-origin-when-cross-origin', 'accessible approved frame');
           frame.dispatchEvent(new Event('error'));
-          check(!document.querySelector('iframe') && !button.disabled && !document.querySelector('[data-map-placeholder]').hidden, 'error recovery');
+          check(!document.querySelector('iframe') && !button.disabled && !document.querySelector('[data-map-placeholder]').hidden && root.dataset.mapState === 'error' && root.getAttribute('aria-busy') === 'false', 'error recovery');
           check(document.querySelector('[data-map-status]').textContent.includes('بارگذاری نشد') && document.querySelector('a').href, 'useful external fallback');
           button.click(); frame = document.querySelector('iframe'); frame.dispatchEvent(new Event('load'));
-          check(requested.length === 2 && timers.size === 0, 'retry loads once and clears timer');
+          check(requested.length === 2 && timers.size === 0 && root.dataset.mapState === 'ready' && root.getAttribute('aria-busy') === 'false', 'retry loads once and clears timer');
           check(document.querySelector('a'), 'fallback survives cross-origin load');
           frame.dispatchEvent(new Event('error'));
           button.click();

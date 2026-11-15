@@ -153,20 +153,24 @@
 .homepage .np-location address { max-width: 480px; font-size: 13px; line-height: 2.1; margin-block: 12px; }
 .np-location__directions { position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; background: #f5faff; padding: 0; text-align: center; }
 .np-location__map { display: block; width: 100%; height: 260px; border: 0; }
-.np-map-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #edf5fc; touch-action: pan-y; }
+.np-map-preview { position: relative; overflow: hidden; display: grid; place-items: center; background: #edf5fc; touch-action: pan-y; }
+.np-map-preview__illustration { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); filter: blur(1.5px); opacity: .75; }
+.np-map-preview__action { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #142d4e; }
+.np-map-preview__action > .np-icon { width: 34px; height: 34px; color: var(--color-brand-700); }
+.np-map-preview__action p { margin: 0; padding: 2px 10px; border-radius: 6px; background: #f5faffed; font-size: 13px; font-weight: 600; }
+.np-map-preview__action .np-button { min-height: 44px; padding-inline: 24px; background: var(--color-brand-700); color: #fff; border-color: transparent; }
+.np-map-preview__action .np-button:hover { background: #14548a; }
+.np-map-preview__action .np-button:focus-visible,.np-location__maps a:focus-visible,.np-map-fallback:focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 3px; }
+.np-location__notice { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 6px; color: #52678b; font-size: 12px; line-height: 1.9; }
+.np-location__notice .np-icon { flex: 0 0 16px; width: 16px; height: 16px; }
 .np-map-preview[hidden] { display: none; }
-.np-map-preview > .np-icon { width: 36px; height: 36px; color: var(--color-brand-700); }
 .np-map-status { position: absolute; bottom: 36px; inset-inline: 8px; margin: 0; background: #f5faffed; font-size: 12px; padding-inline: 12px; pointer-events: none; }
 .np-map-status:empty { display: none; }
+[data-map-state="loading"] .np-map-status { top: 0; bottom: 32px; display: grid; place-items: center; font-size: 13px; }
 .np-map-fallback { position: absolute; bottom: 0; inset-inline: 0; background: #f5faffed; font-size: 12px; color: var(--color-brand-700); padding: 8px 12px; }
 .homepage .np-location__maps { width: 100%; margin: 0; padding: 12px; }
 .homepage .np-location__maps a { min-height: 44px; background: #fff; }
 .np-location__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
-.np-copy-address { min-height: 44px; border: 1px solid #d5e4f7; border-radius: 8px; padding: 6px 10px; font-size: 11px; color: var(--color-brand-700); cursor: pointer; }
-.np-copy-address:hover { background: #eff7ff; }
-.np-copy-address:focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 3px; }
-.np-copy-status { font-size: 11px; color: #415475; }
-.np-copy-status:empty { display: none; }
 @media (max-width: 1100px) and (min-width: 851px) {
     .np-nav { gap: 18px; }
     .np-header .np-logo-link .np-wordmark { width: 150px; }

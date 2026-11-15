@@ -52,22 +52,20 @@
             <div class="np-location__copy">
                 <div class="np-location__heading">
                     <h2 id="location-title"><x-home.icon name="map-pin" />مراجعهٔ حضوری</h2>
-                    <button type="button" class="np-copy-address" data-copy-address="visit-address" aria-describedby="address-copy-status" hidden>کپی نشانی</button>
                 </div>
                 <address id="visit-address">{{ config('business.address') }}</address>
+                <p class="np-location__notice"><x-home.icon name="phone" />لطفاً پیش از مراجعه حضوری، تماس بگیرید.</p>
                 <p class="np-location__hours"><x-business-hours /></p>
                 <nav class="np-location__maps" aria-label="مسیریابی فروشگاه">
                     @foreach (['Google Maps', 'نشان', 'بلد'] as $label)
-                        <a href="{{ config('business.maps')[$label] }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" /><bdi>{{ $label }}</bdi><span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
+                        <a href="{{ config('business.maps')[$label] }}" target="_blank" rel="noopener noreferrer"><x-home.icon name="map-pin" /><bdi>{{ $label === 'Google Maps' ? 'گوگل مپ' : $label }}</bdi><span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
                     @endforeach
                 </nav>
-                <p id="address-copy-status" class="np-copy-status" role="status" aria-live="polite"></p>
             </div>
             <div class="np-location__directions" data-map-preview data-map-url="{{ config('business.map_embed') }}">
                 <div class="np-map-preview np-location__map" data-map-placeholder>
-                    <x-home.icon name="map-pin" />
-                    <p>موقعیت فروشگاه نوین‌پی</p>
-                    <button type="button" class="np-button np-button--outline" data-map-activate hidden>مشاهده در نقشه</button>
+                    <x-home.store-location-preview />
+                    <div class="np-map-preview__action"><x-home.icon name="map-pin" /><p>موقعیت فروشگاه نوین‌پی</p><button type="button" class="np-button np-button--primary" data-map-activate hidden>نمایش نقشه</button></div>
                 </div>
                 <p class="np-map-status" data-map-status role="status" aria-live="polite"></p>
                 <a class="np-map-fallback" href="{{ config('business.maps.نشان') }}" target="_blank" rel="noopener noreferrer">باز کردن در نشان<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
