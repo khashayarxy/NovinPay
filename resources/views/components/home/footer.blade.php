@@ -4,9 +4,13 @@
             <div class="np-footer__brand">
                 <div class="np-footer__identity">
                     <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
-                    <p>فروش و تعمیر دستگاه‌های کارتخوان در شهریار</p>
+                    <p>فروش و تعمیر کارتخوان در شهریار</p>
                 </div>
-                <x-home.enamad />
+                <div class="np-footer__marks" role="group" aria-label="نماد اعتماد، نظام صنفی و شبکهٔ پرداخت">
+                    <x-home.enamad />
+                    <img class="np-footer__nezam" src="{{ asset('brand/trust/NezamSenfi.svg') }}" width="64" height="51" alt="سازمان نظام صنفی رایانه‌ای" loading="lazy" decoding="async">
+                    <img class="np-footer__shaparak" src="{{ asset('brand/trust/Shaparak.svg') }}" width="76" height="50" alt="شاپرک، شبکهٔ پرداخت" loading="lazy" decoding="async">
+                </div>
             </div>
             <nav aria-label="پیوندهای کاربردی">
                 <h2>دسترسی سریع</h2>

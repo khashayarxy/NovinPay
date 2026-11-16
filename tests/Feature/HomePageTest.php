@@ -174,7 +174,7 @@ class HomePageTest extends TestCase
     public function test_hero_uses_exact_owner_copy_and_an_uncropped_eager_local_illustration(): void
     {
         $response = $this->get('/')->assertOk();
-        $response->assertSee('فروش و تعمیر<br><span>کارتخوان</span>', false)
+        $response->assertSee('فروش و تعمیر <span>کارتخوان</span>', false)
             ->assertDontSee('فروش و تعمیر تخصصی')
             ->assertSee('انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.')
             ->assertSee('نه عکس تأییدشدهٔ محصول')
