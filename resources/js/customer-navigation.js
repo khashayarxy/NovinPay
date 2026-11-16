@@ -25,8 +25,7 @@ export function initCustomerNavigation() {
         current.addEventListener('toggle', () => {
             toggle.setAttribute('aria-expanded', String(current.open));
             if (current.open) {
-                const navigation = header?.querySelector('.np-mobile-menu');
-                if (navigation) navigation.open = false;
+                header?.dispatchEvent(new Event('customer-navigation:open'));
             }
         });
         current.querySelectorAll('a').forEach(link => link.addEventListener('click', () => close()));
@@ -97,9 +96,7 @@ export function initCustomerNavigation() {
     document.addEventListener('focusin', event => {
         if (!host.contains(event.target)) close();
     });
-    header?.querySelector('.np-mobile-menu')?.addEventListener('toggle', (event) => {
-        if (event.currentTarget.open) close();
-    });
+    header?.addEventListener('mobile-navigation:open', () => close());
     mobile.addEventListener('change', () => {
         close();
         if (mobile.matches) refresh();

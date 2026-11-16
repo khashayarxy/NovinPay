@@ -20,17 +20,26 @@
             <a href="{{ route('account.index') }}" @if (request()->routeIs('account.*')) aria-current="page" @endif>حساب کاربری</a>
         </nav>
         <div class="np-header__actions">
-            <details class="np-mobile-menu">
-                <summary aria-label="فهرست ناوبری" aria-controls="mobile-navigation">
+            <div class="np-mobile-menu">
+                <button type="button" data-navigation-toggle aria-label="فهرست ناوبری" aria-controls="mobile-drawer" aria-haspopup="dialog" aria-expanded="false">
                     <svg class="np-menu-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-                    <svg class="np-menu-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
-                </summary>
-                <nav id="mobile-navigation" aria-label="ناوبری موبایل">
-                    @foreach ($mobileNavigation as [$route, $active, $label])
-                        <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
-                    @endforeach
-                </nav>
-            </details>
+                </button>
+                <dialog id="mobile-drawer" class="np-mobile-drawer" aria-labelledby="mobile-drawer-title">
+                    <div class="np-mobile-drawer__panel">
+                        <div class="np-mobile-drawer__heading">
+                            <span id="mobile-drawer-title">فهرست نوین‌پی</span>
+                            <button type="button" data-navigation-close aria-label="بستن فهرست ناوبری" autofocus>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
+                            </button>
+                        </div>
+                        <nav id="mobile-navigation" aria-label="ناوبری موبایل">
+                            @foreach ($mobileNavigation as [$route, $active, $label])
+                                <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
+                            @endforeach
+                        </nav>
+                    </div>
+                </dialog>
+            </div>
         </div>
         <div class="np-customer-header" data-customer-header data-session-url="{{ route('customer.header') }}">
             <x-home.customer-entry :account="$customerAccount" />

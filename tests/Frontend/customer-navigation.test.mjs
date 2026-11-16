@@ -58,10 +58,12 @@ test('Chromium: server-rendered customer state survives initialization, delayed 
                 toggle.click(); await settle();
                 document.querySelector('#outside').dispatchEvent(new PointerEvent('pointerdown', {bubbles:true}));
                 check(!menu.open, 'outside tap closes');
-                const navigation = document.querySelector('.np-mobile-menu');
-                navigation.open = true; await settle(); toggle.click(); await settle();
-                check(!navigation.open && menu.open, 'only one disclosure opens');
-                navigation.open = true; await settle();
+                const header = document.querySelector('[data-mobile-header]');
+                let accountOpened = false;
+                header.addEventListener('customer-navigation:open', () => { accountOpened = true; });
+                toggle.click(); await settle();
+                check(accountOpened && menu.open, 'account notifies drawer');
+                header.dispatchEvent(new Event('mobile-navigation:open')); await settle();
                 check(!menu.open, 'navigation closes account');
                 hold = true; response = authenticated.replace('value="synthetic"', 'value="rotated"');
                 const current = host.firstElementChild;

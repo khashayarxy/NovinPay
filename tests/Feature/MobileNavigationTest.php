@@ -108,9 +108,8 @@ class MobileNavigationTest extends TestCase
             $this->assertSame(route($verticalCurrent), $active->item(0)->getAttribute('href'));
         }
         $this->assertSame(0, $xpath->query('./a[@aria-current="location"]', $menu)->length);
-        // Without JS, summary exposes its native expanded state. The enhancement
-        // adds aria-expanded at runtime rather than leaving a stale false value.
-        $this->assertSame(1, $xpath->query('//summary[@aria-controls="mobile-navigation" and not(@aria-expanded)]')->length);
+        $this->assertSame(1, $xpath->query('//button[@aria-controls="mobile-drawer" and @aria-expanded="false" and @aria-haspopup="dialog"]')->length);
+        $this->assertSame(1, $xpath->query('//dialog[@id="mobile-drawer" and @aria-labelledby="mobile-drawer-title" and not(@open)]')->length);
         $this->assertSame(0, $xpath->query('//header//*[@role="menu" or @role="menuitem"]')->length);
         $this->assertSame(2, $xpath->query('//header//a[@href="'.route('account.index').'"]')->length);
         $this->assertSame(1, $xpath->query('//header//a[@data-customer-guest and @href="'.route('account.login').'"]')->length);
