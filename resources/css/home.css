@@ -295,8 +295,7 @@
     gap: clamp(24px, 4vw, 56px);
     padding-block-end: 28px;
 }
-.np-footer__brand { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
-.np-footer__identity { flex: 0 1 auto; }
+.np-footer__brand { display: grid; grid-template-columns: minmax(0, 250px) 76px; align-items: center; gap: 16px; }
 .np-footer__brand .np-logo-link { max-width: 100%; vertical-align: top; }
 .np-footer__brand .np-wordmark { display: block; width: 174px; height: auto; max-width: 100%; }
 .np-footer__identity p { margin-block-start: 8px; }
@@ -305,7 +304,7 @@
 .np-footer__nezam { width: 64px; height: 51px; }
 .np-footer__shaparak { width: 76px; height: 50px; }
 .np-footer .np-enamad a, .np-footer .np-enamad img { display: block; }
-.np-footer .np-enamad { --footer-seal-size: 62px; }
+.np-footer .np-enamad { --footer-seal-size: 76px; }
 .np-footer .np-enamad img { width: var(--footer-seal-size); height: var(--footer-seal-size); font-size: 11px; }
 .np-footer .np-enamad .np-enamad__fallback { display: none; }
 .np-footer .np-enamad[data-enamad-image-failed] a:not(.np-enamad__fallback) { display: none; }
