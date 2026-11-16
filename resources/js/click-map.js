@@ -63,7 +63,7 @@ export function initClickMap(root = document) {
                 container.dataset.mapState = 'ready';
                 container.setAttribute('aria-busy', 'false');
                 button.disabled = false;
-                button.textContent = 'مشاهده در نقشه';
+                button.textContent = 'فعال‌سازی نقشه';
                 status.textContent = '';
                 // Cross-origin load cannot attest to the provider's contents.
                 interact();

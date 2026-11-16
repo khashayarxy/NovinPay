@@ -50,6 +50,7 @@ test('far section makes zero requests; near section loads once with inert map be
     assert.equal(frame.attrs['aria-hidden'], 'true'); assert.ok(frame.title);
     frame.dispatchEvent(new Event('load'));
     assert.equal(f.overlay.hidden, false);
+    assert.equal(f.button.textContent, 'فعال‌سازی نقشه');
     assert.equal(f.timers.size, 0);
     f.button.focus(); f.button.click();
     assert.equal(f.requests.length, 1); assert.equal(f.overlay.hidden, true);

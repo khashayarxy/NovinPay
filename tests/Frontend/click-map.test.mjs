@@ -16,7 +16,7 @@ test('Chromium: map stays inert until explicit activation, loads once and recove
         const module = 'data:text/javascript;base64,' + readFileSync(new URL('../../resources/js/click-map.js', import.meta.url)).toString('base64');
         const html = `<!doctype html><meta charset="utf-8"><body>
         <div data-map-preview data-map-url="https://neshan.org/maps/iframe/places/approved#location">
-          <div data-map-viewport><div data-map-placeholder aria-hidden="true"></div><div class="np-map-preview__action"><button data-map-activate hidden>مشاهده در نقشه</button></div><p data-map-status role="status"></p></div>
+          <div data-map-viewport><div data-map-placeholder aria-hidden="true"></div><div class="np-map-preview__action"><button data-map-activate hidden>فعال‌سازی نقشه</button></div><p data-map-status role="status"></p></div>
         </div><script type="module">
         try {
           const {initClickMap} = await import(${JSON.stringify(module)});

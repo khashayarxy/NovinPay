@@ -279,10 +279,10 @@ class HomePageTest extends TestCase
         $this->assertSame(0, $xpath->query('//button[@data-copy-address]')->length);
         $this->assertStringContainsString('گوگل مپ', $links->item(0)->textContent);
         $this->assertStringContainsString('لطفاً پیش از مراجعه حضوری، تماس بگیرید.', $copy->textContent);
-        $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"مشاهده در نقشه")]')->length);
+        $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"فعال‌سازی نقشه")]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*[local-name()="svg"]')->length);
         $this->assertSame(3, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@alt="" and @aria-hidden="true"]')->length);
-        foreach (['google-maps-2026.png' => ['18', '23'], 'neshan.svg' => ['22', '23'], 'balad.svg' => ['16', '16']] as $icon => $dimensions) {
+        foreach (['google-maps-2026.png' => ['14', '18'], 'neshan.svg' => ['16', '16'], 'balad.svg' => ['17', '17']] as $icon => $dimensions) {
             $this->assertFileExists(public_path('brand/maps/'.$icon));
             $image = $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon).'"]')->item(0);
             $this->assertSame($dimensions[0], $image->getAttribute('width'));
