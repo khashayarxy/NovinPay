@@ -113,7 +113,8 @@ class MobileNavigationTest extends TestCase
         $this->assertSame(1, $xpath->query('//summary[@aria-controls="mobile-navigation" and not(@aria-expanded)]')->length);
         $this->assertSame(0, $xpath->query('//header//*[@role="menu" or @role="menuitem"]')->length);
         $this->assertSame(2, $xpath->query('//header//a[@href="'.route('account.index').'"]')->length);
-        $this->assertSame(0, $xpath->query('//header//a[contains(@href,"/login") or @href="#"]')->length);
+        $this->assertSame(1, $xpath->query('//header//a[@data-customer-guest and @href="'.route('account.login').'"]')->length);
+        $this->assertSame(0, $xpath->query('//header//a[(contains(@href,"/login") and not(@data-customer-guest)) or @href="#"]')->length);
         foreach ($links as $link) {
             $href = $link->getAttribute('href');
             if ($href === route('account.index')) {
