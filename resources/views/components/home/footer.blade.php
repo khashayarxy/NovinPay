@@ -6,10 +6,12 @@
                     <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
                     <p>فروش و تعمیر کارتخوان در شهریار</p>
                 </div>
-                <div class="np-footer__marks" role="group" aria-label="نماد اعتماد، نظام صنفی و شبکهٔ پرداخت">
+                <div class="np-footer__marks">
                     <x-home.enamad />
-                    <img class="np-footer__nezam" src="{{ asset('brand/trust/NezamSenfi.svg') }}" width="64" height="51" alt="سازمان نظام صنفی رایانه‌ای" loading="lazy" decoding="async">
-                    <img class="np-footer__shaparak" src="{{ asset('brand/trust/Shaparak.svg') }}" width="76" height="50" alt="شاپرک، شبکهٔ پرداخت" loading="lazy" decoding="async">
+                    @if (config('business.show_footer_affiliation_marks', false))
+                        <img class="np-footer__nezam" src="{{ asset('brand/trust/NezamSenfi.svg') }}" width="64" height="51" alt="سازمان نظام صنفی رایانه‌ای" loading="lazy" decoding="async">
+                        <img class="np-footer__shaparak" src="{{ asset('brand/trust/Shaparak.svg') }}" width="76" height="50" alt="شاپرک، شبکهٔ پرداخت" loading="lazy" decoding="async">
+                    @endif
                 </div>
             </div>
             <nav aria-label="پیوندهای کاربردی">

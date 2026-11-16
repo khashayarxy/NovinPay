@@ -296,7 +296,7 @@
     padding-block-end: 28px;
 }
 .np-footer__brand { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
-.np-footer__identity { flex: 1 1 160px; }
+.np-footer__identity { flex: 0 1 auto; }
 .np-footer__brand .np-logo-link { max-width: 100%; vertical-align: top; }
 .np-footer__brand .np-wordmark { display: block; width: 174px; height: auto; max-width: 100%; }
 .np-footer__identity p { margin-block-start: 8px; }

@@ -28,6 +28,8 @@ class HomePageTest extends TestCase
             $this->assertCount(1, $xpath->query('//footer//div[contains(@class,"np-footer__brand")]//'.$selector));
             $this->assertCount(0, $xpath->query('//img[starts-with(@src,"https://trustseal.enamad.ir/")]'));
             $this->assertCount(1, $xpath->query('//img[@src="'.asset('brand/trust/enamad-8644634.png').'"]'));
+            $this->assertCount(1, $xpath->query('//footer//div[@class="np-footer__marks"]//img'));
+            $this->assertCount(0, $xpath->query('//footer//img[contains(@src,"NezamSenfi.svg") or contains(@src,"Shaparak.svg")]'));
 
             $link = $links->item(0);
             $image = $xpath->query('./img', $link)->item(0);
