@@ -16,8 +16,7 @@ test('Chromium: map stays inert until explicit activation, loads once and recove
         const module = 'data:text/javascript;base64,' + readFileSync(new URL('../../resources/js/click-map.js', import.meta.url)).toString('base64');
         const html = `<!doctype html><meta charset="utf-8"><body>
         <div data-map-preview data-map-url="https://neshan.org/maps/iframe/places/approved#location">
-          <div data-map-placeholder><button data-map-activate hidden>مشاهده در نقشه</button></div>
-          <p data-map-status role="status"></p><a href="https://nshn.ir/example">نشان</a>
+          <div data-map-viewport><div data-map-placeholder aria-hidden="true"></div><div class="np-map-preview__action"><button data-map-activate hidden>مشاهده در نقشه</button></div><p data-map-status role="status"></p></div><a data-map-fallback hidden href="https://nshn.ir/example">نشان</a>
         </div><script type="module">
         try {
           const {initClickMap} = await import(${JSON.stringify(module)});
@@ -28,34 +27,54 @@ test('Chromium: map stays inert until explicit activation, loads once and recove
           let timers = new Map(), next = 0;
           window.setTimeout = fn => {timers.set(++next, fn); return next;};
           window.clearTimeout = id => timers.delete(id);
+          let observe;
+          window.IntersectionObserver = class {
+            constructor(callback) {observe = callback;}
+            observe() {}
+            disconnect() {}
+          };
           initClickMap(); initClickMap();
           const button = document.querySelector('button'), root = document.querySelector('[data-map-preview]');
-          // The intercepted src leaves about:blank, whose synchronous native
-          // load is not the simulated remote provider response under test.
+          const viewport = document.querySelector('[data-map-viewport]');
+          const overlay = document.querySelector('[data-map-placeholder]');
+          const fallback = document.querySelector('[data-map-fallback]');
           root.addEventListener('load', event => {if (event.isTrusted) event.stopImmediatePropagation();}, true);
           check(!button.hidden && !document.querySelector('iframe') && requested.length === 0, 'no eager provider request');
-          root.dispatchEvent(new Event('touchmove', {bubbles: true, cancelable: true}));
-          check(requested.length === 0, 'scroll must not activate');
-          button.focus(); button.click();
-          check(requested.length === 1 && button.disabled && root.dataset.mapState === 'loading' && root.getAttribute('aria-busy') === 'true', 'explicit activation with loading state');
-          button.click(); check(requested.length === 1, 'no duplicate initialization');
+          observe([{target: viewport, isIntersecting: false}]);
+          check(requested.length === 0, 'far viewport stays unloaded');
+          observe([{target: viewport, isIntersecting: true}]);
           let frame = document.querySelector('iframe');
-          check(frame.title && frame.referrerPolicy === 'strict-origin-when-cross-origin', 'accessible approved frame');
-          frame.dispatchEvent(new Event('error'));
-          check(!document.querySelector('iframe') && !button.disabled && !document.querySelector('[data-map-placeholder]').hidden && root.dataset.mapState === 'error' && root.getAttribute('aria-busy') === 'false', 'error recovery');
-          check(document.activeElement === button, 'failed keyboard activation restores focus');
-          check(document.querySelector('[data-map-status]').textContent.includes('بارگذاری نشد') && document.querySelector('a').href, 'useful external fallback');
-          button.click(); frame = document.querySelector('iframe'); frame.dispatchEvent(new Event('load'));
-          check(requested.length === 2 && timers.size === 0 && root.dataset.mapState === 'ready' && root.getAttribute('aria-busy') === 'false', 'retry loads once and clears timer');
-          check(document.querySelector('a'), 'fallback survives cross-origin load');
-          document.querySelector('a').focus();frame.dispatchEvent(new Event('error'));
-          check(document.activeElement === document.querySelector('a'), 'late failure must not steal focus from fallback');
-          button.click();
-          frame = document.querySelector('iframe');
-          [...timers.values()][0]();
-          check(!document.querySelector('iframe') && !button.disabled, 'timeout restores a usable preview');
+          check(requested.length === 1 && frame.inert && frame.tabIndex === -1 && !overlay.hidden && fallback.hidden, 'near viewport loads an inert preview');
           frame.dispatchEvent(new Event('load'));
-          check(document.querySelector('[data-map-status]').textContent.includes('بارگذاری نشد'), 'stale load must not erase failure');
+          check(!overlay.hidden && fallback.hidden && frame.inert, 'loaded map remains gated');
+          button.focus(); button.click();
+          check(overlay.hidden && button.hidden && !frame.inert && frame.tabIndex === 0 && !fallback.hidden && document.activeElement === frame, 'keyboard activation enables the loaded map');
+          check(requested.length === 1 && timers.size === 0, 'no duplicate initialization');
+          check(frame.title && frame.loading === 'lazy' && frame.referrerPolicy === 'strict-origin-when-cross-origin', 'accessible approved frame');
+          // A separate instance exercises click-before-load, timeout and retry.
+          const second = root.cloneNode(true);
+          second.removeAttribute('data-map-bound');
+          second.removeAttribute('data-map-active');
+          second.removeAttribute('data-map-state');
+          second.querySelector('iframe').remove();
+          second.querySelector('[data-map-placeholder]').hidden = false;
+          document.body.append(second);
+          initClickMap();
+          const retry = second.querySelector('button');
+          retry.click();
+          frame = second.querySelector('iframe');
+          check(retry.disabled && !second.querySelector('[data-map-placeholder]').hidden, 'loading retains overlay');
+          [...timers.values()][0]();
+          check(!second.querySelector('iframe') && !retry.disabled && second.dataset.mapState === 'error', 'timeout recovers');
+          frame.dispatchEvent(new Event('load'));
+          check(second.dataset.mapState === 'error', 'stale load cannot erase failure');
+          retry.click();
+          frame = second.querySelector('iframe');
+          frame.dispatchEvent(new Event('error'));
+          check(!second.querySelector('iframe') && !retry.disabled, 'error remains retryable');
+          retry.click(); frame = second.querySelector('iframe');
+          frame.dispatchEvent(new Event('load'));
+          check(second.querySelector('[data-map-placeholder]').hidden && timers.size === 0, 'successful retry activates');
           document.body.textContent = 'CLICK_MAP_BROWSER_PASS';
         } catch (error) {document.body.textContent = 'CLICK_MAP_BROWSER_FAIL: ' + error.stack;}
         </script>`;

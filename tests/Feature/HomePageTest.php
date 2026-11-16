@@ -269,15 +269,22 @@ class HomePageTest extends TestCase
             $this->assertSame('noopener noreferrer', $link->getAttribute('rel'));
         }
         $this->assertSame(3, $links->length);
-        $this->assertSame(1, $xpath->query('//div[contains(@class,"np-location__directions")]//a')->length);
+        // The embed destination is reserved below the map, initially hidden.
+        $this->assertSame(0, $xpath->query('//div[contains(@class,"np-location__directions")]//a')->length);
+        $this->assertSame(1, $xpath->query('//section[@data-map-preview]/div[contains(@class,"np-map-links")]//a[@data-map-fallback]')->length);
+        $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//p[not(@data-map-status)]')->length);
         $this->assertSame(0, $xpath->query('//iframe')->length);
         $this->assertSame(config('business.map_embed'), $xpath->query('//*[@data-map-preview]')->item(0)->getAttribute('data-map-url'));
         $this->assertSame(config('business.maps.نشان'), $xpath->query('//a[@class="np-map-fallback"]')->item(0)->getAttribute('href'));
         $this->assertSame(0, $xpath->query('//button[@data-copy-address]')->length);
         $this->assertStringContainsString('گوگل مپ', $links->item(0)->textContent);
         $this->assertStringContainsString('لطفاً پیش از مراجعه حضوری، تماس بگیرید.', $copy->textContent);
-        $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"نمایش نقشه")]')->length);
-        $this->assertSame(1, $xpath->query('//*[@data-map-placeholder]//*[local-name()="svg"]')->length);
+        $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"مشاهده در نقشه")]')->length);
+        $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*[local-name()="svg"]')->length);
+        $this->assertSame(1, $xpath->query('//a[@data-map-fallback and @hidden]')->length);
+        $this->assertSame(1, $xpath->query('//*[@data-map-viewport]//*[@data-map-placeholder]')->length);
+        $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*')->length);
+        $this->assertSame(1, $xpath->query('//*[@data-map-viewport]/div[contains(@class,"np-map-preview__action")]/button[@data-map-activate]')->length);
         $this->assertSame(0, $xpath->query('//*[@id="address-copy-status"]')->length);
     }
 

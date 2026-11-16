@@ -47,7 +47,7 @@
     </section>
 
 
-    <section class="np-location" aria-labelledby="location-title">
+    <section class="np-location" aria-labelledby="location-title" data-map-preview data-map-url="{{ config('business.map_embed') }}">
         <div class="np-container np-location__grid">
             <div class="np-location__copy">
                 <div class="np-location__heading">
@@ -62,14 +62,14 @@
                     @endforeach
                 </nav>
             </div>
-            <div class="np-location__directions" data-map-preview data-map-url="{{ config('business.map_embed') }}">
-                <div class="np-map-preview np-location__map" data-map-placeholder>
-                    <x-home.store-location-preview />
-                    <div class="np-map-preview__action"><x-home.icon name="map-pin" /><p>موقعیت فروشگاه نوین‌پی</p><button type="button" class="np-button np-button--primary" data-map-activate hidden>نمایش نقشه</button></div>
+            <div class="np-location__directions">
+                <div class="np-map-preview np-location__map" data-map-viewport>
+                    <div class="np-map-overlay" data-map-placeholder aria-hidden="true"></div>
+                    <div class="np-map-preview__action"><button type="button" class="np-button np-button--primary" data-map-activate hidden>مشاهده در نقشه</button></div>
+                    <p class="np-map-status" data-map-status role="status" aria-live="polite"></p>
                 </div>
-                <p class="np-map-status" data-map-status role="status" aria-live="polite"></p>
-                <a class="np-map-fallback" href="{{ config('business.maps.نشان') }}" target="_blank" rel="noopener noreferrer">باز کردن در نشان<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
             </div>
         </div>
+        <div class="np-container np-map-links"><div class="np-map-fallback-slot"><a class="np-map-fallback" data-map-fallback hidden href="{{ config('business.maps.نشان') }}" target="_blank" rel="noopener noreferrer">باز کردن در نشان<span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a></div></div>
     </section>
 @endsection
