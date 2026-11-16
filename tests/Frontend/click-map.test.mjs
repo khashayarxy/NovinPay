@@ -58,6 +58,9 @@ test('Chromium: map stays inert until explicit activation, loads once and recove
           second.removeAttribute('data-map-state');
           second.querySelector('iframe').remove();
           second.querySelector('[data-map-placeholder]').hidden = false;
+          // cloneNode does not copy the capture listener suppressing the native
+          // about:blank load produced by our intercepted iframe src setter.
+          second.addEventListener('load', event => {if (event.isTrusted) event.stopImmediatePropagation();}, true);
           document.body.append(second);
           initClickMap();
           const retry = second.querySelector('button');
