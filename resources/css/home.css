@@ -64,7 +64,7 @@
 .np-location__maps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 11px; }
 .np-location__maps a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; border: 1px solid #d5e4f7; border-radius: 9px; padding: 6px 12px; font-size: 12px; color: var(--color-brand-700); }
 .np-location__maps a:hover { background: #eff7ff; }
-.np-location__maps .np-icon { width: 17px; height: 17px; }
+.np-location__maps .np-icon, .np-location__maps .np-map-brand-icon { flex: 0 0 20px; width: 20px; height: 20px; object-fit: contain; }
 
 @media (max-width: 1100px) {
     .np-header__inner { gap: 18px; }
@@ -165,15 +165,11 @@
 .np-map-preview__action .np-button[hidden] { display: none; }
 .np-map-preview__action .np-button { min-height: 44px; padding-inline: 24px; background: var(--color-brand-700); color: #fff; border-color: transparent; }
 .np-map-preview__action .np-button:hover { background: #14548a; }
-.np-map-preview__action .np-button:focus-visible,.np-location__maps a:focus-visible,.np-map-fallback:focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 3px; }
+.np-map-preview__action .np-button:focus-visible,.np-location__maps a:focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 3px; }
 .np-location__notice { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 6px; color: #52678b; font-size: 12px; line-height: 1.9; }
 .np-location__notice .np-icon { flex: 0 0 16px; width: 16px; height: 16px; }
 .np-map-status { position: absolute; z-index: 2; top: 14px; inset-inline: 12px; margin: 0; padding: 3px 12px; border-radius: 6px; background: #f5faffed; color: #304b65; font-size: 12px; line-height: 1.9; text-align: center; }
 .np-map-status:empty { display: none; }
-.np-map-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.np-map-fallback-slot { grid-column: 2; min-height: 38px; display: grid; place-items: center; }
-.np-map-fallback { font-size: 12px; color: var(--color-brand-700); padding: 8px 12px; }
-.np-map-fallback[hidden] { display: none; }
 @media (prefers-reduced-motion: no-preference) {
     .np-map-preview__action .np-button { transition: background-color 120ms ease; }
 }
@@ -194,8 +190,6 @@
     .homepage .np-hero__art { height: 300px; max-width: 520px; margin-inline: auto; }
     .homepage .np-trust { width: calc(100% - 40px); padding-block: 22px; }
     .homepage .np-location__grid { grid-template-columns: 1fr; }
-    .np-map-links { grid-template-columns: 1fr; }
-    .np-map-fallback-slot { grid-column: 1; }
 }
 @media (max-width: 560px) {
     .np-header__inner { gap: 5px 12px; }

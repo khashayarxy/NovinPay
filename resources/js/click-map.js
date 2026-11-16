@@ -5,8 +5,7 @@ export function initClickMap(root = document) {
         const overlay = container.querySelector('[data-map-placeholder]');
         const viewport = container.querySelector('[data-map-viewport]');
         const status = container.querySelector('[data-map-status]');
-        const fallback = container.querySelector('[data-map-fallback]');
-        if (!button || !overlay || !viewport || !status || !fallback || container.dataset.mapBound) return;
+        if (!button || !overlay || !viewport || !status || container.dataset.mapBound) return;
         let url;
         try { url = new URL(container.dataset.mapUrl, location.href); } catch { return; }
         if (url.origin !== 'https://neshan.org' || !url.pathname.startsWith('/maps/iframe/places/')) return;
@@ -22,7 +21,6 @@ export function initClickMap(root = document) {
             frame.tabIndex = 0;
             frame.removeAttribute('aria-hidden');
             container.dataset.mapActive = 'true';
-            fallback.hidden = false;
             status.textContent = '';
             if (focusMap) frame.focus({preventScroll: true});
         };
@@ -55,7 +53,6 @@ export function initClickMap(root = document) {
                 container.setAttribute('aria-busy', 'false');
                 button.disabled = false;
                 button.textContent = 'تلاش دوباره';
-                fallback.hidden = !activated;
                 status.textContent = 'نقشه بارگذاری نشد. دوباره تلاش کنید.';
             };
             current.addEventListener('load', () => {

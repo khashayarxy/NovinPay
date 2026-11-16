@@ -14,10 +14,10 @@ function fixture({observer = true, url = 'https://neshan.org/maps/iframe/places/
         insertBefore(child) {this.children.push(child); child.parent = this;}
         click() {if (!this.disabled) {const event = new Event('click'); Object.defineProperty(event, 'detail', {value: 0}); this.dispatchEvent(event);}}
     }
-    const root = new Element(), button = new Element(), overlay = new Element(), viewport = new Element(), status = new Element(), fallback = new Element();
-    button.hidden = fallback.hidden = true;
+    const root = new Element(), button = new Element(), overlay = new Element(), viewport = new Element(), status = new Element(), outside = new Element();
+    button.hidden = true;
     root.dataset.mapUrl = url;
-    const nodes = {'[data-map-activate]': button, '[data-map-placeholder]': overlay, '[data-map-viewport]': viewport, '[data-map-status]': status, '[data-map-fallback]': fallback};
+    const nodes = {'[data-map-activate]': button, '[data-map-placeholder]': overlay, '[data-map-viewport]': viewport, '[data-map-status]': status};
     root.querySelector = key => nodes[key];
     const requests = [], timers = new Map(); let next = 0, callback, options, observations = 0;
     const document = {activeElement: null, querySelectorAll: () => [root], createElement() {
@@ -33,7 +33,7 @@ function fixture({observer = true, url = 'https://neshan.org/maps/iframe/places/
     };
     const context = vm.createContext({window, document, URL, location: {href: 'https://novinpaypos.test/'}});
     vm.runInContext(source + '\ninitClickMap(); initClickMap();', context);
-    return {root, button, overlay, viewport, status, fallback, requests, timers, document,
+    return {root, button, overlay, viewport, status, outside, requests, timers, document,
         near: () => callback([{target: viewport, isIntersecting: true}]),
         far: () => callback([{target: viewport, isIntersecting: false}]),
         frame: () => viewport.children[0], options: () => options, observations: () => observations};
@@ -49,12 +49,12 @@ test('far section makes zero requests; near section loads once with inert map be
     assert.equal(frame.loading, 'lazy'); assert.equal(frame.tabIndex, -1); assert.equal(frame.inert, true);
     assert.equal(frame.attrs['aria-hidden'], 'true'); assert.ok(frame.title);
     frame.dispatchEvent(new Event('load'));
-    assert.equal(f.overlay.hidden, false); assert.equal(f.fallback.hidden, true);
+    assert.equal(f.overlay.hidden, false);
     assert.equal(f.timers.size, 0);
     f.button.focus(); f.button.click();
     assert.equal(f.requests.length, 1); assert.equal(f.overlay.hidden, true);
     assert.equal(f.button.hidden, true);
-    assert.equal(frame.inert, false); assert.equal(frame.tabIndex, 0); assert.equal(f.fallback.hidden, false);
+    assert.equal(frame.inert, false); assert.equal(frame.tabIndex, 0);
     assert.equal(f.document.activeElement, frame);
 });
 
@@ -65,7 +65,7 @@ test('activation while loading retains overlay; timeout, stale load and retry ar
     assert.equal(f.overlay.hidden, false); assert.equal(f.button.disabled, true);
     [...f.timers.values()][0]();
     assert.equal(f.root.dataset.mapState, 'error'); assert.equal(f.frame(), undefined);
-    assert.equal(f.button.disabled, false); assert.equal(f.fallback.hidden, false);
+    assert.equal(f.button.disabled, false);
     old.dispatchEvent(new Event('load')); assert.equal(f.root.dataset.mapState, 'error');
     f.button.click(); f.frame().dispatchEvent(new Event('error'));
     assert.equal(f.frame(), undefined); assert.equal(f.button.disabled, false);
@@ -82,7 +82,7 @@ test('unsupported observer uses explicit intent; invalid providers never load', 
 });
 
 test('asynchronous readiness does not steal focus after the customer moves away', () => {
-    const f = fixture(); f.button.focus(); f.button.click(); f.fallback.focus();
+    const f = fixture(); f.button.focus(); f.button.click(); f.outside.focus();
     f.frame().dispatchEvent(new Event('load'));
-    assert.equal(f.document.activeElement, f.fallback);
+    assert.equal(f.document.activeElement, f.outside);
 });

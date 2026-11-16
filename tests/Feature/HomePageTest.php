@@ -269,19 +269,25 @@ class HomePageTest extends TestCase
             $this->assertSame('noopener noreferrer', $link->getAttribute('rel'));
         }
         $this->assertSame(3, $links->length);
-        // The embed destination is reserved below the map, initially hidden.
+        // Only the three navigation buttons remain; no duplicate link or reserved row.
         $this->assertSame(0, $xpath->query('//div[contains(@class,"np-location__directions")]//a')->length);
-        $this->assertSame(1, $xpath->query('//section[@data-map-preview]/div[contains(@class,"np-map-links")]//a[@data-map-fallback]')->length);
+        $this->assertSame(0, $xpath->query('//*[@data-map-fallback or contains(@class,"np-map-fallback-slot")]')->length);
+        $this->assertSame(3, $xpath->query('//section[@data-map-preview]//a')->length);
         $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//p[not(@data-map-status)]')->length);
         $this->assertSame(0, $xpath->query('//iframe')->length);
         $this->assertSame(config('business.map_embed'), $xpath->query('//*[@data-map-preview]')->item(0)->getAttribute('data-map-url'));
-        $this->assertSame(config('business.maps.نشان'), $xpath->query('//a[@class="np-map-fallback"]')->item(0)->getAttribute('href'));
         $this->assertSame(0, $xpath->query('//button[@data-copy-address]')->length);
         $this->assertStringContainsString('گوگل مپ', $links->item(0)->textContent);
         $this->assertStringContainsString('لطفاً پیش از مراجعه حضوری، تماس بگیرید.', $copy->textContent);
         $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"مشاهده در نقشه")]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*[local-name()="svg"]')->length);
-        $this->assertSame(1, $xpath->query('//a[@data-map-fallback and @hidden]')->length);
+        $this->assertSame(2, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@alt="" and @aria-hidden="true" and @width="20" and @height="20"]')->length);
+        foreach (['neshan', 'balad'] as $icon) {
+            $this->assertFileExists(public_path('brand/maps/'.$icon.'.png'));
+            $this->assertSame(1, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon.'.png').'"]')->length);
+        }
+        $this->assertSame(1, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]/a[1]/span[@class="np-icon" and @aria-hidden="true"]')->length);
+        $this->assertStringNotContainsString('باز کردن در نشان', $document->textContent);
         $this->assertSame(1, $xpath->query('//*[@data-map-viewport]//*[@data-map-placeholder]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*')->length);
         $this->assertSame(1, $xpath->query('//*[@data-map-viewport]/div[contains(@class,"np-map-preview__action")]/button[@data-map-activate]')->length);
