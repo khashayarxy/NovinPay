@@ -30,6 +30,9 @@
                 </nav>
             </details>
         </div>
+        <div class="np-customer-header" data-customer-header data-session-url="{{ route('customer.header') }}">
+            <a href="{{ route('account.login') }}" class="np-customer-trigger" data-customer-guest><x-home.icon name="user" />ورود / ثبت‌نام</a>
+        </div>
     </div>
     <nav class="np-quick-nav np-container" aria-label="دسترسی سریع">
         @foreach ($quickNavigation as [$route, $active, $label])

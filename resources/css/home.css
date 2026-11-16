@@ -217,6 +217,7 @@
 .np-nav a:hover, .np-nav [aria-current] { background: #f2f7fc; text-decoration: none; }
 .np-mobile-menu { display: none; }
 .np-header__actions, .np-quick-nav { display: none; }
+.np-customer-header { display: none; }
 .homepage .np-hero__grid { min-height: 380px; grid-template-columns: 1fr 1fr; gap: 36px; padding-block: 20px; }
 .homepage .np-hero__copy { grid-column: 1; grid-row: 1; }
 .homepage .np-hero__art { grid-column: 2; grid-row: 1; width: 100%; height: auto; aspect-ratio: 853 / 933; max-width: 400px; justify-self: center; isolation: isolate; background: transparent; border: 0; border-radius: 0; overflow: visible; }
@@ -235,6 +236,17 @@
     .np-header .np-logo-link { min-height: 44px; align-items: center; }
     .np-header .np-nav { display: none; }
     .np-header__actions { display: flex; order: -1; align-items: center; gap: 8px; margin-inline-start: 0; }
+    .np-customer-header { display: block; position: relative; margin-inline-start: auto; flex: 0 0 auto; }
+    .np-customer-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 6px 9px; border: 1px solid #d1e5f7; border-radius: 10px; background: #f2f8fe; color: #174c80; font-size: 12px; font-weight: 600; line-height: 1.7; white-space: nowrap; cursor: pointer; list-style: none; }
+    .np-customer-trigger .np-icon { width: 18px; height: 18px; }
+    .np-customer-trigger::-webkit-details-marker { display: none; }
+    .np-customer-trigger[hidden] { display: none; }
+    .np-customer-menu > nav { position: absolute; z-index: 2; top: calc(100% + 8px); inset-inline-end: 0; width: 196px; max-width: calc(100vw - 32px); padding: 6px; border: 1px solid #dceaf8; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px #18395e14; }
+    .np-customer-menu:not([open]) > nav { display: none; }
+    .np-customer-menu nav a, .np-customer-menu nav button { display: flex; width: 100%; align-items: center; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 7px; background: transparent; color: #174c80; font: inherit; font-size: 13px; text-align: start; cursor: pointer; }
+    .np-customer-menu nav form { margin: 0; border-block-start: 1px solid #edf2f8; }
+    .np-customer-trigger:hover, .np-customer-menu nav a:hover, .np-customer-menu nav button:hover { background: #eaf4ff; }
+    .np-customer-header :is(a, summary, button):focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 2px; }
     .np-mobile-menu { display: block; }
     .np-mobile-menu summary { display: flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; border: 1px solid #e0eaf5; border-radius: 10px; cursor: pointer; color: #163a61; list-style: none; }
     .np-mobile-menu summary::-webkit-details-marker { display: none; }
@@ -252,6 +264,12 @@
     .homepage .np-hero__grid { grid-template-columns: 1fr; padding-block: 12px 28px; gap: 8px; }
     .homepage .np-hero__copy { grid-column: 1; grid-row: 2; }
     .homepage .np-hero__art { grid-column: 1; grid-row: 1; height: auto; max-width: 370px; }
+}
+@media (max-width: 360px) {
+    .np-header__inner { gap: 7px; }
+    .np-header .np-logo-link .np-wordmark { width: 105px; }
+    .np-customer-trigger { font-size: 11px; padding-inline: 7px; gap: 4px; }
+    .np-customer-trigger .np-icon { width: 16px; height: 16px; }
 }
 @media (max-width: 560px) {
     .homepage .np-hero h1 { font-size: 32px; line-height: 1.3; }

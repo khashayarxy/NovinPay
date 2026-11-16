@@ -77,6 +77,11 @@ Route::match(['GET', 'POST'], '/support-chat/{path?}', SupportChatController::cl
 
 Route::get('/login', [CustomerAccountController::class, 'login'])->block(20, 15)->middleware(PrivateRepairResponse::class)->name('account.login');
 
+Route::get('/customer-header', fn () => response()->view('components.home.customer-menu')
+    ->header('X-LiteSpeed-Cache-Control', 'no-cache'))
+    ->middleware([PrivateRepairResponse::class, EnsureCustomerSession::class])
+    ->block(20, 15)->name('customer.header');
+
 Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('account.')->group(function (): void {
     $controller = CustomerAccountController::class;
     Route::get('login', fn () => redirect()->route('account.login'))->name('login.legacy');

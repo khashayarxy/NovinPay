@@ -45,7 +45,7 @@ class PreviewAwareSession extends StartSession
     protected function storeCurrentUrl($request, $session)
     {
         // The widget and its background requests share the customer's Laravel session.
-        if (! $request->routeIs('support.chat', 'support.panel.worker')) {
+        if (! $request->routeIs('support.chat', 'support.panel.worker', 'customer.header')) {
             parent::storeCurrentUrl($request, $session);
         }
     }

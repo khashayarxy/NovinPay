@@ -1,9 +1,11 @@
 import { initMobileNavigation } from './mobile-navigation';
 import { initClickMap } from './click-map';
+import { initCustomerNavigation } from './customer-navigation';
 
 document.addEventListener('DOMContentLoaded', () => {
     initClickMap();
     initMobileNavigation();
+    initCustomerNavigation();
     const admin = document.querySelector('.admin-site #main-content');
     if (admin) {
         import('./admin-fields.js').then(({initAdminFields}) => initAdminFields(admin));
