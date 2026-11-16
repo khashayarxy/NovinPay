@@ -1,5 +1,26 @@
 # NovinPayPos: controlled cPanel production release
 
+## Generate and verify release checksum manifests
+
+Use `scripts/release/checksum-manifest.py` (Python 3.11+) for every generated
+SHA-256 sheet, including nested `tools.sha256`, asset sheets and the outer
+release manifest. Pass the exact ordered file inventory relative to the
+directory where the release runner will check that sheet.
+
+```sh
+python3 scripts/release/checksum-manifest.py /private/kit tools.sha256 lib.php runtime.php
+python3 scripts/release/checksum-manifest.py --check /private/kit tools.sha256 lib.php runtime.php
+```
+
+The writer hashes binary payload bytes and writes UTF-8 with LF and no BOM,
+including on Windows. It refuses to overwrite existing evidence. Write inner
+sheets before hashing them into outer sheets. After packaging, run `--check` on
+the unpacked release inputs using the same inventories, and run GNU
+`sha256sum --check --strict` from each sheet's checksum root. Repeat verification
+against the uploaded bytes before issuing an activation command. Treat a mismatch
+as a packaging failure. Keep the failed inputs and prepare a separate corrected
+kit with updated dependent hashes instead of converting manifests on the host.
+
 ## Phase 4 candidate: explicit compatibility STOP (2026-11-14)
 
 The baseline is `ecf672110214a24a9171d942a2730d9bfad5f65c`; the final candidate SHA
