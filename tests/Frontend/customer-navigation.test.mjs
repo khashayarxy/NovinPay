@@ -29,7 +29,7 @@ test('Chromium: server-rendered customer state survives initialization, delayed 
                 const settle = () => new Promise(resolve => setTimeout(resolve, 20));
                 const host = document.querySelector('[data-customer-header]');
                 const authenticated = ${JSON.stringify(authenticated)}, guest = ${JSON.stringify(guest)};
-                let calls = 0, fail = false, hold = false, finish, response = authenticated;
+                let calls = 0, fail = false, hold = false, finish, response = '${initialState}' === 'authenticated' ? authenticated : guest;
                 window.matchMedia = () => ({matches: true, addEventListener() {}});
                 window.fetch = async (url, options) => {
                     calls++;
@@ -40,8 +40,13 @@ test('Chromium: server-rendered customer state survives initialization, delayed 
                 };
                 const initial = host.querySelector('[data-customer-entry]');
                 check(initial.dataset.customerState === '${initialState}', 'correct HTML before enhancement');
-                initCustomerNavigation(); initCustomerNavigation(); await settle();
+                initCustomerNavigation(); initCustomerNavigation();
                 check(calls === 0 && initial === host.firstElementChild, 'no startup fetch or replacement');
+                // Native window focus can arrive during startup. Its read-only response
+                // must represent this fixture's actual session, not a synthetic login.
+                await settle();
+                check(initial === host.firstElementChild, 'native startup focus preserves initial DOM');
+                response = authenticated;
                 window.dispatchEvent(new Event('focus')); await settle();
                 let menu = host.querySelector('[data-customer-menu]');
                 check(menu && !menu.open && !host.querySelector('[data-customer-guest]'), 'authenticated menu');
