@@ -58,7 +58,7 @@
                 <p class="np-location__hours"><x-business-hours /></p>
                 <nav class="np-location__maps" aria-label="مسیریابی فروشگاه">
                     @foreach (['Google Maps', 'نشان', 'بلد'] as $label)
-                        <a href="{{ config('business.maps')[$label] }}" target="_blank" rel="noopener noreferrer">@if ($label === 'Google Maps')<x-home.icon name="map-pin" />@else<img class="np-map-brand-icon" src="{{ asset('brand/maps/'.($label === 'نشان' ? 'neshan' : 'balad').'.png') }}" width="20" height="20" alt="" aria-hidden="true" loading="lazy" decoding="async">@endif<bdi>{{ $label === 'Google Maps' ? 'گوگل مپ' : $label }}</bdi><span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
+                        <a href="{{ config('business.maps')[$label] }}" target="_blank" rel="noopener noreferrer">@if ($label === 'Google Maps')<x-home.icon name="map-pin" />@else<img @class(['np-map-brand-icon', 'np-map-brand-icon--balad' => $label === 'بلد']) src="{{ asset('brand/maps/'.($label === 'نشان' ? 'neshan' : 'balad').'.png') }}" width="{{ $label === 'بلد' ? 16 : 20 }}" height="{{ $label === 'بلد' ? 16 : 20 }}" alt="" aria-hidden="true" loading="lazy" decoding="async">@endif<bdi>{{ $label === 'Google Maps' ? 'گوگل مپ' : $label }}</bdi><span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span></a>
                     @endforeach
                 </nav>
             </div>

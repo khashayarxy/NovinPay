@@ -281,9 +281,12 @@ class HomePageTest extends TestCase
         $this->assertStringContainsString('لطفاً پیش از مراجعه حضوری، تماس بگیرید.', $copy->textContent);
         $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"مشاهده در نقشه")]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*[local-name()="svg"]')->length);
-        $this->assertSame(2, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@alt="" and @aria-hidden="true" and @width="20" and @height="20"]')->length);
+        $this->assertSame(2, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@alt="" and @aria-hidden="true"]')->length);
         foreach (['neshan', 'balad'] as $icon) {
             $this->assertFileExists(public_path('brand/maps/'.$icon.'.png'));
+            $image = $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon.'.png').'"]')->item(0);
+            $this->assertSame($icon === 'balad' ? '16' : '20', $image->getAttribute('width'));
+            $this->assertSame($image->getAttribute('width'), $image->getAttribute('height'));
             $this->assertSame(1, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon.'.png').'"]')->length);
         }
         $this->assertSame(1, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]/a[1]/span[@class="np-icon" and @aria-hidden="true"]')->length);
