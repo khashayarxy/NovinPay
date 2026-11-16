@@ -119,7 +119,7 @@ export class ChatEngine {
         if(this.frozen||this.paused||!this.sync.id)throw new Error('ابتدا هویت و گفتگوی معتبر را برقرار کنید؛ متن حفظ شده است.');
         this.assertSendAllowed();
         if(this.hooks.canSend?.(this.sync.id)===false)throw new Error(this.hooks.sendBlockReason?.(this.sync.id)||'این گفتگو پایان یافته است؛ پیش‌نویس حفظ شد.');
-        const row=await this.box.enqueue(this.context,this.sync.id,text,{attachments,replyTo,faqArticle,teamThrough:this.role==='operator'?(teamThrough??Math.max(0,...this.sync.values().filter(m=>m.type==='user'&&Number.isSafeInteger(m.id)).map(m=>m.id))):null,sourcePath:this.role==='customer'?(Object.hasOwn(globalThis,'SupportSourcePath')?globalThis.SupportSourcePath:location.pathname):null});
+        const row=await this.box.enqueue(this.context,this.sync.id,text,{attachments,replyTo,faqArticle,teamThrough:this.role==='operator'?(teamThrough??Math.max(0,...this.sync.values().filter(m=>m.type==='user'&&Number.isSafeInteger(m.id)).map(m=>m.id))):null,sourcePath:this.role==='customer'?(Object.prototype.hasOwnProperty.call(globalThis,'SupportSourcePath')?globalThis.SupportSourcePath:location.pathname):null});
         this.freshSubmissions.add(row.key);
         if(this.box.temporaryUnavailable&&!this.box.persistent)this.hooks.warning?.('بازیابی صف موقت در این مرورگر در دسترس نیست؛ پیش از تازه‌سازی منتظر تأیید پیام بمانید.','storage');this.hooks.queued?.(row);await this.renderQueue();this.scheduleSender(0);return row;
     }

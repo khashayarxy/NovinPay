@@ -1,4 +1,5 @@
 import {recoveryRequest} from './recovery.js?v=0.1.0-r14';
+import {uuid} from './outbox.js';
 export function phoneControls(parent,{current,conversation,beforeSwitch,restart,warn,done=()=>{}}){
     const panel=document.createElement('details');panel.className='support-phone-recovery';panel.hidden=true;
     const title=document.createElement('summary');title.textContent='بازیابی با شماره موبایل';
@@ -23,7 +24,7 @@ export function phoneControls(parent,{current,conversation,beforeSwitch,restart,
         const id=purpose==='link'?conversation():'';if(purpose==='link'&&!id)return;
         if(challenge&&challenge.purpose===purpose){if(Date.now()-challenge.at<60000)throw new Error('برای ارسال دوباره یک دقیقه صبر کنید.');operation=null;}
         if(purpose==='link'&&!confirm('این شماره برای بازیابی همین گفتگو استفاده می‌شود. اگر شماره قبلی متصل باشد، جایگزین خواهد شد. ادامه؟'))return;
-        if(!operation||operation.purpose!==purpose||operation.id!==id)operation={purpose,id,key:crypto.randomUUID()};
+        if(!operation||operation.purpose!==purpose||operation.id!==id)operation={purpose,id,key:uuid()};
         const r=await recoveryRequest({phone_action:'begin',purpose,phone:window.NovinPayMobile?.ascii(number.value)??number.value,user_id:id,operation_id:operation.key});
         challenge={id:r.challenge,purpose,at:Date.now()};code.hidden=verify.hidden=false;code.focus();status.textContent='درخواست ارسال کد ثبت شد. در صورت دریافت، کد را تا پنج دقیقه وارد کنید. برای ارسال دوباره حداقل یک دقیقه صبر کنید.';
     }

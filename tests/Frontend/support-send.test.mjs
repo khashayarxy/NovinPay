@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {ChatEngine} from '../../resources/support-chat/support-client/engine.js';
+import {ConversationSync} from '../../resources/support-chat/support-client/network.js';
+import {uuid, validUUID} from '../../resources/support-chat/support-client/outbox.js';
 
 globalThis.document={hidden:false};
 function fixture({fresh=true,role='customer',attempts=0,epoch='epoch'}={}){
@@ -37,4 +39,51 @@ test('an accepted lost ACK can still reconcile while a different operator owns t
  const f=fixture({role:'operator',attempts:1});f.engine.hooks.canSend=()=>false;
  f.engine.transport.receipt=async()=>{f.calls.push('receipt');return f.ack;};
  await f.engine.drain();assert.deepEqual(f.calls,['identity','receipt']);assert.equal(f.row.state,'accepted');assert.equal(f.row.attempts,1);
+});
+
+test('customer submission and inbox attention work without Object.hasOwn', async () => {
+ const nativeHasOwn = Object.hasOwn;
+ const source = Object.getOwnPropertyDescriptor(globalThis,'SupportSourcePath');
+ try {
+  Object.hasOwn = undefined;
+  globalThis.SupportSourcePath = '/products';
+  const f = fixture({fresh:false});
+  f.engine.sync = {id:f.row.conversation};
+  f.engine.box.enqueue = async (context,conversation,text,options) => {
+   assert.equal(conversation,f.row.conversation);
+   assert.equal(options.sourcePath,'/products');
+   return {...f.row,text};
+  };
+  const queued = await f.engine.enqueue('synthetic draft');
+  assert.equal(queued.text,'synthetic draft');
+  await f.engine.drain();
+  assert.deepEqual(f.calls,['send']);
+  assert.equal(f.row.state,'accepted');
+
+  const sync = Object.create(ConversationSync.prototype);
+  sync.id = f.row.conversation;
+  const page = Object.assign(Object.create({operator_unread:99}),{
+   conversation_id:sync.id,store_epoch:'epoch',attention_revision:1,customer_unread:0,
+  });
+  assert.equal(sync.mergeAttention(page),page);
+  assert.equal(sync.attention.customer_unread,0);
+  assert.equal('operator_unread' in sync.attention,false);
+ } finally {
+  Object.hasOwn = nativeHasOwn;
+  if(source)Object.defineProperty(globalThis,'SupportSourcePath',source);
+  else delete globalThis.SupportSourcePath;
+ }
+});
+
+test('recovery operation IDs retain cryptographic UUID v4 without the native method', () => {
+ const nativeCrypto = Object.getOwnPropertyDescriptor(globalThis,'crypto');
+ try {
+  const secureRandom = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:{getRandomValues:secureRandom}});
+  const ids = Array.from({length:16},()=>uuid());
+  assert.ok(ids.every(validUUID));
+  assert.equal(new Set(ids).size,ids.length);
+ } finally {
+  Object.defineProperty(globalThis,'crypto',nativeCrypto);
+ }
 });

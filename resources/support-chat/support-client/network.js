@@ -127,7 +127,7 @@ export class ConversationSync {
     mergeAttention(page){
         if(!Number.isSafeInteger(page.attention_revision)||page.attention_revision<0||page.conversation_id!==this.id)return page;
         if(this.attention&&page.store_epoch===this.attention.store_epoch&&page.attention_revision<this.attention.attention_revision)return {...page,...this.attention};
-        this.attention=Object.fromEntries(['conversation_id','store_epoch','attention_revision','customer_unread','operator_unread','needs_reply','operator_read_watermark','first_customer_unread_sequence'].filter(k=>Object.hasOwn(page,k)).map(k=>[k,page[k]]));return page;
+        this.attention=Object.fromEntries(['conversation_id','store_epoch','attention_revision','customer_unread','operator_unread','needs_reply','operator_read_watermark','first_customer_unread_sequence'].filter(k=>Object.prototype.hasOwnProperty.call(page,k)).map(k=>[k,page[k]]));return page;
     }
     acknowledgeRead(page){
         if(page.conversation_id!==this.id||page.store_epoch!==this.epoch)return;

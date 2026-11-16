@@ -463,6 +463,18 @@ class SupportChatTest extends TestCase
         $this->actingAs($account, 'customer')->withSession(['customer_session_version' => 1]);
         $this->get('https://localhost/support-chat/api.php?get_session=1')->assertOk();
         $this->assertDatabaseHas('chat_customer_owners', ['customer_account_id' => $account->id]);
+
+        $message = ['send_message' => '1', 'csrf_token' => $token, 'protocol_version' => '2', 'user_id' => $id,
+            'message' => 'Synthetic authenticated message', 'client_message_id' => (string) Str::uuid()];
+        $ack = $this->post('https://localhost/support-chat/api.php', $message)
+            ->assertOk()->assertJsonPath('replayed', false)->json('message_id');
+        $this->post('https://localhost/support-chat/api.php', $message)
+            ->assertOk()->assertJsonPath('replayed', true)->assertJsonPath('message_id', $ack);
+        $this->get('https://localhost/support-chat/api.php?get_conversation=1&user_id='.$id)
+            ->assertOk()->assertJsonCount(1, 'messages')->assertJsonPath('messages.0.text', $message['message']);
+        $stored = json_decode(file_get_contents($this->private.'/data/chat_conversations.json'), true, 64, JSON_THROW_ON_ERROR);
+        $this->assertSame($ack, $stored['conversations'][$id]['messages'][0]['id']);
+
         auth('customer')->logout();
         $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'csrf_token' => $token, 'protocol_version' => '2', 'user_id' => $id, 'message' => 'synthetic rejected message', 'client_message_id' => (string) Str::uuid()])->assertUnauthorized();
         $this->get('https://localhost/support-chat/api.php?get_session=1')->assertUnauthorized();
