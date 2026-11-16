@@ -3,7 +3,6 @@ export function initCustomerNavigation() {
     if (!host || host.dataset.bound) return;
     host.dataset.bound = 'true';
 
-    const mobile = window.matchMedia('(max-width: 850px)');
     const header = host.closest('[data-mobile-header]');
     let pending = null;
     let menu = null;
@@ -41,7 +40,7 @@ export function initCustomerNavigation() {
     };
 
     const refresh = async () => {
-        if (!mobile.matches || pending) return;
+        if (pending) return;
         const controller = new AbortController();
         pending = controller;
         const timeout = window.setTimeout(() => controller.abort(), 8000);
@@ -55,7 +54,7 @@ export function initCustomerNavigation() {
                 signal: controller.signal,
                 headers: { Accept: 'text/html' },
             });
-            if (!response.ok || !mobile.matches || controller.signal.aborted
+            if (!response.ok || controller.signal.aborted
                 || !response.headers.get('Content-Type')?.includes('text/html')) return;
             const markup = document.createElement('template');
             markup.innerHTML = await response.text();
@@ -97,11 +96,7 @@ export function initCustomerNavigation() {
         if (!host.contains(event.target)) close();
     });
     header?.addEventListener('mobile-navigation:open', () => close());
-    mobile.addEventListener('change', () => {
-        close();
-        if (mobile.matches) refresh();
-        else pending?.abort();
-    });
+    window.matchMedia('(max-width: 850px)').addEventListener('change', () => close());
     window.addEventListener('pagehide', () => {
         pending?.abort();
         pending = null;
