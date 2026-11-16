@@ -36,6 +36,7 @@ use App\Http\Middleware\PrivateAdminResponse;
 use App\Http\Middleware\PrivateRepairResponse;
 use App\Http\Middleware\PublicArticleResponse;
 use App\Services\CustomerAccountLink;
+use App\Services\CustomerLogin;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -77,9 +78,10 @@ Route::match(['GET', 'POST'], '/support-chat/{path?}', SupportChatController::cl
 
 Route::get('/login', [CustomerAccountController::class, 'login'])->block(20, 15)->middleware(PrivateRepairResponse::class)->name('account.login');
 
-Route::get('/customer-header', fn () => response()->view('components.home.customer-menu')
+Route::get('/customer-header', fn (Request $request, CustomerLogin $login) => response()
+    ->view('components.home.customer-entry', ['account' => $login->authenticatedAccount($request)])
     ->header('X-LiteSpeed-Cache-Control', 'no-cache'))
-    ->middleware([PrivateRepairResponse::class, EnsureCustomerSession::class])
+    ->middleware(PrivateRepairResponse::class)
     ->block(20, 15)->name('customer.header');
 
 Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('account.')->group(function (): void {

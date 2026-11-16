@@ -27,6 +27,10 @@ class AddSecurityHeaders
             $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()');
         }
         if (str_contains($response->headers->get('Content-Type', ''), 'text/html')) {
+            if ($request->attributes->get('customer_header_rendered')) {
+                $response->headers->set('Cache-Control', 'no-store, private');
+                $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');
+            }
             if (! $response->headers->has('Content-Security-Policy')) {
                 $response->headers->set('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
             }

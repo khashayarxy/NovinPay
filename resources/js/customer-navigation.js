@@ -3,7 +3,6 @@ export function initCustomerNavigation() {
     if (!host || host.dataset.bound) return;
     host.dataset.bound = 'true';
 
-    const guest = host.querySelector('[data-customer-guest]');
     const mobile = window.matchMedia('(max-width: 850px)');
     const header = host.closest('[data-mobile-header]');
     let pending = null;
@@ -16,16 +15,34 @@ export function initCustomerNavigation() {
         if (restoreFocus) menu.querySelector('summary').focus({ preventScroll: true });
     };
 
-    const reset = () => {
+    const bindMenu = () => {
+        menu = host.querySelector('[data-customer-menu]');
+        if (!menu || menu.dataset.bound) return;
+        menu.dataset.bound = 'true';
+        const current = menu;
+        const toggle = current.querySelector('summary');
         close();
-        menu?.remove();
-        menu = null;
-        guest.hidden = false;
+        current.addEventListener('toggle', () => {
+            toggle.setAttribute('aria-expanded', String(current.open));
+            if (current.open) {
+                const navigation = header?.querySelector('.np-mobile-menu');
+                if (navigation) navigation.open = false;
+            }
+        });
+        current.querySelectorAll('a').forEach(link => link.addEventListener('click', () => close()));
+        current.querySelector('form')?.addEventListener('submit', (event) => {
+            const form = event.currentTarget;
+            if (form.dataset.submitting) {
+                event.preventDefault();
+                return;
+            }
+            form.dataset.submitting = 'true';
+            form.querySelector('button').disabled = true;
+        });
     };
 
     const refresh = async () => {
         if (!mobile.matches || pending) return;
-        reset();
         const controller = new AbortController();
         pending = controller;
         const timeout = window.setTimeout(() => controller.abort(), 8000);
@@ -44,33 +61,24 @@ export function initCustomerNavigation() {
             const markup = document.createElement('template');
             markup.innerHTML = await response.text();
             if (controller.signal.aborted) return;
-            const nextMenu = markup.content.querySelector('details[data-customer-menu]');
-            if (!nextMenu) return;
-            menu = nextMenu;
-            menu.open = false;
-            const toggle = menu.querySelector('summary');
-            toggle.setAttribute('aria-expanded', 'false');
-            menu.addEventListener('toggle', () => {
-                toggle.setAttribute('aria-expanded', String(nextMenu.open));
-                if (nextMenu.open) {
-                    const navigation = header?.querySelector('.np-mobile-menu');
-                    if (navigation) navigation.open = false;
-                }
-            });
-            menu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => close()));
-            menu.querySelector('form')?.addEventListener('submit', (event) => {
-                const form = event.currentTarget;
-                if (form.dataset.submitting) {
-                    event.preventDefault();
-                    return;
-                }
-                form.dataset.submitting = 'true';
-                form.querySelector('button').disabled = true;
-            });
-            guest.hidden = true;
-            host.append(menu);
+            const next = markup.content.querySelector('[data-customer-entry]');
+            const current = host.querySelector('[data-customer-entry]');
+            if (!next || !current || !['authenticated', 'guest'].includes(next.dataset.customerState)) return;
+            if (next.dataset.customerState === current.dataset.customerState) {
+                // Another tab may rotate CSRF without changing the signed-in state.
+                // Keep the visible UI and update only the token in the existing form.
+                const token = current.querySelector('input[name="_token"]');
+                const freshToken = next.querySelector('input[name="_token"]');
+                if (token && freshToken) token.value = freshToken.value;
+                return;
+            }
+            const restoreFocus = host.contains(document.activeElement);
+            close();
+            current.replaceWith(next);
+            bindMenu();
+            if (restoreFocus) host.querySelector('summary, a')?.focus({ preventScroll: true });
         } catch {
-            // Keep the ordinary login link usable if the private session lookup fails.
+            // A transient lookup failure must not replace the server-rendered state.
         } finally {
             window.clearTimeout(timeout);
             if (pending === controller) pending = null;
@@ -93,16 +101,14 @@ export function initCustomerNavigation() {
         if (event.currentTarget.open) close();
     });
     mobile.addEventListener('change', () => {
+        close();
         if (mobile.matches) refresh();
-        else {
-            pending?.abort();
-            reset();
-        }
+        else pending?.abort();
     });
     window.addEventListener('pagehide', () => {
         pending?.abort();
         pending = null;
-        reset();
+        close();
     });
     window.addEventListener('pageshow', event => {
         if (event.persisted) refresh();
@@ -111,5 +117,5 @@ export function initCustomerNavigation() {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') refresh();
     });
-    refresh();
+    bindMenu();
 }

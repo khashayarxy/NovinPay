@@ -21,7 +21,7 @@ class PreviewAwareSession extends StartSession
             && $request->route('path') === 'api.php'
             && (isset($query['widget_config']) || isset($query['recovery_availability']));
         $this->readOnlyPreview = (($request->isMethod('GET') || $request->isMethod('HEAD'))
-            && $request->routeIs('admin.maintenance.preview', 'admin.maintenance.preview.page', 'support.chat.operator.asset'))
+            && $request->routeIs('admin.maintenance.preview', 'admin.maintenance.preview.page', 'support.chat.operator.asset', 'customer.header'))
             || $publicChatConfiguration;
         try {
             if ($this->readOnlyPreview && $this->sessionConfigured()) {

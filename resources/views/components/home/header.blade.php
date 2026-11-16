@@ -1,4 +1,6 @@
 @php
+    request()->attributes->set('customer_header_rendered', true);
+    $customerAccount = app(\App\Services\CustomerLogin::class)->authenticatedAccount(request());
     $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما'], ['articles.index', 'articles.*', 'مقاله‌ها']];
     $mobileNavigation = [['account.index', 'account.*', 'حساب کاربری'], ['repair.track', 'repair.track*', 'پیگیری تعمیرات'], ['articles.index', 'articles.*', 'مقالات'], $navigation[3]];
     $quickNavigation = match (true) {
@@ -31,7 +33,7 @@
             </details>
         </div>
         <div class="np-customer-header" data-customer-header data-session-url="{{ route('customer.header') }}">
-            <a href="{{ route('account.login') }}" class="np-customer-trigger" data-customer-guest><x-home.icon name="user" />ورود / ثبت‌نام</a>
+            <x-home.customer-entry :account="$customerAccount" />
         </div>
     </div>
     <nav class="np-quick-nav np-container" aria-label="دسترسی سریع">

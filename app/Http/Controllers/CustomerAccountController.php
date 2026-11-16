@@ -51,9 +51,7 @@ class CustomerAccountController extends Controller
 
     public function login(Request $request, CustomerLogin $login)
     {
-        $account = Auth::guard('customer')->user();
-        if ($account && $account->is_active && $account->session_version === $request->session()->get('customer_session_version')
-            && ($account->verified_at || $login->testAllowed($account->phone))) {
+        if ($login->authenticatedAccount($request)) {
             return redirect()->route('account.index');
         }
 
@@ -82,9 +80,7 @@ class CustomerAccountController extends Controller
     /** Read-only reconciliation: never issues SMS, verifies a code or creates a login. */
     public function loginState(Request $request, CustomerLogin $login)
     {
-        $account = Auth::guard('customer')->user();
-        if ($account && $account->is_active && $account->session_version === $request->session()->get('customer_session_version')
-            && ($account->verified_at || $login->testAllowed($account->phone))) {
+        if ($login->authenticatedAccount($request)) {
             return response()->json(['state' => 'authenticated', 'redirect' => route('account.index',
                 $request->boolean('recover') || $request->session()->get('customer_password_offer') ? ['section' => 'security'] : [])]);
         }

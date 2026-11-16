@@ -51,7 +51,7 @@ class CustomerAccountTest extends TestCase
     {
         $this->get('/')->assertOk()->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
         $this->withSession(['_previous' => ['url' => 'http://localhost/products']])
-            ->get('/customer-header')->assertRedirect(route('account.login'))
+            ->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام')
             ->assertHeader('Cache-Control', 'no-store, private')
             ->assertSessionMissing('customer_intended');
         $this->assertSame('http://localhost/products', session('_previous.url'));
@@ -69,27 +69,32 @@ class CustomerAccountTest extends TestCase
             ->assertSee(route('account.index', ['section' => 'orders']), false)
             ->assertDontSee($account->phone)->assertDontSee($account->public_id);
         $this->assertStringContainsString('method="post"', $response->getContent());
-        $this->get('/')->assertOk()->assertDontSee('mobile-customer-navigation')
+        $this->get('/')->assertOk()->assertSee('mobile-customer-navigation')->assertDontSee('ورود / ثبت‌نام')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('X-LiteSpeed-Cache-Control', 'no-cache')
             ->assertDontSee($account->phone)->assertDontSee($account->public_id);
         $this->post('/account/logout')->assertRedirect('/login');
         $this->assertGuest('customer');
-        $this->get('/customer-header')->assertRedirect(route('account.login'));
+        $this->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام');
         $this->assertDatabaseHas('customer_accounts', ['id' => $account->id]);
     }
 
     public function test_mobile_header_rejects_revoked_or_disabled_customer_sessions_and_admin_only_login(): void
     {
         $admin = User::factory()->superAdmin()->create();
-        $this->actingAs($admin, 'web')->get('/customer-header')->assertRedirect(route('account.login'));
+        $this->actingAs($admin, 'web')->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام');
         $this->assertAuthenticatedAs($admin, 'web');
 
         $account = $this->loginCustomer();
         $this->withSession(['customer_session_version' => $account->session_version + 1])
-            ->get('/customer-header')->assertRedirect(route('account.login'));
+            ->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
+        $this->get('/')->assertOk()->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
+        $this->get('/account')->assertRedirect(route('account.login'));
         $this->assertGuest('customer');
         $account->forceFill(['is_active' => false])->save();
         $this->actingAs($account, 'customer')->withSession(['customer_session_version' => $account->session_version])
-            ->get('/customer-header')->assertRedirect(route('account.login'));
+            ->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
+        $this->get('/account')->assertRedirect(route('account.login'));
         $this->assertGuest('customer');
     }
 
@@ -102,6 +107,40 @@ class CustomerAccountTest extends TestCase
         $this->assertAuthenticatedAs($account, 'customer');
         $this->post('/account/logout', ['_token' => session()->token()])->assertRedirect('/login');
         $this->assertGuest('customer');
+    }
+
+    public function test_customer_header_initial_html_tracks_password_login_refresh_navigation_and_logout(): void
+    {
+        Http::preventStrayRequests();
+        config(['customer.ippanel.enabled' => false]);
+        $account = CustomerAccount::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000000'),
+            'phone' => '09000000000',
+            'password' => Hash::make('synthetic-header-passphrase'),
+            'verified_at' => now(),
+        ]);
+        $this->get('/')->assertOk()->assertSee('data-customer-state="guest"', false)
+            ->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('X-LiteSpeed-Cache-Control', 'no-cache');
+        $this->post('/account/start', ['phone' => $account->phone])->assertRedirect();
+        $this->post('/account/password-login', ['password' => 'synthetic-header-passphrase'])->assertRedirect('/account');
+
+        foreach (['/', '/products', '/contact', '/', '/products'] as $path) {
+            Auth::forgetGuards();
+            $this->withHeaders(['Cache-Control' => 'no-cache'])->get($path)->assertOk()
+                ->assertSee('data-customer-state="authenticated"', false)
+                ->assertSee('mobile-customer-navigation')->assertDontSee('ورود / ثبت‌نام')
+                ->assertHeader('Cache-Control', 'no-store, private')
+                ->assertHeader('X-LiteSpeed-Cache-Control', 'no-cache')
+                ->assertDontSee($account->phone)->assertDontSee($account->public_id);
+        }
+        $this->post('/account/logout')->assertRedirect('/login');
+        Auth::forgetGuards();
+        $this->get('/')->assertOk()->assertSee('data-customer-state="guest"', false)
+            ->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
+        $this->assertDatabaseHas('customer_accounts', ['id' => $account->id]);
     }
 
     public function test_disabled_sms_never_makes_external_requests(): void

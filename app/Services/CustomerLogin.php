@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\CustomerAccount;
 use App\Support\RepairIdentity;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -23,6 +25,18 @@ class CustomerLogin
     private const DAILY_SMS_LIMIT = 15;
 
     private const DAILY_SMS_SECONDS = 86400;
+
+    public function authenticatedAccount(Request $request): ?CustomerAccount
+    {
+        if (! $request->hasSession()) {
+            return null;
+        }
+        $account = Auth::guard('customer')->user();
+
+        return $account && $account->is_active
+            && $account->session_version === $request->session()->get('customer_session_version')
+            && ($account->verified_at || $this->testAllowed($account->phone)) ? $account : null;
+    }
 
     public function testAllowed(string $phone): bool
     {
