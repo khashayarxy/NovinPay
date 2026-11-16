@@ -57,9 +57,9 @@
                 <p class="np-location__notice"><x-home.icon name="phone" />لطفاً پیش از مراجعه حضوری، تماس بگیرید.</p>
                 <p class="np-location__hours"><x-business-hours /></p>
                 <nav class="np-location__maps" aria-label="مسیریابی فروشگاه">
-                    @foreach (['Google Maps' => 'google-maps.svg', 'نشان' => 'neshan.png', 'بلد' => 'balad.png'] as $label => $icon)
+                    @foreach (['Google Maps' => ['google-maps-2026.png', 18, 23, 'google'], 'نشان' => ['neshan.svg', 22, 23, 'neshan'], 'بلد' => ['balad.svg', 16, 16, 'balad']] as $label => $icon)
                         <a href="{{ config('business.maps')[$label] }}" target="_blank" rel="noopener noreferrer">
-                            <img @class(['np-map-brand-icon', 'np-map-brand-icon--balad' => $label === 'بلد']) src="{{ asset('brand/maps/'.$icon) }}" width="{{ $label === 'بلد' ? 16 : 20 }}" height="{{ $label === 'بلد' ? 16 : 20 }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+                            <img class="np-map-brand-icon np-map-brand-icon--{{ $icon[3] }}" src="{{ asset('brand/maps/'.$icon[0]) }}" width="{{ $icon[1] }}" height="{{ $icon[2] }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
                             <bdi>{{ $label === 'Google Maps' ? 'گوگل مپ' : $label }}</bdi><span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span>
                         </a>
                     @endforeach

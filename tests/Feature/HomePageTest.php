@@ -282,20 +282,42 @@ class HomePageTest extends TestCase
         $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"مشاهده در نقشه")]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*[local-name()="svg"]')->length);
         $this->assertSame(3, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@alt="" and @aria-hidden="true"]')->length);
-        foreach (['google-maps.svg', 'neshan.png', 'balad.png'] as $icon) {
+        foreach (['google-maps-2026.png' => ['18', '23'], 'neshan.svg' => ['22', '23'], 'balad.svg' => ['16', '16']] as $icon => $dimensions) {
             $this->assertFileExists(public_path('brand/maps/'.$icon));
             $image = $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon).'"]')->item(0);
-            $this->assertSame($icon === 'balad.png' ? '16' : '20', $image->getAttribute('width'));
-            $this->assertSame($image->getAttribute('width'), $image->getAttribute('height'));
+            $this->assertSame($dimensions[0], $image->getAttribute('width'));
+            $this->assertSame($dimensions[1], $image->getAttribute('height'));
             $this->assertSame(1, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon).'"]')->length);
         }
         $this->assertSame(0, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//span[@class="np-icon"]')->length);
-        $this->assertSame('ff5a594e18afd5146a5eace127edbbd7796ac1886542dc72423722a42bfc699d', hash_file('sha256', public_path('brand/maps/google-maps.svg')));
+        $this->assertSame('8a61a28baa07584890df7d46bc6bd85ee4d15d6716f4067bd96d1fca37f10f87', hash_file('sha256', public_path('brand/maps/google-maps-2026.png')));
         $this->assertStringNotContainsString('باز کردن در نشان', $document->textContent);
         $this->assertSame(1, $xpath->query('//*[@data-map-viewport]//*[@data-map-placeholder]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*')->length);
         $this->assertSame(1, $xpath->query('//*[@data-map-viewport]/div[contains(@class,"np-map-preview__action")]/button[@data-map-activate]')->length);
         $this->assertSame(0, $xpath->query('//*[@id="address-copy-status"]')->length);
+    }
+
+    public function test_supplied_navigation_vectors_preserve_the_artwork_without_active_content(): void
+    {
+        foreach ([
+            'neshan.svg' => ['414644c5b95c91e3b97ea15dea0a7229b14653400412a7b374a4fef3d6be4ac2', ' viewBox="0 0 500 516"'],
+            'balad.svg' => ['da6f7470619175bc57daae0bcace6f0011f0a1612411aa450684ef3c7af0dfaf', ''],
+        ] as $file => [$sourceHash, $addedCanvas]) {
+            $bytes = file_get_contents(public_path('brand/maps/'.$file));
+            $original = $addedCanvas === '' ? $bytes : str_replace($addedCanvas, '', $bytes);
+            $this->assertSame($sourceHash, hash('sha256', $original));
+            $document = new DOMDocument;
+            $this->assertTrue($document->loadXML($bytes, LIBXML_NONET));
+            $this->assertSame('http://www.w3.org/2000/svg', $document->documentElement->namespaceURI);
+            $this->assertNotSame('', $document->documentElement->getAttribute('viewBox'));
+            $xpath = new DOMXPath($document);
+            $this->assertSame(0, $xpath->query('//*[local-name()="script" or local-name()="foreignObject" or local-name()="image"] | //@*[starts-with(local-name(),"on") or local-name()="href"]')->length);
+        }
+        $png = file_get_contents(public_path('brand/maps/google-maps-2026.png'));
+        $this->assertSame("\x89PNG\r\n\x1a\n", substr($png, 0, 8));
+        $this->assertSame(['width' => 138, 'height' => 176], unpack('Nwidth/Nheight', substr($png, 16, 8)));
+        $this->assertSame(6, ord($png[25])); // RGBA: the supplied transparency is retained.
     }
 
     public function test_public_pages_share_homepage_chrome_while_admin_remains_separate(): void
