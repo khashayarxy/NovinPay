@@ -64,7 +64,7 @@
 .np-location__maps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 11px; }
 .np-location__maps a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; border: 1px solid #d5e4f7; border-radius: 9px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--color-brand-700); }
 .np-location__maps a:hover { background: #eff7ff; }
-.np-location__maps .np-icon, .np-location__maps .np-map-brand-icon { flex: 0 0 20px; width: 20px; height: 20px; object-fit: contain; }
+.np-location__maps .np-map-brand-icon { flex: 0 0 20px; width: 20px; height: 20px; object-fit: contain; }
 .np-location__maps .np-map-brand-icon--balad { flex-basis: 16px; width: 16px; height: 16px; }
 
 @media (max-width: 1100px) {

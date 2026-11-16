@@ -281,15 +281,16 @@ class HomePageTest extends TestCase
         $this->assertStringContainsString('لطفاً پیش از مراجعه حضوری، تماس بگیرید.', $copy->textContent);
         $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"مشاهده در نقشه")]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*[local-name()="svg"]')->length);
-        $this->assertSame(2, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@alt="" and @aria-hidden="true"]')->length);
-        foreach (['neshan', 'balad'] as $icon) {
-            $this->assertFileExists(public_path('brand/maps/'.$icon.'.png'));
-            $image = $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon.'.png').'"]')->item(0);
-            $this->assertSame($icon === 'balad' ? '16' : '20', $image->getAttribute('width'));
+        $this->assertSame(3, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@alt="" and @aria-hidden="true"]')->length);
+        foreach (['google-maps.svg', 'neshan.png', 'balad.png'] as $icon) {
+            $this->assertFileExists(public_path('brand/maps/'.$icon));
+            $image = $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon).'"]')->item(0);
+            $this->assertSame($icon === 'balad.png' ? '16' : '20', $image->getAttribute('width'));
             $this->assertSame($image->getAttribute('width'), $image->getAttribute('height'));
-            $this->assertSame(1, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon.'.png').'"]')->length);
+            $this->assertSame(1, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon).'"]')->length);
         }
-        $this->assertSame(1, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]/a[1]/span[@class="np-icon" and @aria-hidden="true"]')->length);
+        $this->assertSame(0, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//span[@class="np-icon"]')->length);
+        $this->assertSame('ff5a594e18afd5146a5eace127edbbd7796ac1886542dc72423722a42bfc699d', hash_file('sha256', public_path('brand/maps/google-maps.svg')));
         $this->assertStringNotContainsString('باز کردن در نشان', $document->textContent);
         $this->assertSame(1, $xpath->query('//*[@data-map-viewport]//*[@data-map-placeholder]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*')->length);
