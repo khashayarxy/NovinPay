@@ -39,7 +39,24 @@
                     </select>
                 </div>
 
-                <div class="flex gap-2">
+                <div>
+                    <label class="label" for="condition">وضعیت کالا</label>
+                    <select class="input" name="condition" id="condition">
+                        <option value="">همه وضعیت‌ها</option>
+                        @foreach (\App\Enums\ProductCondition::cases() as $item)
+                            <option value="{{ $item->value }}" @selected($condition === $item->value)>{{ $item->label() }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="label" for="sort">مرتب‌سازی</label>
+                    <select class="input" name="sort" id="sort">
+                        <option value="">تازه‌ترین</option>
+                        <option value="price-low" @selected($sort === 'price-low')>ارزان‌ترین</option>
+                        <option value="price-high" @selected($sort === 'price-high')>گران‌ترین</option>
+                    </select>
+                </div>
+                <div class="flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-primary">اعمال فیلتر</button>
                     <a href="{{ route('products.index') }}" class="btn btn-secondary">پاک کردن</a>
                 </div>
@@ -74,11 +91,28 @@
                     </x-empty-state>
                 @endif
             @else
-                <div class="public-product-grid">
-                    @foreach ($products as $product)
-                        <x-product-card :product="$product" />
-                    @endforeach
-                </div>
+                <form action="{{ route('products.compare') }}" method="get">
+                    @php($canCompare = $products->getCollection()->where('is_sample', false)->count() > 1)
+                    @if ($canCompare)
+                        <div class="mb-4 flex flex-wrap items-center gap-3">
+                            <button class="btn btn-secondary" type="submit">مقایسهٔ انتخاب‌ها</button>
+                            <p class="text-sm text-slate-600">۲ تا ۴ محصول را انتخاب کنید.</p>
+                        </div>
+                    @endif
+                    <div class="public-product-grid">
+                        @foreach ($products as $product)
+                            <div class="flex flex-col">
+                                <x-product-card :product="$product" :sale="$sales[$product->id]" />
+                                @if ($canCompare && !$product->is_sample)
+                                    <label class="flex items-center gap-2 p-3 text-sm">
+                                        <input type="checkbox" name="products[]" value="{{ $product->slug }}" aria-label="مقایسهٔ {{ $product->name }}">
+                                        انتخاب برای مقایسه
+                                    </label>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </form>
 
                 @if ($products->hasPages())
                     <div class="mt-10">

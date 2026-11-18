@@ -10,6 +10,7 @@ use App\Models\SalesOrder;
 use App\Models\SalesOrderEvent;
 use App\Models\SalesOrderLine;
 use App\Support\OrderMoney;
+use App\Support\ProductSale;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -17,15 +18,32 @@ class StoreCheckout
 {
     public function offer(Product $product, bool $lock = false): ?InventoryItem
     {
-        if (! $product->is_published || $product->is_sample || ! $product->price || $product->price <= 0
-            || $product->price > OrderMoney::MAX_UNIT_MAJOR || $product->stock_status->value === 'out_of_stock') {
+        if (! ProductSale::permitsInventoryCheck($product)) {
             return null;
         }
-        $query = InventoryItem::query()->where('product_id', $product->id)->where('condition', $product->condition->value)->orderBy('id');
-        $items = ($lock ? $query->lockForUpdate() : $query)->get();
+
+        return $this->availableStock($product, $lock);
+    }
+
+    public function availableStock(Product $product, bool $lock = false): ?InventoryItem
+    {
+        $item = $this->confirmedInventory($product, $lock);
+
+        return $item && $item->available > 0 ? $item : null;
+    }
+
+    public function confirmedInventory(Product $product, bool $lock = false): ?InventoryItem
+    {
+        if (! $product->stock_status->permitsCheckout()) {
+            return null;
+        }
+        $query = $product->inventoryItems()->where('condition', $product->condition->value)->orderBy('id');
+        $items = ! $lock && $product->relationLoaded('inventoryItems')
+            ? $product->inventoryItems->where('condition', $product->condition->value)
+            : ($lock ? $query->lockForUpdate() : $query)->get();
 
         // Ambiguous catalogue/SKU mapping is not an invitation to choose arbitrary stock.
-        return $items->count() === 1 && $items->first()->available > 0 ? $items->first() : null;
+        return $items->count() === 1 ? $items->first() : null;
     }
 
     public function create(CustomerAccount $account, array $cart, string $key): SalesOrder

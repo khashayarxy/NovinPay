@@ -1,106 +1,153 @@
 @extends('layouts.app')
+@section('title', e($product->product_details['seo_title'] ?? $product->name))
+@section('meta_description', e($product->product_details['seo_description'] ?? \Illuminate\Support\Str::limit(strip_tags($product->summary ?? $product->description ?? ''), 150)))
+@section('premium-storefront', '1')
 
-@section('title', e($product->name))
-@section('meta_description', e(\Illuminate\Support\Str::limit(strip_tags($product->summary ?? $product->description ?? ''), 150)))
+@push('page-head')
+    <link rel="stylesheet" href="{{ asset('css/product-experience.css?v=5') }}">
+    <link rel="stylesheet" href="{{ asset('css/storefront-premium.css?v=10') }}">
+    <script src="{{ asset('js/storefront-premium.js?v=8') }}" defer></script>
+    <script src="{{ asset('js/product-gallery.js?v=10') }}" defer></script>
+@endpush
 
 @section('content')
-    <div class="np-container public-section public-product-detail">
-        <nav aria-label="مسیر صفحه" class="text-sm text-slate-500">
-            <ol class="flex flex-wrap items-center gap-2">
-                <li><a href="{{ route('home') }}" class="hover:text-brand-700">خانه</a></li>
-                <li aria-hidden="true">/</li>
-                <li><a href="{{ route('products.index') }}" class="hover:text-brand-700">فروشگاه</a></li>
-                <li aria-hidden="true">/</li>
-                <li class="text-slate-700">{{ $product->name }}</li>
-            </ol>
-        </nav>
+    @php
+        $details = $product->product_details ?? [];
+        $isTerminal = $product->category === \App\Enums\ProductCategory::PosTerminal;
+        $content = $details['content'] ?? [];
+        $images = array_values(array_filter([$product->primaryImage(), ...$product->galleryImages()]));
+        $specRows = [];
+        foreach (\App\Models\Product::SPEC_GROUPS as $key => $heading) {
+            $specRows[$key] = \App\Models\Product::specificationRows($details['groups'][$key] ?? null);
+        }
+        $publicSpecLabel = static fn (string $label) => match ($label) {
+            'شبکهٔ سلولی در کاتالوگ', 'شبکه سلولی در کاتالوگ' => 'شبکه‌های ارتباطی مدل',
+            'باتری اسمیِ مدل', 'باتری اسمی مدل' => 'باتری مدل (ظرفیت اسمی)',
+            'کارت‌خوان در کاتالوگ', 'کارتخوان در کاتالوگ' => 'روش‌های خواندن کارت در این مدل',
+            'عرض کاغذ' => 'عرض کاغذ رسید',
+            'قطر رول' => 'قطر رول کاغذ',
+            default => $label,
+        };
+        $serviceRows = $specRows['services'];
+        unset($specRows['services']);
+        $highlights = \App\Models\Product::specificationRows($details['key_features'] ?? null);
+        $keyRows = array_slice($highlights ?: [...$specRows['display'], ...$specRows['printer'], ...$specRows['physical']], 0, 10);
+        $hasSpecs = $highlights || $product->specifications || array_filter($specRows);
 
-        <div class="mt-6 grid gap-8 lg:grid-cols-2 public-product-overview">
-            <div class="card overflow-hidden">
-                <div class="aspect-square bg-slate-100">
-                    <x-product-image :product="$product" />
-                </div>
-                @unless ($product->image_path)
-                    <p class="border-t border-slate-100 px-4 py-3 text-center text-xs text-slate-500">
-                        تصویر واقعی کالا هنوز ثبت نشده است.
-                    </p>
-                @endunless
+        $knownPrice = \App\Support\ProductSale::priceConfirmed($product);
+        $hasDisplayPrice = $knownPrice || ($product->is_sample && $product->price !== null);
+        $formattedPrice = $hasDisplayPrice ? \App\Support\FaNumber::digits(number_format($product->price, 0, '.', '٬')) : null;
+        $priceDate = $knownPrice ? \App\Support\FinanceTime::persianDate($product->price_changed_at) : null;
+        $inquiry = $sale->contactAction() && !$product->is_sample;
+        $warranty = $product->warranty_months > 0 ? \App\Support\FaNumber::digits($product->warranty_months).' ماه گارانتی' : null;
+        $warrantyProvider = config('business.product_warranty_providers.'.$product->slug);
+        $benefits = preg_split('/\R/u', trim($content['advantages'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+
+        $intro = trim($product->description ?: ($product->summary ?? ''));
+        $faq = trim($content['faq'] ?? '');
+        $editorial = [];
+        foreach ([
+            'کاربرد و روش استفاده' => ['uses', 'design', 'printer'],
+            'اتصال و شارژدهی' => ['requirements', 'battery'],
+            'نکات پیش از خرید' => $canAddToCart || $inquiry ? ['limitations', 'purchase'] : ['limitations'],
+            'خدمات پس از خرید' => ['services'],
+        ] as $heading => $keys) {
+            foreach ($keys as $key) {
+                $copy = trim($content[$key] ?? '');
+                if ($copy !== '') {
+                    $editorial[$heading][] = $copy;
+                }
+            }
+        }
+
+        $sections = array_filter([
+            'product-description' => $intro !== '' || $editorial ? 'معرفی محصول' : null,
+            'product-specs' => $hasSpecs ? 'مشخصات فنی' : null,
+            'product-review' => !$product->is_sample ? 'دیدگاه‌ها' : null,
+            'product-faq' => $faq !== '' ? 'پرسش‌های متداول' : null,
+            'product-related' => $related->isNotEmpty() ? 'محصولات مرتبط' : null,
+        ]);
+        $hasSectionNav = count($sections) > 1;
+    @endphp
+    <div class="storefront-content">
+        <nav class="breadcrumb" aria-label="مسیر صفحه"><a href="{{ route('home') }}">خانه</a><span aria-hidden="true">/</span><a href="{{ route('products.index') }}">فروشگاه</a><span aria-hidden="true">/</span><span aria-current="page">{{ $product->name }}</span></nav>
+        <div class="product-layout">
+            @include('products._gallery')
+            <div class="product-overview">
+                <section class="identity card" aria-labelledby="product-title">
+                    <div class="identity-top">
+                        <span @class(['used', 'is-new' => $product->condition === \App\Enums\ProductCondition::New])>{{ $product->condition->label() }}</span>
+                        @if ($product->is_sample)<span class="badge badge-sample">داده نمونه</span>@endif
+                    </div>
+                    <h1 id="product-title">{{ $product->name }}</h1>
+                    @if ($product->model && !str_contains($product->name, $product->model))<p class="model"><bdi>{{ $product->model }}</bdi></p>@endif
+                    @include('products._colors')
+                </section>
+                @if ($keyRows)<div class="key-mobile card">@include('products._premium-key-specs')</div>@endif
             </div>
-
-            <div>
-                <div class="flex flex-wrap gap-2">
-                    <span class="badge {{ $product->condition->value === 'new' ? 'badge-success' : 'badge-warning' }}">
-                        وضعیت: {{ $product->condition->label() }}
-                    </span>
-                    <span
-                        class="badge {{ $product->stock_status->value === 'out_of_stock' ? 'badge-warning' : 'badge-success' }}">
-                        {{ $product->stock_status->label() }}
-                    </span>
-                    <span class="badge badge-neutral">{{ $product->category->label() }}</span>
-                    @if ($product->is_sample)
-                        <span class="badge badge-sample">داده نمونه</span>
+            <div class="purchase-column" data-purchase-column>@include('products._purchase')</div>
+            @if ($sections)
+                <div class="reading">
+                    @if ($hasSectionNav)
+                        <nav class="section-nav card" aria-label="بخش‌های محصول" data-product-sections>
+                            @foreach ($sections as $id => $label)<a href="#{{ $id }}">{{ $label }}</a>@endforeach
+                        </nav>
                     @endif
+                    @if (isset($sections['product-description']))
+                        <section class="article card product-editorial" id="product-description" aria-labelledby="description-heading">
+                            <h2 id="description-heading">معرفی محصول</h2>
+                            @if ($intro !== '')
+                                <div class="product-editorial-lead">@include('products._paragraphs', ['copy' => $intro])</div>
+                            @endif
+                            @if ($editorial)
+                                <div class="product-editorial-grid">
+                                    @foreach ($editorial as $heading => $paragraphs)
+                                        <div>
+                                            <h3>{{ $heading }}</h3>
+                                            @foreach ($paragraphs as $paragraph)
+                                                @include('products._paragraphs', ['copy' => $paragraph])
+                                            @endforeach
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </section>
+                    @endif
+                    @if ($hasSpecs)
+                        <section class="technical card" id="product-specs" aria-labelledby="specs-heading">
+                            <h2 id="specs-heading">مشخصات فنی</h2>
+                            @include('products._specs')
+                        </section>
+                    @endif
+                    @unless ($product->is_sample)@include('products._feedback')@endunless
+                    @if ($faq !== '')@include('products._faq', ['copy' => $faq])@endif
                 </div>
-
-                <h1 class="mt-4 text-2xl font-bold leading-9 tracking-tight break-words sm:text-3xl">{{ $product->name }}</h1>
-
-                @if ($product->summary)
-                    <p class="mt-3 text-sm leading-8 text-slate-600 sm:text-base">{{ $product->summary }}</p>
-                @endif
-
-                @if(app(\App\Services\StoreCheckout::class)->offer($product))<form class="mt-6 flex flex-wrap gap-3 items-end" method="post" action="{{ route('cart.add',$product) }}">@csrf<div><label class="label" for="store-quantity">تعداد</label><input class="input" id="store-quantity" type="number" name="quantity" value="1" min="1" max="10" required></div><button class="btn btn-primary">افزودن به سبد خرید</button><a class="public-inline-link" href="{{ route('cart.index') }}">مشاهدهٔ سبد</a></form>@endif
-                <div class="mt-6 rounded-xl border border-slate-200 bg-white p-5">
-                    <p class="text-xs text-slate-500">قیمت</p>
-                    <p class="mt-1 text-2xl font-bold text-slate-900">
-                        @if ($product->price !== null)
-                            {{ \App\Support\FaNumber::digits(number_format($product->price)) }}
-                            <span class="text-sm font-normal text-slate-500">تومان</span>
-                        @else
-                            <span class="text-base font-semibold text-slate-700">تماس بگیرید</span>
-                        @endif
-                    </p>
-                    <p class="mt-3 text-xs leading-6 text-slate-500">
-                        @if(app(\App\Services\StoreCheckout::class)->offer($product)) قیمت و موجودی هنگام ثبت سفارش دوباره بررسی می‌شوند. @else برای استعلام موجودی و شرایط خرید با ما تماس بگیرید. @endif
-                    </p>
-                </div>
-
-                @if ($product->is_sample)
-                    <p class="mt-4 rounded-lg border border-dashed border-sky-300 bg-sky-50 px-4 py-3 text-xs leading-6 text-sky-800">
-                        این کالا نمونهٔ نمایشی است. قیمت و موجودی آن واقعی نیست.
-                    </p>
-                @endif
-
-                <div class="mt-6 flex flex-wrap gap-3 public-actions">
-                    <a href="{{ config('business.phone_uri') }}" class="btn btn-primary"><x-home.icon name="phone" /> تماس برای قیمت و موجودی</a>
-                    <a href="{{ route('contact') }}" class="btn btn-secondary">راهنمای خرید</a>
-                    <a href="{{ route('repair') }}" class="btn btn-secondary">ثبت درخواست تعمیر</a>
-                </div>
-            </div>
+            @endif
         </div>
-
-        <div class="mt-12 grid gap-8 lg:grid-cols-2">
-            <section class="card p-6" aria-labelledby="description-heading">
-                <h2 id="description-heading" class="text-lg font-semibold">توضیحات</h2>
-                <div class="prose-persian mt-4 text-sm">
-                    {!! nl2br(e($product->description ?: 'توضیحاتی برای این کالا ثبت نشده است.')) !!}
-                </div>
-            </section>
-
-            <section class="card p-6" aria-labelledby="specs-heading">
-                <h2 id="specs-heading" class="text-lg font-semibold">مشخصات فنی</h2>
-                @if ($product->specifications && count($product->specifications) > 0)
-                    <dl class="mt-4 divide-y divide-slate-100 text-sm public-specifications">
-                        @foreach ($product->specifications as $label => $value)
-                            <div class="flex items-start justify-between gap-4 py-3">
-                                <dt class="text-slate-500">{{ $label }}</dt>
-                                <dd class="text-start font-medium text-slate-800">{{ $value }}</dd>
-                            </div>
-                        @endforeach
-                    </dl>
+        @if ($related->isNotEmpty() || ($isTerminal && !$product->is_sample))
+            <section class="related card" id="product-related" aria-labelledby="related-heading">
+                <h2 id="related-heading">{{ $isTerminal ? 'کارتخوان‌های دیگر '.config('business.name') : 'محصولات مرتبط' }}</h2>
+                @if ($related->isNotEmpty())
+                    <div class="public-product-grid">@foreach ($related as $item)<x-product-card :product="$item" :sale="$relatedSales[$item->id]" />@endforeach</div>
                 @else
-                    <p class="mt-4 text-sm text-slate-600">مشخصات فنی برای این کالا ثبت نشده است.</p>
+                    <p class="related-empty">محصول مشابهی برای نمایش وجود ندارد.</p>
+                    <a class="public-inline-link" href="{{ route('products.index', ['category' => $product->category->value]) }}">مشاهدهٔ همهٔ {{ $product->category->label() }}</a>
                 @endif
             </section>
-        </div>
+        @elseif (!$product->is_sample)
+            <div class="mt-4">
+                <a class="public-inline-link" href="{{ route('products.index', ['category' => $product->category->value]) }}">مشاهدهٔ همهٔ {{ $product->category->label() }}</a>
+            </div>
+        @endif
     </div>
+    @if ($inquiry || $canAddToCart)
+        <div class="sticky-contact" data-product-dock hidden>
+            <p class="price">@if ($formattedPrice !== null)<bdi>{{ $formattedPrice }}</bdi> <small>تومان</small>@else<small>قیمت نیاز به استعلام دارد</small>@endif</p>
+            @if ($canAddToCart)
+                <button class="primary" type="submit" form="product-cart-form"><x-storefront.icon name="cart" />{{ $sale->label() }}</button>
+            @else
+                <a class="primary" href="{{ config('business.phone_uri') }}"><x-storefront.icon name="phone" />{{ $sale->label() }}</a>
+            @endif
+        </div>
+    @endif
 @endsection

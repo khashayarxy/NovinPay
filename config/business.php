@@ -2,6 +2,10 @@
 
 return [
     'name' => 'نوین‌پی',
+    'product_warranty_providers' => [
+        'newland-me31-black' => 'نوین‌پی',
+    ],
+    'public_url' => 'https://novinpaypos.com',
     'phone' => '09362896373',
     'phone_uri' => 'tel:09362896373',
     'secondary_phone' => '09384144021',

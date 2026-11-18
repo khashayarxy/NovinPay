@@ -13,6 +13,10 @@ class AddSecurityHeaders
     {
         $response = $next($request);
 
+        if ($request->getHost() === 'novinpaypos.test') {
+            $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+        }
+
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', $response->headers->get('X-Frame-Options') === 'DENY' ? 'DENY' : 'SAMEORIGIN');
         if (! $response->headers->has('Referrer-Policy')) {

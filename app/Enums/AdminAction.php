@@ -22,7 +22,10 @@ enum AdminAction: string
     case Logout = 'security.logout';
     case ProductCreated = 'product.created';
     case ProductUpdated = 'product.updated';
+    case ProductPriceChanged = 'product.price_changed';
+    case ProductPriceDateRecorded = 'product.price_date_recorded';
     case ProductDeleted = 'product.deleted';
+    case ProductFeedbackModerated = 'product.feedback-moderated';
     case RepairCustomerViewed = 'repair.customer_data_viewed';
     case RepairIntake = 'repair.intake';
     case RepairAssigned = 'repair.assigned';
@@ -78,7 +81,10 @@ enum AdminAction: string
             self::Logout => 'خروج از مدیریت',
             self::ProductCreated => 'ایجاد محصول',
             self::ProductUpdated => 'ویرایش محصول',
+            self::ProductPriceChanged => 'تغییر قیمت محصول',
+            self::ProductPriceDateRecorded => 'ثبت تاریخ مستند قیمت محصول',
             self::ProductDeleted => 'حذف محصول',
+            self::ProductFeedbackModerated => 'بررسی دیدگاه یا پرسش محصول',
             self::RepairCustomerViewed => 'مشاهدهٔ اطلاعات شخصی درخواست تعمیر',
             self::RepairIntake => 'پذیرش فیزیکی دستگاه', self::RepairAssigned => 'تغییر تخصیص تکنسین',
             self::RepairTransition => 'تغییر مرحلهٔ عملیاتی تعمیر', self::RepairInspection => 'ثبت بررسی فنی',

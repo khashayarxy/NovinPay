@@ -65,16 +65,19 @@ class PublicPerformanceSeoTest extends TestCase
             ->assertDontSee('property="og:url"', false)->assertSee('noindex, nofollow');
     }
 
-    public function test_product_schema_escapes_markup_and_never_fabricates_offers_or_indexes_samples(): void
+    public function test_product_schema_converts_tomans_to_rials_without_claiming_unverified_availability(): void
     {
         $product = Product::create([
             'name' => 'دستگاه </script><script>alert(1)</script>', 'slug' => 'schema-product',
             'summary' => 'توضیحات واقعی', 'category' => ProductCategory::PosTerminal,
-            'condition' => ProductCondition::New, 'stock_status' => StockStatus::InStock,
-            'is_published' => true, 'is_sample' => false, 'price' => 100000,
+            'condition' => ProductCondition::Used, 'stock_status' => StockStatus::Unverified,
+            'is_published' => true, 'is_sample' => false, 'price' => 10_500_000,
         ]);
         $doc = new DOMDocument;
-        @$doc->loadHTML('<?xml encoding="UTF-8">'.$this->get('/products/'.$product->slug)->assertOk()->getContent());
+        $response = $this->get('/products/'.$product->slug)->assertOk()
+            ->assertSee('۱۰٬۵۰۰٬۰۰۰')->assertSee('استوک')->assertSee('موجودی تأیید نشده')
+            ->assertDontSee('افزودن به سبد خرید');
+        @$doc->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($doc);
         $scripts = $xpath->query('//script[@type="application/ld+json"]');
         $this->assertSame(1, $scripts->length);
@@ -85,8 +88,16 @@ class PublicPerformanceSeoTest extends TestCase
         $this->assertSame($product->name, $schema['@graph'][0]['name']);
         $this->assertSame('BreadcrumbList', $schema['@graph'][1]['@type']);
         $this->assertStringNotContainsString('</script>', $json);
-        $this->assertArrayNotHasKey('offers', $schema['@graph'][0]);
+        $this->assertSame('https://schema.org/UsedCondition', $schema['@graph'][0]['itemCondition']);
+        $offer = $schema['@graph'][0]['offers'];
+        $this->assertSame('Offer', $offer['@type']);
+        $this->assertSame(105_000_000, $offer['price']);
+        $this->assertSame('IRR', $offer['priceCurrency']);
+        $this->assertSame('https://schema.org/UsedCondition', $offer['itemCondition']);
+        $this->assertArrayNotHasKey('availability', $offer);
         $this->assertArrayNotHasKey('aggregateRating', $schema['@graph'][0]);
+        $product->update(['price' => null]);
+        $this->get('/products/'.$product->slug)->assertOk()->assertDontSee('"offers"', false);
         $product->update(['is_sample' => true]);
         $this->get('/products/'.$product->slug)->assertOk()->assertDontSee('application/ld+json', false)->assertSee('noindex, follow');
         $product->update(['is_published' => false]);

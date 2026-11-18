@@ -55,7 +55,7 @@ class ProductCatalogTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('دستگاه کارتخوان نمونه');
-        $response->assertSee('۱,۲۰۰,۰۰۰');
+        $response->assertSee('۱٬۲۰۰٬۰۰۰');
         $response->assertSee('موجود');
         $response->assertSee('نو');
         $response->assertSee('داده نمونه');
@@ -303,7 +303,7 @@ class ProductCatalogTest extends TestCase
         $response->assertOk();
         $response->assertSee('استوک');
         $response->assertSee('ناموجود');
-        $response->assertSee('تماس بگیرید');
+        $response->assertSee('قیمت اعلام نشده')->assertDontSee('استعلام قیمت');
     }
 
     public function test_sample_seeder_creates_clearly_labelled_rows(): void

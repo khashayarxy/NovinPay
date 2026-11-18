@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Admin\ProductFeedbackController;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
 use App\Models\CustomerAddress;
@@ -12,6 +13,7 @@ use App\Models\InventoryItem;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentReceipt;
 use App\Models\Product;
+use App\Models\ProductFeedback;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\User;
@@ -20,6 +22,7 @@ use App\Services\CustomerNotifications;
 use App\Services\DeliveryManagement;
 use App\Services\FinancialOperations;
 use App\Services\PaymentReview;
+use App\Services\ProductPurchaseVerification;
 use App\Services\StoreCheckout;
 use App\Services\ZibalPayments;
 use App\Support\RepairIdentity;
@@ -547,11 +550,25 @@ class SharedPaymentsTest extends TestCase
         $product->save();
         $key = (string) Str::uuid();
         $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $product->update(['online_purchasing_enabled' => false]);
+        $this->get(route('products.show', $product))->assertOk()->assertSee('هماهنگی خرید')
+            ->assertDontSee('افزودن به سبد خرید')->assertDontSee('موجودی تأیید نشده');
+        $this->post(route('cart.add', $product), ['quantity' => 1])->assertConflict();
+        $product->update(['online_purchasing_enabled' => true]);
+        $product->update(['product_details' => ['sale_paused' => true]]);
+        $this->get(route('products.show', $product))->assertOk()->assertSee('فروش موقتاً متوقف است')
+            ->assertDontSee('افزودن به سبد خرید')->assertDontSee('هماهنگی خرید');
+        $this->post(route('cart.add', $product), ['quantity' => 1])->assertConflict();
+        $product->update(['product_details' => ['sale_paused' => false], 'price' => null]);
+        $this->get(route('products.show', $product))->assertOk()->assertSee('استعلام قیمت')
+            ->assertDontSee('موجودی تأیید نشده')->assertDontSee('افزودن به سبد خرید');
+        $product->update(['price' => 10000]);
         $this->get('/products/'.$product->slug)->assertOk()->assertSee($product->name);
         $this->post(route('cart.add', $product), ['quantity' => 2])->assertRedirect(route('cart.index'));
         $this->get('/cart')->assertOk()->assertSee($product->name);
         $this->post('/cart/checkout', ['operation_key' => $key])->assertRedirect(route('account.index'));
         $order = SalesOrder::query()->where('checkout_key', $key)->sole();
+        $this->assertFalse(app(ProductPurchaseVerification::class)->verified($this->account, $product));
         $this->assertSame([], session('store_cart', []));
         $count = SalesOrder::count();
         // A lost redirect/ACK can be retried after the first request cleared the cart.
@@ -591,8 +608,26 @@ class SharedPaymentsTest extends TestCase
         $delivery->dispatch($this->owner, 'password', $plan->public_id, $plan->version, 'SYNTHETIC-HANDOVER', 'SYNTHETIC CUSTOMER');
         $this->assertSame('fulfilled', $order->fresh()->status);
         $this->assertSame('collected', $plan->fresh()->state);
+        $verification = app(ProductPurchaseVerification::class);
+        $this->assertTrue($verification->verified($this->account, $product));
+        $this->assertFalse($verification->verified($this->account, Product::query()->whereKeyNot($product->id)->first() ?? new Product));
+        $this->post(route('products.feedback.store', $product), [
+            'kind' => 'review', 'body' => 'Synthetic response to the fulfilled purchase.', 'rating' => 4,
+        ])->assertRedirect(route('products.show', $product));
+        $this->assertDatabaseHas('product_feedback', ['product_id' => $product->id,
+            'verified_buyer' => true, 'rating' => 4, 'status' => 'pending']);
+        $feedback = ProductFeedback::where('product_id', $product->id)->sole();
+        $this->get(route('products.show', $product))->assertDontSee('aggregateRating');
+        $this->actingAs($this->owner, 'web')->patch(route('admin.products.feedback.update', [$product, $feedback]), [
+            'status' => 'approved', 'revision' => ProductFeedbackController::revision($feedback),
+        ])->assertRedirect();
+        $this->actingAs($this->account, 'customer');
+        $this->get(route('products.show', $product))->assertOk()
+            ->assertSee('خریدار تأییدشده')->assertSee('aggregateRating');
         $this->assertSame(0, $item->fresh()->on_hand);
         $this->assertSame(0, $item->fresh()->reserved);
+        $this->get(route('products.show', $product))->assertOk()->assertSee('ناموجود')
+            ->assertSee('https://schema.org/OutOfStock', false)->assertDontSee('افزودن به سبد خرید');
         $this->get('/account/orders/'.$order->public_id)->assertOk()->assertSee('تحویل ثبت شد');
         $this->assertSame($document->fresh()->charged_minor, $document->fresh()->paid_minor);
         Http::assertNothingSent();

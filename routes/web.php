@@ -26,6 +26,8 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\Payments\PaymentController;
 use App\Http\Controllers\Payments\ReceiptController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductFeedbackController;
+use App\Http\Controllers\ProductMediaController;
 use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SupportChatController;
@@ -133,7 +135,16 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
 });
 
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/product-media/{filename}', ProductMediaController::class)
+    ->where('filename', '[A-Za-z0-9_-][A-Za-z0-9._-]*\.(?i:jpg|jpeg|png|webp)')
+    ->withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+    ->name('products.media');
+Route::get('/product-comparison', [ProductController::class, 'compare'])->name('products.compare');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+Route::middleware([PrivateRepairResponse::class, EnsureCustomerSession::class, 'throttle:product-feedback'])->group(function (): void {
+    Route::post('/products/{product}/feedback', [ProductFeedbackController::class, 'store'])->name('products.feedback.store');
+    Route::post('/products/{product}/feedback/{feedback}/report', [ProductFeedbackController::class, 'report'])->name('products.feedback.report');
+});
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $cart = CartController::class;
@@ -217,6 +228,9 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
             Route::get('products/{product}/edit', [AdminProductController::class, 'edit'])->name('products.edit');
             Route::match(['put', 'patch'], 'products/{product}', [AdminProductController::class, 'update'])->name('products.update');
             Route::delete('products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
+            Route::get('products/{product}/feedback', [App\Http\Controllers\Admin\ProductFeedbackController::class, 'index'])->name('products.feedback.index');
+            Route::patch('products/{product}/feedback/{feedback}', [App\Http\Controllers\Admin\ProductFeedbackController::class, 'update'])
+                ->middleware('throttle:30,1,product-moderation:')->name('products.feedback.update');
         });
         Route::resource('staff', StaffController::class)->only(['index', 'create', 'edit'])->middleware('can:staff.manage');
         Route::post('staff', [StaffController::class, 'store'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.store');

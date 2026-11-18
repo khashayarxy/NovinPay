@@ -13,6 +13,7 @@ use App\Support\SiteMaintenanceState;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Session\SessionManager;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -47,6 +48,15 @@ class AppServiceProvider extends ServiceProvider
         ]);
         RateLimiter::for('customer-verify', fn ($request) => Limit::perMinute(20)->by(hash('sha256', $request->ip()))
             ->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'verify')));
+        RateLimiter::for('product-feedback', function ($request): array {
+            $ip = hash('sha256', $request->ip());
+            $account = Auth::guard('customer')->id();
+
+            return [
+                Limit::perMinute(6)->by($account === null ? 'guest:'.$ip : 'account:'.$account),
+                Limit::perMinute(30)->by('ip:'.$ip),
+            ];
+        });
         Gate::define('access-admin', fn (User $user): bool => AdminAccess::account($user) !== null);
         Gate::define('staff.manage', fn (User $user): bool => AdminAccess::account($user)?->isSuperAdmin() ?? false);
         foreach (AdminPermission::cases() as $permission) {

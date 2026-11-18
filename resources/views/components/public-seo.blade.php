@@ -1,4 +1,4 @@
-@props(['canonical' => null, 'contentSeo' => null, 'publicRobots' => null, 'product' => null, 'article' => null, 'version' => null])
+@props(['canonical' => null, 'contentSeo' => null, 'publicRobots' => null, 'product' => null, 'productSale' => null, 'productRating' => null, 'article' => null, 'version' => null])
 @php
     $public = request()->routeIs('home', 'contact', 'products.*', 'articles.*');
     $robots = $contentSeo['robots'] ?? $publicRobots ?? 'index, follow';
@@ -16,9 +16,35 @@
             $graph[] = ['@type' => 'Service', 'name' => 'تعمیرات تخصصی کارتخوان', 'serviceType' => 'تعمیر دستگاه کارتخوان', 'url' => $origin.'/', 'provider' => ['@id' => $origin.'/#organization']];
         }
         if (request()->routeIs('products.show') && $product) {
-            // Toman prices are not silently converted into ISO currencies. No
-            // fabricated offer, stock quantity, review or aggregate rating.
-            $graph[] = ['@type' => 'Product', 'name' => $product->name, 'description' => $description, 'url' => $url];
+            $condition = match ($product->condition) {
+                \App\Enums\ProductCondition::New => 'https://schema.org/NewCondition',
+                \App\Enums\ProductCondition::Used => 'https://schema.org/UsedCondition',
+            };
+            $productNode = ['@type' => 'Product', 'name' => $product->name, 'description' => $description,
+                'url' => $url, 'itemCondition' => $condition];
+            if ($product->brand) $productNode['brand'] = ['@type' => 'Brand', 'name' => $product->brand];
+            if ($product->model) $productNode['model'] = $product->model;
+            if ($product->color) $productNode['color'] = $product->color;
+            if ($product->variant_family) $productNode['inProductGroupWithID'] = $product->variant_family;
+            if ($product->image_path) {
+                $productNode['image'] = array_map(fn ($image) => $origin.route('products.media', basename($image['path']), false),
+                    [$product->primaryImage(), ...$product->galleryImages()]);
+            }
+            if ($productRating) {
+                $productNode['aggregateRating'] = ['@type' => 'AggregateRating',
+                    'ratingValue' => $productRating['value'], 'ratingCount' => $productRating['count']];
+            }
+            if (\App\Support\ProductSale::priceConfirmed($product)) {
+                // Catalogue prices are whole tomans. ISO 4217 uses Iranian rials.
+                $productNode['offers'] = ['@type' => 'Offer', 'url' => $url,
+                    'price' => $product->price * 10, 'priceCurrency' => 'IRR', 'itemCondition' => $condition];
+                if ($productSale === \App\Support\ProductSale::Online) {
+                    $productNode['offers']['availability'] = 'https://schema.org/InStock';
+                } elseif ($productSale === \App\Support\ProductSale::OutOfStock) {
+                    $productNode['offers']['availability'] = 'https://schema.org/OutOfStock';
+                }
+            }
+            $graph[] = $productNode;
             $graph[] = ['@type' => 'BreadcrumbList', 'itemListElement' => [
                 ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => $origin.'/'],
                 ['@type' => 'ListItem', 'position' => 2, 'name' => 'فروشگاه', 'item' => $origin.'/products'],

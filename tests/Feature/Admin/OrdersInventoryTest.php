@@ -14,6 +14,7 @@ use App\Models\SalesOrderEvent;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\CommerceManagement;
+use App\Services\ProductPurchaseVerification;
 use App\Support\OrderMoney;
 use App\Support\RepairIdentity;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -184,9 +185,20 @@ class OrdersInventoryTest extends TestCase
 
     public function test_full_lifecycle_conserves_bulk_stock_without_payment_side_effects(): void
     {
-        $item = $this->item();
+        $product = Product::create(['slug' => 'linked-terminal', 'name' => 'Linked terminal',
+            'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'in_stock']);
+        $item = InventoryItem::findOrFail($this->command('item.create', ['sku' => 'LINKED-TERMINAL',
+            'name' => 'Linked terminal', 'condition' => 'new', 'serialized' => false,
+            'product_id' => $product->id, 'low_stock_threshold' => 2, 'reason' => 'Synthetic approved item']));
         $this->receive($item, 5);
         $order = $this->order($item, 2);
+        $account = new CustomerAccount;
+        $account->forceFill(['public_id' => (string) Str::uuid(), 'customer_id' => $this->customer->id,
+            'phone' => '09000000001', 'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000001'),
+            'verified_at' => now()])->save();
+        $account->refresh();
+        $verification = app(ProductPurchaseVerification::class);
+        $this->assertFalse($verification->verified($account, $product));
         $this->assertSame('246.90', $order->total);
         $this->assertSame(0, $item->fresh()->reserved);
         $this->transition($order, 'reserve');
@@ -196,6 +208,10 @@ class OrdersInventoryTest extends TestCase
         $this->assertNull($order->fresh()->fulfilled_at);
         $this->transition($order, 'fulfill', ['fulfillment_info' => 'PRIVATE-HANDOVER-DATA']);
         $this->assertSame('fulfilled', $order->fresh()->status);
+        $this->assertNull($order->fresh()->customer_account_id);
+        $this->assertTrue($verification->verified($account, $product));
+        $account->customer_id = null;
+        $this->assertFalse($verification->verified($account, $product));
         $this->assertSame([3, 0, 2], [$item->fresh()->on_hand, $item->fresh()->reserved, $item->fresh()->dispatched]);
         $this->assertSame(5, (int) StockMovement::where('inventory_item_id', $item->id)->sum('on_hand_delta') + (int) StockMovement::where('inventory_item_id', $item->id)->sum('dispatched_delta'));
         $this->conflict(fn () => $this->transition($order, 'fulfill', ['fulfillment_info' => 'Duplicate delivery attempt']));

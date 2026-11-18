@@ -1,0 +1,80 @@
+.global-store-nav, .store-mobile-search { display: none; }
+
+@media (max-width: 850px) {
+    body:has(.global-store-nav) {
+        --store-nav-edge: calc(8px + env(safe-area-inset-bottom, 0px));
+        --store-nav-height: 58px;
+        --store-nav-space: calc(var(--store-nav-edge) + var(--store-nav-height) + 10px);
+        padding-bottom: var(--store-nav-space);
+    }
+    html:has(.global-store-nav) { scroll-padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
+    .global-store-nav {
+        position: fixed;
+        z-index: 38;
+        inset-inline: max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-left));
+        bottom: var(--store-nav-edge);
+        max-width: 440px;
+        height: var(--store-nav-height);
+        margin-inline: auto;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 2px;
+        padding: 4px;
+        background: #fff;
+        border: 1px solid #cddde9;
+        border-radius: 18px;
+        box-shadow: 0 4px 18px rgb(18 41 64 / 12%);
+    }
+    .global-store-nav a {
+        position: relative;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        gap: 2px; min-height: 44px;
+        color: #455e73;
+        font-family: inherit; font-size: 11px; font-weight: 600; line-height: 1.6;
+        text-decoration: none; border-radius: 13px;
+    }
+    .global-store-nav svg { flex: none; width: 20px; height: 20px; stroke-width: 1.75; }
+    .global-store-nav a[aria-current] { color: #075da6; background: #eaf5ff; font-weight: 700; }
+    .global-store-nav a[aria-current]::after {
+        content: ''; position: absolute; inset-block-end: 0; width: 16px; height: 3px;
+        border-radius: 3px; background: #098cf7;
+    }
+    .global-store-nav a:focus-visible { outline: 2px solid #075da6; outline-offset: -2px; }
+    .global-store-nav a:active { background: #dcecf9; }
+    body:has(.global-store-nav) button[data-support-launcher] {
+        bottom: calc(var(--store-nav-space) + var(--floating-contact-space, 0px));
+    }
+    body:has(dialog[open], [data-support-frame][data-state="open"]) .global-store-nav,
+    body:has(input:is([type=text],[type=search],[type=tel],[type=password],[type=email],[type=number],:not([type])):focus, textarea:focus) .global-store-nav {
+        visibility: hidden;
+    }
+    @media (hover: hover) {
+        .global-store-nav a:not([aria-current]):hover { background: #f0f6fb; color: #075da6; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+        .global-store-nav a { transition: background-color .14s ease, color .14s ease; }
+    }
+}
+@media (min-width: 600px) and (max-width: 850px) {
+    .global-store-nav { max-width: 520px; }
+    .global-store-nav a { flex-direction: row; gap: 5px; font-size: 12px; }
+}
+@media (max-width: 700px) {
+    body.premium-storefront[data-navigation="a"] .sticky-contact:not([hidden]) {
+        bottom: calc(var(--store-nav-edge) + var(--store-nav-height) + 4px);
+    }
+    .premium-storefront .store-mobile-search {
+        display: inline-flex;
+        margin-inline-start: auto;
+    }
+    .premium-storefront .premium-account-trigger { margin-inline-start: 0; }
+    .premium-storefront .np-header :is(.store-mobile-search, .premium-account-trigger) {
+        flex: 0 0 44px;
+        height: 44px;
+        padding: 0;
+    }
+    .premium-storefront .np-mobile-menu > button:not(:hover) {
+        border-color: #d1e5f7;
+    }
+}

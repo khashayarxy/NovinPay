@@ -4,8 +4,11 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Product;
 use App\Models\User;
+use App\Support\FinanceTime;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use RuntimeException;
@@ -50,6 +53,48 @@ class ProductManagementTest extends TestCase
             'stock_status' => 'in_stock',
             'is_published' => true,
         ], $overrides));
+    }
+
+    public function test_sale_pause_is_independent_of_stock_and_published_price(): void
+    {
+        $product = $this->createProduct(['price' => 1500000,
+            'product_details' => ['groups' => ['printer' => 'نوع چاپ: حرارتی']]]);
+        $url = route('admin.products.update', $product);
+        $data = $this->validPayload(['slug' => $product->slug, 'sale_paused' => '1', 'online_purchasing_enabled' => '1']);
+        $this->put($url, $data)->assertSessionHasNoErrors();
+        $product->refresh();
+        $this->assertTrue($product->salePaused());
+        $this->assertTrue($product->online_purchasing_enabled);
+        $this->assertSame(1500000, $product->price);
+        $this->assertSame('in_stock', $product->stock_status->value);
+        $this->assertSame('نوع چاپ: حرارتی', $product->product_details['groups']['printer']);
+        $this->put($url, array_replace($data, ['sale_paused' => '0']))->assertSessionHasNoErrors();
+        $this->assertFalse($product->fresh()->salePaused());
+    }
+
+    public function test_price_date_tracks_actual_changes_and_allows_one_documented_backfill(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-17T10:00:00Z'));
+        $product = $this->createProduct(['price' => 10500000]);
+        $initial = $product->fresh()->price_changed_at;
+        $this->assertSame('۲۶ آبان ۱۴۰۵', FinanceTime::persianDate($initial));
+        $this->travel(1)->hour();
+        $url = route('admin.products.update', $product);
+        $samePrice = $this->validPayload(['slug' => $product->slug, 'price' => 10500000]);
+        $this->put($url, $samePrice)->assertSessionHasNoErrors();
+        $this->assertTrue($initial->equalTo($product->fresh()->price_changed_at));
+        DB::table('products')->where('id', $product->id)->update(['price_changed_at' => null]);
+        $this->get(route('products.show', $product))->assertOk()->assertDontSee('آخرین به‌روزرسانی قیمت');
+        $this->put($url, $samePrice + ['historical_price_date' => '۱۴۰۵/۰۸/۳۱'])->assertSessionHasErrors('historical_price_date');
+        $this->put($url, $samePrice + ['historical_price_date' => '۱۴۰۵/۰۸/۱۰'])->assertSessionHasNoErrors();
+        $this->assertSame('۱۰ آبان ۱۴۰۵', FinanceTime::persianDate($product->fresh()->price_changed_at));
+        $this->get(route('products.show', $product))->assertOk()->assertSee('۱۰ آبان ۱۴۰۵');
+        $this->put($url, $samePrice + ['historical_price_date' => '۱۴۰۵/۰۸/۱۱'])->assertSessionHasErrors('historical_price_date');
+        $this->put($url, array_replace($samePrice, ['price' => 11000000]))->assertSessionHasNoErrors();
+        $this->assertTrue(now()->equalTo($product->fresh()->price_changed_at));
+        foreach (['product.price_date_recorded', 'product.price_changed'] as $action) {
+            $this->assertDatabaseHas('admin_activities', ['target_id' => $product->id, 'action' => $action]);
+        }
     }
 
     public function test_index_page_lists_products_including_unpublished_ones(): void
@@ -147,6 +192,25 @@ class ProductManagementTest extends TestCase
         ]));
 
         $this->assertDatabaseHas('products', ['slug' => 'novin-thermal-printer']);
+    }
+
+    public function test_admin_can_group_color_options_and_rejects_invalid_or_duplicate_colors(): void
+    {
+        $variant = ['slug' => 'me31-black', 'variant_family' => 'newland-me31',
+            'color' => 'مشکی', 'color_swatch' => '#171b21'];
+        $this->post(route('admin.products.store'), $this->validPayload($variant))->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('products', $variant);
+
+        $this->post(route('admin.products.store'), $this->validPayload(array_replace($variant, ['slug' => 'duplicate-black'])))
+            ->assertSessionHasErrors('color');
+        $this->post(route('admin.products.store'), $this->validPayload(array_replace($variant, [
+            'slug' => 'me31-blue', 'color' => 'آبی', 'color_swatch' => 'url(https://example.test/)',
+        ])))->assertSessionHasErrors('color_swatch');
+        $this->post(route('admin.products.store'), $this->validPayload(array_replace($variant, [
+            'slug' => 'me31-blue', 'color' => 'آبی', 'color_swatch' => '#1456cc',
+        ])))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('products', 2);
     }
 
     public function test_store_generates_fallback_slug_for_persian_name(): void
@@ -283,6 +347,45 @@ class ProductManagementTest extends TestCase
         $this->assertTrue(str_starts_with($product->image_path, 'products/'));
         $this->assertMatchesRegularExpression('#^products/[A-Za-z0-9._-]+\.jpg$#', $product->image_path);
         Storage::disk('public')->assertExists($product->image_path);
+    }
+
+    public function test_update_keeps_original_gallery_bytes_and_serves_the_ordered_media(): void
+    {
+        Storage::fake('public');
+        $product = $this->createProduct(['slug' => 'gallery-product', 'price' => 10500000, 'condition' => 'used']);
+        $images = [
+            UploadedFile::fake()->image('front.jpg', 60, 60),
+            UploadedFile::fake()->image('left.jpg', 61, 61),
+            UploadedFile::fake()->image('right.jpg', 62, 62),
+        ];
+        $alts = ['نمای روبه‌رو', 'نمای چپ', 'نمای راست'];
+        $this->put(route('admin.products.update', $product), $this->validPayload([
+            'slug' => $product->slug, 'price' => $product->price, 'condition' => $product->condition->value,
+            'image' => $images[0], 'image_alt' => $alts[0],
+            'gallery_images' => array_slice($images, 1), 'gallery_alts' => array_slice($alts, 1),
+        ]))->assertSessionHasNoErrors();
+
+        $product->refresh();
+        $media = [$product->primaryImage(), ...$product->galleryImages()];
+        $this->assertSame($alts, array_column($media, 'alt'));
+        $this->assertSame([60, 61, 62], array_column($media, 'width'));
+        $this->assertCount(3, Storage::disk('public')->allFiles('products'));
+        $this->assertSame(10500000, $product->price);
+        foreach ($media as $index => $item) {
+            $this->assertSame(file_get_contents($images[$index]->getPathname()), Storage::disk('public')->get($item['path']));
+            $this->get(route('products.media', basename($item['path'])))
+                ->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        }
+        $this->get(route('products.show', $product))->assertOk()->assertSeeInOrder($alts);
+        $this->get(route('admin.products.edit', $product))->assertOk()->assertSeeInOrder($alts);
+        $revision = $product->galleryRevision();
+        $payload = $this->validPayload(['slug' => $product->slug, 'price' => $product->price,
+            'gallery_order' => 'reverse', 'gallery_revision' => $revision]);
+        $this->put(route('admin.products.update', $product), $payload)->assertSessionHasNoErrors();
+        $this->assertSame([$media[2], $media[1]], $product->refresh()->galleryImages());
+        $this->assertCount(3, Storage::disk('public')->allFiles('products'));
+        $this->put(route('admin.products.update', $product), $payload)->assertSessionHasErrors('gallery_order');
+        $this->assertSame([$media[2], $media[1]], $product->refresh()->galleryImages());
     }
 
     public function test_store_rejects_non_image_files(): void

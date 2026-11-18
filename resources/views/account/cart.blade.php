@@ -1,8 +1,9 @@
 @extends('layouts.app')
 @section('title', 'سبد خرید')
 @section('content')
-<div class="container py-8"><section class="public-panel"><h1>سبد خرید</h1><x-admin.errors />@php($total = 0)
-@forelse($products as $product)@php($quantity = $cart[$product->slug])@php($total += (int)$product->price * $quantity)<article class="mt-6"><h2>{{ $product->name }}</h2><p>{{ \App\Support\FaNumber::digits($quantity) }} عدد · @if(in_array($product->slug, $unpriced, true)) استعلام قیمت @else {{ \App\Support\FaNumber::digits(number_format($product->price)) }} تومان @endif</p><form method="post" action="{{ route('cart.remove',$product->slug) }}">@csrf<button class="btn btn-secondary">حذف از سبد</button></form></article>@empty @if($unavailable === [])<p>سبد خرید خالی است.</p>@endif @endforelse
+<div class="np-container py-8"><section class="public-panel" data-storefront-cart data-cart-empty="{{ $products->isEmpty() && $unavailable === [] ? 'true' : 'false' }}"><h1>سبد خرید</h1><x-admin.errors />@php($total = 0)
+@forelse($products as $product)@php($quantity = $cart[$product->slug])@php($total += (int)$product->price * $quantity)<article class="mt-6"><h2>{{ $product->name }}</h2><p>{{ \App\Support\FaNumber::digits($quantity) }} عدد · @if(in_array($product->slug, $unpriced, true)) استعلام قیمت @else {{ \App\Support\FaNumber::digits(number_format($product->price)) }} تومان @endif</p><form method="post" action="{{ route('cart.remove',$product->slug) }}">@csrf<button class="btn btn-secondary">حذف از سبد</button></form></article>@empty @if($unavailable === [])<p>سبد خرید خالی است.</p>
+    <a class="btn btn-secondary mt-4" href="{{ route('products.index') }}">مشاهدهٔ محصولات</a>@endif @endforelse
 @if($unavailable !== [] || $unpriced !== [])
     <p id="cart-unavailable" class="mt-6" role="status">برای ثبت سفارش، کالای خارج‌شده از دسترس یا بدون قیمت معتبر را از سبد حذف کنید.</p>
     @foreach($unavailable as $slug)
