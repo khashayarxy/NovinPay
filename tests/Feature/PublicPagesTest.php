@@ -62,8 +62,9 @@ class PublicPagesTest extends TestCase
         $response->assertSee('دستگاه هنوز به ما تحویل داده نشده');
         $response->assertSee('کد پیگیری');
         $response->assertDontSee('action="'.route('repair.store').'"', false);
-        $response->assertSee(route('account.login'))->assertSee('ابتدا شماره موبایل خود را تأیید کنید');
-        $response->assertSee('تعمیرات تخصصی کارتخوان')->assertSee('ثبت درخواست تعمیر');
+        $response->assertSee('href="'.route('repair.start').'"', false)
+            ->assertSee('برای ثبت درخواست، شماره موبایل خود را تأیید کنید.');
+        $response->assertSee('ثبت درخواست تعمیر کارتخوان');
     }
 
     public function test_contact_page_displays_official_business_details(): void
