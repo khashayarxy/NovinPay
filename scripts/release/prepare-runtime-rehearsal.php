@@ -123,7 +123,7 @@ foreach (['vendor' => '99c37e170854a4cf4c87ab6caea86e7043db8014606c2573af198d8bf
     }
     requireGate(hash_equals($expected, $observed), 'rehearsal_exact_'.$kind.'_bytes', 'same file inventory as approved private Phase 4 artifact', ['observedInventorySha256' => $observed], 'Investigate build reproducibility; do not qualify a different payload.');
 }
-$migrations = migrationInventory($repo.'/database/migrations');
+$migrations = migrationInventory($root.'/candidate/database/migrations');
 $triggers = expectedTriggerContracts($migrations);
 $m = ['format' => 'novinpay-runtime-release-v1', 'baseline' => $base, 'target' => $target,
     'applicationCommit' => '9f2e6a48481c8527d538de9e4ba24a2ca211ee8f', 'sourceBranch' => 'synthetic', 'targetBranch' => 'codex/confirmed-audit-remediation',

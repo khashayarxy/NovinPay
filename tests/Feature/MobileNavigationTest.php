@@ -60,7 +60,15 @@ class MobileNavigationTest extends TestCase
         ]);
         foreach (['', '?from=menu', '/'] as $suffix) {
             $html = $this->get(route('products.show', $product).$suffix)->assertOk()->getContent();
-            $this->assertNavigation($html, 'products.index');
+            $document = new DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+            $xpath = new DOMXPath($document);
+            $active = $xpath->query('//nav[@data-mobile-bottom-nav]/a[@aria-current]');
+            $this->assertSame(1, $active->length);
+            $this->assertSame(route('products.index'), $active->item(0)->getAttribute('href'));
+            $this->assertSame('location', $active->item(0)->getAttribute('aria-current'));
+            $this->assertSame(1, $xpath->query('//header//button[@aria-controls="category-dialog" and @aria-haspopup="dialog"]')->length);
+            $this->assertSame(1, $xpath->query('//dialog[@id="category-dialog"]//a[@href="'.route('products.index').'"]')->length);
         }
     }
 

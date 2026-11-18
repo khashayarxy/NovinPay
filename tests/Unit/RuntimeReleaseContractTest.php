@@ -191,7 +191,7 @@ class RuntimeReleaseContractTest extends TestCase
     public function test_exact_schema_neutral_contract_preserves_trigger_definers_and_rejects_migrations(): void
     {
         $zero = str_repeat('0', 64);
-        $names = \NovinPay\Release\migrationInventory(__DIR__.'/../../database/migrations');
+        $names = file(__DIR__.'/../Fixtures/runtime-release-migrations.txt', FILE_IGNORE_NEW_LINES);
         $m = ['format' => 'novinpay-runtime-release-v1', 'baseline' => 'ecf672110214a24a9171d942a2730d9bfad5f65c',
             'target' => str_repeat('a', 40), 'applicationCommit' => '9f2e6a48481c8527d538de9e4ba24a2ca211ee8f',
             'releaseName' => 'unit-runtime', 'sourceBranch' => 'synthetic', 'targetBranch' => 'codex/synthetic',

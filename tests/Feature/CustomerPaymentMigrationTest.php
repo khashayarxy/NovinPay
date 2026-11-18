@@ -100,6 +100,7 @@ class CustomerPaymentMigrationTest extends TestCase
             glob(database_path('migrations/2026_11_04_*.php')),
             [database_path('migrations/2026_11_09_000001_add_customer_password.php')],
             [database_path('migrations/2026_11_13_000001_add_payment_resolution_metadata.php')],
+            [database_path('migrations/2026_11_17_000003_create_product_feedback.php')],
         );
     }
 }
