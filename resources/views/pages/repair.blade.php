@@ -31,7 +31,7 @@
             <a class="public-inline-link repair-tracking-link" href="{{ route('repair.track') }}">پیگیری درخواست قبلی <x-storefront.icon name="arrow" /></a>
         </section>
         <aside class="repair-entry-notes">
-            <p class="repair-before-delivery"><x-storefront.icon name="shield" /><span>پیش از تحویل دستگاه، درخواست را ثبت کنید. هزینه و زمان تعمیر پس از بررسی مشخص می‌شود.</span></p>
+            <p class="repair-before-delivery"><x-storefront.icon name="shield" /><span>ثبت درخواست یعنی دستگاه هنوز به ما تحویل داده نشده است. هزینه و زمان تعمیر پس از بررسی مشخص می‌شود.</span></p>
             <details>
                 <summary>بعد از ثبت درخواست چه می‌شود؟</summary>
                 <p>کد پیگیری را نگه دارید. با این کد و شمارهٔ موبایل ثبت‌شده می‌توانید وضعیت درخواست را ببینید.</p>
