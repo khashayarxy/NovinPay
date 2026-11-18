@@ -34,6 +34,7 @@ class PremiumStorefrontTest extends TestCase
             ->assertSee('aria-label="مشکی"', false)->assertSee('aria-current="true"', false)
             ->assertSee('رنگ: <strong>مشکی</strong>', false)
             ->assertSee('موجودی تأیید نشده')->assertDontSee('تماس برای هماهنگی خرید')
+            ->assertDontSee('شناسه کالا')
             ->assertDontSee('آخرین به‌روزرسانی قیمت')->assertDontSee('id="product-question"', false)
             ->assertDontSee('action="'.route('cart.add', $product).'"', false)
             ->assertSee('105000000')->assertSee('UsedCondition')
@@ -90,7 +91,8 @@ class PremiumStorefrontTest extends TestCase
         $commerce->execute($owner, 'item.receive', ['operation_key' => (string) Str::uuid(),
             'version' => $item->version, 'quantity' => 2, 'reason' => 'Isolated UI validation'], $item);
         $this->get(route('products.show', $product))->assertOk()
-            ->assertSee('action="'.route('cart.add', $product).'"', false)->assertSee('افزودن به سبد خرید');
+            ->assertSee('action="'.route('cart.add', $product).'"', false)->assertSee('افزودن به سبد خرید')
+            ->assertSee('<bdi dir="ltr">UI-FIXTURE</bdi>', false);
         $this->post(route('cart.add', $product), ['quantity' => 1])->assertRedirect(route('cart.index'));
         $this->assertSame([$product->slug => 1], session('store_cart'));
         $this->post(route('cart.add', $product), ['quantity' => 1])->assertRedirect(route('cart.index'));

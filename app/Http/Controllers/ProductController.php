@@ -83,7 +83,10 @@ class ProductController extends Controller
     {
         abort_unless($product->is_published, 404);
 
+        $product->loadMissing('inventoryItems');
         $inventory = $checkout->confirmedInventory($product);
+        $matchingItems = $product->inventoryItems->where('condition', $product->condition->value);
+        $sku = ! $product->is_sample && $matchingItems->count() === 1 ? $matchingItems->first()->sku : null;
         $variants = collect();
         if ($product->variant_family && ! $product->is_sample) {
             $variants = Product::query()->published()->where('is_sample', false)
@@ -146,6 +149,7 @@ class ProductController extends Controller
 
         $response = response()->view('products.show', [
             'product' => $product,
+            'sku' => $sku,
             'variants' => $variants->prepend($product),
             'variantSales' => $variantSales,
             'sale' => $sale,

@@ -1,8 +1,8 @@
 <details class="np-customer-menu" data-customer-menu>
     <summary class="np-customer-trigger" aria-expanded="false" aria-controls="mobile-customer-navigation">
-        <x-home.icon name="user" />
-        حساب کاربری
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        <x-storefront.icon name="account" width="20" height="20" />
+        <span class="np-customer-guest-label">حساب کاربری</span>
+        <x-storefront.icon name="chevron-down" class="store-account-chevron" width="12" height="12" />
     </summary>
     <nav id="mobile-customer-navigation" aria-label="حساب کاربری">
         <a href="{{ route('account.index') }}">داشبورد حساب</a>

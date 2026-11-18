@@ -27,13 +27,15 @@
     <x-public-seo :canonical="$canonical ?? null" :content-seo="$contentSeo ?? null" :public-robots="$publicRobots ?? null" :product="$product ?? null" :product-sale="$sale ?? null" :product-rating="$productRating ?? null" :article="$article ?? null" :version="$version ?? null" />
     <x-brand-head />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
+        <script src="{{ asset('js/storefront-premium.js?v=10') }}" defer></script>
+    @endif
     @stack('page-head')
     @if ($hasStoreNavigation)
-        <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=4') }}">
+        <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=5') }}">
     @endif
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
-        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=1') }}">
-        <script src="{{ asset('js/storefront-premium.js?v=9') }}" defer></script>
+        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=2') }}">
     @endif
     @if(request()->routeIs('account.*'))
         <x-password-visibility-assets />
@@ -45,7 +47,7 @@
 <body @class(['public-site flex min-h-screen flex-col', 'homepage' => request()->routeIs('home'), 'premium-storefront' => View::hasSection('premium-storefront')]) @if(View::hasSection('premium-storefront')) data-navigation="a" @endif>
     <a class="skip-link" href="#main-content">پرش به محتوای اصلی</a>
     @unless(View::hasSection('quiet-shell'))
-        <x-home.header :premium="View::hasSection('premium-storefront')" />
+        <x-home.header />
     @endunless
     <main id="main-content" class="flex-1" tabindex="-1">@yield('content')</main>
     @unless(View::hasSection('quiet-shell'))<x-home.footer />@endunless

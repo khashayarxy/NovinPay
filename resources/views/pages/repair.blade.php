@@ -35,8 +35,11 @@
             <details>
                 <summary>بعد از ثبت درخواست چه می‌شود؟</summary>
                 <p>کد پیگیری را نگه دارید. با این کد و شمارهٔ موبایل ثبت‌شده می‌توانید وضعیت درخواست را ببینید.</p>
-                <x-business-phone class="public-inline-link"><x-storefront.icon name="phone" /></x-business-phone>
             </details>
+            <section class="repair-contact" aria-label="تماس با تعمیرگاه">
+                <h2>تماس با تعمیرگاه</h2>
+                <x-business-phone both />
+            </section>
         </aside>
     </div>
 </div>

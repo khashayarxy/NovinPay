@@ -1,5 +1,3 @@
-@props(['premium' => false])
-
 @php
     $shopTools = request()->routeIs('home', 'products.*', 'cart.*', 'repair*', 'account.*', 'articles.*', 'contact', 'consultation*', 'terms', 'privacy');
     request()->attributes->set('customer_header_rendered', true);
@@ -7,15 +5,15 @@
     $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما'], ['articles.index', 'articles.*', 'مقاله‌ها']];
     $mobileNavigation = [
         ['home', 'home', 'صفحه اصلی', 'home'],
-        ['products.index', 'products.*', 'فروشگاه کارتخوان', 'shopping-bag'],
-        ['repair', ['repair', 'repair.store', 'repair.confirmation'], 'تعمیرات کارتخوان', 'tool'],
+        ['products.index', 'products.*', 'فروشگاه کارتخوان', 'shop'],
+        ['repair', ['repair', 'repair.store', 'repair.confirmation'], 'تعمیرات کارتخوان', 'repair'],
         ['repair.track', 'repair.track*', 'پیگیری تعمیرات', 'search'],
         ['articles.index', 'articles.*', 'مقالات و آموزش‌ها', 'book'],
         ['contact', 'contact', 'تماس با ما', 'phone'],
     ];
 @endphp
 
-<header class="np-header" data-mobile-header>
+<header class="np-header" data-mobile-header @if($shopTools) data-store-header @endif>
     <div class="np-container np-header__inner">
         <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
         <nav aria-label="ناوبری اصلی" class="np-nav">
@@ -25,8 +23,9 @@
         </nav>
         <div class="np-header__actions">
             <div class="np-mobile-menu">
-                @if ($premium)
-                    <button type="button" data-storefront-open="category-dialog" aria-controls="category-dialog" aria-haspopup="dialog" aria-expanded="false" aria-label="فهرست ناوبری"><x-storefront.icon name="menu" width="22" height="22" /></button>
+                @if ($shopTools)
+                    <button type="button" data-storefront-open="mobile-drawer" aria-controls="mobile-drawer" aria-haspopup="dialog" aria-expanded="false" aria-label="فهرست ناوبری"><x-storefront.icon name="menu" width="22" height="22" /></button>
+                    <x-storefront.panels :navigation="$mobileNavigation" />
                 @else
                 <button type="button" data-navigation-toggle aria-label="فهرست ناوبری" aria-controls="mobile-drawer" aria-haspopup="dialog" aria-expanded="false">
                     <svg class="np-menu-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -41,7 +40,7 @@
                         </div>
                         <nav id="mobile-navigation" aria-label="ناوبری موبایل">
                             @foreach ($mobileNavigation as [$route, $active, $label, $icon])
-                                <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif><x-home.icon :name="$icon" />{{ $label }}</a>
+                                <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif><x-storefront.icon :name="$icon" />{{ $label }}</a>
                             @endforeach
                         </nav>
                     </div>
@@ -51,9 +50,6 @@
         </div>
         @if ($shopTools)
             <a class="np-customer-trigger store-mobile-search" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-controls="search-dialog" aria-label="جست‌وجوی محصولات"><x-storefront.icon name="search" width="20" height="20" /></a>
-        @endif
-        @if ($premium)
-            <a class="np-customer-trigger premium-account-trigger" href="{{ route('account.index') }}" data-storefront-open="account-dialog" aria-haspopup="dialog" aria-controls="account-dialog" aria-label="حساب کاربری"><x-storefront.icon name="account" /></a>
         @endif
         <div class="np-customer-header" data-customer-header data-session-url="{{ route('customer.header') }}">
             @if ($shopTools)
@@ -66,4 +62,3 @@
         </div>
     </div>
 </header>
-@if ($premium)<x-storefront.panels :account="$customerAccount" />@endif
