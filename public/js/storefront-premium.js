@@ -1,6 +1,6 @@
-// Page-scoped enhancement. Routes, authentication and cart validation stay in Laravel.
+// Shared storefront enhancement. Routes, authentication and cart validation stay in Laravel.
 (() => {
-    if (!document.body.classList.contains('premium-storefront')) return;
+    if (typeof HTMLDialogElement === 'undefined' || typeof HTMLDialogElement.prototype.showModal !== 'function') return;
     const body = document.body;
     const root = document.documentElement;
     const triggers = [...document.querySelectorAll('[data-storefront-open]')];
@@ -12,6 +12,9 @@
     const pending = new Map();
     let cartVersion = 0;
     let accountVersion = 0;
+    let cartPending = false;
+    const cartDialog = document.getElementById('cart-dialog');
+    const cartNumber = new Intl.NumberFormat('fa-IR', {useGrouping: false});
 
     function lock() {
         const style = body.style;
@@ -116,6 +119,8 @@
         const retry = dialog.querySelector('[data-cart-retry]');
         const hadRetryFocus = document.activeElement === retry;
         if (hadRetryFocus) dialog.querySelector('[data-storefront-close]')?.focus();
+        const summary = dialog.querySelector('[data-cart-summary]');
+        summary.replaceChildren();
         footer.hidden = true;
         retry.hidden = true;
         container.replaceChildren(Object.assign(document.createElement('p'), {textContent: 'در حال دریافت سبد خرید…'}));
@@ -130,6 +135,8 @@
             } else {
                 content.querySelector('h1')?.remove();
                 content.classList.add('cart-sheet-content');
+                const total = content.querySelector('[data-store-cart-total]');
+                if (total) summary.replaceChildren(total);
                 container.replaceChildren(content);
                 footer.hidden = false;
             }
@@ -138,13 +145,64 @@
                 container.replaceChildren(Object.assign(document.createElement('p'), {
                 textContent: 'دریافت سبد خرید انجام نشد. صفحهٔ سبد خرید را باز کنید یا دوباره تلاش کنید.',
                 }));
-            footer.hidden = false;
-            retry.hidden = false;
+                footer.hidden = false;
+                retry.hidden = false;
             }
         } finally {
             if (active === dialog && version === cartVersion) container.removeAttribute('aria-busy');
         }
     }
+
+    document.addEventListener('submit', async event => {
+        const form = event.target;
+        if (!cartDialog || !form.matches('form[data-cart-mutation]')) return;
+        if (form.closest('[data-storefront-cart]') && !cartDialog.contains(form)) return;
+        const endpoint = new URL(form.action, location.href);
+        if (endpoint.origin !== location.origin) return;
+        event.preventDefault();
+        if (cartPending) return;
+        const fromDrawer = cartDialog.contains(form);
+        const submitter = event.submitter || form.querySelector('button[type="submit"]');
+        const error = cartDialog.querySelector('[data-cart-error]');
+        const data = new FormData(form);
+        error.hidden = true;
+        cartPending = true;
+        form.setAttribute('aria-busy', 'true');
+        const previouslyDisabled = submitter?.disabled;
+        if (submitter) submitter.disabled = true;
+        try {
+            const response = await fetch(endpoint, {method: 'POST', body: data,
+                credentials: 'same-origin', redirect: 'error', headers: {Accept: 'application/json'}});
+            if (!response.ok) {
+                const message = response.status === 409 ? 'موجودی برای این درخواست کافی نیست.'
+                    : response.status === 422 ? 'تعداد را بین ۱ تا ۱۰ انتخاب کنید.'
+                    : 'تغییر سبد انجام نشد. وضعیت سبد را بررسی کنید.';
+                throw new Error(message);
+            }
+            const {count} = await response.json();
+            if (!Number.isInteger(count) || count < 0) throw new Error();
+            document.querySelectorAll('[data-store-cart-count]').forEach(badge => {
+                badge.hidden = count === 0;
+                badge.querySelector('bdi').textContent = cartNumber.format(count);
+            });
+            if (active === cartDialog) {
+                const focusInCart = cartDialog.querySelector('[data-live-cart]').contains(document.activeElement);
+                if (focusInCart || fromDrawer) cartDialog.querySelector('[data-storefront-close]')?.focus();
+                await refreshCart(cartDialog);
+            } else if (!active && !fromDrawer) {
+                open(cartDialog, submitter);
+            }
+        } catch (failure) {
+            error.textContent = failure.message && /[\u0600-\u06ff]/.test(failure.message) ? failure.message
+                : 'نتیجهٔ درخواست مشخص نیست. پیش از تکرار، وضعیت سبد را بررسی کنید.';
+            error.hidden = false;
+            if (!active && !fromDrawer) open(cartDialog, submitter);
+        } finally {
+            cartPending = false;
+            form.removeAttribute('aria-busy');
+            if (submitter) submitter.disabled = previouslyDisabled;
+        }
+    });
 
     function activate(dialog, focus) {
         if (!locked) lock();
@@ -152,7 +210,7 @@
         triggers.forEach(element => element.setAttribute('aria-expanded', String(element.dataset.storefrontOpen === dialog.id)));
         dialog.showModal();
         layers.get(dialog.id)?.show?.();
-        const target = focus || dialog.querySelector('input:not([type="hidden"]), iframe') || dialog.querySelector('[data-storefront-close]');
+        const target = focus || (!dialog.dataset.cartUrl && dialog.querySelector('input:not([type="hidden"]), iframe')) || dialog.querySelector('[data-storefront-close]');
         target?.focus({preventScroll: true});
         if (dialog.dataset.cartUrl) refreshCart(dialog);
         if (dialog.dataset.accountUrl) refreshAccount(dialog);
@@ -227,6 +285,22 @@
         });
     }
     document.querySelectorAll('[data-storefront-dialog]').forEach(dialog => register(dialog));
+    const filters = document.querySelector('[data-catalog-filters]');
+    if (filters) {
+        const dialog = document.getElementById('catalog-filter-dialog');
+        const sidebar = filters.parentElement;
+        const mobileFilters = matchMedia('(max-width: 850px)');
+        function placeFilters() {
+            if (!mobileFilters.matches && active === dialog) close();
+            (mobileFilters.matches ? dialog.querySelector('[data-filter-slot]') : sidebar).append(filters);
+            sidebar.hidden = mobileFilters.matches;
+        }
+        mobileFilters.addEventListener('change', placeFilters);
+        placeFilters();
+        document.body.classList.add('catalog-filter-ready');
+        const sort = document.querySelector('[data-catalog-sort]');
+        sort?.addEventListener('change', () => sort.form.requestSubmit());
+    }
     window.addEventListener('popstate', restoreLayer);
     window.addEventListener('pagehide', () => finish(false));
     window.addEventListener('pageshow', restoreLayer);
@@ -266,6 +340,7 @@
         '.purchase :is(.price bdi, .price small, .stock strong, time, .product-cart-form, a.primary)',
         '.gallery-arrow, .gallery-zoom-mark, .image-count, .thumbs button',
         '.section-nav a, .key-mobile .text-link, .product-faq summary, .product-feedback :is(.btn, form)',
+        '.catalog-toolbar :is(button, select), .public-product-card a:not([tabindex="-1"]), .repair-entry :is(a, button)',
     ].join(', '))];
     const mobile = matchMedia('(max-width: 700px)');
     let frame = 0;

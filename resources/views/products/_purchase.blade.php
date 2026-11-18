@@ -10,7 +10,7 @@
         <strong>{{ $product->is_sample ? $product->stock_status->label() : $sale->stockLabel($product) }}</strong>
     </div>
     @if ($canAddToCart)
-        <form id="product-cart-form" method="post" action="{{ route('cart.add', $product) }}" class="product-cart-form">
+        <form id="product-cart-form" method="post" action="{{ route('cart.add', $product) }}" class="product-cart-form" data-cart-mutation>
             @csrf
             <div>
                 <label class="label" for="store-quantity">تعداد</label>

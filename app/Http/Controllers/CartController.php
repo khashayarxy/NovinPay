@@ -24,13 +24,32 @@ class CartController extends Controller
     public function add(Request $request, Product $product, StoreCheckout $checkout)
     {
         $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:10']]);
-        abort_unless($checkout->offer($product), 409, 'این کالا هنوز برای خرید آنلاین آماده نیست.');
+        $offer = $checkout->offer($product);
+        abort_unless($offer, 409, 'این کالا هنوز برای خرید آنلاین آماده نیست.');
         $cart = $request->session()->get('store_cart', []);
         abort_if(! isset($cart[$product->slug]) && count($cart) >= 30, 422);
-        $cart[$product->slug] = min(10, ($cart[$product->slug] ?? 0) + (int) $data['quantity']);
+        $quantity = ($cart[$product->slug] ?? 0) + (int) $data['quantity'];
+        abort_unless($quantity <= min(10, $offer->available), 409, 'موجودی برای این تعداد کافی نیست.');
+        $cart[$product->slug] = $quantity;
         $request->session()->put('store_cart', $cart);
 
-        return redirect()->route('cart.index');
+        return $this->cartChanged($request, $cart);
+    }
+
+    public function update(Request $request, Product $product, StoreCheckout $checkout)
+    {
+        $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:10']]);
+        $cart = $request->session()->get('store_cart', []);
+        abort_unless(isset($cart[$product->slug]), 404);
+        $quantity = (int) $data['quantity'];
+        if ($quantity > $cart[$product->slug]) {
+            $offer = $checkout->offer($product);
+            abort_unless($offer && $offer->available >= $quantity, 409, 'موجودی برای این تعداد کافی نیست.');
+        }
+        $cart[$product->slug] = $quantity;
+        $request->session()->put('store_cart', $cart);
+
+        return $this->cartChanged($request, $cart);
     }
 
     public function remove(Request $request, string $slug)
@@ -39,7 +58,14 @@ class CartController extends Controller
         unset($cart[$slug]);
         $request->session()->put('store_cart', $cart);
 
-        return back();
+        return $request->expectsJson() ? $this->cartChanged($request, $cart) : back();
+    }
+
+    private function cartChanged(Request $request, array $cart)
+    {
+        return $request->expectsJson()
+            ? response()->json(['count' => array_sum($cart)])
+            : redirect()->route('cart.index');
     }
 
     public function checkout(Request $request, StoreCheckout $checkout)

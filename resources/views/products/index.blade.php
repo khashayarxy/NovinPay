@@ -1,32 +1,49 @@
 @extends('layouts.app')
-
 @section('title', 'محصولات')
 
 @section('content')
-    <div class="np-container public-section public-catalogue">
-        <x-page-heading title="کارتخوان مناسب کسب‌وکار شما" eyebrow="محصولات نوین‌پی" icon="shopping-bag" lead="محصولات ثبت‌شده را بررسی و مقایسه کنید. برای استعلام قیمت و انتخاب دستگاه با نوین‌پی تماس بگیرید.">
-            <div class="public-brand-filters" aria-label="جستجوی برند">
-                @foreach (['PAX', 'NewPOS', 'Newland'] as $brand)
-                    <a href="{{ route('products.index', ['q' => $brand]) }}" lang="en" @if ($term === $brand) aria-current="true" @endif>{{ $brand }}</a>
-                @endforeach
-            </div>
-        </x-page-heading>
+<div class="np-container public-section public-catalogue">
+    @php($filterQuery = array_filter(['q' => $term, 'condition' => $condition, 'sort' => $sort]))
+    <header class="store-page-intro">
+        <h1>فروشگاه کارتخوان</h1>
+        <p>دستگاه مناسب کسب‌وکار خود را پیدا کنید.</p>
+    </header>
 
-        <form method="get" action="{{ route('products.index') }}" class="card public-filter p-4 sm:p-5" aria-label="جستجو و فیلتر محصولات">
-            @if ($errors->any())
-                <p id="error-summary" role="alert" tabindex="-1"
-                    class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    {{ $errors->first() }}
-                </p>
-            @endif
-
-            <div class="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
-                <div>
-                    <label for="q" class="label">جستجو</label>
-                    <input type="search" id="q" name="q" value="{{ $term }}" class="input"
-                        placeholder="نام یا توضیحات محصول" maxlength="100">
-                </div>
-
+    @if ($errors->any())
+        <p id="error-summary" role="alert" tabindex="-1" class="public-notice">{{ $errors->first() }}</p>
+    @endif
+    <nav class="catalog-quick-links" aria-label="دسته‌بندی محصولات">
+        <a href="{{ route('products.index', $filterQuery) }}" @if (!$category) aria-current="page" @endif>همهٔ محصولات</a>
+        @foreach ($categories as $item)
+            <a href="{{ route('products.index', $filterQuery + ['category' => $item->value]) }}"
+                @if ($category === $item) aria-current="page" @endif>{{ $item->label() }}</a>
+        @endforeach
+    </nav>
+    <form class="catalog-search" action="{{ route('products.index') }}" method="get" aria-label="جست‌وجو و مرتب‌سازی">
+        @if ($category)<input type="hidden" name="category" value="{{ $category->value }}">@endif
+        @if ($condition)<input type="hidden" name="condition" value="{{ $condition }}">@endif
+        <div class="catalog-search-field">
+            <label for="q" class="sr-only">جست‌وجوی محصول</label>
+            <input id="q" name="q" type="search" class="input" value="{{ $term }}" maxlength="100"
+                placeholder="نام یا مدل کالا" enterkeyhint="search">
+            <button type="submit" aria-label="جست‌وجو"><x-storefront.icon name="search" /></button>
+        </div>
+        <div class="catalog-toolbar">
+            <button type="button" class="btn btn-secondary catalog-filter-trigger" data-storefront-open="catalog-filter-dialog" aria-haspopup="dialog"><x-storefront.icon name="filter" /> فیلترها @if ($category || $condition)<span class="sr-only">فعال</span>@endif</button>
+            <label for="sort" class="sr-only">مرتب‌سازی</label>
+            <select name="sort" id="sort" class="input" data-catalog-sort>
+                <option value="">تازه‌ترین</option>
+                <option value="price-low" @selected($sort === 'price-low')>ارزان‌ترین</option>
+                <option value="price-high" @selected($sort === 'price-high')>گران‌ترین</option>
+            </select>
+            <button type="submit" class="btn btn-secondary catalog-sort-submit">اعمال</button>
+        </div>
+    </form>
+    <div class="catalog-layout">
+        <aside class="catalog-sidebar" aria-label="فیلتر محصولات">
+            <form data-catalog-filters action="{{ route('products.index') }}" method="get">
+                @if ($term !== '')<input type="hidden" name="q" value="{{ $term }}">@endif
+                @if ($sort)<input type="hidden" name="sort" value="{{ $sort }}">@endif
                 <div>
                     <label for="category" class="label">دسته‌بندی</label>
                     <select id="category" name="category" class="input md:w-56">
@@ -48,36 +65,15 @@
                         @endforeach
                     </select>
                 </div>
-                <div>
-                    <label class="label" for="sort">مرتب‌سازی</label>
-                    <select class="input" name="sort" id="sort">
-                        <option value="">تازه‌ترین</option>
-                        <option value="price-low" @selected($sort === 'price-low')>ارزان‌ترین</option>
-                        <option value="price-high" @selected($sort === 'price-high')>گران‌ترین</option>
-                    </select>
+                <div class="catalog-filter-actions">
+                    <button class="btn btn-primary" type="submit">نمایش نتایج</button>
+                    @if ($hasFilters)<a href="{{ route('products.index') }}" class="btn btn-secondary">پاک کردن فیلترها</a>@endif
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    <button type="submit" class="btn btn-primary">اعمال فیلتر</button>
-                    <a href="{{ route('products.index') }}" class="btn btn-secondary">پاک کردن</a>
-                </div>
-            </div>
-        </form>
-
-        <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="sr-only">فهرست محصولات</h2>
-            <p class="text-sm text-slate-600">
-                @if ($products->total() === 0)
-                    محصولی پیدا نشد
-                @else
-                    {{ \App\Support\FaNumber::digits($products->total()) }} محصول یافت شد
-                @endif
-            </p>
-            @if ($hasFilters)
-                <p class="text-xs text-slate-500">نتایج با فیلترهای انتخابی شما نمایش داده می‌شوند.</p>
-            @endif
-        </div>
-
-        <div class="mt-6">
+            </form>
+        </aside>
+        <section aria-label="فهرست محصولات">
+            <p class="catalog-count">{{ \App\Support\FaNumber::digits($products->total()) }} محصول یافت شد</p>
+        <div class="catalog-results">
             @if ($products->isEmpty())
                 @if ($hasFilters)
                     <x-empty-state title="محصولی با این جست‌وجو پیدا نشد"
@@ -121,5 +117,15 @@
                 @endif
             @endif
         </div>
+        </section>
     </div>
+    <section class="catalog-description" aria-labelledby="catalog-about">
+        <h2 id="catalog-about">کارتخوان مناسب کسب‌وکار شما</h2>
+        <p>محصولات ثبت‌شده را بررسی و مقایسه کنید. برای استعلام قیمت و انتخاب دستگاه با نوین‌پی تماس بگیرید.</p>
+    </section>
+    <dialog class="store-filter-dialog" id="catalog-filter-dialog" data-storefront-dialog aria-labelledby="filter-title">
+        <header class="overlay-heading"><h2 id="filter-title">فیلتر محصولات</h2><button type="button" data-storefront-close aria-label="بستن فیلترها"><x-storefront.icon name="close" /></button></header>
+        <div data-filter-slot></div>
+    </dialog>
+</div>
 @endsection

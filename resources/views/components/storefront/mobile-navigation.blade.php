@@ -9,9 +9,10 @@
 @endphp
 <nav class="global-store-nav" data-mobile-bottom-nav aria-label="راهبری فروشگاه">
     @foreach ($destinations as [$route, $family, $label, $icon])
-        <a href="{{ route($route) }}" @if (request()->routeIs($family)) aria-current="{{ request()->routeIs($route) ? 'page' : 'location' }}" @endif>
+        <a href="{{ route($route) }}" @if ($route === 'cart.index') data-storefront-open="cart-dialog" aria-haspopup="dialog" @endif @if (request()->routeIs($family)) aria-current="{{ request()->routeIs($route) ? 'page' : 'location' }}" @endif>
             <x-storefront.icon :name="$icon" />
             <span>{{ $label }}</span>
+            @if ($route === 'cart.index')<x-storefront.cart-count />@endif
         </a>
     @endforeach
 </nav>

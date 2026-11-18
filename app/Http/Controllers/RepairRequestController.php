@@ -36,6 +36,11 @@ class RepairRequestController extends Controller
         ]);
     }
 
+    public function start(): RedirectResponse
+    {
+        return redirect()->route('repair');
+    }
+
     public function store(StoreRepairRequest $request): RedirectResponse
     {
         $data = $request->validated();

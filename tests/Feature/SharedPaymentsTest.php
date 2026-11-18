@@ -709,7 +709,7 @@ class SharedPaymentsTest extends TestCase
         }
         $product->price = 25000;
         $product->save();
-        $this->get('/cart')->assertOk()->assertSee('۲۵,۰۰۰ تومان')->assertDontSee('aria-describedby="cart-unavailable"', false);
+        $this->get('/cart')->assertOk()->assertSee('۲۵٬۰۰۰ تومان')->assertDontSee('aria-describedby="cart-unavailable"', false);
         $this->assertDatabaseCount('sales_orders', 1);
         Http::assertNothingSent();
     }

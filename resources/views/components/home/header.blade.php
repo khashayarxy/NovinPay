@@ -1,6 +1,7 @@
 @props(['premium' => false])
 
 @php
+    $shopTools = request()->routeIs('home', 'products.*', 'cart.*', 'repair*', 'account.*', 'articles.*', 'contact', 'consultation*', 'terms', 'privacy');
     request()->attributes->set('customer_header_rendered', true);
     $customerAccount = app(\App\Services\CustomerLogin::class)->authenticatedAccount(request());
     $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما'], ['articles.index', 'articles.*', 'مقاله‌ها']];
@@ -48,15 +49,17 @@
                 @endif
             </div>
         </div>
-        @if ($premium)
+        @if ($shopTools)
             <a class="np-customer-trigger store-mobile-search" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-controls="search-dialog" aria-label="جست‌وجوی محصولات"><x-storefront.icon name="search" width="20" height="20" /></a>
-            <a class="np-customer-trigger premium-account-trigger" href="{{ route('account.index') }}" data-storefront-open="account-dialog" aria-haspopup="dialog" aria-controls="account-dialog" aria-label="حساب کاربری"><x-home.icon name="user" /></a>
+        @endif
+        @if ($premium)
+            <a class="np-customer-trigger premium-account-trigger" href="{{ route('account.index') }}" data-storefront-open="account-dialog" aria-haspopup="dialog" aria-controls="account-dialog" aria-label="حساب کاربری"><x-storefront.icon name="account" /></a>
         @endif
         <div class="np-customer-header" data-customer-header data-session-url="{{ route('customer.header') }}">
-            @if ($premium)
-                <div class="premium-desktop-tools" aria-label="ابزارهای فروشگاه">
-                    <a class="np-customer-trigger" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-label="جست‌وجوی محصولات"><x-home.icon name="search" /></a>
-                    <a class="np-customer-trigger" href="{{ route('cart.index') }}" data-storefront-open="cart-dialog" aria-haspopup="dialog" aria-label="سبد خرید"><x-storefront.icon name="cart" width="18" height="18" /></a>
+            @if ($shopTools)
+                <div class="premium-desktop-tools store-desktop-tools" aria-label="ابزارهای فروشگاه">
+                    <a class="np-customer-trigger" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-label="جست‌وجوی محصولات"><x-storefront.icon name="search" /></a>
+                    <a class="np-customer-trigger" href="{{ route('cart.index') }}" data-storefront-open="cart-dialog" aria-haspopup="dialog" aria-label="سبد خرید"><x-storefront.icon name="cart" /><x-storefront.cart-count /></a>
                 </div>
             @endif
             <x-home.customer-entry :account="$customerAccount" />

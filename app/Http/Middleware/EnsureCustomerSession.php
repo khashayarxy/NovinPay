@@ -16,7 +16,7 @@ class EnsureCustomerSession
             $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer']);
             $destination = match (true) {
                 $request->routeIs('cart.checkout') => route('cart.index', [], false),
-                $request->routeIs('repair.store') => route('repair', [], false),
+                $request->routeIs('repair.start', 'repair.store') => route('repair', [], false),
                 $request->isMethod('GET') && $request->routeIs('account.*', 'payments.document', 'delivery.show') => '/'.$request->path(),
                 default => null,
             };

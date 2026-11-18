@@ -150,6 +150,7 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $cart = CartController::class;
     Route::get('/cart', [$cart, 'index'])->name('cart.index');
     Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.add');
+    Route::post('/cart/products/{product}/quantity', [$cart, 'update'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.update');
     Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.remove');
     Route::post('/cart/checkout', [$cart, 'checkout'])->middleware([EnsureCustomerSession::class, 'throttle:10,1,cart-checkout:'])->block(20, 15)->name('cart.checkout');
 });
@@ -162,6 +163,7 @@ Route::middleware(PublicArticleResponse::class)->prefix('articles')->name('artic
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/repair', [RepairRequestController::class, 'create'])->name('repair');
+    Route::get('/repair/start', [RepairRequestController::class, 'start'])->middleware(EnsureCustomerSession::class)->name('repair.start');
     Route::post('/repair', [RepairRequestController::class, 'store'])->middleware([EnsureCustomerSession::class, 'throttle:repair-submit'])->name('repair.store');
     Route::get('/repair/confirmation', [RepairRequestController::class, 'confirmation'])->name('repair.confirmation');
     Route::get('/repair/track', [RepairRequestController::class, 'tracking'])->name('repair.track');

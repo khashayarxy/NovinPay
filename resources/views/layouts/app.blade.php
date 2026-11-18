@@ -29,7 +29,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('page-head')
     @if ($hasStoreNavigation)
-        <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=3') }}">
+        <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=4') }}">
+    @endif
+    @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
+        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=1') }}">
+        <script src="{{ asset('js/storefront-premium.js?v=9') }}" defer></script>
     @endif
     @if(request()->routeIs('account.*'))
         <x-password-visibility-assets />
@@ -45,7 +49,10 @@
     @endunless
     <main id="main-content" class="flex-1" tabindex="-1">@yield('content')</main>
     @unless(View::hasSection('quiet-shell'))<x-home.footer />@endunless
-    @if ($hasStoreNavigation)<x-storefront.mobile-navigation />@endif
+    @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
+        <x-storefront.mobile-navigation />
+        <x-storefront.shop-dialogs />
+    @endif
 @if(config('support_chat.enabled') && !View::hasSection('quiet-shell'))
     @php($chatAccount = auth('customer')->user())
     @if(!$chatAccount || $chatAccount->verified_at)

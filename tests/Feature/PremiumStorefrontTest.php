@@ -95,6 +95,12 @@ class PremiumStorefrontTest extends TestCase
         $this->assertSame([$product->slug => 1], session('store_cart'));
         $this->post(route('cart.add', $product), ['quantity' => 1])->assertRedirect(route('cart.index'));
         $this->assertSame([$product->slug => 2], session('store_cart'));
+        $this->postJson(route('cart.add', $product), ['quantity' => 1])->assertConflict();
+        $this->assertSame([$product->slug => 2], session('store_cart'));
+        $this->postJson(route('cart.update', $product), ['quantity' => 3])->assertConflict();
+        $this->assertSame([$product->slug => 2], session('store_cart'));
+        $this->postJson(route('cart.update', $product), ['quantity' => 1])->assertOk()->assertExactJson(['count' => 1]);
+        $this->postJson(route('cart.update', $product), ['quantity' => 2])->assertOk()->assertExactJson(['count' => 2]);
         $this->post(route('cart.remove', $product->slug))->assertRedirect();
         $this->assertSame([], session('store_cart'));
         $this->get(route('cart.index'))->assertOk()->assertSee('مشاهدهٔ محصولات');
@@ -128,7 +134,7 @@ class PremiumStorefrontTest extends TestCase
         $product = $this->product('fixture-terminal', ['name' => 'کارتخوان آزمایشی ایزوله', 'price' => 25000]);
         $this->withSession(['store_cart' => [$product->slug => 2]])->get(route('cart.index'))
             ->assertOk()->assertSee('data-cart-empty="false"', false)->assertSee($product->name)
-            ->assertSee('۲ عدد')->assertSee('۵۰,۰۰۰ تومان')->assertSee(route('cart.remove', $product->slug), false);
+            ->assertSee('۲ عدد')->assertSee('۵۰٬۰۰۰ تومان')->assertSee(route('cart.remove', $product->slug), false);
         $this->post(route('cart.remove', $product->slug))->assertRedirect();
         $this->get(route('cart.index'))->assertOk()->assertSee('data-cart-empty="true"', false)->assertDontSee($product->name);
     }
