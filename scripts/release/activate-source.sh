@@ -86,6 +86,9 @@ verify_ippanel
 p "$tools/activate-source.php" "$manifest" "$pin" baseline-files
 phase=recovery_runtime_and_quota
 p "$tools/activate-source.php" "$manifest" "$pin" preflight
+phase=quota_bridge_admission
+p "$tools/activate-source.php" "$manifest" "$pin" quota-admission
+phase=journal_preparation
 mkdir -m 0700 "$journal"
 p "$tools/activate-source.php" "$manifest" "$pin" migration-paths >"$journal/migration-paths.txt"
 mapfile -t migration_paths <"$journal/migration-paths.txt"

@@ -66,7 +66,7 @@ function Publish-QuotaEnvelope([string]$Directory,[string]$Name,[byte[]]$Bytes,[
 function Get-QuotaV2Request([string]$Raw,[string]$BaseName,$Manifest,[string]$ManifestPin,[long]$Now) {
  try{$q=$Raw|ConvertFrom-Json}catch{throw 'quota_request_json'}
  if($q.format -cne 2 -or $q.manifestSha256 -cne $ManifestPin -or $q.sourceCommit -cne $Manifest.baseline -or
-    $q.targetCommit -cne $Manifest.target -or $q.phase -cnotin @('backup','fence') -or
+    $q.targetCommit -cne $Manifest.target -or $q.phase -cnotin @('backup','fence','admission') -or
     $BaseName -cnotmatch '^quota-[a-f0-9]{32}$' -or $q.nonce -cne $BaseName.Substring(6) -or
     ($q.createdAtUnix -isnot [long] -and $q.createdAtUnix -isnot [int]) -or
     ($q.expiresAtUnix -isnot [long] -and $q.expiresAtUnix -isnot [int]) -or

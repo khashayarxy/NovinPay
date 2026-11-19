@@ -30,7 +30,7 @@ function gate(bool $valid, string $check): void
 $action = $argv[3] ?? '';
 try {
     gate(PHP_SAPI === 'cli' && PHP_VERSION_ID >= 80401 && posix_geteuid() === 1321
-        && in_array($action, ['contract', 'runtime-execute', 'migration-paths', 'migrate-reviewed', 'database-ready', 'baseline-files', 'smoke', 'preflight', 'ready', 'web-check', 'web-cache', 'quota'], true), 'execution_scope');
+        && in_array($action, ['contract', 'runtime-execute', 'migration-paths', 'migrate-reviewed', 'database-ready', 'baseline-files', 'smoke', 'preflight', 'ready', 'web-check', 'web-cache', 'quota', 'quota-admission'], true), 'execution_scope');
     require __DIR__.'/recovery-contract.php';
     $raw = NovinPay\Release\privateRead($argv[1]);
     $manifest = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
@@ -73,6 +73,13 @@ try {
         exit(0);
     }
 
+    if ($action === 'quota-admission') {
+        if (($manifest['quotaProtocol'] ?? 1) === 2) {
+            NovinPay\Release\requestQuota($manifest, KIT, 'admission');
+            echo "ADMIN_QUOTA_ADMISSION_PASS\n";
+        }
+        exit(0);
+    }
     if ($action === 'quota') {
         NovinPay\Release\requestQuota($manifest, KIT, 'fence');
         echo "ADMIN_QUOTA_PASS\n";

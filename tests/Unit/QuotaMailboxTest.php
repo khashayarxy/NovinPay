@@ -82,4 +82,17 @@ class QuotaMailboxTest extends TestCase
             rmdir($root);
         }
     }
+
+    public function test_admission_guard_precedes_journal_and_fence_in_source_runner(): void
+    {
+        $runner = file_get_contents(__DIR__.'/../../scripts/release/activate-source.sh');
+        $admission = strpos($runner, '"$pin" quota-admission');
+        $journal = strpos($runner, 'mkdir -m 0700 "$journal"');
+        $fence = strpos($runner, '"$pin" quota'.chr(10));
+        $this->assertIsInt($admission);
+        $this->assertIsInt($journal);
+        $this->assertIsInt($fence);
+        $this->assertLessThan($journal, $admission);
+        $this->assertLessThan($fence, $journal);
+    }
 }
