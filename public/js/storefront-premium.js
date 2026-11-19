@@ -11,6 +11,7 @@
     let closing = false;
     const pending = new Map();
     let cartVersion = 0;
+    let accountVersion = 0;
     let cartPending = false;
     const cartDialog = document.getElementById('cart-dialog');
     const cartNumber = new Intl.NumberFormat('fa-IR', {useGrouping: false});
@@ -77,6 +78,37 @@
         } finally {
             clearTimeout(timeout);
             if (pending.get(key) === controller) pending.delete(key);
+        }
+    }
+
+    function prepareAccount(container) {
+        const entry = container.querySelector('[data-customer-entry]');
+        if (!entry) return;
+        const authenticated = entry.dataset.customerState === 'authenticated';
+        const menu = entry.querySelector('details');
+        if (menu) menu.open = true;
+        entry.classList.add('is-panel-ready');
+        container.closest('dialog').querySelectorAll('[data-account-guest-copy]').forEach(element => { element.hidden = authenticated; });
+    }
+
+    async function refreshAccount(dialog) {
+        const version = ++accountVersion;
+        const container = dialog.querySelector('[data-storefront-account-content]');
+        prepareAccount(container);
+        try {
+            const document = await readPage(dialog.dataset.accountUrl, 'account');
+            const next = document.querySelector('[data-customer-entry]');
+            if (active !== dialog || version !== accountVersion || !next || !['guest', 'authenticated'].includes(next.dataset.customerState)) return;
+            const restoreFocus = container.contains(window.document.activeElement);
+            const focusedHref = window.document.activeElement?.getAttribute('href');
+            container.replaceChildren(next);
+            prepareAccount(container);
+            if (restoreFocus) {
+                const matching = [...container.querySelectorAll('a[href]')].find(link => link.getAttribute('href') === focusedHref);
+                (matching || dialog.querySelector('[data-storefront-close]')).focus({preventScroll: true});
+            }
+        } catch {
+            // Preserve the server-rendered session view on a transient failure.
         }
     }
 
@@ -186,6 +218,7 @@
         const target = focus || (!dialog.dataset.cartUrl && dialog.querySelector('input:not([type="hidden"]), iframe')) || dialog.querySelector('[data-storefront-close]');
         target?.focus({preventScroll: true});
         if (dialog.dataset.cartUrl) refreshCart(dialog);
+        if (dialog.dataset.accountUrl) refreshAccount(dialog);
     }
 
     function open(dialog, trigger) {
@@ -276,6 +309,9 @@
     window.addEventListener('popstate', restoreLayer);
     window.addEventListener('pagehide', () => finish(false));
     window.addEventListener('pageshow', restoreLayer);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && active?.dataset.accountUrl) refreshAccount(active);
+    });
     const purchaseColumn = document.querySelector('[data-purchase-column]');
     function fitPurchaseColumn() {
         purchaseColumn?.toggleAttribute('data-too-tall', purchaseColumn.offsetHeight > innerHeight - 32);
@@ -303,25 +339,28 @@
     document.addEventListener('focusout', () => requestAnimationFrame(resize));
     resize();
 
-    const contact = document.querySelector('[data-product-dock]');
+    const contact = document.querySelector('.sticky-contact');
     const action = document.querySelector('[data-product-primary-action]');
-    const stickyMenu = document.querySelector('[data-product-sections]');
-    const storeHeader = document.querySelector('[data-store-header]');
-    if (contact && 'ResizeObserver' in window) {
-        new ResizeObserver(() => {
-            root.style.setProperty('--store-dock-height', contact.offsetHeight + 'px');
-        }).observe(contact);
-    }
+    const clearTargets = [...document.querySelectorAll([
+        '.purchase :is(.price bdi, .price small, .stock strong, time, .product-cart-form, a.primary)',
+        '.gallery-arrow, .gallery-zoom-mark, .image-count, .thumbs button',
+        '.section-nav a, .key-mobile .text-link, .product-faq summary, .product-feedback :is(.btn, form)',
+        '.catalog-toolbar :is(button, select), .public-product-card a:not([tabindex="-1"]), .repair-entry :is(a, button)',
+    ].join(', '))];
+    const mobile = matchMedia('(max-width: 700px)');
     let frame = 0;
     function render() {
         frame = 0;
         if (active) return;
-        if (contact && action) {
-            const menu = stickyMenu?.getBoundingClientRect();
-            const menuAtTop = menu && menu.top <= (parseFloat(getComputedStyle(stickyMenu).top) || 0);
-            const headerBottom = storeHeader?.getBoundingClientRect().bottom ?? 0;
-            contact.hidden = action.getBoundingClientRect().bottom > Math.max(0, headerBottom, menuAtTop ? menu.bottom : 0);
-        }
+        if (contact && action) contact.hidden = action.getBoundingClientRect().bottom > 0;
+        body.classList.toggle('floating-has-contact', !!contact && !contact.hidden);
+        const launcher = mobile.matches && document.querySelector('[data-support-launcher]');
+        const bounds = launcher && launcher.getBoundingClientRect();
+        body.classList.toggle('floating-support-obstructs', !!bounds?.width && clearTargets.some(target => {
+            const rect = target.getBoundingClientRect();
+            return rect.width && rect.height && rect.left < bounds.right + 4 && rect.right > bounds.left - 4
+                && rect.top < bounds.bottom + 4 && rect.bottom > bounds.top - 4;
+        }));
     }
     function schedule() { if (!frame) frame = requestAnimationFrame(render); }
     window.addEventListener('scroll', schedule, {passive: true});

@@ -103,25 +103,31 @@ document.querySelectorAll('[data-product-sections]').forEach(sectionMenu => {
     const sections = links.map(link => document.getElementById(link.hash.slice(1)));
     const header = document.querySelector('.np-header');
     let frame = 0;
-    let currentLink = null;
     function updateCurrentSection() {
         frame = 0;
-        const menuRect = sectionMenu.getBoundingClientRect();
-        const stickyTop = parseFloat(getComputedStyle(sectionMenu).top) || 0;
-        const boundary = stickyTop + menuRect.height + 18;
+        const documentRoot = document.documentElement;
+        const height = documentRoot.clientHeight;
+        const reachedEnd = window.scrollY + height >= documentRoot.scrollHeight - 2;
+        const headerHeight = header && getComputedStyle(header).position === 'sticky' ? header.offsetHeight : 0;
+        const menuBottom = getComputedStyle(sectionMenu).position === 'sticky' ? sectionMenu.offsetHeight + 16 : 0;
+        const boundary = reachedEnd ? height - 1 : Math.max(headerHeight + 40, menuBottom);
         let current = 0;
         sections.forEach((section, index) => {
             if (section && section.getBoundingClientRect().top <= boundary) current = index;
         });
-        const next = links[current];
-        if (!next || next === currentLink) return;
-        currentLink?.removeAttribute('aria-current');
-        currentLink = next;
-        next.setAttribute('aria-current', 'location');
-        const bounds = next.getBoundingClientRect();
-        const horizontal = bounds.left < menuRect.left ? bounds.left - menuRect.left
-            : Math.max(0, bounds.right - menuRect.right);
-        if (horizontal) sectionMenu.scrollBy({left: horizontal});
+        const target = links.findIndex(link => link.hash === location.hash);
+        const section = sections[target];
+        if (section) {
+            const offset = parseFloat(getComputedStyle(documentRoot).scrollPaddingTop) || 0;
+            const top = section.getBoundingClientRect().top;
+            const targetY = Math.min(scrollY + top - offset, documentRoot.scrollHeight - height);
+            // History can restore the reading position after an FAQ answer changes the page height.
+            if (Math.abs(scrollY - Math.max(0, targetY)) <= 2 || (top >= headerHeight && top <= offset + 96)) current = target;
+        }
+        links.forEach((link, index) => {
+            if (index === current) link.setAttribute('aria-current', 'location');
+            else link.removeAttribute('aria-current');
+        });
     }
     function scheduleCurrentSection() {
         if (!frame) frame = requestAnimationFrame(updateCurrentSection);
@@ -130,20 +136,15 @@ document.querySelectorAll('[data-product-sections]').forEach(sectionMenu => {
     window.addEventListener('resize', scheduleCurrentSection, { passive: true });
     window.addEventListener('hashchange', scheduleCurrentSection);
     window.addEventListener('pageshow', scheduleCurrentSection);
-    function measureStickyElements() {
-        const root = document.documentElement;
-        const headerHeight = header && getComputedStyle(header).position === 'sticky' ? header.offsetHeight : 0;
-        root.style.setProperty('--product-header-height', headerHeight + 'px');
-        root.style.setProperty('--product-tabs-height', sectionMenu.offsetHeight + 'px');
-        scheduleCurrentSection();
+    if (window.ResizeObserver) {
+        new ResizeObserver(() => {
+            if (sectionMenu.hasAttribute('data-product-sections')) {
+                document.documentElement.style.setProperty('--product-tabs-height', sectionMenu.offsetHeight + 'px');
+            }
+            scheduleCurrentSection();
+        }).observe(sectionMenu);
     }
-    window.addEventListener('resize', measureStickyElements, {passive: true});
-    if ('ResizeObserver' in window) {
-        const observer = new ResizeObserver(measureStickyElements);
-        observer.observe(sectionMenu);
-        if (header) observer.observe(header);
-    }
-    measureStickyElements();
+    updateCurrentSection();
 });
 
 document.querySelectorAll('.product-feedback-form').forEach(form => {

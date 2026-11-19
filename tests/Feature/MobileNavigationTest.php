@@ -67,9 +67,8 @@ class MobileNavigationTest extends TestCase
             $this->assertSame(1, $active->length);
             $this->assertSame(route('products.index'), $active->item(0)->getAttribute('href'));
             $this->assertSame('location', $active->item(0)->getAttribute('aria-current'));
-            $this->assertSame(1, $xpath->query('//header//button[@aria-controls="mobile-drawer" and @aria-haspopup="dialog"]')->length);
-            $this->assertSame(1, $xpath->query('//dialog[@id="mobile-drawer"]//a[@href="'.route('products.index').'"]')->length);
-            $this->assertSame(1, $xpath->query('//header//*[@data-customer-entry]')->length);
+            $this->assertSame(1, $xpath->query('//header//button[@aria-controls="category-dialog" and @aria-haspopup="dialog"]')->length);
+            $this->assertSame(1, $xpath->query('//dialog[@id="category-dialog"]//a[@href="'.route('products.index').'"]')->length);
         }
     }
 
@@ -107,7 +106,7 @@ class MobileNavigationTest extends TestCase
         $this->assertSame(['صفحه اصلی', 'فروشگاه کارتخوان', 'تعمیرات کارتخوان', 'پیگیری تعمیرات', 'مقالات و آموزش‌ها', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
         $this->assertSame(0, $xpath->query('//a[normalize-space(.)="تعمیرگاه" or normalize-space(.)="خدمات و تعمیرات"]')->length);
         $this->assertSame(array_map(fn ($name) => route($name), ['home', 'products.index', 'repair', 'repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
-        $this->assertSame(6, $xpath->query('./a[svg[@aria-hidden="true"]]', $menu)->length);
+        $this->assertSame(6, $xpath->query('./a/*[@aria-hidden="true"]', $menu)->length);
         $active = $xpath->query('./a[@aria-current="page"]', $menu);
         $this->assertSame($current ? 1 : 0, $active->length);
         if ($current) {
@@ -116,9 +115,6 @@ class MobileNavigationTest extends TestCase
         $this->assertSame(0, $xpath->query('./a[@aria-current="location"]', $menu)->length);
         $this->assertSame(1, $xpath->query('//button[@aria-controls="mobile-drawer" and @aria-expanded="false" and @aria-haspopup="dialog"]')->length);
         $this->assertSame(1, $xpath->query('//dialog[@id="mobile-drawer" and @aria-label="ناوبری موبایل" and not(@open)]')->length);
-        foreach (['phone_uri', 'secondary_phone_uri'] as $number) {
-            $this->assertSame(1, $xpath->query('//dialog[@id="mobile-drawer"]//a[@href="'.config('business.'.$number).'"]')->length);
-        }
         $this->assertSame(0, $xpath->query('//header//*[@role="menu" or @role="menuitem"]')->length);
         $this->assertSame(0, $xpath->query('//header//a[@href="'.route('account.index').'"]')->length);
         $this->assertSame(1, $xpath->query('//header//a[@data-customer-guest and @href="'.route('account.login').'"]')->length);

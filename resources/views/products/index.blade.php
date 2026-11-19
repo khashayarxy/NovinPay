@@ -95,7 +95,7 @@
                             <p class="text-sm text-slate-600">۲ تا ۴ محصول را انتخاب کنید.</p>
                         </div>
                     @endif
-                    <div @class(['public-product-grid', 'catalog-grid-single' => $products->count() === 1])>
+                    <div class="public-product-grid">
                         @foreach ($products as $product)
                             <div class="flex flex-col">
                                 <x-product-card :product="$product" :sale="$sales[$product->id]" />
