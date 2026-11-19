@@ -68,6 +68,10 @@ jobs:
           cache: npm
       - name: Build assets required by rendered PHP responses
         run: npm ci && npm run build
+      - name: Quota bridge transport and interruption faults
+        run: |
+          pwsh -NoProfile -File tests/ReleaseQuota/bridge.ps1
+          python3 -B tests/ReleaseQuota/test_detached.py
       - name: Schema-neutral runtime activation and forced file rollback
         run: php scripts/release/prepare-runtime-rehearsal.php
       - name: Full SQLite regression suite
