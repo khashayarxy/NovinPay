@@ -28,11 +28,11 @@
     <x-brand-head />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
-        <script src="{{ asset('js/storefront-premium.js?v=phase2-correction-1') }}" defer></script>
+        <script src="{{ asset('js/storefront-premium.js?v=phase2-correction-2') }}" defer></script>
     @endif
     @stack('page-head')
     @if ($hasStoreNavigation)
-        <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=4') }}">
+        <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=5') }}">
     @endif
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=phase2-correction-2') }}">
