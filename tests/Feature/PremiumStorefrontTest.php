@@ -7,6 +7,7 @@ use App\Models\InventoryItem;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\CommerceManagement;
+use App\Services\ShoppingCart;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\URL;
@@ -20,6 +21,7 @@ class PremiumStorefrontTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withCredentials();
         URL::forceRootUrl('https://novinpaypos.test');
         URL::forceScheme('https');
     }
@@ -93,18 +95,25 @@ class PremiumStorefrontTest extends TestCase
         $this->get(route('products.show', $product))->assertOk()
             ->assertSee('action="'.route('cart.add', $product).'"', false)->assertSee('افزودن به سبد خرید')
             ->assertSee('<bdi dir="ltr">UI-FIXTURE</bdi>', false);
-        $this->post(route('cart.add', $product), ['quantity' => 1])->assertRedirect(route('cart.index'));
-        $this->assertSame([$product->slug => 1], session('store_cart'));
-        $this->post(route('cart.add', $product), ['quantity' => 1])->assertRedirect(route('cart.index'));
-        $this->assertSame([$product->slug => 2], session('store_cart'));
-        $this->postJson(route('cart.add', $product), ['quantity' => 1])->assertConflict();
-        $this->assertSame([$product->slug => 2], session('store_cart'));
-        $this->postJson(route('cart.update', $product), ['quantity' => 3])->assertConflict();
-        $this->assertSame([$product->slug => 2], session('store_cart'));
-        $this->postJson(route('cart.update', $product), ['quantity' => 1])->assertOk()->assertExactJson(['count' => 1]);
-        $this->postJson(route('cart.update', $product), ['quantity' => 2])->assertOk()->assertExactJson(['count' => 2]);
-        $this->post(route('cart.remove', $product->slug))->assertRedirect();
-        $this->assertSame([], session('store_cart'));
+        $this->withCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('a', 64));
+        $fields = fn () => $this->get(route('cart.index'))->assertOk()->original->getData();
+        $payload = function () use ($fields) {
+            $cart = $fields();
+
+            return ['cart_context' => $cart['proof'], 'cart_revision' => $cart['revision']];
+        };
+        $this->post(route('cart.add', $product), $payload() + ['quantity' => 1])->assertRedirect(route('cart.index'));
+        $this->assertSame([$product->slug => 1], $fields()['quantity']);
+        $this->post(route('cart.add', $product), $payload() + ['quantity' => 1])->assertRedirect(route('cart.index'));
+        $this->assertSame([$product->slug => 2], $fields()['quantity']);
+        $this->postJson(route('cart.add', $product), $payload() + ['quantity' => 1])->assertConflict();
+        $this->assertSame([$product->slug => 2], $fields()['quantity']);
+        $this->postJson(route('cart.update', $product), $payload() + ['quantity' => 3])->assertConflict();
+        $this->assertSame([$product->slug => 2], $fields()['quantity']);
+        $this->postJson(route('cart.update', $product), $payload() + ['quantity' => 1])->assertOk()->assertExactJson(['count' => 1]);
+        $this->postJson(route('cart.update', $product), $payload() + ['quantity' => 2])->assertOk()->assertExactJson(['count' => 2]);
+        $this->post(route('cart.remove', $product->slug), $payload() + ['scope' => 'device'])->assertRedirect();
+        $this->assertSame([], $fields()['quantity']);
         $this->get(route('cart.index'))->assertOk()->assertSee('مشاهدهٔ محصولات');
         $product->update(['stock_status' => 'limited']);
         $this->get(route('products.show', $product))->assertOk()->assertSee('موجودی محدود')
@@ -130,15 +139,13 @@ class PremiumStorefrontTest extends TestCase
             ->assertDontSee('data-customer-state="authenticated"', false);
     }
 
-    public function test_sheet_source_contains_real_session_items_totals_and_actions(): void
+    public function test_sheet_source_preserves_ambiguous_legacy_data_without_showing_it(): void
     {
         $this->get(route('cart.index'))->assertOk()->assertSee('data-cart-empty="true"', false);
-        $product = $this->product('fixture-terminal', ['name' => 'کارتخوان آزمایشی ایزوله', 'price' => 25000]);
-        $this->withSession(['store_cart' => [$product->slug => 2]])->get(route('cart.index'))
-            ->assertOk()->assertSee('data-cart-empty="false"', false)->assertSee($product->name)
-            ->assertSee('۲ عدد')->assertSee('۵۰٬۰۰۰ تومان')->assertSee(route('cart.remove', $product->slug), false);
-        $this->post(route('cart.remove', $product->slug))->assertRedirect();
-        $this->get(route('cart.index'))->assertOk()->assertSee('data-cart-empty="true"', false)->assertDontSee($product->name);
+        $snapshot = ['fixture-terminal' => 2];
+        $this->withSession(['store_cart' => $snapshot])->get(route('cart.index'))->assertOk()
+            ->assertSee('data-cart-empty="false"', false)->assertSee('سبد قبلی')->assertDontSee('fixture-terminal');
+        $this->assertSame($snapshot, session('store_cart'));
     }
 
     private function product(string $slug = 'newland-me31-black', array $attributes = []): Product

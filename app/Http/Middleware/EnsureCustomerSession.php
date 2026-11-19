@@ -15,9 +15,9 @@ class EnsureCustomerSession
             Auth::guard('customer')->logout();
             $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer']);
             $destination = match (true) {
-                $request->routeIs('cart.checkout') => route('cart.index', [], false),
+                $request->routeIs('cart.checkout', 'cart.review') => route('cart.review', [], false),
                 $request->routeIs('repair.start', 'repair.store') => route('repair', [], false),
-                $request->isMethod('GET') && $request->routeIs('account.*', 'payments.document', 'delivery.show') => '/'.$request->path(),
+                $request->isMethod('GET') && $request->routeIs('account.*', 'payments.document', 'payments.order', 'payments.repair', 'payments.connect', 'payments.result', 'delivery.show') => '/'.$request->path(),
                 default => null,
             };
             if ($destination !== null) {

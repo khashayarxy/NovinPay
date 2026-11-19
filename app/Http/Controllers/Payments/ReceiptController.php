@@ -10,6 +10,8 @@ use App\Models\FinancialDocument;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentReceipt;
 use App\Models\PaymentTransaction;
+use App\Models\RepairCase;
+use App\Models\SalesOrder;
 use App\Services\ZibalPayments;
 use App\Support\AdminHistory;
 use App\Support\FinanceAccess;
@@ -22,6 +24,20 @@ use Illuminate\Support\Str;
 
 class ReceiptController extends Controller
 {
+    public function order(string $order, ZibalPayments $payments)
+    {
+        $document = FinancialDocument::query()->whereIn('sales_order_id', SalesOrder::query()->where('public_id', $order)->select('id'))->firstOrFail();
+
+        return $this->show($document->public_id, $payments);
+    }
+
+    public function repair(string $repair, ZibalPayments $payments)
+    {
+        $document = FinancialDocument::query()->whereIn('repair_case_id', RepairCase::query()->where('public_id', $repair)->select('id'))->firstOrFail();
+
+        return $this->show($document->public_id, $payments);
+    }
+
     public function show(string $document, ZibalPayments $payments)
     {
         $document = $payments->ownedDocument(Auth::guard('customer')->user(), $document);

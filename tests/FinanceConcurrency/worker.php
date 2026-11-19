@@ -47,7 +47,7 @@ try {
         $id = app(StoreCheckout::class)->create(CustomerAccount::findOrFail($data['account']), $data['cart'], $data['operation_key'])->id;
     } elseif (str_starts_with($command['action'], 'payment.zibal.')) {
         config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true,
-            'payments.zibal.merchant' => 'synthetic-'.$data['document'], 'payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
+            'payments.zibal.merchant' => 'synthetic-'.$data['document'], 'payments.zibal.callback_url' => 'https://novinpaypos.test/payments/zibal/callback']);
         Http::preventStrayRequests();
         Http::fake(function ($request) use ($data) {
             if (str_ends_with($request->url(), '/request')) {

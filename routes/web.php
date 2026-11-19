@@ -121,12 +121,22 @@ Route::withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::cl
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $payment = PaymentController::class;
+    Route::get('/payments/zibal/callback', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.callback');
+    Route::middleware(EnsureCustomerSession::class)->prefix('payments')->name('payments.')->group(function () use ($payment): void {
+        Route::post('/documents/{document}/zibal', [$payment, 'start'])->whereUuid('document')->middleware('throttle:10,1,cart-checkout:')->name('start');
+        Route::get('/{payment}/connect', [$payment, 'connect'])->whereUuid('payment')->middleware('throttle:60,1')->name('connect');
+        Route::get('/{payment}/gateway', [$payment, 'gateway'])->whereUuid('payment')->middleware('throttle:60,1')->name('gateway');
+        Route::get('/{payment}/result', [$payment, 'result'])->whereUuid('payment')->name('result');
+        Route::get('/{payment}/status', [$payment, 'paymentStatus'])->whereUuid('payment')->middleware('throttle:60,1')->name('status');
+    });
     Route::get('/pay/{page}.html', [$payment, 'page'])->whereIn('page', ['index', 'canceled', 'error', 'failed', 'paid', 'processing', 'success'])->name('payments.page');
-    Route::get('/bot/payment_verify.php', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.callback');
-    Route::get('/bot/check_payment_status.php', [$payment, 'status'])->middleware('throttle:60,1')->name('payments.status');
+    Route::get('/bot/payment_verify.php', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.legacy.callback');
+    Route::get('/bot/check_payment_status.php', [$payment, 'status'])->middleware('throttle:60,1')->name('payments.legacy.status');
     Route::get('/bot/receipt_info.php', [$payment, 'receipt'])->middleware('throttle:30,1')->name('payments.receipt');
-    Route::post('/account/documents/{document}/zibal', [$payment, 'start'])->middleware([EnsureCustomerSession::class, 'throttle:10,1,cart-checkout:'])->name('payments.start');
+    Route::post('/account/documents/{document}/zibal', [$payment, 'start'])->whereUuid('document')->middleware([EnsureCustomerSession::class, 'throttle:10,1,cart-checkout:'])->name('payments.legacy.start');
     $receipt = ReceiptController::class;
+    Route::get('/shop/orders/{order}/payment', [$receipt, 'order'])->whereUuid('order')->middleware(EnsureCustomerSession::class)->name('payments.order');
+    Route::get('/repairs/{repair}/payment', [$receipt, 'repair'])->whereUuid('repair')->middleware(EnsureCustomerSession::class)->name('payments.repair');
     Route::get('/account/documents/{document}', [$receipt, 'show'])->middleware(EnsureCustomerSession::class)->name('payments.document');
     Route::post('/account/documents/{document}/receipts', [$receipt, 'store'])->middleware([EnsureCustomerSession::class, 'throttle:10,1,cart-checkout:'])->name('payments.upload');
     Route::get('/payment-receipts/{receipt}', [$receipt, 'image'])->middleware('throttle:60,1')->name('payments.image');
@@ -148,10 +158,12 @@ Route::middleware([PrivateRepairResponse::class, EnsureCustomerSession::class, '
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $cart = CartController::class;
-    Route::get('/cart', [$cart, 'index'])->name('cart.index');
+    Route::get('/cart', [$cart, 'index'])->block(20, 15)->name('cart.index');
+    Route::get('/cart/checkout', [$cart, 'review'])->middleware(EnsureCustomerSession::class)->block(20, 15)->name('cart.review');
     Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.add');
     Route::post('/cart/products/{product}/quantity', [$cart, 'update'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.update');
     Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.remove');
+    Route::post('/cart/legacy/claim', [$cart, 'claimLegacy'])->middleware('throttle:10,1,cart-mutation:')->block(20, 15)->name('cart.legacy.claim');
     Route::post('/cart/checkout', [$cart, 'checkout'])->middleware([EnsureCustomerSession::class, 'throttle:10,1,cart-checkout:'])->block(20, 15)->name('cart.checkout');
 });
 

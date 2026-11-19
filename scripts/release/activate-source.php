@@ -156,6 +156,12 @@ try {
     foreach (['operations.scheduled_payments'] as $flag) {
         gate(config($flag, false) === false, 'scheduled_provider_flag');
     }
+    if (defined(App\Services\ZibalGateway::class.'::CALLBACK_PATH')) {
+        $callbackPath = App\Services\ZibalGateway::CALLBACK_PATH;
+        gate(Route::has('payments.legacy.callback')
+            && route('payments.callback', [], false) === $callbackPath, 'payment_callback_routes');
+        gate(in_array(config('payments.zibal.callback_url'), ['', config('app.url').$callbackPath], true), 'payment_callback_config');
+    }
     $pdo = DB::connection()->getPdo();
     $identity = $pdo->query('SELECT DATABASE(),CURRENT_USER(),VERSION()')->fetch(PDO::FETCH_NUM);
     gate($identity[0] === 'novinpay_live1' && $identity[1] === 'novinpay_app1@localhost' && str_starts_with($identity[2], '10.6.28'), 'database_identity');

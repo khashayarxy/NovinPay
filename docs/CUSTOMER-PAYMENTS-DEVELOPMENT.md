@@ -23,7 +23,7 @@ Admin maintenance permits only the exact GET callback path in both early guard a
 
 ## Activation checklist — NOT authorized or performed here
 
-- Obtain a NovinPay-specific merchant and approval of domain/callback `https://novinpaypos.com/bot/payment_verify.php`; confirm current Zibal amount/result/inquiry contract, numeric track representation, verification windows and any outbound NAT-IP allowlisting with Zibal/hosting. eNAMAD/tax/account approval are external activation prerequisites, not code credentials.
+- Obtain a NovinPay-specific merchant and confirm the approved domain and any callback allowlist with Zibal. The canonical callback in the route migration is `https://novinpaypos.com/payments/zibal/callback`. See [payment routes and connectivity](PAYMENT-ROUTES.md) for cutover and legacy compatibility.
 - Configure private environment values: `ZIBAL_MERCHANT_ID`, `ZIBAL_ENABLED=false`, `ZIBAL_LIVE_REQUESTS=false`, `ZIBAL_CALLBACK_URL`, `ZIBAL_API_BASE_URL=https://gateway.zibal.ir`. Both switches stay false until separately authorized and accepted. No provider requests are required for local tests; use HTTP mocks.
 - Configure `BANK_TRANSFER_ENABLED=false`, verified `NOVINPAY_BANK_CARD` and `NOVINPAY_BANK_HOLDER` privately before enabling card transfers. No invented bank details.
 - Configure `IPPANEL_ENABLED`, `IPPANEL_API_KEY`, the approved `IPPANEL_PATTERN_CODE`, exact `IPPANEL_PATTERN_PARAMETER`, and `IPPANEL_SENDER` privately. IPPanel is the sole provider; there is no automatic fallback. `php artisan customers:sms-status` is no-send by default; `--provider` explicitly inspects approved pattern metadata. Never print OTPs, provider bodies or credentials.

@@ -12,6 +12,7 @@ use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
 use App\Services\CustomerLogin;
+use App\Services\LegacyCartHold;
 use App\Services\TestCustomerReset;
 use App\Support\CrmAccess;
 use App\Support\CustomerAuthThrottle;
@@ -276,6 +277,7 @@ class CustomerAccountController extends Controller
 
             return redirect()->route('account.login')->withErrors(['code' => 'نشست معتبر نیست. دوباره وارد شوید.']);
         }
+        app(LegacyCartHold::class)->rememberOriginalSession($request);
         Auth::guard('customer')->login($account);
         $request->session()->regenerate(true);
         $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt', 'customer_send_attempts', 'customer_otp_at', 'customer_password_offer']);
@@ -335,6 +337,7 @@ class CustomerAccountController extends Controller
         $offer = $request->session()->pull('customer_password_offer', false);
         $request->session()->forget('customer_otp_at');
         $request->session()->put('customer_session_version', $fresh->session_version);
+        app(LegacyCartHold::class)->rememberOriginalSession($request);
         $request->session()->regenerate(true);
 
         return ($offer ? $this->finishLogin($request) : redirect()->route('account.index', ['section' => 'security']))->with('success', 'رمز عبور ذخیره شد.');
@@ -346,7 +349,8 @@ class CustomerAccountController extends Controller
         $account = $guard->user();
         $version = $request->session()->get('customer_session_version');
         $guard->logout();
-        $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_intended', 'store_cart', 'repair_submission_token', 'repair_reference']);
+        $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_intended', 'repair_submission_token', 'repair_reference']);
+        app(LegacyCartHold::class)->rememberOriginalSession($request);
         $request->session()->regenerate(true);
 
         if ($account && is_int($version) && config('customer.test_reset_on_logout')) {

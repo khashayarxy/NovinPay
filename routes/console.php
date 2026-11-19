@@ -39,7 +39,7 @@ Artisan::command('customers:test-code', function (CustomerLogin $login): int {
 })->purpose('Read an allowlisted customer test challenge in a private terminal');
 
 Artisan::command('payments:reconcile', function (ZibalPayments $payments, ZibalGateway $gateway): int {
-    if (! $gateway->available()) {
+    if (! $gateway->canVerify()) {
         $this->info('Payments disabled; no provider request made.');
 
         return 0;

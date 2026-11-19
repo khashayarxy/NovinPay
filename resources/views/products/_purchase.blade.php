@@ -12,6 +12,7 @@
     @if ($canAddToCart)
         <form id="product-cart-form" method="post" action="{{ route('cart.add', $product) }}" class="product-cart-form" data-cart-mutation>
             @csrf
+            <x-storefront.cart-context />
             <div>
                 <label class="label" for="store-quantity">تعداد</label>
                 <input class="input" id="store-quantity" type="number" name="quantity" value="1" min="1" max="{{ min(10, $inventory->available) }}" required>

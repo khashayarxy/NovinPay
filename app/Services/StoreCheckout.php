@@ -11,6 +11,7 @@ use App\Models\SalesOrderEvent;
 use App\Models\SalesOrderLine;
 use App\Support\OrderMoney;
 use App\Support\ProductSale;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -46,12 +47,19 @@ class StoreCheckout
         return $items->count() === 1 ? $items->first() : null;
     }
 
-    public function create(CustomerAccount $account, array $cart, string $key): SalesOrder
+    public function quote(Collection $products): string
+    {
+        $prices = $products->mapWithKeys(fn (Product $product) => [$product->slug => (string) $product->price])->sortKeys();
+
+        return hash_hmac('sha256', $prices->toJson(JSON_THROW_ON_ERROR), config('app.key'));
+    }
+
+    public function create(CustomerAccount $account, array $cart, string $key, ?string $quote = null): SalesOrder
     {
         abort_unless(Str::isUuid($key) && count($cart) <= 30, 422);
         ksort($cart);
 
-        return DB::transaction(function () use ($account, $cart, $key): SalesOrder {
+        return DB::transaction(function () use ($account, $cart, $key, $quote): SalesOrder {
             $digest = hash_hmac('sha256', json_encode($cart, JSON_THROW_ON_ERROR), config('app.key'));
             $fresh = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
             abort_unless($fresh->is_active && $fresh->session_version === $account->session_version && $fresh->customer_id, 403, 'ابتدا پروفایل و اتصال حساب خود را تکمیل کنید.');
@@ -67,6 +75,7 @@ class StoreCheckout
             abort_if($cart === [], 422);
             $products = Product::query()->whereIn('slug', array_keys($cart))->orderBy('id')->lockForUpdate()->get();
             abort_unless($products->count() === count($cart), 409);
+            abort_if($quote !== null && ! hash_equals($this->quote($products), $quote), 409, 'قیمت کالا تغییر کرده است؛ سبد را دوباره بررسی کنید.');
             $order = new SalesOrder;
             foreach (['public_id' => (string) Str::uuid(), 'customer_id' => $customer->id, 'customer_account_id' => $fresh->id, 'checkout_key' => $key, 'checkout_digest' => $digest, 'status' => 'draft', 'currency' => 'TOMAN', 'total' => '0.00', 'version' => 1] as $field => $value) {
                 $order->$field = $value;

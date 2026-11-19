@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 
 class ZibalPayments
 {
+    private const REQUEST_REJECTIONS = [102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 118, 140, 141];
+
     public function __construct(private ZibalGateway $gateway, private PaymentSettlement $settlement) {}
 
     public function merchantDigest(): string
@@ -22,6 +24,12 @@ class ZibalPayments
     {
         abort_unless($account->is_active && $account->customer_id, 403);
         $query = FinancialDocument::query()->where('public_id', $reference)->where('customer_id', $account->customer_id);
+        foreach (['sales_orders' => 'sales_order_id', 'repair_cases' => 'repair_case_id'] as $table => $column) {
+            // A legacy CRM link must not override an explicitly assigned account.
+            $query->whereNotExists(fn ($source) => $source->selectRaw('1')->from($table)
+                ->whereColumn("$table.id", "financial_documents.$column")
+                ->where("$table.customer_account_id", '<>', $account->id));
+        }
 
         return ($lock ? $query->lockForUpdate() : $query)->firstOrFail();
     }
@@ -62,11 +70,11 @@ class ZibalPayments
 
         return DB::transaction(function () use ($attempt, $response): PaymentAttempt {
             $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
-            $track = $response['trackId'] ?? null;
-            if (($response['result'] ?? null) === 100 && (is_int($track) || is_string($track)) && preg_match('/\A[0-9]{1,20}\z/D', (string) $track)) {
+            $track = ZibalGateway::trackNumber($response['trackId'] ?? null);
+            if (($response['result'] ?? null) === 100 && $track !== null) {
                 $current->track_id = (string) $track;
                 $current->state = 'pending';
-            } elseif (in_array($response['result'] ?? null, [102, 103, 104, 105, 106, 113], true)) {
+            } elseif (in_array($response['result'] ?? null, self::REQUEST_REJECTIONS, true)) {
                 // Documented request validation rejection, unlike a lost response.
                 $current->state = 'failed';
             } else {
@@ -86,7 +94,7 @@ class ZibalPayments
         if ($attempt->fresh()->state === 'settled') {
             return $attempt->fresh();
         }
-        abort_unless($this->gateway->available(), 503, 'پرداخت آنلاین هنوز فعال نشده است.');
+        abort_unless($this->gateway->canVerify(), 503, 'پرداخت آنلاین هنوز فعال نشده است.');
         $claim = DB::transaction(function () use ($attempt): ?PaymentAttempt {
             $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
             if ($current->state === 'settled' || ! $current->track_id || ($current->lease_until && $current->lease_until->isFuture())) {
@@ -103,24 +111,23 @@ class ZibalPayments
         if (! $claim) {
             return $attempt->fresh();
         }
-        $response = $this->gateway->call('verify', ['trackId' => $claim->track_id]);
+        $track = ZibalGateway::trackNumber($claim->track_id);
+        if ($track === null) {
+            return $this->finish($claim, 'review', 'invalid_gateway_track');
+        }
+        $response = $this->gateway->call('verify', ['trackId' => $track]);
         $code = $response['result'] ?? null;
         if (! in_array($code, [100, 201], true)) {
-            $inquiry = $this->gateway->call('inquiry', ['trackId' => $claim->track_id]);
-            // Only an authenticated, amount/order-bound cancellation is terminal.
-            // Even then a later successful verification remains eligible above.
-            if (($inquiry['result'] ?? null) === 100 && ($inquiry['status'] ?? null) === 3 && $this->bindingMatches($claim, $inquiry)) {
-                return $this->finish($claim, 'failed', 'gateway_canceled');
-            }
-
-            return $this->finish($claim, $this->needsReview($claim) ? 'review' : 'uncertain');
+            return $this->resolveUnverified($claim, $track);
         }
-        // The local immutable attempt supplies a binding, but a missing provider amount
-        // triggers inquiry instead of silently trusting an unverified browser parameter.
-        if (! isset($response['orderId'], $response['amount'])) {
-            $inquiry = $this->gateway->call('inquiry', ['trackId' => $claim->track_id]);
-            if (($inquiry['result'] ?? null) !== 100 || ! in_array($inquiry['status'] ?? null, [1, 2], true)) {
-                return $this->finish($claim, 'uncertain');
+        if ($this->bindingConflicts($claim, $response) || (isset($response['status']) && $response['status'] !== 1)) {
+            return $this->finish($claim, 'review');
+        }
+        // An incomplete verification response needs an independently bound, verified inquiry.
+        if (! isset($response['orderId'], $response['amount']) || ($code === 201 && ! isset($response['status']))) {
+            $inquiry = $this->gateway->call('inquiry', ['trackId' => $track]);
+            if (($inquiry['result'] ?? null) !== 100 || ($inquiry['status'] ?? null) !== 1) {
+                return $this->finish($claim, $this->needsReview($claim) ? 'review' : 'uncertain');
             }
             $response = $inquiry;
         }
@@ -148,13 +155,46 @@ class ZibalPayments
         }, 3);
     }
 
+    private function resolveUnverified(PaymentAttempt $claim, int $track): PaymentAttempt
+    {
+        $inquiry = $this->gateway->call('inquiry', ['trackId' => $track]);
+        $fallback = $this->needsReview($claim) ? 'review' : 'uncertain';
+        if (($inquiry['result'] ?? null) !== 100 || ! $this->bindingMatches($claim, $inquiry)) {
+            return $this->finish($claim, $fallback);
+        }
+
+        $status = $inquiry['status'] ?? null;
+
+        return match ($status) {
+            -1 => $this->finish($claim, $fallback === 'review' ? 'review' : 'pending', 'gateway_waiting'),
+            3 => $this->finish($claim, 'failed', 'gateway_canceled'),
+            4, 5, 6, 7, 8, 9, 10, 12, 21 => $this->finish($claim, 'failed', 'gateway_unpaid_'.$status),
+            15, 16, 18 => $this->finish($claim, 'review', 'gateway_return_'.$status),
+            // Status 2 has not been verified. A status-1 inquiry after a failed
+            // verify is reconciled on a later accepted verify (e.g. result 201).
+            default => $this->finish($claim, $fallback),
+        };
+    }
+
     private function bindingMatches(PaymentAttempt $attempt, array $response): bool
     {
-        $amount = $response['amount'] ?? null;
+        return isset($response['orderId'], $response['amount']) && ! $this->bindingConflicts($attempt, $response);
+    }
 
-        return ($response['orderId'] ?? null) === $attempt->public_id
-            && (is_int($amount) || (is_string($amount) && ctype_digit($amount)))
-            && (string) $amount === (string) $attempt->amount_rial;
+    private function bindingConflicts(PaymentAttempt $attempt, array $response): bool
+    {
+        $expected = ['orderId' => $attempt->public_id, 'amount' => (string) $attempt->amount_rial, 'trackId' => $attempt->track_id];
+        foreach ($expected as $key => $value) {
+            if (! isset($response[$key])) {
+                continue;
+            }
+            $actual = $response[$key];
+            if ((! is_int($actual) && ! is_string($actual)) || (string) $actual !== $value) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function needsReview(PaymentAttempt $attempt): bool

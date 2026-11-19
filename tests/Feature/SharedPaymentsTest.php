@@ -16,6 +16,7 @@ use App\Models\Product;
 use App\Models\ProductFeedback;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
+use App\Models\SalesOrderLine;
 use App\Models\User;
 use App\Services\CommerceManagement;
 use App\Services\CustomerNotifications;
@@ -23,15 +24,15 @@ use App\Services\DeliveryManagement;
 use App\Services\FinancialOperations;
 use App\Services\PaymentReview;
 use App\Services\ProductPurchaseVerification;
+use App\Services\ShoppingCart;
 use App\Services\StoreCheckout;
 use App\Services\ZibalPayments;
 use App\Support\RepairIdentity;
 use App\Support\SiteMaintenanceState;
-use DOMDocument;
-use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -53,6 +54,7 @@ class SharedPaymentsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withCredentials();
         Http::preventStrayRequests();
         $this->owner = User::factory()->superAdmin()->create();
         $this->actingAs($this->owner);
@@ -86,7 +88,7 @@ class SharedPaymentsTest extends TestCase
 
     private function gateway(array $verify = []): void
     {
-        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant', 'payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
+        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant', 'payments.zibal.callback_url' => 'https://novinpaypos.test/payments/zibal/callback']);
         Http::fake(function ($request) use ($verify) {
             if (str_ends_with($request->url(), '/request')) {
                 return Http::response(['result' => 100, 'trackId' => '501']);
@@ -159,7 +161,254 @@ class SharedPaymentsTest extends TestCase
     {
         config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true,
             'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant',
-            'payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
+            'payments.zibal.callback_url' => 'https://novinpaypos.test/payments/zibal/callback']);
+    }
+
+    public function test_connectivity_warning_and_rechecks_reuse_one_owned_payment_attempt(): void
+    {
+        // Browser fixture IPs are only compared with the verified local snapshot.
+        $data = json_decode(file_get_contents(config('payments.connectivity.ranges_path')), true, flags: JSON_THROW_ON_ERROR);
+        $this->travelTo(Carbon::parse($data['month'].'-15'));
+        $this->gateway();
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $order = SalesOrder::findOrFail($this->document->sales_order_id);
+        $this->get(route('payments.order', $order->public_id))->assertOk()->assertSee('پرداخت آنلاین زیبال');
+        $input = ['amount' => '10000', 'operation_key' => (string) Str::uuid()];
+        $start = route('payments.start', $this->document->public_id);
+        $response = $this->post($start, $input)->assertStatus(303);
+        $attempt = PaymentAttempt::query()->sole();
+        $connect = route('payments.connect', $attempt->public_id);
+        $toGateway = route('payments.gateway', $attempt->public_id);
+        $result = route('payments.result', $attempt->public_id);
+        $response->assertRedirect($connect);
+        $this->post($start, $input)->assertRedirect($connect);
+        $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])
+            ->get($connect.'?pay_url=https://elsewhere.test')
+            ->assertOk()->assertHeader('Referrer-Policy', 'no-referrer')->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSee('وی‌پی‌ان رو خاموش کردم')->assertSee('href="'.route('payments.gateway', $attempt->public_id, false).'"', false)
+            ->assertDontSee('ادامه به درگاه')->assertDontSee('بازگشت به سند پرداخت')
+            ->assertDontSee('8.8.8.8')->assertDontSee('elsewhere.test')->assertDontSee('gateway.zibal.ir/start/501');
+        $this->getJson($connect)->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertExactJson(['ir' => false]);
+        $this->getJson($connect)->assertOk()->assertExactJson(['ir' => false]);
+        $this->get($toGateway.'?redirect=https://elsewhere.test')->assertOk()->assertHeader('Referrer-Policy', 'origin')
+            ->assertSee('0;url=https://gateway.zibal.ir/start/501')->assertSee('referrerpolicy="origin"', false)->assertDontSee('elsewhere.test');
+        $this->withServerVariables(['REMOTE_ADDR' => '5.160.0.1'])->get($connect)->assertOk()
+            ->assertHeader('Referrer-Policy', 'origin')->assertSee('0;url=https://gateway.zibal.ir/start/501');
+        $this->getJson($connect)->assertOk()->assertExactJson(['ir' => true]);
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->get($connect)->assertOk()
+            ->assertHeader('Referrer-Policy', 'origin')->assertSee('0;url=https://gateway.zibal.ir/start/501');
+        $this->getJson($connect)->assertOk()->assertExactJson(['ir' => null]);
+        $this->get('/pay/index.html?pay_url=https://elsewhere.test')->assertNotFound();
+        $this->get('/pay/index.html?'.http_build_query(['pay_url' => 'https://gateway.zibal.ir/start/501']))->assertRedirect($connect);
+        $this->get($result)->assertOk()->assertSee('پرداخت سفارش')->assertSee(route('payments.order', $order->public_id));
+        $this->getJson(route('payments.status', $attempt->public_id))->assertExactJson(['status' => 'processing']);
+        $this->get(route('payments.connect', (string) Str::uuid()))->assertNotFound();
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request['callbackUrl'] === 'https://novinpaypos.test/payments/zibal/callback');
+        $this->assertDatabaseCount('payment_attempts', 1);
+        $this->assertDatabaseCount('payment_transactions', 0);
+    }
+
+    public function test_attempt_pages_require_the_same_current_customer_and_stop_after_settlement(): void
+    {
+        $this->gateway();
+        $attempt = app(ZibalPayments::class)->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $result = route('payments.result', $attempt->public_id);
+        $this->get($result)->assertRedirect(route('account.login'));
+        $this->assertSame(route('payments.result', $attempt->public_id, false), session('customer_intended'));
+        $other = $this->account->replicate();
+        $other->forceFill(['public_id' => (string) Str::uuid(), 'customer_id' => null, 'phone' => '09000000002',
+            'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000002')])->save();
+        $this->actingAs($other, 'customer')->withSession(['customer_session_version' => 1]);
+        foreach (['payments.connect', 'payments.gateway', 'payments.result', 'payments.status'] as $route) {
+            $this->get(route($route, $attempt->public_id))->assertNotFound();
+        }
+        // The old merchant callback setting must not interrupt reconciliation of an existing attempt.
+        config(['payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
+        $this->get('/bot/payment_verify.php?trackId=501')->assertRedirect($result);
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get(route('payments.gateway', $attempt->public_id))->assertRedirect($result);
+        $this->getJson(route('payments.connect', $attempt->public_id))->assertConflict()->assertExactJson([]);
+        $this->get($result)->assertOk()->assertSee('پرداخت تأیید شد');
+        $this->getJson(route('payments.status', $attempt->public_id))->assertExactJson(['status' => 'success']);
+        Http::assertSentCount(2);
+        $this->assertDatabaseCount('payment_transactions', 1);
+    }
+
+    public function test_repair_payment_uses_the_same_callback_and_returns_to_the_repair_document(): void
+    {
+        $token = bin2hex(random_bytes(32));
+        $this->withSession(['repair_intake_token' => $token])->post('/admin/repairs/intake', [
+            'simple_intake' => '1', 'submission_token' => $token, 'customer_name' => 'Synthetic Customer',
+            'contact_phone' => '09000000000', 'device_model' => 'SYNTHETIC', 'issue' => 'Synthetic issue', 'physical_condition' => 'Synthetic condition',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $case = RepairCase::query()->sole();
+        $case->forceFill(['customer_account_id' => $this->account->id, 'customer_id' => $this->account->customer_id])->save();
+        $payment = route('payments.repair', $case->public_id);
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1])->get($payment)->assertNotFound();
+        $this->actingAs($this->owner, 'web');
+        $this->post(route('admin.repair-cases.record', $case), ['version' => 1, 'status' => 'ready', 'repair_cost' => '1000'])->assertSessionHasNoErrors();
+        $entry = app(FinancialOperations::class)->execute($this->owner, 'issue', [
+            'operation_key' => (string) Str::uuid(), 'password' => 'password', 'reason' => 'Synthetic repair charge',
+            'source_type' => 'repair', 'source' => $case->public_id, 'source_version' => 2,
+        ]);
+        $document = FinancialDocument::findOrFail(FinancialEntry::findOrFail($entry)->financial_document_id);
+        (new DeliveryPlan)->forceFill(['public_id' => (string) Str::uuid(), 'financial_document_id' => $document->id,
+            'customer_account_id' => $this->account->id, 'method' => 'courier'])->save();
+        $this->gateway(['amount' => 10000]);
+        $this->actingAs($this->account, 'customer')->get($payment)->assertOk()->assertSee('پرداخت آنلاین زیبال');
+        $this->post(route('payments.start', $document->public_id), ['amount' => '1000', 'operation_key' => (string) Str::uuid()])->assertStatus(303);
+        $attempt = PaymentAttempt::query()->sole();
+        $result = route('payments.result', $attempt->public_id);
+        $this->get(route('payments.callback', ['trackId' => 501, 'orderId' => $attempt->public_id]))->assertRedirect($result);
+        $this->get($result)->assertOk()->assertSee('پرداخت تعمیر')->assertSee($payment);
+        $this->assertSame($document->charged_minor, $document->fresh()->paid_minor);
+        $this->assertDatabaseCount('payment_transactions', 1);
+    }
+
+    public function test_provider_test_merchant_cannot_create_a_live_attempt(): void
+    {
+        $this->enableGateway();
+        config(['payments.zibal.merchant' => 'zibal']);
+        Http::fake();
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->post(route('payments.start', $this->document->public_id), ['amount' => '10000', 'operation_key' => (string) Str::uuid()])->assertStatus(503);
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('payment_attempts', 0);
+    }
+
+    public function test_pausing_new_payments_still_allows_scheduled_reconciliation_of_existing_attempts(): void
+    {
+        $this->gateway();
+        $service = app(ZibalPayments::class);
+        $attempt = $service->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $this->travel(3)->minutes();
+        config(['payments.zibal.enabled' => false]);
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->post(route('payments.start', $this->document->public_id), ['amount' => '10000', 'operation_key' => (string) Str::uuid()])->assertStatus(503);
+        $this->artisan('payments:reconcile')->assertSuccessful();
+        $this->assertSame('settled', $attempt->fresh()->state);
+        $this->assertDatabaseCount('payment_attempts', 1);
+        $this->assertDatabaseCount('payment_transactions', 1);
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($request) => $request->url() === 'https://gateway.zibal.ir/v1/request'
+            && $request['amount'] === 100000 && $request['orderId'] === $attempt->public_id
+            && $request['merchant'] === 'fixture-merchant' && ! $request->hasHeader('Authorization'));
+    }
+
+    public function test_gateway_verification_cannot_be_overridden_by_inquiry_with_a_different_binding(): void
+    {
+        $this->enableGateway();
+        Http::fake([
+            '*/request' => Http::response(['result' => 100, 'trackId' => '505']),
+            '*/verify' => Http::response(['result' => 100, 'amount' => 100001]),
+            '*/inquiry' => fn () => Http::response(['result' => 100, 'status' => 1, 'amount' => 100000, 'orderId' => PaymentAttempt::firstOrFail()->public_id]),
+        ]);
+        $service = app(ZibalPayments::class);
+        $attempt = $service->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $this->assertSame('review', $service->verify($attempt)->state);
+        $this->assertSame(0, $this->document->fresh()->paid_minor);
+        $this->assertDatabaseCount('payment_transactions', 0);
+        Http::assertSentCount(2);
+    }
+
+    public function test_inquiry_must_independently_confirm_bound_verified_payment(): void
+    {
+        $this->enableGateway();
+        $inquiry = ['status' => 2, 'trackId' => '506'];
+        Http::fake([
+            '*/request' => Http::response(['result' => 100, 'trackId' => '506']),
+            '*/verify' => Http::response(['result' => 201]),
+            '*/inquiry' => function () use (&$inquiry) {
+                return Http::response($inquiry + ['result' => 100, 'amount' => 100000, 'orderId' => PaymentAttempt::firstOrFail()->public_id]);
+            },
+        ]);
+        $service = app(ZibalPayments::class);
+        $attempt = $service->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $this->assertSame('uncertain', $service->verify($attempt)->state);
+        $inquiry = ['status' => 1, 'trackId' => '507'];
+        $this->assertSame('review', $service->verify($attempt)->state);
+        $this->assertSame(0, $this->document->fresh()->paid_minor);
+        $this->assertDatabaseCount('payment_transactions', 0);
+    }
+
+    public function test_official_gateway_amount_track_number_and_known_error_contract(): void
+    {
+        $this->enableGateway();
+        Http::fakeSequence('*/request')
+            ->push(['result' => 115, 'message' => 'Synthetic allowlist rejection'])
+            ->push(['result' => 100, 'trackId' => 15966442233311]);
+        Http::fake(['*/verify' => fn () => Http::response(['result' => 100, 'status' => 2,
+            'orderId' => PaymentAttempt::query()->where('track_id', '15966442233311')->sole()->public_id, 'amount' => 1000])]);
+        $service = app(ZibalPayments::class);
+        $rejected = $service->start($this->account, $this->document->public_id, 10000, (string) Str::uuid());
+        $this->assertSame('failed', $rejected->state);
+        $this->assertDatabaseHas('payment_events', ['payment_attempt_id' => $rejected->id, 'event' => 'request_rejected_115']);
+        $attempt = $service->start($this->account, $this->document->public_id, 10000, (string) Str::uuid());
+        $this->assertSame('15966442233311', $attempt->track_id);
+        $this->assertSame('review', $service->verify($attempt)->state);
+        Http::assertSentCount(3);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/v1/request')
+            && $request['amount'] === 1000 && $request['callbackUrl'] === 'https://novinpaypos.test/payments/zibal/callback');
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/v1/verify') && $request['trackId'] === 15966442233311);
+        $this->assertDatabaseCount('payment_transactions', 0);
+    }
+
+    public function test_provider_waiting_remains_resumable_and_already_verified_settles_once(): void
+    {
+        $this->enableGateway();
+        $verifyCode = 202;
+        $status = -1;
+        Http::fake([
+            '*/request' => Http::response(['result' => 100, 'trackId' => 509]),
+            '*/verify' => function () use (&$verifyCode) {
+                return Http::response(['result' => $verifyCode]);
+            },
+            '*/inquiry' => function () use (&$status) {
+                return Http::response(['result' => 100, 'status' => $status,
+                    'orderId' => PaymentAttempt::query()->sole()->public_id, 'amount' => 100000]);
+            },
+        ]);
+        $service = app(ZibalPayments::class);
+        $attempt = $service->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
+        $this->travel(3)->minutes();
+        $this->assertSame(1, $service->reconcile());
+        $this->assertSame('pending', $attempt->fresh()->state);
+        $this->assertDatabaseCount('payment_transactions', 0);
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1])
+            ->get(route('payments.gateway', $attempt->public_id))->assertOk()->assertHeader('Referrer-Policy', 'origin');
+        $verifyCode = 201;
+        $status = 1;
+        $this->assertSame('settled', $service->verify($attempt)->state);
+        $this->assertSame('settled', $service->verify($attempt)->state);
+        Http::assertSentCount(5);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/v1/inquiry') && $request['trackId'] === 509);
+        $this->assertDatabaseCount('payment_transactions', 1);
+    }
+
+    public function test_online_payment_requires_balance_and_respects_an_explicit_source_account(): void
+    {
+        $this->gateway();
+        $route = route('payments.start', $this->document->public_id);
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $operation = (string) Str::uuid();
+        $this->post($route, ['amount' => '20000.10', 'operation_key' => $operation])->assertConflict();
+
+        $other = $this->account->replicate();
+        $other->public_id = (string) Str::uuid();
+        $other->phone = '09000000002';
+        $other->phone_digest = RepairIdentity::digest('customer-account-phone', $other->phone);
+        $other->customer_id = null;
+        $other->save();
+
+        $order = SalesOrder::findOrFail($this->document->sales_order_id);
+        $order->customer_account_id = $other->id;
+        $order->save();
+
+        $this->get(route('payments.document', $this->document->public_id))->assertNotFound();
+        $this->post($route, ['amount' => '10000', 'operation_key' => $operation])->assertNotFound();
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('payment_attempts', 0);
     }
 
     public function test_unknown_request_is_not_failed_or_replayed_and_can_be_audited_for_manual_resolution(): void
@@ -283,7 +532,7 @@ class SharedPaymentsTest extends TestCase
 
     public function test_malformed_provider_track_is_never_used_as_gateway_identifier(): void
     {
-        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant', 'payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
+        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant', 'payments.zibal.callback_url' => 'https://novinpaypos.test/payments/zibal/callback']);
         Http::fake(['gateway.zibal.ir/*' => Http::response(['result' => 100, 'trackId' => true])]);
         $attempt = app(ZibalPayments::class)->start($this->account, $this->document->public_id, 1000000, (string) Str::uuid());
         $this->assertSame('uncertain', $attempt->state);
@@ -298,8 +547,10 @@ class SharedPaymentsTest extends TestCase
         $operation = (string) Str::uuid();
         $attempt = $service->start($this->account, $this->document->public_id, 1000000, $operation);
         $this->assertSame($attempt->id, $service->start($this->account, $this->document->public_id, 1000000, $operation)->id);
-        $this->get('/bot/payment_verify.php?trackId=501&orderId='.$attempt->public_id.'&success=1')->assertRedirectContains('/pay/success.html');
-        $this->get('/bot/payment_verify.php?trackId=501&orderId='.$attempt->public_id.'&success=0')->assertRedirectContains('/pay/success.html');
+        $resultUrl = route('payments.result', $attempt->public_id);
+        $this->get(route('payments.callback', ['trackId' => 501, 'orderId' => (string) Str::uuid(), 'success' => 1]))->assertNotFound();
+        $this->get(route('payments.callback', ['trackId' => 501, 'orderId' => $attempt->public_id, 'success' => 1]))->assertRedirect($resultUrl);
+        $this->get('/bot/payment_verify.php?trackId=501&orderId='.$attempt->public_id.'&success=0')->assertRedirect($resultUrl);
         $this->assertSame(1000000, $this->document->fresh()->paid_minor);
         $this->assertDatabaseCount('payment_transactions', 1);
         $this->assertSame(1, FinancialEntry::query()->where('method', 'gateway')->count());
@@ -319,7 +570,7 @@ class SharedPaymentsTest extends TestCase
 
     public function test_failed_and_uncertain_provider_responses_never_settle(): void
     {
-        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant', 'payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
+        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant', 'payments.zibal.callback_url' => 'https://novinpaypos.test/payments/zibal/callback']);
         $paid = false;
         Http::fake(function ($request) use (&$paid) {
             if (str_ends_with($request->url(), '/request')) {
@@ -344,14 +595,14 @@ class SharedPaymentsTest extends TestCase
         $attempt = $service->start($this->account, $this->document->public_id, 1000000, $operation);
         $service->verify($attempt);
         $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
-        $this->post('/account/documents/'.$this->document->public_id.'/zibal', ['amount' => '10000', 'operation_key' => $operation])->assertRedirectContains('/pay/success.html');
+        $this->post('/account/documents/'.$this->document->public_id.'/zibal', ['amount' => '10000', 'operation_key' => $operation])->assertRedirectToRoute('payments.result', $attempt->public_id);
         Http::assertSentCount(2);
         $this->assertDatabaseCount('payment_transactions', 1);
     }
 
     public function test_missing_verified_amount_requires_independent_inquiry_binding(): void
     {
-        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant', 'payments.zibal.callback_url' => 'https://novinpaypos.test/bot/payment_verify.php']);
+        config(['app.url' => 'https://novinpaypos.test', 'payments.zibal.enabled' => true, 'payments.zibal.live_requests' => true, 'payments.zibal.merchant' => 'fixture-merchant', 'payments.zibal.callback_url' => 'https://novinpaypos.test/payments/zibal/callback']);
         Http::fake(function ($request) {
             if (str_ends_with($request->url(), '/request')) {
                 return Http::response(['result' => 100, 'trackId' => '502']);
@@ -488,10 +739,12 @@ class SharedPaymentsTest extends TestCase
     public function test_head_callback_is_not_a_maintenance_exemption_and_browser_status_never_writes(): void
     {
         $this->assertTrue(SiteMaintenanceState::paymentCallback('/bot/payment_verify.php?trackId=1', 'GET'));
-        foreach (['//host/bot/payment_verify.php', '/bot/payment_verify.php/extra', 'https://host/bot/payment_verify.php', '/bot/%70ayment_verify.php'] as $target) {
+        $this->assertTrue(SiteMaintenanceState::paymentCallback('/payments/zibal/callback?trackId=1', 'GET'));
+        foreach (['//host/bot/payment_verify.php', '/bot/payment_verify.php/extra', 'https://host/bot/payment_verify.php', '/bot/%70ayment_verify.php', '/payments/zibal/callback/', '/payments/zibal/%63allback'] as $target) {
             $this->assertFalse(SiteMaintenanceState::paymentCallback($target, 'GET'));
         }
         $this->assertFalse(SiteMaintenanceState::paymentCallback('/bot/payment_verify.php', 'HEAD'));
+        $this->assertFalse(SiteMaintenanceState::paymentCallback('/payments/zibal/callback', 'HEAD'));
         $this->assertDatabaseCount('payment_events', 0);
         $this->get('/bot/check_payment_status.php?order_id='.Str::uuid().'&track_id=1')->assertNotFound();
         $this->assertDatabaseCount('payment_events', 0);
@@ -564,26 +817,24 @@ class SharedPaymentsTest extends TestCase
             ->assertDontSee('موجودی تأیید نشده')->assertDontSee('افزودن به سبد خرید');
         $product->update(['price' => 10000]);
         $this->get('/products/'.$product->slug)->assertOk()->assertSee($product->name);
-        $this->post(route('cart.add', $product), ['quantity' => 2])->assertRedirect(route('cart.index'));
+        $this->withCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('d', 64));
+        $this->post(route('cart.add', $product), $this->cartFields() + ['quantity' => 2])->assertRedirect(route('cart.index'));
         $this->get('/cart')->assertOk()->assertSee($product->name);
-        $this->post('/cart/checkout', ['operation_key' => $key])->assertRedirect(route('account.index'));
+        $payload = $this->cartFields() + ['operation_key' => $key, 'method' => 'pickup'];
+        $this->get(route('cart.review'))->assertOk()->assertSee('روش تحویل')->assertSee('پرداخت آنلاین فعلاً در دسترس نیست');
+        $product->update(['price' => 10001]);
+        $this->postJson('/cart/checkout', $payload)->assertConflict();
+        $product->update(['price' => 10000]);
+        $this->postJson('/cart/checkout', array_replace($payload, ['method' => 'tipax', 'address' => (string) Str::uuid()]))->assertNotFound();
+        $this->assertDatabaseCount('cart_purchase_snapshots', 0);
+        $this->post('/cart/checkout', $payload)->assertRedirect(route('account.index', ['section' => 'orders']));
         $order = SalesOrder::query()->where('checkout_key', $key)->sole();
         $this->assertFalse(app(ProductPurchaseVerification::class)->verified($this->account, $product));
-        $this->assertSame([], session('store_cart', []));
+        $this->assertSame([$product->slug => 2], $this->get('/cart')->viewData('quantity'));
         $count = SalesOrder::count();
-        // A lost redirect/ACK can be retried after the first request cleared the cart.
-        $this->post('/cart/checkout', ['operation_key' => $key])->assertRedirect(route('account.index'));
+        $this->post('/cart/checkout', $payload)->assertRedirect(route('account.index', ['section' => 'orders']));
         $this->assertSame($count, SalesOrder::count());
-        // An old request must not consume a newly assembled, different cart.
-        $this->post(route('cart.add', $product), ['quantity' => 1])->assertRedirect();
-        $this->post('/cart/checkout', ['operation_key' => $key])->assertConflict();
-        $this->assertSame([$product->slug => 1], session('store_cart'));
-        $this->post(route('cart.remove', $product->slug))->assertRedirect();
-        $this->post(route('cart.add', $product), ['quantity' => 2])->assertRedirect();
-        $this->post('/cart/checkout', ['operation_key' => $key])->assertRedirect(route('account.index'));
-        $this->assertSame([$product->slug => 2], session('store_cart'));
-        $this->post(route('cart.remove', $product->slug))->assertRedirect();
-        $this->post('/cart/checkout', ['operation_key' => (string) Str::uuid()])->assertUnprocessable();
+        $this->post('/cart/checkout', array_replace($payload, ['method' => 'tipax', 'address' => (string) Str::uuid()]))->assertConflict();
         $this->assertSame($count, SalesOrder::count());
         $this->assertSame('20000.00', $order->total);
         $this->assertNull($order->created_by);
@@ -602,9 +853,16 @@ class SharedPaymentsTest extends TestCase
         }
         $document = FinancialDocument::findOrFail(FinancialEntry::findOrFail($entry)->financial_document_id);
         $delivery = app(DeliveryManagement::class);
-        $plan = $delivery->request($this->account, $document->public_id, 'pickup', null, 0);
+        $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->sole();
+        $this->assertSame('pickup', $plan->requested_method);
         $plan = $delivery->confirm($this->owner, 'password', $plan->public_id, $plan->version, (string) Str::uuid());
-        app(PaymentReview::class)->inStore($this->owner, 'password', $document->public_id, 2000000, (string) Str::uuid());
+        $this->assertSame([$product->slug => 2], $this->get('/cart')->viewData('quantity'));
+        app(PaymentReview::class)->inStore($this->owner, 'password', $document->public_id, 1000000, (string) Str::uuid());
+        $this->assertSame([$product->slug => 2], $this->get('/cart')->viewData('quantity'));
+        $operation = (string) Str::uuid();
+        app(PaymentReview::class)->inStore($this->owner, 'password', $document->public_id, 1000000, $operation);
+        $this->assertSame([], $this->get('/cart')->viewData('quantity'));
+        $this->assertNotNull(DB::table('cart_purchase_snapshots')->where('sales_order_id', $order->id)->sole()->consumed_at);
         $delivery->dispatch($this->owner, 'password', $plan->public_id, $plan->version, 'SYNTHETIC-HANDOVER', 'SYNTHETIC CUSTOMER');
         $this->assertSame('fulfilled', $order->fresh()->status);
         $this->assertSame('collected', $plan->fresh()->state);
@@ -635,6 +893,99 @@ class SharedPaymentsTest extends TestCase
         $delivery->request($this->account, $document->public_id, 'pickup', null, $plan->fresh()->version);
     }
 
+    public function test_verified_settlement_does_not_delete_changed_or_unrelated_cart_rows(): void
+    {
+        $order = SalesOrder::findOrFail($this->document->sales_order_id);
+        $inventoryId = app(CommerceManagement::class)->execute($this->owner, 'item.create', [
+            'operation_key' => (string) Str::uuid(), 'sku' => 'SWITCHED-CART-ITEM', 'name' => 'Synthetic settlement item',
+            'condition' => 'used', 'serialized' => false, 'low_stock_threshold' => 0, 'reason' => 'Synthetic cart snapshot',
+        ]);
+        $line = new SalesOrderLine;
+        $line->forceFill(['sales_order_id' => $order->id, 'inventory_item_id' => $inventoryId,
+            'sku' => 'SWITCHED-CART-ITEM', 'description' => 'Synthetic settlement item', 'condition' => 'used',
+            'quantity' => 2, 'revision' => 1, 'unit_price' => '10000.00', 'line_total' => '20000.00'])->save();
+        $scope = hash('sha256', 'device:synthetic checkout snapshot');
+        $state = [
+            'changed-item' => ['quantity' => 3, 'inventory' => $inventoryId, 'version' => (string) Str::uuid()],
+            'unrelated-item' => ['quantity' => 1, 'inventory' => $inventoryId, 'version' => (string) Str::uuid()],
+        ];
+        DB::table('shopping_carts')->insert(['scope' => $scope, 'state' => json_encode($state, JSON_THROW_ON_ERROR)]);
+        DB::table('cart_purchase_snapshots')->insert(['sales_order_id' => $order->id, 'sources' => json_encode([
+            'rows' => [$scope => ['changed-item' => ['line' => $line->id, 'inventory' => $inventoryId, 'ordered' => 2,
+                'quantity' => 2, 'version' => (string) Str::uuid()]]],
+            'preferences' => [], 'view' => null,
+        ], JSON_THROW_ON_ERROR)]);
+        $payment = app(PaymentReview::class);
+        $operation = (string) Str::uuid();
+        $receipt = $payment->inStore($this->owner, 'password', $this->document->public_id, 2000000, $operation);
+        $replay = $payment->inStore($this->owner, 'password', $this->document->public_id, 2000000, $operation);
+
+        $this->assertSame($receipt->id, $replay->id);
+        $this->assertNotNull(DB::table('cart_purchase_snapshots')->sole()->consumed_at);
+        $this->assertSame($state, json_decode(DB::table('shopping_carts')->where('scope', $scope)->value('state'), true, flags: JSON_THROW_ON_ERROR));
+    }
+
+    public function test_verified_gateway_callback_consumes_only_purchased_quantity_after_failure_and_replay(): void
+    {
+        $order = SalesOrder::findOrFail($this->document->sales_order_id);
+        $inventoryId = app(CommerceManagement::class)->execute($this->owner, 'item.create', [
+            'operation_key' => (string) Str::uuid(), 'sku' => 'ZIBAL-CART-ITEM', 'name' => 'Synthetic checkout item',
+            'condition' => 'used', 'serialized' => false, 'low_stock_threshold' => 0, 'reason' => 'Synthetic payment fixture',
+        ]);
+        $line = new SalesOrderLine;
+        $line->forceFill(['sales_order_id' => $order->id, 'inventory_item_id' => $inventoryId,
+            'sku' => 'ZIBAL-CART-ITEM', 'description' => 'Synthetic checkout item', 'condition' => 'used',
+            'quantity' => 2, 'revision' => 1, 'unit_price' => '10000.00', 'line_total' => '20000.00'])->save();
+
+        $scope = hash('sha256', 'device:gateway checkout fixture');
+        $view = hash('sha256', 'view:gateway checkout fixture');
+        $version = (string) Str::uuid();
+        $state = [
+            'selected' => ['quantity' => 3, 'inventory' => $inventoryId, 'version' => $version],
+            'unrelated' => ['quantity' => 1, 'inventory' => $inventoryId, 'version' => (string) Str::uuid()],
+        ];
+        DB::table('shopping_carts')->insert([
+            ['scope' => $scope, 'state' => json_encode($state, JSON_THROW_ON_ERROR)],
+            ['scope' => $view, 'state' => json_encode(['selected' => 2], JSON_THROW_ON_ERROR)],
+        ]);
+        DB::table('cart_purchase_snapshots')->insert(['sales_order_id' => $order->id, 'sources' => json_encode([
+            'rows' => [$scope => ['selected' => ['line' => $line->id, 'inventory' => $inventoryId,
+                'ordered' => 2, 'quantity' => 2, 'version' => $version]]],
+            'preferences' => ['selected' => 2], 'view' => $view,
+        ], JSON_THROW_ON_ERROR)]);
+        $currentCart = fn () => json_decode(DB::table('shopping_carts')->where('scope', $scope)->value('state'), true, flags: JSON_THROW_ON_ERROR);
+
+        $this->enableGateway();
+        $paid = false;
+        Http::fake([
+            '*/request' => Http::response(['result' => 100, 'trackId' => '508']),
+            '*/verify' => function () use (&$paid) {
+                return Http::response($paid
+                    ? ['result' => 100, 'orderId' => PaymentAttempt::firstOrFail()->public_id, 'amount' => 200000]
+                    : ['result' => 202]);
+            },
+            '*/inquiry' => fn () => Http::response(['result' => 100, 'status' => 3,
+                'orderId' => PaymentAttempt::firstOrFail()->public_id, 'amount' => 200000]),
+        ]);
+        $attempt = app(ZibalPayments::class)->start($this->account, $this->document->public_id, 2000000, (string) Str::uuid());
+        $callback = route('payments.callback', ['trackId' => '508', 'orderId' => $attempt->public_id]);
+        $this->get($callback)->assertRedirectToRoute('payments.result', $attempt->public_id);
+        $this->assertSame($state, $currentCart());
+        $this->assertNull(DB::table('cart_purchase_snapshots')->sole()->consumed_at);
+        $this->assertDatabaseCount('payment_transactions', 0);
+
+        $paid = true;
+        $this->get($callback)->assertRedirectToRoute('payments.result', $attempt->public_id);
+        $remaining = $currentCart();
+        $this->assertSame(1, $remaining['selected']['quantity']);
+        $this->assertSame($state['unrelated'], $remaining['unrelated']);
+        $this->assertNotNull(DB::table('cart_purchase_snapshots')->sole()->consumed_at);
+        $this->get($callback)->assertRedirectToRoute('payments.result', $attempt->public_id);
+        $this->assertSame($remaining, $currentCart());
+        $this->assertDatabaseCount('payment_transactions', 1);
+        Http::assertSentCount(4);
+    }
+
     public function test_empty_checkout_replay_still_requires_the_exact_active_account_and_session(): void
     {
         $order = SalesOrder::findOrFail($this->document->sales_order_id);
@@ -653,7 +1004,7 @@ class SharedPaymentsTest extends TestCase
         $other->customer_id = $customer->id;
         $other->save();
         $this->actingAs($other, 'customer')->withSession(['customer_session_version' => 1]);
-        $this->post('/cart/checkout', ['operation_key' => $order->checkout_key])->assertConflict();
+        $this->post('/cart/checkout', $this->cartFields() + ['operation_key' => $order->checkout_key, 'method' => 'pickup'])->assertConflict();
         $this->assertDatabaseCount('sales_orders', 1);
         $stale = $this->account;
         CustomerAccount::query()->whereKey($stale->id)->update(['session_version' => 2]);
@@ -666,52 +1017,28 @@ class SharedPaymentsTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_withdrawn_cart_items_can_be_removed_without_exposing_unpublished_product_data(): void
+    public function test_withdrawn_products_can_be_removed_without_exposing_unpublished_data(): void
     {
-        foreach (['visible' => true, 'withdrawn' => false] as $slug => $published) {
-            Product::create(['name' => $published ? 'Visible product' : 'PRIVATE WITHDRAWN NAME', 'slug' => $slug,
-                'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'in_stock',
-                'price' => 10000, 'is_published' => $published, 'is_sample' => false]);
-        }
-        $this->actingAs($this->account, 'customer')->withSession([
-            'customer_session_version' => 1, 'store_cart' => ['visible' => 1, 'withdrawn' => 1],
-        ]);
-        $response = $this->get('/cart')->assertOk()->assertSee('Visible product')
-            ->assertDontSee('PRIVATE WITHDRAWN NAME')->assertSee('این کالا دیگر برای خرید در دسترس نیست.')
-            ->assertSee('action="'.route('cart.remove', 'withdrawn').'"', false);
-        $dom = new DOMDocument;
-        @$dom->loadHTML($response->getContent());
-        $button = (new DOMXPath($dom))->query('//form[@action="'.route('cart.checkout').'"]//button')->item(0);
-        $this->assertNotNull($button);
-        $this->assertTrue($button->hasAttribute('disabled'));
-        $this->post('/cart/checkout', ['operation_key' => (string) Str::uuid()])->assertConflict();
-        $this->assertSame(['visible' => 1, 'withdrawn' => 1], session('store_cart'));
-        $this->post(route('cart.remove', 'withdrawn'))->assertRedirect();
-        $this->assertSame(['visible' => 1], session('store_cart'));
-        $this->get('/cart')->assertOk()->assertDontSee('این کالا دیگر برای خرید در دسترس نیست.');
-        $this->assertDatabaseCount('sales_orders', 1);
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->withCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('e', 64));
+        $product = Product::create(['name' => 'PRIVATE WITHDRAWN NAME', 'slug' => 'withdrawn',
+            'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'in_stock',
+            'price' => 10000, 'is_published' => false, 'is_sample' => false]);
+        DB::table('shopping_carts')->insert(['scope' => hash('sha256', 'device:'.str_repeat('e', 64)), 'state' => json_encode([
+            $product->slug => ['quantity' => 1, 'inventory' => 10, 'version' => (string) Str::uuid()],
+        ], JSON_THROW_ON_ERROR)]);
+        $this->get('/cart')->assertOk()->assertDontSee($product->name)->assertSee('کالای خارج از دسترس');
+        $this->get(route('cart.review'))->assertRedirect(route('cart.index'));
+        $this->post(route('cart.remove', $product->slug), $this->cartFields() + ['scope' => 'device'])->assertRedirect();
+        $this->assertSame([], $this->get('/cart')->viewData('quantity'));
         Http::assertNothingSent();
     }
 
-    public function test_cart_does_not_quote_a_missing_or_unrepresentable_price_as_zero(): void
+    private function cartFields(): array
     {
-        $product = Product::create(['name' => 'Synthetic changing price', 'slug' => 'changing-price',
-            'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'in_stock',
-            'price' => null, 'is_published' => true, 'is_sample' => false]);
-        $this->actingAs($this->account, 'customer')->withSession([
-            'customer_session_version' => 1, 'store_cart' => [$product->slug => 1],
-        ]);
-        foreach ([null, 0, 10000000000] as $price) {
-            $product->price = $price;
-            $product->save();
-            $this->get('/cart')->assertOk()->assertSee('استعلام قیمت')->assertSee('جمع قیمت کالاهای این سبد هنوز مشخص نیست.')
-                ->assertDontSee('۰ تومان')->assertSee('aria-describedby="cart-unavailable"', false);
-        }
-        $product->price = 25000;
-        $product->save();
-        $this->get('/cart')->assertOk()->assertSee('۲۵٬۰۰۰ تومان')->assertDontSee('aria-describedby="cart-unavailable"', false);
-        $this->assertDatabaseCount('sales_orders', 1);
-        Http::assertNothingSent();
+        $cart = $this->get('/cart')->assertOk();
+
+        return ['cart_context' => $cart->viewData('proof'), 'cart_revision' => $cart->viewData('revision'), 'quote' => $cart->viewData('quote')];
     }
 
     public function test_in_account_notifications_are_durable_and_never_send_sms(): void

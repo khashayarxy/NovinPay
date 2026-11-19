@@ -61,6 +61,7 @@ class PaymentSettlement
         app(CustomerNotifications::class)->record($account, 'payment_confirmed', $transaction->public_id, '/account/documents/'.$document->public_id);
         // Same transaction-bound observation convention as finance.after-write.
         Event::dispatch('payment.after-write', [$transaction]);
+        app(ShoppingCart::class)->consume($document);
 
         return $transaction;
     }

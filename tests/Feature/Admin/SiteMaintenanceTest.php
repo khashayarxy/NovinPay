@@ -275,6 +275,8 @@ class SiteMaintenanceTest extends TestCase
         $this->assertTrue(SiteMaintenanceState::paymentCallback('/bot/payment_verify.php', 'GET'));
         $this->get('/bot/payment_verify.php?trackId=1')->assertNotFound();
         $this->postJson('/bot/payment_verify.php', [])->assertStatus(503);
+        $this->get('/payments/zibal/callback?trackId=1')->assertNotFound();
+        $this->postJson('/payments/zibal/callback', [])->assertStatus(503);
         $this->getJson('/bot/check_payment_status.php?order_id=unknown&track_id=1')->assertStatus(503);
         foreach (['/payment/callback', '/api/payment/verify', '/webhook/payment'] as $path) {
             $this->postJson($path, [])->assertStatus(503);

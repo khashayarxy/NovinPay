@@ -32,7 +32,7 @@ class SiteMaintenanceState
         // Exact origin-form callback only. It has no public browsing/admin bypass.
         return $method === 'GET' && str_starts_with($uri, '/') && ! str_starts_with($uri, '//')
             && ! str_contains($uri, '\\') && ! str_contains($uri, '#') && ! preg_match('/[\x00-\x20\x7f]/', $uri)
-            && explode('?', $uri, 2)[0] === '/bot/payment_verify.php';
+            && in_array(explode('?', $uri, 2)[0], ['/payments/zibal/callback', '/bot/payment_verify.php'], true);
     }
 
     public function read(): array
