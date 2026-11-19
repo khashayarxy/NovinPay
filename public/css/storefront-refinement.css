@@ -199,8 +199,16 @@ html.storefront-overlay-open { overscroll-behavior: none; }
 
 @media (max-width: 359px) {
     .np-header .np-customer-menu > .np-customer-trigger { position: relative; inline-size: 44px; padding-inline: 0; }
-    .np-header .np-customer-trigger > svg[aria-hidden="true"] { display: none; }
+    .np-header .np-customer-menu > .np-customer-trigger > svg[aria-hidden="true"] { display: none; }
     .np-header .np-customer-account-label {
         position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+    }
+}
+
+@media (max-width: 700px) {
+    body.floating-support-obstructs button[data-support-launcher]:not(:focus-visible) {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
     }
 }

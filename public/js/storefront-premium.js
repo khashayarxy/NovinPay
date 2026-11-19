@@ -408,6 +408,7 @@
         '.gallery-arrow, .gallery-zoom-mark, .image-count, .thumbs button',
         '.section-nav a, .key-mobile .text-link, .product-faq summary, .product-feedback :is(.btn, form)',
         '.catalog-toolbar :is(button, select), .public-product-card a:not([tabindex="-1"]), .repair-entry :is(a, button)',
+        '.store-checkout :is(label, select, button), .store-cart :is(.store-cart-commands, .store-cart-total a)',
     ].join(', '))];
     const mobile = matchMedia('(max-width: 700px)');
     const floatingNavigation = matchMedia('(max-width: 850px)');
