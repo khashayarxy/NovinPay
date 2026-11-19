@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Services\CustomerLogin;
 use App\Services\CustomerOtpSms;
+use App\Services\ZibalGateway;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\ConfigurationUrlParser;
@@ -156,8 +157,8 @@ try {
     foreach (['operations.scheduled_payments'] as $flag) {
         gate(config($flag, false) === false, 'scheduled_provider_flag');
     }
-    if (defined(App\Services\ZibalGateway::class.'::CALLBACK_PATH')) {
-        $callbackPath = App\Services\ZibalGateway::CALLBACK_PATH;
+    if (defined(ZibalGateway::class.'::CALLBACK_PATH')) {
+        $callbackPath = ZibalGateway::CALLBACK_PATH;
         gate(Route::has('payments.legacy.callback')
             && route('payments.callback', [], false) === $callbackPath, 'payment_callback_routes');
         gate(in_array(config('payments.zibal.callback_url'), ['', config('app.url').$callbackPath], true), 'payment_callback_config');
@@ -214,8 +215,12 @@ try {
     if ($application && $action === 'ready') {
         $before = KIT.'/'.$manifest['releaseName'].'-attempt/config-before.php';
         gate(hash_equals($manifest['baselineFiles']['bootstrap/cache/config.php'], hash('sha256', NovinPay\Release\privateRead($before))), 'original_config_backup');
-        gate(NovinPay\Release\preservedConfigurationDigest(require $before)
-            === NovinPay\Release\preservedConfigurationDigest(require ROOT.'/bootstrap/cache/config.php'), 'protected_configuration_changed');
+        $reviewedCartAndZibalDefaults = isset(
+            $manifest['reviewedMigrations']['database/migrations/2026_11_19_000001_create_shopping_carts.php'],
+            $manifest['reviewedRuntimeChanges']['config/payments.php'],
+        );
+        gate(NovinPay\Release\preservedConfigurationDigest(require $before, $reviewedCartAndZibalDefaults)
+            === NovinPay\Release\preservedConfigurationDigest(require ROOT.'/bootstrap/cache/config.php', $reviewedCartAndZibalDefaults), 'protected_configuration_changed');
         gate(Route::has('admin.payments.attempt.resolve'), 'resolution_route_missing');
     }
     foreach (['admin.dashboard', 'admin.products.index', 'admin.inventory.index', 'admin.repair-cases.index', 'admin.orders.index', 'admin.customers.index', 'admin.finance.reports', 'admin.deliveries.index', 'admin.test-customers.index', 'account.login', 'support.panel'] as $route) {

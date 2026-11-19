@@ -116,6 +116,25 @@ class ApplicationReleaseContractTest extends TestCase
         }
     }
 
+    public function test_zibal_cart_release_accepts_exact_new_defaults_without_relaxing_protected_configuration(): void
+    {
+        $before = ['payments' => ['zibal' => ['min_rial' => 1001, 'merchant' => 'synthetic', 'enabled' => false]]];
+        $after = $before;
+        $after['payments']['zibal']['min_rial'] = 1000;
+        $after['payments']['connectivity'] = [
+            'ranges_path' => '/home/novinpay/novinpay/resources/payments/country-ranges.json',
+            'trusted_proxies' => [''],
+        ];
+        $this->assertNotSame(preservedConfigurationDigest($before), preservedConfigurationDigest($after));
+        $this->assertSame(preservedConfigurationDigest($before, true), preservedConfigurationDigest($after, true));
+        $changed = $after;
+        $changed['payments']['connectivity']['trusted_proxies'] = ['10.0.0.1'];
+        $this->assertNotSame(preservedConfigurationDigest($before, true), preservedConfigurationDigest($changed, true));
+        $changed = $after;
+        $changed['payments']['zibal']['merchant'] = 'different-synthetic';
+        $this->assertNotSame(preservedConfigurationDigest($before, true), preservedConfigurationDigest($changed, true));
+    }
+
     public function test_retired_sms_settings_may_disappear_but_active_ippanel_and_identity_remain_bound(): void
     {
         $current = ['customer' => ['sms_provider' => 'ippanel', 'test_reset_on_logout' => true,

@@ -293,11 +293,22 @@ function applicationReleasePlan(array $m): void
     verifyRecoveryTriggers($rows, ['triggers' => expectedTriggerContracts($m['migrations'])]);
 }
 
-function preservedConfigurationDigest(array $configuration): string
+function preservedConfigurationDigest(array $configuration, bool $reviewedCartAndZibalDefaults = false): string
 {
     // Only the reviewed new defaults may differ. Provider/identity/secrets remain bound.
     unset($configuration['operations']);
     unset($configuration['payments']['zibal']['review_after_minutes'], $configuration['payments']['zibal']['reconciliation_limit']);
+    if ($reviewedCartAndZibalDefaults) {
+        if (($configuration['payments']['zibal']['min_rial'] ?? null) === 1000) {
+            $configuration['payments']['zibal']['min_rial'] = 1001;
+        }
+        if (($configuration['payments']['connectivity'] ?? null) === [
+            'ranges_path' => '/home/novinpay/novinpay/resources/payments/country-ranges.json',
+            'trusted_proxies' => [''],
+        ]) {
+            unset($configuration['payments']['connectivity']);
+        }
+    }
     // Owner-approved retirement of the unused legacy SMS settings. Active
     // IPPanel credentials/pattern and every customer identity setting stay hashed.
     foreach (['sms_enabled', 'sms_api_key', 'otp_template', 'otp_parameter', 'approved_template_ids',
