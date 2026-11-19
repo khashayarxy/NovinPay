@@ -2725,7 +2725,7 @@ body.premium-storefront {
 }
 @media (max-width: 700px) {
     .premium-storefront .np-header { position: sticky; top: 0; }
-    .premium-storefront .np-customer-header, .premium-storefront .premium-desktop-tools { display: none; }
+    .premium-storefront .np-header .np-customer-header, .premium-storefront .premium-desktop-tools { display: none; }
     .premium-storefront .premium-account-trigger { display: inline-flex; margin-inline-start: auto; width: 44px; }
     .premium-storefront .purchase .price { font-size: 25px; }
     .premium-storefront .main-photo { height: 310px; }

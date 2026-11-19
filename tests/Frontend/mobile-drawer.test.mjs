@@ -68,13 +68,25 @@ test('Chromium: modal drawer locks scroll, contains focus and reconciles account
     }
 });
 
-test('Chromium: compact product section links stay below the header while scrolling', t => {
+test('Chromium: compact product header fits RTL viewports and section links stay sticky', t => {
     const executable = (process.env.CHROME_BIN ? [process.env.CHROME_BIN] : process.platform === 'win32'
         ? ['C:/Program Files/Google/Chrome/Application/chrome.exe'] : ['/usr/bin/google-chrome', '/usr/bin/chromium']).find(existsSync);
     if (!executable) { t.skip('Chromium unavailable'); return; }
     const directory = mkdtempSync(path.join(tmpdir(), 'novinpay-product-tabs-'));
     try {
         const css = readFileSync(new URL('../../public/css/storefront-premium.css', import.meta.url), 'utf8');
+        const homeCss = readFileSync(new URL('../../resources/css/home.css', import.meta.url), 'utf8');
+        const refinementCss = readFileSync(new URL('../../public/css/storefront-refinement.css', import.meta.url), 'utf8');
+        const headerFixture = Buffer.from(`<!doctype html><html dir="rtl"><meta charset="utf-8"><style>
+        * {box-sizing:border-box} body {margin:0}
+        ${homeCss}${css}${refinementCss}</style><body class="premium-storefront">
+        <header class="np-header"><div class="np-container np-header__inner">
+            <a class="np-logo-link"><svg class="np-wordmark" width="144" height="30"></svg></a>
+            <div class="np-header__actions"><div class="np-mobile-menu"><button>Menu</button></div></div>
+            <a class="np-customer-trigger store-mobile-search">Search</a>
+            <a class="np-customer-trigger premium-account-trigger">Account</a>
+            <div class="np-customer-header"><div class="store-desktop-tools"></div><button data-customer-guest>Account</button></div>
+        </div></header></body></html>`).toString('base64');
         const fixture = path.join(directory, 'fixture.html');
         writeFileSync(fixture, `<!doctype html><html dir="rtl"><meta charset="utf-8"><style>${css}</style>
         <body class="premium-storefront"><header class="np-header" style="height:65px">Header</header>
@@ -83,7 +95,8 @@ test('Chromium: compact product section links stay below the header while scroll
         <section id="intro" class="article" style="height:580px">Overview</section>
         <section id="specs" class="technical" style="height:580px">Specifications</section>
         </div></main><div style="height:700px"></div>
-        <script>
+        <script type="module">
+        try {
         const tabs = document.querySelector('[data-product-sections]');
         const header = document.querySelector('.np-header');
         document.documentElement.style.setProperty('--product-header-height', header.offsetHeight + 'px');
@@ -94,13 +107,31 @@ test('Chromium: compact product section links stay below the header while scroll
                 throw new Error('Section navigation did not follow scrolling below the header');
             }
         }
+        for (const width of [320, 375]) {
+            const frame = document.createElement('iframe');
+            frame.width = width;
+            frame.style.border = '0';
+            frame.srcdoc = new TextDecoder().decode(Uint8Array.from(atob('${headerFixture}'), char => char.charCodeAt(0)));
+            const loaded = new Promise(resolve => frame.addEventListener('load', resolve, {once:true}));
+            document.body.append(frame);
+            await loaded;
+            const frameDocument = frame.contentDocument;
+            const root = frameDocument.documentElement;
+            const account = frameDocument.querySelector('.premium-account-trigger');
+            const alternate = frameDocument.querySelector('.np-customer-header');
+            if (!account.getBoundingClientRect().width || alternate.getBoundingClientRect().width || root.clientWidth !== width || root.scrollWidth > width) {
+                throw new Error('Product header at ' + width + 'px reports ' + [root.clientWidth, root.scrollWidth,
+                    account.getBoundingClientRect().width, alternate.getBoundingClientRect().width].join('/'));
+            }
+        }
         document.body.textContent = 'MOBILE_PRODUCT_TABS_BROWSER_PASS';
+        } catch (error) { document.body.textContent = 'MOBILE_PRODUCT_TABS_BROWSER_FAIL: ' + error.message; }
         </script></html>`);
         const result = spawnSync(executable, ['--headless=new', '--disable-gpu', '--disable-background-networking', '--no-first-run',
-            '--window-size=500,700', '--user-data-dir='+path.join(directory,'profile'), '--dump-dom', pathToFileURL(fixture).href],
+            '--window-size=500,700', '--user-data-dir='+path.join(directory,'profile'), '--virtual-time-budget=3000', '--dump-dom', pathToFileURL(fixture).href],
         {encoding:'utf8',timeout:20000,maxBuffer:1024*1024,windowsHide:true});
         assert.ifError(result.error); assert.equal(result.status, 0);
-        assert.match(result.stdout, /<body[^>]*>MOBILE_PRODUCT_TABS_BROWSER_PASS<\/body>/);
+        assert.ok(/<body[^>]*>MOBILE_PRODUCT_TABS_BROWSER_PASS<\/body>/.test(result.stdout), result.stdout.slice(-340));
     } finally {
         if (realpathSync(path.dirname(directory)) !== realpathSync(tmpdir()) || !path.basename(directory).startsWith('novinpay-product-tabs-')) throw Error('Unexpected cleanup target');
         rmSync(directory,{recursive:true,force:true,maxRetries:3,retryDelay:100});
