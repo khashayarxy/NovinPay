@@ -67,3 +67,42 @@ test('Chromium: modal drawer locks scroll, contains focus and reconciles account
         rmSync(directory,{recursive:true,force:true,maxRetries:3,retryDelay:100});
     }
 });
+
+test('Chromium: compact product section links stay below the header while scrolling', t => {
+    const executable = (process.env.CHROME_BIN ? [process.env.CHROME_BIN] : process.platform === 'win32'
+        ? ['C:/Program Files/Google/Chrome/Application/chrome.exe'] : ['/usr/bin/google-chrome', '/usr/bin/chromium']).find(existsSync);
+    if (!executable) { t.skip('Chromium unavailable'); return; }
+    const directory = mkdtempSync(path.join(tmpdir(), 'novinpay-product-tabs-'));
+    try {
+        const css = readFileSync(new URL('../../public/css/storefront-premium.css', import.meta.url), 'utf8');
+        const fixture = path.join(directory, 'fixture.html');
+        writeFileSync(fixture, `<!doctype html><html dir="rtl"><meta charset="utf-8"><style>${css}</style>
+        <body class="premium-storefront"><header class="np-header" style="height:65px">Header</header>
+        <div style="height:900px"></div><main class="product-layout"><div class="reading">
+        <nav class="section-nav card" data-product-sections><a href="#intro">Overview</a><a href="#specs">Specifications</a></nav>
+        <section id="intro" class="article" style="height:580px">Overview</section>
+        <section id="specs" class="technical" style="height:580px">Specifications</section>
+        </div></main><div style="height:700px"></div>
+        <script>
+        const tabs = document.querySelector('[data-product-sections]');
+        const header = document.querySelector('.np-header');
+        document.documentElement.style.setProperty('--product-header-height', header.offsetHeight + 'px');
+        document.documentElement.style.setProperty('--product-tabs-height', tabs.offsetHeight + 'px');
+        for (const top of [1020, 1540, 1100]) {
+            scrollTo({top, behavior:'instant'});
+            if (Math.abs(tabs.getBoundingClientRect().top - header.getBoundingClientRect().bottom - 8) > 1) {
+                throw new Error('Section navigation did not follow scrolling below the header');
+            }
+        }
+        document.body.textContent = 'MOBILE_PRODUCT_TABS_BROWSER_PASS';
+        </script></html>`);
+        const result = spawnSync(executable, ['--headless=new', '--disable-gpu', '--disable-background-networking', '--no-first-run',
+            '--window-size=500,700', '--user-data-dir='+path.join(directory,'profile'), '--dump-dom', pathToFileURL(fixture).href],
+        {encoding:'utf8',timeout:20000,maxBuffer:1024*1024,windowsHide:true});
+        assert.ifError(result.error); assert.equal(result.status, 0);
+        assert.match(result.stdout, /<body[^>]*>MOBILE_PRODUCT_TABS_BROWSER_PASS<\/body>/);
+    } finally {
+        if (realpathSync(path.dirname(directory)) !== realpathSync(tmpdir()) || !path.basename(directory).startsWith('novinpay-product-tabs-')) throw Error('Unexpected cleanup target');
+        rmSync(directory,{recursive:true,force:true,maxRetries:3,retryDelay:100});
+    }
+});

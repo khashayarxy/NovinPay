@@ -102,15 +102,18 @@ document.querySelectorAll('[data-product-sections]').forEach(sectionMenu => {
     const links = Array.from(sectionMenu.querySelectorAll('a[href^="#"]'));
     const sections = links.map(link => document.getElementById(link.hash.slice(1)));
     const header = document.querySelector('.np-header');
+    const compactLayout = matchMedia('(max-width: 1050px)');
     let frame = 0;
+    let headerHeight = 0;
+    let tabsHeight = 0;
+    let currentLink;
     function updateCurrentSection() {
         frame = 0;
         const documentRoot = document.documentElement;
         const height = documentRoot.clientHeight;
         const reachedEnd = window.scrollY + height >= documentRoot.scrollHeight - 2;
-        const headerHeight = header && getComputedStyle(header).position === 'sticky' ? header.offsetHeight : 0;
-        const menuBottom = getComputedStyle(sectionMenu).position === 'sticky' ? sectionMenu.offsetHeight + 16 : 0;
-        const boundary = reachedEnd ? height - 1 : Math.max(headerHeight + 40, menuBottom);
+        const menuBottom = headerHeight + tabsHeight + 16;
+        const boundary = reachedEnd ? height - 1 : Math.max(headerHeight + 40, menuBottom) + (compactLayout.matches ? 1 : 0);
         let current = 0;
         sections.forEach((section, index) => {
             if (section && section.getBoundingClientRect().top <= boundary) current = index;
@@ -122,28 +125,57 @@ document.querySelectorAll('[data-product-sections]').forEach(sectionMenu => {
             const top = section.getBoundingClientRect().top;
             const targetY = Math.min(scrollY + top - offset, documentRoot.scrollHeight - height);
             // History can restore the reading position after an FAQ answer changes the page height.
-            if (Math.abs(scrollY - Math.max(0, targetY)) <= 2 || (top >= headerHeight && top <= offset + 96)) current = target;
+            if (Math.abs(scrollY - Math.max(0, targetY)) <= 2 || (!compactLayout.matches && top >= headerHeight && top <= offset + 96)) current = target;
         }
-        links.forEach((link, index) => {
-            if (index === current) link.setAttribute('aria-current', 'location');
-            else link.removeAttribute('aria-current');
-        });
+        const next = links[current];
+        if (!next || next === currentLink) return;
+        const previous = currentLink;
+        previous?.removeAttribute('aria-current');
+        currentLink = next;
+        next.setAttribute('aria-current', 'location');
+        if (compactLayout.matches && previous && sectionMenu.scrollWidth > sectionMenu.clientWidth) {
+            const menu = sectionMenu.getBoundingClientRect();
+            const link = next.getBoundingClientRect();
+            if (link.left < menu.left || link.right > menu.right) {
+                sectionMenu.scrollBy({ left: link.left < menu.left ? link.left - menu.left : link.right - menu.right, behavior: 'instant' });
+            }
+        }
     }
     function scheduleCurrentSection() {
         if (!frame) frame = requestAnimationFrame(updateCurrentSection);
     }
     window.addEventListener('scroll', scheduleCurrentSection, { passive: true });
-    window.addEventListener('resize', scheduleCurrentSection, { passive: true });
+    function measureInsets() {
+        const root = document.documentElement;
+        headerHeight = header && getComputedStyle(header).position === 'sticky' ? header.offsetHeight : 0;
+        tabsHeight = sectionMenu.offsetHeight;
+        root.style.setProperty('--product-header-height', headerHeight + 'px');
+        root.style.setProperty('--product-tabs-height', tabsHeight + 'px');
+        scheduleCurrentSection();
+    }
+    window.addEventListener('resize', measureInsets, { passive: true });
     window.addEventListener('hashchange', scheduleCurrentSection);
     window.addEventListener('pageshow', scheduleCurrentSection);
+    sectionMenu.addEventListener('click', event => {
+        if (!compactLayout.matches || event.defaultPrevented || event.button !== 0
+            || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        const link = event.target.closest('a[href^="#"]');
+        const section = sections[links.indexOf(link)];
+        if (!section) return;
+        event.preventDefault();
+        if (location.hash !== link.hash) history.pushState(history.state, '', link.hash);
+        const inset = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+        section.setAttribute('tabindex', '-1');
+        section.focus({ preventScroll: true });
+        window.scrollTo({ top: scrollY + section.getBoundingClientRect().top - inset, behavior: 'auto' });
+        scheduleCurrentSection();
+    });
     if (window.ResizeObserver) {
-        new ResizeObserver(() => {
-            if (sectionMenu.hasAttribute('data-product-sections')) {
-                document.documentElement.style.setProperty('--product-tabs-height', sectionMenu.offsetHeight + 'px');
-            }
-            scheduleCurrentSection();
-        }).observe(sectionMenu);
+        const observer = new ResizeObserver(measureInsets);
+        observer.observe(sectionMenu, { box: 'border-box' });
+        if (header) observer.observe(header, { box: 'border-box' });
     }
+    measureInsets();
     updateCurrentSection();
 });
 
