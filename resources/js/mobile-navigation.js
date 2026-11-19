@@ -6,9 +6,36 @@ export function initMobileNavigation() {
     dialog.dataset.bound = 'true';
     const mobile = window.matchMedia('(max-width: 850px)');
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const scrollOwner = Symbol('mobile navigation');
+    const shared = window.StorefrontOverlays;
+    if (shared) {
+        const closeButton = dialog.querySelector('[data-navigation-close]');
+        closeButton.setAttribute('data-storefront-close', '');
+        shared.register(dialog, {
+            surface: dialog.querySelector('.np-mobile-drawer__panel'),
+            show: () => toggle.setAttribute('aria-expanded', 'true'),
+            hide: () => {
+                dialog.classList.remove('is-closing');
+                toggle.setAttribute('aria-expanded', 'false');
+            },
+            beforeClose: () => {
+                if (reduced.matches) return;
+                dialog.classList.add('is-closing');
+                return new Promise(resolve => setTimeout(resolve, 180));
+            },
+        });
+        toggle.addEventListener('click', () => {
+            if (!mobile.matches) return;
+            header.dispatchEvent(new Event('mobile-navigation:open'));
+            shared.open(dialog, toggle);
+        });
+        mobile.addEventListener('change', () => { if (!mobile.matches && dialog.open) shared.close(); });
+        return;
+    }
     let locked = null;
     let closing = null;
     const unlock = () => {
+        window.StorefrontScrollLock?.release(scrollOwner);
         if (!locked) return;
         const {x, y, body, root} = locked;
         for (const [key, value] of Object.entries(body)) document.body.style[key] = value;
@@ -34,11 +61,13 @@ export function initMobileNavigation() {
     toggle.addEventListener('click', () => {
         if (!mobile.matches || dialog.open) return;
         header.dispatchEvent(new Event('mobile-navigation:open'));
-        const body = document.body.style;
-        locked = {x: window.scrollX, y: window.scrollY, root: document.documentElement.style.overflow,
-            body: {position: body.position, top: body.top, left: body.left, width: body.width, overflow: body.overflow}};
-        document.documentElement.style.overflow = 'hidden';
-        Object.assign(body, {position: 'fixed', top: `${-locked.y}px`, left: `${-locked.x}px`, width: '100%', overflow: 'hidden'});
+        if (window.StorefrontScrollLock) {
+            window.StorefrontScrollLock.acquire(scrollOwner);
+        } else {
+            const root = document.documentElement;
+            locked = {x: scrollX, y: scrollY, root: root.style.overflow, body: {}};
+            root.style.overflow = 'hidden';
+        }
         dialog.showModal();
         toggle.setAttribute('aria-expanded', 'true');
     });

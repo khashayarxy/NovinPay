@@ -614,7 +614,7 @@ body.premium-storefront {
 .premium-storefront dialog::backdrop {
     background: #0e2238b8;
 }
-.premium-storefront dialog img {
+.premium-storefront .product-lightbox img {
     width: min(680px,78vw);
     height: min(680px,70vh);
     object-fit: contain;
@@ -1466,10 +1466,6 @@ html:has(body.premium-storefront) {
 }
 html:has(body.premium-storefront) {
     scrollbar-gutter: stable;
-}
-html:has(body.premium-storefront).storefront-overlay-open,body.premium-storefront.storefront-overlay-open {
-    overflow: hidden;
-    overscroll-behavior: none;
 }
 .premium-storefront dialog::backdrop {
     background: rgb(14 30 45 / 30%);
@@ -2644,7 +2640,7 @@ html:has(body.premium-storefront) {
         position: fixed;
         z-index: 25;
         inset-inline: max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-left));
-        bottom: calc(var(--store-nav-edge) + var(--store-nav-height) + var(--store-purchase-gap));
+        bottom: calc(var(--store-nav-edge) + var(--store-nav-active-height, var(--store-nav-height)) + var(--store-purchase-gap));
         max-width: 440px;
         min-height: 56px;
         margin-inline: auto;

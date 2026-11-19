@@ -31,7 +31,7 @@ test('Chromium: modal drawer locks scroll, contains focus and reconciles account
             let opened = 0; header.addEventListener('mobile-navigation:open', () => opened++);
             toggle.click();
             check(dialog.open && opened === 1 && toggle.getAttribute('aria-expanded') === 'true', 'one modal open');
-            check(document.body.style.position === 'fixed' && document.documentElement.style.overflow === 'hidden', 'background locked');
+            check(document.documentElement.style.overflow === 'hidden' && window.scrollY === before, 'background locked');
             check(document.activeElement.hasAttribute('data-navigation-close'), 'initial close focus');
             dialog.querySelector('[data-navigation-close]').dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',shiftKey:true,bubbles:true,cancelable:true}));
             check(document.activeElement === dialog.querySelector('a'), 'reverse Tab wraps inside modal');
@@ -154,8 +154,8 @@ test('Chromium: compact product header, sticky sections and purchase controls fi
                 return new Promise(resolve => view.setTimeout(resolve, 50));
             };
             await move(560);
-            const gap = nav.getBoundingClientRect().top - dock.getBoundingClientRect().bottom;
-            if (dock.hidden || Math.abs(gap - 8) > 1) throw new Error('Dock is missing or collides with the navigation');
+            const gap = view.innerHeight - dock.getBoundingClientRect().bottom;
+            if (dock.hidden || !nav.inert || Math.abs(gap - 16) > 1) throw new Error('Dock is missing or collides with the navigation');
             await move(root.scrollHeight);
             if (!dock.hidden) throw new Error('Dock persists over the footer');
             await move(0);

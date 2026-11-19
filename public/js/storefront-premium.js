@@ -7,28 +7,29 @@
     const layers = new Map();
     const openers = new WeakMap();
     let active = null;
-    let locked = null;
+    const scrollLockOwner = Symbol('storefront overlays');
     let closing = false;
     const pending = new Map();
     let cartVersion = 0;
+    let cartRead = null;
+    let cartEpoch = 0;
+    const commerce = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('novinpay-commerce') : null;
     let accountVersion = 0;
     let cartPending = false;
     const cartDialog = document.getElementById('cart-dialog');
     const cartNumber = new Intl.NumberFormat('fa-IR', {useGrouping: false});
-
-    function lock() {
-        const style = body.style;
-        locked = {x: scrollX, y: scrollY, rootOverflow: root.style.overflow,
-            body: {position: style.position, top: style.top, left: style.left, width: style.width, overflow: style.overflow}};
-        root.style.overflow = 'hidden';
-        Object.assign(style, {position: 'fixed', top: `${-locked.y}px`, left: `${-locked.x}px`, width: '100%', overflow: 'hidden'});
-        root.classList.add('storefront-overlay-open');
-        body.classList.add('storefront-overlay-open');
+    function renderCartCount(count) {
+        if (!Number.isInteger(count) || count < 0) return;
+        document.querySelectorAll('[data-store-cart-count]').forEach(badge => {
+            badge.hidden = count === 0;
+            badge.querySelector('bdi').textContent = cartNumber.format(count);
+        });
     }
 
     function deactivate() {
         const previous = active;
         active = null;
+        if (previous === cartDialog) clearCart(cartDialog);
         if (previous) layers.get(previous.id)?.hide?.();
         previous?.close();
         pending.forEach(controller => controller.abort());
@@ -39,26 +40,20 @@
     function finish(restoreFocus = true) {
         const previous = deactivate();
         closing = false;
-        root.classList.remove('storefront-overlay-open');
-        body.classList.remove('storefront-overlay-open', 'keyboard-open');
         triggers.forEach(trigger => trigger.setAttribute('aria-expanded', 'false'));
-        if (locked) {
-            const saved = locked;
-            locked = null;
-            Object.assign(body.style, saved.body);
-            root.style.overflow = saved.rootOverflow;
-            scrollTo({left: saved.x, top: saved.y, behavior: 'instant'});
-        }
+        window.StorefrontScrollLock?.release(scrollLockOwner);
         document.dispatchEvent(new Event('storefront-overlay:closed'));
         if (restoreFocus && previous) openers.get(previous)?.focus({preventScroll: true});
     }
 
-    function close() {
+    async function close() {
         if (!active || closing) return;
-        if (history.state?.storefrontOverlay) {
-            closing = true;
-            history.back();
-        } else finish();
+        const current = active;
+        closing = true;
+        await layers.get(current.id)?.beforeClose?.();
+        if (active !== current) return;
+        if (history.state?.storefrontOverlay) history.back();
+        else finish();
     }
 
     async function readPage(url, key) {
@@ -112,47 +107,80 @@
         }
     }
 
-    async function refreshCart(dialog) {
+    async function refreshCart(dialog, {discard = false, supersede = false} = {}) {
+        if (cartRead && !discard && !supersede) return cartRead;
+        if (discard) clearCart(dialog);
         const version = ++cartVersion;
         const container = dialog.querySelector('[data-live-cart]');
         const footer = dialog.querySelector('[data-cart-footer]');
         const retry = dialog.querySelector('[data-cart-retry]');
-        const hadRetryFocus = document.activeElement === retry;
-        if (hadRetryFocus) dialog.querySelector('[data-storefront-close]')?.focus();
         const summary = dialog.querySelector('[data-cart-summary]');
-        summary.replaceChildren();
-        footer.hidden = true;
-        retry.hidden = true;
-        container.replaceChildren(Object.assign(document.createElement('p'), {textContent: 'در حال دریافت سبد خرید…'}));
-        container.setAttribute('aria-busy', 'true');
-        try {
-            const document = await readPage(dialog.dataset.cartUrl, 'cart');
-            const content = document.querySelector('[data-storefront-cart]');
-            if (!content) throw new Error('Cart content unavailable');
-            if (active !== dialog || version !== cartVersion) return;
-            if (content.dataset.cartEmpty === 'true') {
-                container.replaceChildren(dialog.querySelector('[data-empty-cart]').content.cloneNode(true));
-            } else {
-                content.querySelector('h1')?.remove();
-                content.classList.add('cart-sheet-content');
-                const total = content.querySelector('[data-store-cart-total]');
-                if (total) summary.replaceChildren(total);
-                container.replaceChildren(content);
-                footer.hidden = false;
-            }
-        } catch {
-            if (active === dialog && version === cartVersion) {
-                container.replaceChildren(Object.assign(document.createElement('p'), {
-                textContent: 'دریافت سبد خرید انجام نشد. صفحهٔ سبد خرید را باز کنید یا دوباره تلاش کنید.',
-                }));
-                footer.hidden = false;
-                retry.hidden = false;
-            }
-        } finally {
-            if (active === dialog && version === cartVersion) container.removeAttribute('aria-busy');
+        const status = dialog.querySelector('[data-cart-status]');
+        const closeButton = dialog.querySelector('[data-storefront-close]');
+        if (container.contains(document.activeElement) || document.activeElement === retry) {
+            closeButton?.focus({preventScroll: true});
         }
+        retry.hidden = true;
+        footer.hidden = false;
+        container.inert = true;
+        summary.inert = true;
+        container.setAttribute('aria-busy', 'true');
+        status.textContent = '';
+        status.hidden = false;
+        const current = () => active === dialog && version === cartVersion;
+        const delay = setTimeout(() => {
+            if (current()) status.textContent = container.childElementCount
+                ? 'در حال بررسی آخرین وضعیت سبد…' : 'در حال دریافت سبد خرید…';
+        }, 180);
+
+        cartRead = (async () => {
+            try {
+                const document = await readPage(dialog.dataset.cartUrl, 'cart');
+                const content = document.querySelector('[data-storefront-cart]');
+                if (!content) throw new Error('Cart content unavailable');
+                if (!current()) return;
+                if (content.dataset.cartCount !== undefined) renderCartCount(Number(content.dataset.cartCount));
+                const contentWasEmpty = container.querySelector('.empty-cart');
+                if (content.dataset.cartEmpty === 'true') {
+                    if (!contentWasEmpty) container.replaceChildren(dialog.querySelector('[data-empty-cart]').content.cloneNode(true));
+                    summary.replaceChildren();
+                } else {
+                    content.querySelector('h1')?.remove();
+                    content.classList.add('cart-sheet-content');
+                    const total = content.querySelector('[data-store-cart-total]');
+                    summary.replaceChildren(...(total ? [total] : []));
+                    container.replaceChildren(content);
+                }
+                container.inert = false;
+                summary.inert = false;
+                status.textContent = '';
+                status.hidden = false;
+            } catch {
+                if (!current()) return;
+                status.textContent = container.childElementCount
+                    ? 'وضعیت فعلی سبد تأیید نشد.'
+                    : 'دریافت سبد خرید انجام نشد. دوباره تلاش کنید.';
+                retry.hidden = false;
+            } finally {
+                clearTimeout(delay);
+                if (current()) {
+                    container.removeAttribute('aria-busy');
+                    cartRead = null;
+                }
+            }
+        })();
+        return cartRead;
     }
 
+    function clearCart(dialog) {
+        ++cartVersion;
+        pending.get('cart')?.abort();
+        cartRead = null;
+        dialog.querySelector('[data-live-cart]').replaceChildren();
+        dialog.querySelector('[data-cart-summary]').replaceChildren();
+        dialog.querySelector('[data-cart-status]').textContent = '';
+        dialog.querySelector('[data-cart-error]').hidden = true;
+    }
     document.addEventListener('submit', async event => {
         const form = event.target;
         if (!cartDialog || !form.matches('form[data-cart-mutation]')) return;
@@ -162,9 +190,11 @@
         event.preventDefault();
         if (cartPending) return;
         const fromDrawer = cartDialog.contains(form);
-        const submitter = event.submitter || form.querySelector('button[type="submit"]');
+        const epoch = cartEpoch;
+        const submitter = event.submitter || form.querySelector('button[type="submit"], button:not([type])');
         const error = cartDialog.querySelector('[data-cart-error]');
         const data = new FormData(form);
+        if (submitter?.name) data.set(submitter.name, submitter.value);
         error.hidden = true;
         cartPending = true;
         form.setAttribute('aria-busy', 'true');
@@ -177,30 +207,32 @@
                 credentials: 'same-origin', redirect: 'error', signal: controller.signal,
                 headers: {Accept: 'application/json'}});
             if (!response.ok) {
-                const message = response.status === 409 ? 'موجودی برای این درخواست کافی نیست.'
+                const message = response.status === 409 ? 'سبد یا موجودی تغییر کرده است. پیش از تلاش دوباره، سبد را بررسی کنید.'
                     : response.status === 422 ? 'تعداد را بین ۱ تا ۱۰ انتخاب کنید.'
                     : 'تغییر سبد انجام نشد. وضعیت سبد را بررسی کنید.';
                 throw new Error(message);
             }
             const {count} = await response.json();
             if (!Number.isInteger(count) || count < 0) throw new Error();
-            document.querySelectorAll('[data-store-cart-count]').forEach(badge => {
-                badge.hidden = count === 0;
-                badge.querySelector('bdi').textContent = cartNumber.format(count);
-            });
+            commerce?.postMessage('cart-change');
+            if (epoch !== cartEpoch) return;
+            renderCartCount(count);
             if (active === cartDialog) {
                 const focusInCart = cartDialog.querySelector('[data-live-cart]').contains(document.activeElement);
                 if (focusInCart || fromDrawer) cartDialog.querySelector('[data-storefront-close]')?.focus();
-                await refreshCart(cartDialog);
+                await refreshCart(cartDialog, {supersede: true});
             } else if (!active && !fromDrawer) {
                 open(cartDialog, submitter);
             }
         } catch (failure) {
+            if (epoch !== cartEpoch) return;
             error.textContent = failure.message && /[\u0600-\u06ff]/.test(failure.message) ? failure.message
                 : 'نتیجهٔ درخواست مشخص نیست. پیش از تکرار، وضعیت سبد را بررسی کنید.';
             error.hidden = false;
-            if (!active && !fromDrawer) open(cartDialog, submitter);
-            else if (active === cartDialog && controller.signal.aborted) await refreshCart(cartDialog);
+            if (!active && !fromDrawer) {
+                open(cartDialog, submitter);
+                error.hidden = false;
+            } else if (active === cartDialog) await refreshCart(cartDialog, {supersede: true});
         } finally {
             clearTimeout(timeout);
             cartPending = false;
@@ -210,7 +242,7 @@
     });
 
     function activate(dialog, focus) {
-        if (!locked) lock();
+        window.StorefrontScrollLock?.acquire(scrollLockOwner);
         active = dialog;
         triggers.forEach(element => element.setAttribute('aria-expanded', String(element.dataset.storefrontOpen === dialog.id)));
         dialog.showModal();
@@ -317,8 +349,26 @@
     window.addEventListener('popstate', restoreLayer);
     window.addEventListener('pagehide', () => finish(false));
     window.addEventListener('pageshow', restoreLayer);
+    commerce?.addEventListener('message', event => {
+        if (event.data === 'identity-change') {
+            ++cartEpoch;
+            renderCartCount(0);
+            if (cartDialog && active === cartDialog) {
+                clearCart(cartDialog);
+                close();
+            }
+        } else if (event.data === 'cart-change' && cartDialog && active === cartDialog) {
+            refreshCart(cartDialog, {supersede: true});
+        }
+    });
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && active?.dataset.accountUrl) refreshAccount(active);
+        if (document.visibilityState !== 'visible') {
+            ++cartEpoch;
+            if (cartDialog && active === cartDialog) clearCart(cartDialog);
+            return;
+        }
+        if (active?.dataset.accountUrl) refreshAccount(active);
+        if (active && active === cartDialog) refreshCart(active, {discard: true});
     });
     const purchaseColumn = document.querySelector('[data-purchase-column]');
     function fitPurchaseColumn() {
@@ -351,7 +401,8 @@
     const action = document.querySelector('[data-product-primary-action]');
     const productContent = contact?.closest('main')?.querySelector('.storefront-content');
     const productHeader = contact && document.querySelector('.np-header');
-    const navigation = contact && document.querySelector('[data-mobile-bottom-nav]');
+    const navigation = document.querySelector('[data-mobile-bottom-nav]');
+    const related = document.getElementById('product-related');
     const clearTargets = [...document.querySelectorAll([
         '.purchase :is(.price bdi, .price small, .stock strong, time, .product-cart-form, a.primary)',
         '.gallery-arrow, .gallery-zoom-mark, .image-count, .thumbs button',
@@ -359,16 +410,38 @@
         '.catalog-toolbar :is(button, select), .public-product-card a:not([tabindex="-1"]), .repair-entry :is(a, button)',
     ].join(', '))];
     const mobile = matchMedia('(max-width: 700px)');
+    const floatingNavigation = matchMedia('(max-width: 850px)');
+    let previousY = Math.max(0, scrollY);
+    let travel = 0;
+    let navHidden = false;
+    function updateNavigation() {
+        if (!navigation) return;
+        const y = Math.max(0, scrollY);
+        const delta = y - previousY;
+        previousY = y;
+        if (!floatingNavigation.matches || y < 64 || navigation.contains(document.activeElement)) {
+            navHidden = false;
+            travel = 0;
+        } else if (delta && !root.classList.contains('storefront-overlay-open')) {
+            travel = Math.sign(delta) === Math.sign(travel) ? travel + delta : delta;
+            if (travel > 38) navHidden = true;
+            if (travel < -20) navHidden = false;
+        }
+        navigation.toggleAttribute('data-scroll-hidden', navHidden);
+        navigation.inert = navHidden;
+    }
     let frame = 0;
     function render() {
         frame = 0;
-        if (active) return;
+        if (active || root.classList.contains('storefront-overlay-open')) return;
+        updateNavigation();
         if (contact && action && productContent) {
             const headerEdge = productHeader?.getBoundingClientRect().bottom ?? 0;
-            const navEdge = navigation?.getBoundingClientRect().top ?? innerHeight;
+            const navEdge = !navHidden && navigation ? navigation.getBoundingClientRect().top : innerHeight;
+            const contentEdge = Math.min(productContent.getBoundingClientRect().bottom, related?.getBoundingClientRect().top ?? Infinity);
             const show = mobile.matches && action.getClientRects().length > 0
                 && action.getBoundingClientRect().bottom <= headerEdge
-                && productContent.getBoundingClientRect().bottom > navEdge;
+                && contentEdge > navEdge && !body.classList.contains('keyboard-open');
             contact.hidden = !show;
         }
         const launcher = mobile.matches && document.querySelector('[data-support-launcher]');
@@ -384,6 +457,10 @@
     window.addEventListener('resize', schedule, {passive: true});
     window.addEventListener('load', schedule, {once: true});
     document.addEventListener('storefront-overlay:closed', schedule);
+    document.addEventListener('storefront-scroll:released', schedule);
+    document.addEventListener('focusin', schedule);
+    document.addEventListener('focusout', schedule);
+    window.visualViewport?.addEventListener('resize', schedule, {passive: true});
     if (contact && 'ResizeObserver' in window) {
         new ResizeObserver(([entry]) => {
             const height = entry.borderBoxSize?.[0]?.blockSize ?? contact.offsetHeight;

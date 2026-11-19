@@ -2,6 +2,16 @@ import { initMobileNavigation } from './mobile-navigation';
 import { initClickMap } from './click-map';
 import { initCustomerNavigation } from './customer-navigation';
 
+if (typeof BroadcastChannel !== 'undefined') {
+    const commerce = new BroadcastChannel('novinpay-commerce');
+    document.addEventListener('submit', event => {
+        const path = new URL(event.target.action, location.href);
+        if (path.origin === location.origin && /^\/account\/(verify|password-login|logout|password)$/.test(path.pathname)) {
+            commerce.postMessage('identity-change');
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initClickMap();
     initMobileNavigation();

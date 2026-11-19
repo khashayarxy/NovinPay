@@ -1,4 +1,12 @@
-<footer class="np-footer">
+@props(['compact' => false])
+<footer @class(['np-footer', 'np-footer--compact' => $compact])>
+    @if ($compact)
+        <div class="np-container np-footer__transaction">
+            <a href="{{ route('home') }}">{{ config('business.name') }}</a>
+            <a href="{{ route('terms') }}">شرایط خرید</a>
+            <x-business-phones link-class="np-footer__phone" />
+        </div>
+    @else
     <div class="np-container">
         <div class="np-footer__grid">
             <div class="np-footer__brand">
@@ -26,10 +34,12 @@
             <div class="np-footer__information">
                 <h2>تماس با نوین‌پی</h2>
                 <x-business-phones class="np-footer__phones" link-class="np-footer__phone" />
+                @unless(request()->routeIs('home'))<p>{{ config('business.address') }}</p>@endunless
             </div>
         </div>
         <div class="np-footer__bottom">
             <p>تمامی حقوق برای {{ config('business.name') }} محفوظ است. © {{ \App\Support\FaNumber::digits(now()->year) }}</p>
         </div>
     </div>
+    @endif
 </footer>
