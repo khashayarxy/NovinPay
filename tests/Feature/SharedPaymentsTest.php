@@ -32,6 +32,7 @@ use App\Support\SiteMaintenanceState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -922,7 +923,8 @@ class SharedPaymentsTest extends TestCase
 
         $this->assertSame($receipt->id, $replay->id);
         $this->assertNotNull(DB::table('cart_purchase_snapshots')->sole()->consumed_at);
-        $this->assertSame($state, json_decode(DB::table('shopping_carts')->where('scope', $scope)->value('state'), true, flags: JSON_THROW_ON_ERROR));
+        $stored = json_decode(DB::table('shopping_carts')->where('scope', $scope)->value('state'), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame(Arr::sortRecursive($state), Arr::sortRecursive($stored));
     }
 
     public function test_verified_gateway_callback_consumes_only_purchased_quantity_after_failure_and_replay(): void
@@ -970,7 +972,7 @@ class SharedPaymentsTest extends TestCase
         $attempt = app(ZibalPayments::class)->start($this->account, $this->document->public_id, 2000000, (string) Str::uuid());
         $callback = route('payments.callback', ['trackId' => '508', 'orderId' => $attempt->public_id]);
         $this->get($callback)->assertRedirectToRoute('payments.result', $attempt->public_id);
-        $this->assertSame($state, $currentCart());
+        $this->assertSame(Arr::sortRecursive($state), Arr::sortRecursive($currentCart()));
         $this->assertNull(DB::table('cart_purchase_snapshots')->sole()->consumed_at);
         $this->assertDatabaseCount('payment_transactions', 0);
 
@@ -978,7 +980,7 @@ class SharedPaymentsTest extends TestCase
         $this->get($callback)->assertRedirectToRoute('payments.result', $attempt->public_id);
         $remaining = $currentCart();
         $this->assertSame(1, $remaining['selected']['quantity']);
-        $this->assertSame($state['unrelated'], $remaining['unrelated']);
+        $this->assertSame(Arr::sortRecursive($state['unrelated']), Arr::sortRecursive($remaining['unrelated']));
         $this->assertNotNull(DB::table('cart_purchase_snapshots')->sole()->consumed_at);
         $this->get($callback)->assertRedirectToRoute('payments.result', $attempt->public_id);
         $this->assertSame($remaining, $currentCart());
