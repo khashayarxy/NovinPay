@@ -73,7 +73,8 @@ function verifyCartSchema(PDO $db): void
         ensure(str_replace(['`', ' '], '', strtolower($jsonChecks[$table] ?? '')) === "json_valid($column)", 'cart_json_constraints');
     }
     $references = $db->query("SELECT k.COLUMN_NAME,k.REFERENCED_TABLE_SCHEMA,k.REFERENCED_TABLE_NAME,k.REFERENCED_COLUMN_NAME,r.DELETE_RULE FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r USING (CONSTRAINT_SCHEMA,CONSTRAINT_NAME,TABLE_NAME) WHERE k.TABLE_SCHEMA=DATABASE() AND k.TABLE_NAME='cart_purchase_snapshots'")->fetchAll(PDO::FETCH_NUM);
-    ensure($references === [['sales_order_id', 'novinpay_live1', 'sales_orders', 'id', 'CASCADE']], 'cart_snapshot_foreign_key');
+    $database = $db->query('SELECT DATABASE()')->fetchColumn();
+    ensure(is_string($database) && $references === [['sales_order_id', $database, 'sales_orders', 'id', 'CASCADE']], 'cart_snapshot_foreign_key');
 }
 
 function databaseEvidence(array $manifest): array
