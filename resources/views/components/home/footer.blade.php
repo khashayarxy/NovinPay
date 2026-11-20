@@ -34,7 +34,6 @@
             <div class="np-footer__information">
                 <h2>تماس با نوین‌پی</h2>
                 <x-business-phones class="np-footer__phones" link-class="np-footer__phone" />
-                @unless(request()->routeIs('home'))<p>{{ config('business.address') }}</p>@endunless
             </div>
         </div>
         <div class="np-footer__bottom">
