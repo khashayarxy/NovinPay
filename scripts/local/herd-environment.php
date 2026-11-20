@@ -51,10 +51,12 @@ return static function (string $root): array {
     }
 
     // Older private local settings need no rewrite. Never inherit a live OTP switch.
-    if (isset($settings['IPPANEL_ENABLED']) && $settings['IPPANEL_ENABLED'] !== 'false') {
-        $fail();
+    foreach (['IPPANEL_ENABLED', 'OPERATIONS_SCHEDULED_PAYMENTS'] as $switch) {
+        if (isset($settings[$switch]) && $settings[$switch] !== 'false') {
+            $fail();
+        }
+        $settings[$switch] = 'false';
     }
-    $settings['IPPANEL_ENABLED'] = 'false';
 
     return $settings;
 };
