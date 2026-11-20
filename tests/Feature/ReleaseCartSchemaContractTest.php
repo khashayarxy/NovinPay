@@ -19,7 +19,7 @@ class ReleaseCartSchemaContractTest extends TestCase
         require_once base_path('scripts/release/recovery-contract.php');
         require_once base_path('scripts/release/reconcile-source.php');
 
-        \verifyCartSchema(DB::connection()->getPdo());
+        \NovinPay\Release\Postflight\verifyCartSchema(DB::connection()->getPdo());
         $this->assertTrue(DB::connection()->getPdo()->inTransaction());
     }
 }
