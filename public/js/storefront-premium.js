@@ -244,6 +244,14 @@
         activate(next, trigger && next.contains(trigger) ? trigger : null);
     }
 
+    document.querySelector('.premium-storefront [data-customer-header]')?.addEventListener('click', event => {
+        const trigger = event.target.closest('[data-customer-entry] [data-customer-guest], [data-customer-entry] summary');
+        const dialog = document.getElementById('account-dialog');
+        if (!trigger || !dialog || !matchMedia('(max-width: 700px)').matches
+            || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        open(dialog, trigger);
+    });
     window.StorefrontOverlays = {open, close, register};
     triggers.forEach(trigger => {
         trigger.hidden = false;
@@ -339,8 +347,11 @@
     document.addEventListener('focusout', () => requestAnimationFrame(resize));
     resize();
 
-    const contact = document.querySelector('.sticky-contact');
+    const contact = document.querySelector('[data-product-dock]');
     const action = document.querySelector('[data-product-primary-action]');
+    const productContent = contact?.closest('main')?.querySelector('.storefront-content');
+    const productHeader = contact && document.querySelector('.np-header');
+    const navigation = contact && document.querySelector('[data-mobile-bottom-nav]');
     const clearTargets = [...document.querySelectorAll([
         '.purchase :is(.price bdi, .price small, .stock strong, time, .product-cart-form, a.primary)',
         '.gallery-arrow, .gallery-zoom-mark, .image-count, .thumbs button',
@@ -352,8 +363,14 @@
     function render() {
         frame = 0;
         if (active) return;
-        if (contact && action) contact.hidden = action.getBoundingClientRect().bottom > 0;
-        body.classList.toggle('floating-has-contact', !!contact && !contact.hidden);
+        if (contact && action && productContent) {
+            const headerEdge = productHeader?.getBoundingClientRect().bottom ?? 0;
+            const navEdge = navigation?.getBoundingClientRect().top ?? innerHeight;
+            const show = mobile.matches && action.getClientRects().length > 0
+                && action.getBoundingClientRect().bottom <= headerEdge
+                && productContent.getBoundingClientRect().bottom > navEdge;
+            contact.hidden = !show;
+        }
         const launcher = mobile.matches && document.querySelector('[data-support-launcher]');
         const bounds = launcher && launcher.getBoundingClientRect();
         body.classList.toggle('floating-support-obstructs', !!bounds?.width && clearTargets.some(target => {
@@ -367,5 +384,12 @@
     window.addEventListener('resize', schedule, {passive: true});
     window.addEventListener('load', schedule, {once: true});
     document.addEventListener('storefront-overlay:closed', schedule);
+    if (contact && 'ResizeObserver' in window) {
+        new ResizeObserver(([entry]) => {
+            const height = entry.borderBoxSize?.[0]?.blockSize ?? contact.offsetHeight;
+            if (height) root.style.setProperty('--store-purchase-height', `${height}px`);
+            schedule();
+        }).observe(contact, {box: 'border-box'});
+    }
     render();
 })();

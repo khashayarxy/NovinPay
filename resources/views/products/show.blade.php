@@ -5,8 +5,8 @@
 
 @push('page-head')
     <link rel="stylesheet" href="{{ asset('css/product-experience.css?v=5') }}">
-    <link rel="stylesheet" href="{{ asset('css/storefront-premium.css?v=10') }}">
-    <script src="{{ asset('js/product-gallery.js?v=10') }}" defer></script>
+    <link rel="stylesheet" href="{{ asset('css/storefront-premium.css?v=15') }}">
+    <script src="{{ asset('js/product-gallery.js?v=12') }}" defer></script>
 @endpush
 
 @section('content')

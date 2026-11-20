@@ -52,9 +52,6 @@
         @if ($shopTools)
             <a class="np-customer-trigger store-mobile-search" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-controls="search-dialog" aria-label="جست‌وجوی محصولات"><x-storefront.icon name="search" width="20" height="20" /></a>
         @endif
-        @if ($premium)
-            <a class="np-customer-trigger premium-account-trigger" href="{{ route('account.index') }}" data-storefront-open="account-dialog" aria-haspopup="dialog" aria-controls="account-dialog" aria-label="حساب کاربری"><x-storefront.icon name="account" /></a>
-        @endif
         <div class="np-customer-header" data-customer-header data-session-url="{{ route('customer.header') }}">
             @if ($shopTools)
                 <div class="premium-desktop-tools store-desktop-tools" aria-label="ابزارهای فروشگاه">

@@ -63,6 +63,9 @@ class MobileNavigationTest extends TestCase
             $document = new DOMDocument;
             @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
             $xpath = new DOMXPath($document);
+            $this->assertSame(1, $xpath->query('//header//*[@data-customer-entry or @data-storefront-open="account-dialog"]')->length);
+            $this->assertSame($product->name, trim($xpath->query('//h1')->item(0)->textContent));
+            $this->assertSame($product->name, trim($xpath->query('//nav[contains(@class,"breadcrumb")]//*[@aria-current="page"]')->item(0)->textContent));
             $active = $xpath->query('//nav[@data-mobile-bottom-nav]/a[@aria-current]');
             $this->assertSame(1, $active->length);
             $this->assertSame(route('products.index'), $active->item(0)->getAttribute('href'));
