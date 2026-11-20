@@ -189,8 +189,11 @@ function prepare(array $manifest, bool $withQuota = true): array
     }
 
     $GLOBALS['np_backup_check'] = 'source_git_identity';
-    need(trim(\NovinPay\Release\recoveryGit(APP, ['rev-parse', 'HEAD'])) === BASELINE, 'source_identity_before_backup');
-    need(trim(\NovinPay\Release\recoveryGit(APP, ['branch', '--show-current'])) === $manifest['sourceBranch'], 'source_branch');
+    \NovinPay\Release\verifyRecoverySource(
+        trim(\NovinPay\Release\recoveryGit(APP, ['rev-parse', 'HEAD'])),
+        trim(\NovinPay\Release\recoveryGit(APP, ['branch', '--show-current'])),
+        $manifest,
+    );
     $GLOBALS['np_backup_check'] = 'worktree_inventory';
     $retainedEvidence = \NovinPay\Release\verifyRecoveryWorktree(APP, $manifest);
     $stateDir = APP.'/storage/framework/site-maintenance';

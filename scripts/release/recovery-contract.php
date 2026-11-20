@@ -165,6 +165,14 @@ function recoveryGit(string $app, array $args): string
     return $result['stdout'];
 }
 
+function verifyRecoverySource(string $head, string $branch, array $manifest): void
+{
+    requireGate($head === $manifest['baseline'], 'source_identity_before_backup',
+        'exact approved source commit', [], 'Check the live Git revision before capture.');
+    requireGate(($branch === '' ? 'detached' : $branch) === $manifest['sourceBranch'], 'source_branch',
+        'exact approved source branch or detached identity', [], 'Check the live Git identity before capture.');
+}
+
 function verifyRecoveryTriggers(array $actual, array $manifest): void
 {
     $indexed = [];

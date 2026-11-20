@@ -22,12 +22,30 @@ use function NovinPay\Release\recoveryWorktreeEntries;
 use function NovinPay\Release\retainedFileDigest;
 use function NovinPay\Release\sourceArchiveContract;
 use function NovinPay\Release\sourceReleaseManifest;
+use function NovinPay\Release\verifyRecoverySource;
 use function NovinPay\Release\verifyRecoveryTriggers;
 
 require_once __DIR__.'/../../scripts/release/recovery-contract.php';
 
 class RecoveryWorkflowTest extends TestCase
 {
+    public function test_explicitly_pinned_detached_source_can_be_recovered(): void
+    {
+        $manifest = array_replace($this->manifest(), ['sourceBranch' => 'detached']);
+        verifyRecoverySource($manifest['baseline'], '', $manifest);
+        $this->expectException(GateFailure::class);
+        $this->expectExceptionMessage('source_identity_before_backup');
+        verifyRecoverySource($manifest['target'], '', $manifest);
+    }
+
+    public function test_named_source_cannot_be_replaced_with_a_detached_checkout(): void
+    {
+        $manifest = $this->manifest();
+        $this->expectException(GateFailure::class);
+        $this->expectExceptionMessage('source_branch');
+        verifyRecoverySource($manifest['baseline'], '', $manifest);
+    }
+
     private function manifest(): array
     {
         return [
