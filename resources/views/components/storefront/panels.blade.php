@@ -24,9 +24,9 @@
     <div class="menu-bottom">
         <a class="menu-account-link" href="{{ route('account.index') }}" data-storefront-open="account-dialog" aria-haspopup="dialog"><x-storefront.icon name="account" /><span>ورود / حساب کاربری</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
         <div class="menu-phones" aria-label="شماره‌های تماس {{ config('business.name') }}">
-            <a href="{{ config('business.phone_uri') }}"><x-storefront.icon name="phone" /><bdi dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</bdi></a>
+            <x-business-phone><x-storefront.icon name="phone" /></x-business-phone>
             @if (config('business.secondary_phone'))
-                <a href="{{ config('business.secondary_phone_uri') }}"><x-storefront.icon name="phone" /><bdi dir="ltr">{{ \App\Support\FaNumber::digits(config('business.secondary_phone')) }}</bdi></a>
+                <x-business-phone secondary><x-storefront.icon name="phone" /></x-business-phone>
             @endif
         </div>
     </div>

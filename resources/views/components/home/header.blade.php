@@ -47,9 +47,9 @@
                         <div class="np-mobile-drawer__footer" aria-label="شماره‌های تماس {{ config('business.name') }}">
                             <p class="np-mobile-drawer__contact-label">تماس و پشتیبانی</p>
                             <div class="np-mobile-drawer__phones">
-                                <a href="{{ config('business.phone_uri') }}"><x-home.icon name="phone" /><bdi dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</bdi></a>
+                                <x-business-phone><x-home.icon name="phone" /></x-business-phone>
                                 @if (config('business.secondary_phone'))
-                                    <a href="{{ config('business.secondary_phone_uri') }}"><x-home.icon name="phone" /><bdi dir="ltr">{{ \App\Support\FaNumber::digits(config('business.secondary_phone')) }}</bdi></a>
+                                    <x-business-phone secondary><x-home.icon name="phone" /></x-business-phone>
                                 @endif
                             </div>
                         </div>
