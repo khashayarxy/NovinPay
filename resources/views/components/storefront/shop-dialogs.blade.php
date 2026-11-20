@@ -3,8 +3,12 @@
     <p class="store-cart-status" data-cart-status role="status" hidden></p>
     <div class="live-cart" data-live-cart></div>
     <p class="store-cart-error" data-cart-error role="alert" hidden></p>
-    <div class="cart-sheet-footer" data-cart-footer hidden><div data-cart-summary></div><button type="button" data-cart-retry hidden>تلاش دوباره</button><a href="{{ route('cart.index') }}">مشاهدهٔ سبد خرید<x-storefront.icon name="arrow" /></a></div>
-    <template data-empty-cart><div class="empty-cart"><div class="empty-cart-icon"><x-storefront.icon name="cart" /></div><h3>سبد خرید شما خالی است</h3><a class="primary" href="{{ route('products.index') }}">رفتن به فروشگاه</a></div></template>
+    <div class="cart-sheet-footer" data-cart-footer hidden>
+        <div data-cart-summary></div>
+        <div class="commerce-actions commerce-cart-fallback"><a class="commerce-action commerce-action--secondary" href="{{ route('cart.index') }}">مشاهدهٔ سبد</a></div>
+        <button type="button" class="commerce-action commerce-action--secondary" data-cart-retry hidden>تلاش دوباره</button>
+    </div>
+    <template data-empty-cart><div class="commerce-empty empty-cart"><span class="empty-cart-icon"><x-storefront.icon name="cart" /></span><h3>سبد خرید شما خالی است</h3><a class="commerce-action commerce-action--secondary" href="{{ route('products.index') }}">مشاهدهٔ محصولات</a></div></template>
 </dialog>
 <dialog id="search-dialog" class="search-dialog store-search-dialog" data-storefront-dialog aria-labelledby="search-title">
     <div class="overlay-heading"><h2 id="search-title">جست‌وجو در فروشگاه</h2><button type="button" data-storefront-close aria-label="بستن جست‌وجو"><x-storefront.icon name="close" /></button></div>

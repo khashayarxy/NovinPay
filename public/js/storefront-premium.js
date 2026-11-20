@@ -107,7 +107,7 @@
         }
     }
 
-    async function refreshCart(dialog, {discard = false, supersede = false} = {}) {
+    async function refreshCart(dialog, {discard = false, supersede = false, focusKey = null} = {}) {
         if (cartRead && !discard && !supersede) return cartRead;
         if (discard) clearCart(dialog);
         const version = ++cartVersion;
@@ -153,6 +153,13 @@
                 }
                 container.inert = false;
                 summary.inert = false;
+                if (focusKey && window.document.activeElement === closeButton) {
+                    const control = container.querySelector('[data-cart-focus="' + CSS.escape(focusKey) + '"]');
+                    const focus = control?.disabled
+                        ? control.closest('[data-cart-item]')?.querySelector('button[data-cart-focus]:enabled')
+                        : control;
+                    focus?.focus({preventScroll: true});
+                }
                 status.textContent = '';
                 status.hidden = false;
             } catch {
@@ -193,6 +200,7 @@
         const epoch = cartEpoch;
         const submitter = event.submitter || form.querySelector('button[type="submit"], button:not([type])');
         const error = cartDialog.querySelector('[data-cart-error]');
+        const focusKey = fromDrawer ? submitter?.dataset.cartFocus : null;
         const data = new FormData(form);
         if (submitter?.name) data.set(submitter.name, submitter.value);
         error.hidden = true;
@@ -219,8 +227,8 @@
             renderCartCount(count);
             if (active === cartDialog) {
                 const focusInCart = cartDialog.querySelector('[data-live-cart]').contains(document.activeElement);
-                if (focusInCart || fromDrawer) cartDialog.querySelector('[data-storefront-close]')?.focus();
-                await refreshCart(cartDialog, {supersede: true});
+                if (focusInCart || fromDrawer) cartDialog.querySelector('[data-storefront-close]')?.focus({preventScroll: true});
+                await refreshCart(cartDialog, {supersede: true, focusKey});
             } else if (!active && !fromDrawer) {
                 open(cartDialog, submitter);
             }
@@ -232,7 +240,7 @@
             if (!active && !fromDrawer) {
                 open(cartDialog, submitter);
                 error.hidden = false;
-            } else if (active === cartDialog) await refreshCart(cartDialog, {supersede: true});
+            } else if (active === cartDialog) await refreshCart(cartDialog, {supersede: true, focusKey});
         } finally {
             clearTimeout(timeout);
             cartPending = false;
@@ -240,6 +248,29 @@
             if (submitter) submitter.disabled = previouslyDisabled;
         }
     });
+
+    const checkoutForm = document.querySelector('[data-store-checkout]');
+    if (checkoutForm) {
+        const button = checkoutForm.querySelector('[data-checkout-submit]');
+        const status = checkoutForm.querySelector('[data-checkout-status]');
+        checkoutForm.addEventListener('submit', event => {
+            if (event.defaultPrevented) return;
+            if (button.getAttribute('aria-disabled') === 'true') {
+                event.preventDefault();
+                return;
+            }
+            button.setAttribute('aria-disabled', 'true');
+            checkoutForm.setAttribute('aria-busy', 'true');
+            status.hidden = false;
+            status.textContent = 'در حال ثبت درخواست…';
+        });
+        window.addEventListener('pageshow', () => {
+            button.removeAttribute('aria-disabled');
+            checkoutForm.removeAttribute('aria-busy');
+            status.hidden = true;
+            status.textContent = '';
+        });
+    }
 
     function activate(dialog, focus) {
         window.StorefrontScrollLock?.acquire(scrollLockOwner);
@@ -408,7 +439,7 @@
         '.gallery-arrow, .gallery-zoom-mark, .image-count, .thumbs button',
         '.section-nav a, .key-mobile .text-link, .product-faq summary, .product-feedback :is(.btn, form)',
         '.catalog-toolbar :is(button, select), .public-product-card a:not([tabindex="-1"]), .repair-entry :is(a, button)',
-        '.store-checkout :is(label, select, button), .store-cart :is(.store-cart-commands, .store-cart-total a)',
+        '.store-checkout :is(label, select, button, .commerce-action, .commerce-summary), .store-cart :is(.store-cart-commands, .store-cart-total a)',
     ].join(', '))];
     const mobile = matchMedia('(max-width: 700px)');
     const floatingNavigation = matchMedia('(max-width: 850px)');

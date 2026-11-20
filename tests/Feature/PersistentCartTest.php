@@ -194,6 +194,24 @@ class PersistentCartTest extends TestCase
         $this->assertDatabaseCount('shopping_carts', 0);
     }
 
+    public function test_quantity_step_buttons_submit_valid_scoped_values_and_respect_stock(): void
+    {
+        $product = $this->stock('stepper-variant');
+        $this->withCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('e', 64));
+        $this->add($product, 1);
+        $cart = $this->get(route('cart.index'))->assertOk()->assertSee('قیمت واحد')->assertSee('افزایش تعداد');
+        $document = new \DOMDocument;
+        @$document->loadHTML($cart->getContent());
+        $xpath = new \DOMXPath($document);
+        $buttons = $xpath->query('//form[contains(@class,"commerce-stepper")]/button');
+        $this->assertSame(2, $buttons->length);
+        $this->assertTrue($buttons->item(0)->hasAttribute('disabled'));
+        $this->assertFalse($buttons->item(1)->hasAttribute('disabled'));
+        $this->assertSame('2', $buttons->item(1)->getAttribute('value'));
+        $this->post(route('cart.update', $product), $this->fields($cart) + ['quantity' => $buttons->item(1)->getAttribute('value')])->assertRedirect();
+        $this->assertSame(['stepper-variant' => 2], $this->get(route('cart.index'))->assertOk()->viewData('quantity'));
+    }
+
     private function fields($response): array
     {
         return ['cart_context' => $response->viewData('proof'), 'cart_revision' => $response->viewData('revision')];
