@@ -360,7 +360,21 @@
             else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
         });
     }
-    document.querySelectorAll('[data-storefront-dialog]').forEach(dialog => register(dialog));
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    document.querySelectorAll('[data-storefront-dialog]').forEach(dialog => {
+        if (dialog.id === 'category-dialog') {
+            register(dialog, {
+                hide: () => dialog.classList.remove('is-closing'),
+                beforeClose: () => {
+                    if (reducedMotion.matches) return;
+                    dialog.classList.add('is-closing');
+                    return new Promise(resolve => setTimeout(resolve, 180));
+                },
+            });
+            return;
+        }
+        register(dialog);
+    });
     const filters = document.querySelector('[data-catalog-filters]');
     if (filters) {
         const dialog = document.getElementById('catalog-filter-dialog');

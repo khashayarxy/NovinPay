@@ -37,8 +37,11 @@ body:has(#mobile-drawer[open]) [data-support-launcher] { visibility: hidden; }
 .catalog-filter-trigger, .catalog-filter-ready .catalog-sort-submit { display: none; }
 .catalog-toolbar svg, .catalog-search-field svg, .repair-entry svg { flex: none; width: 18px; height: 18px; }
 .catalog-layout { display: grid; grid-template-columns: minmax(180px, 224px) minmax(0, 1fr); align-items: start; gap: 18px; }
-.catalog-sidebar { padding: 14px; border: 1px solid #dce7f0; border-radius: 12px; background: #fff; }
+.catalog-sidebar { padding: 14px; border: 1px solid #dce7f0; border-radius: 12px; background: #fff; min-inline-size: 0; }
 [data-catalog-filters] { display: grid; gap: 14px; }
+[data-catalog-filters] > div { min-inline-size: 0; }
+.catalog-sidebar select.input { width: 100%; max-width: 100%; min-inline-size: 0; box-sizing: border-box; }
+.product-meta dd, .product-meta bdi, .facts dd, .facts bdi { overflow-wrap: anywhere; max-width: 100%; }
 .catalog-filter-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .catalog-count { margin-block: 0 8px; }
 .catalog-description { margin-block-start: 30px; padding-block-start: 16px; border-block-start: 1px solid #dce7f0; }

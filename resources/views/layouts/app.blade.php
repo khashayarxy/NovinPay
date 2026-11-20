@@ -29,14 +29,14 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <script src="{{ asset('js/storefront-scroll-lock.js?v=1') }}" defer></script>
-        <script src="{{ asset('js/storefront-premium.js?v=commerce-stage2-3') }}" defer></script>
+        <script src="{{ asset('js/storefront-premium.js?v=commerce-stage2-4') }}" defer></script>
     @endif
     @stack('page-head')
     @if ($hasStoreNavigation)
         <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=commerce-stage2-3') }}">
     @endif
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
-        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=commerce-stage2-3') }}">
+        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=commerce-stage2-4') }}">
     @endif
     @if(request()->routeIs('account.*'))
         <x-password-visibility-assets />

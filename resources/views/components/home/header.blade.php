@@ -44,6 +44,15 @@
                                 <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif><x-home.icon :name="$icon" />{{ $label }}</a>
                             @endforeach
                         </nav>
+                        <div class="np-mobile-drawer__footer" aria-label="شماره‌های تماس {{ config('business.name') }}">
+                            <p class="np-mobile-drawer__contact-label">تماس و پشتیبانی</p>
+                            <div class="np-mobile-drawer__phones">
+                                <a href="{{ config('business.phone_uri') }}"><x-home.icon name="phone" /><bdi dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</bdi></a>
+                                @if (config('business.secondary_phone'))
+                                    <a href="{{ config('business.secondary_phone_uri') }}"><x-home.icon name="phone" /><bdi dir="ltr">{{ \App\Support\FaNumber::digits(config('business.secondary_phone')) }}</bdi></a>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </dialog>
                 @endif

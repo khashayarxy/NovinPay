@@ -46,7 +46,7 @@
                 @if ($sort)<input type="hidden" name="sort" value="{{ $sort }}">@endif
                 <div>
                     <label for="category" class="label">دسته‌بندی</label>
-                    <select id="category" name="category" class="input md:w-56">
+                    <select id="category" name="category" class="input">
                         <option value="">همه دسته‌بندی‌ها</option>
                         @foreach ($categories as $item)
                             <option value="{{ $item->value }}" @selected($category?->value === $item->value)>

@@ -258,18 +258,27 @@
     .np-mobile-menu > button, .np-mobile-drawer__heading button { display: flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; padding: 0; border: 1px solid #e0eaf5; border-radius: 10px; background: #fff; cursor: pointer; color: #163a61; }
     .np-mobile-menu > button:hover, .np-mobile-drawer__heading button:hover { background: #eff7ff; }
     .np-mobile-drawer { position: fixed; inset: 0; width: 100%; max-width: none; height: 100%; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; color: #163a61; overflow: hidden; }
-    .np-mobile-drawer::backdrop { background: rgb(20 45 78 / 28%); }
-    .np-mobile-drawer__panel { position: absolute; inset-block: 0; right: 0; width: min(84vw, 360px); padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); border-radius: 18px 0 0 18px; background: #fff; overflow-y: auto; overscroll-behavior: contain; }
-    .np-mobile-drawer[open] .np-mobile-drawer__panel { animation: np-drawer-in 180ms ease-out; }
-    .np-mobile-drawer.is-closing .np-mobile-drawer__panel { animation: np-drawer-out 180ms ease-in forwards; }
-    .np-mobile-drawer__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .np-mobile-drawer::backdrop { background: rgb(15 30 46 / 38%); }
+    .np-mobile-drawer[open]::backdrop { animation: np-backdrop-in 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+    .np-mobile-drawer.is-closing::backdrop { animation: np-backdrop-out 180ms ease-in forwards; }
+    .np-mobile-drawer__panel { position: absolute; inset-block: 0; right: 0; display: flex; flex-direction: column; width: min(86vw, 356px); padding: max(18px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); border-radius: 20px 0 0 20px; background: #fff; box-shadow: -8px 0 32px rgb(18 41 64 / 16%); overflow: hidden; will-change: transform; }
+    .np-mobile-drawer[open] .np-mobile-drawer__panel { animation: np-drawer-in 240ms cubic-bezier(0.22, 1, 0.36, 1); }
+    .np-mobile-drawer.is-closing .np-mobile-drawer__panel { animation: np-drawer-out 180ms cubic-bezier(0.4, 0, 1, 1) forwards; }
+    .np-mobile-drawer__heading { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; margin-bottom: 10px; border-bottom: 1px solid #e6eff7; }
     .np-mobile-drawer__logo { display: flex; align-items: center; min-height: 44px; border-radius: 8px; }
     .np-mobile-drawer__logo .np-wordmark { width: 96px; height: auto; }
-    .np-mobile-drawer nav { display: grid; gap: 6px; }
-    .np-mobile-drawer nav a { display: flex; align-items: center; min-height: 48px; gap: 10px; padding: 10px 14px; border-radius: 9px; font-size: 14px; line-height: 1.7; }
-    .np-mobile-drawer nav :is(.np-icon, .np-nav-icon) { width: 20px; height: 20px; flex: 0 0 20px; }
+    .np-mobile-drawer nav { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; overscroll-behavior: contain; padding-inline-end: 2px; }
+    .np-mobile-drawer nav a { display: flex; align-items: center; min-height: 46px; gap: 11px; padding: 10px 12px; border-radius: 11px; font-size: 14px; font-weight: 550; line-height: 1.6; transition: background-color 140ms ease, color 140ms ease; }
+    .np-mobile-drawer nav :is(.np-icon, .np-nav-icon) { width: 20px; height: 20px; flex: 0 0 20px; color: #546e85; }
     .np-mobile-drawer nav a:hover, .np-mobile-drawer nav [aria-current] { background: #eff7ff; color: var(--color-brand-700); }
+    .np-mobile-drawer nav a:hover :is(.np-icon, .np-nav-icon), .np-mobile-drawer nav [aria-current] :is(.np-icon, .np-nav-icon) { color: var(--color-brand-700); }
     .np-mobile-drawer nav [aria-current="page"] { font-weight: 700; box-shadow: inset -3px 0 var(--color-brand-500); }
+    .np-mobile-drawer__footer { flex: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e6eff7; }
+    .np-mobile-drawer__contact-label { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #5b7288; }
+    .np-mobile-drawer__phones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .np-mobile-drawer__phones a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 6px 8px; border: 1px solid #d5e6f5; border-radius: 10px; background: #f2f7fc; color: #075da6; font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; transition: background-color 140ms ease, border-color 140ms ease; }
+    .np-mobile-drawer__phones a:hover { background: #e3f0fc; border-color: #b5d5f2; }
+    .np-mobile-drawer__phones .np-icon { width: 15px; height: 15px; flex: none; color: #075da6; }
     .np-mobile-menu :is(button, a):focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 3px; }
     .homepage .np-hero__grid { grid-template-columns: 1fr; padding-block: 12px 28px; gap: 8px; }
     .homepage .np-hero__copy { grid-column: 1; grid-row: 2; }
@@ -373,8 +382,13 @@
     .np-footer__bottom { padding-inline-end: 68px; text-align: start; }
 }
 
-@keyframes np-drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
-@keyframes np-drawer-out { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes np-drawer-in { from { transform: translateX(100%); opacity: .92; } to { transform: translateX(0); opacity: 1; } }
+@keyframes np-drawer-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: .92; } }
+@keyframes np-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes np-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-    .np-mobile-drawer[open] .np-mobile-drawer__panel { animation: none; }
+    .np-mobile-drawer[open] .np-mobile-drawer__panel,
+    .np-mobile-drawer.is-closing .np-mobile-drawer__panel,
+    .np-mobile-drawer[open]::backdrop,
+    .np-mobile-drawer.is-closing::backdrop { animation: none; }
 }
