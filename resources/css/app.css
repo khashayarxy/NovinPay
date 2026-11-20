@@ -132,6 +132,25 @@
     :focus-visible {
         @apply outline-2 outline-offset-2 outline-brand-700;
     }
+
+    .np-header :is(nav, nav a, button, .np-customer-trigger, summary, .np-logo-link),
+    .np-mobile-drawer :is(.np-mobile-drawer__heading, nav a, summary, .np-mobile-drawer__account, button),
+    .global-store-nav,
+    .global-store-nav a,
+    .np-customer-menu :is(summary, nav a, nav button),
+    .section-nav a,
+    .catalog-quick-links a,
+    .btn,
+    .np-button,
+    .commerce-action {
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    .np-mobile-drawer__phones :is(a, bdi) {
+        user-select: text;
+        -webkit-user-select: text;
+    }
 }
 
 @layer components {
