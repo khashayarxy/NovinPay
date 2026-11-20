@@ -134,7 +134,8 @@ test('Chromium: compact product header, sticky sections and purchase controls fi
             const root = frameDocument.documentElement;
             const account = frameDocument.querySelector('[data-customer-guest]');
             const alternate = frameDocument.querySelector('.premium-desktop-tools');
-            if (!account.getBoundingClientRect().width || alternate.getBoundingClientRect().width
+            // Mobile product pages with floating bottom nav hide duplicate top-header account/cart controls.
+            if (account.getBoundingClientRect().width || alternate.getBoundingClientRect().width
                 || view.innerWidth !== width || root.scrollWidth > root.clientWidth) {
                 throw new Error('Product header at ' + width + 'px reports ' + [root.clientWidth, root.scrollWidth,
                     account.getBoundingClientRect().width, alternate.getBoundingClientRect().width].join('/'));

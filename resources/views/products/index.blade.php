@@ -31,7 +31,7 @@
         <div class="catalog-toolbar">
             <button type="button" class="btn btn-secondary catalog-filter-trigger" data-storefront-open="catalog-filter-dialog" aria-haspopup="dialog"><x-storefront.icon name="filter" /> فیلترها @if ($category || $condition)<span class="sr-only">فعال</span>@endif</button>
             <label for="sort" class="sr-only">مرتب‌سازی</label>
-            <select name="sort" id="sort" class="input" data-catalog-sort>
+            <select name="sort" id="sort" class="input" aria-label="مرتب‌سازی" data-catalog-sort>
                 <option value="">تازه‌ترین</option>
                 <option value="price-low" @selected($sort === 'price-low')>ارزان‌ترین</option>
                 <option value="price-high" @selected($sort === 'price-high')>گران‌ترین</option>
@@ -72,6 +72,7 @@
             </form>
         </aside>
         <section aria-label="فهرست محصولات">
+            <h2 class="sr-only">فهرست محصولات</h2>
             <p class="catalog-count">{{ \App\Support\FaNumber::digits($products->total()) }} محصول یافت شد</p>
         <div class="catalog-results">
             @if ($products->isEmpty())
@@ -100,8 +101,8 @@
                             <div class="flex flex-col">
                                 <x-product-card :product="$product" :sale="$sales[$product->id]" />
                                 @if ($canCompare && !$product->is_sample)
-                                    <label class="flex items-center gap-2 p-3 text-sm">
-                                        <input type="checkbox" name="products[]" value="{{ $product->slug }}" aria-label="مقایسهٔ {{ $product->name }}">
+                                    <label class="flex min-h-[44px] cursor-pointer items-center gap-2.5 px-3 py-2 text-sm">
+                                        <input type="checkbox" class="h-5 w-5 rounded border-slate-300 text-brand-700" name="products[]" value="{{ $product->slug }}" aria-label="مقایسهٔ {{ $product->name }}">
                                         انتخاب برای مقایسه
                                     </label>
                                 @endif

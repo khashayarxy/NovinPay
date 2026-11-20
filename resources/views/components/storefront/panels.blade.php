@@ -31,10 +31,3 @@
         </div>
     </div>
 </dialog>
-<dialog id="account-dialog" class="account-dialog" data-storefront-dialog data-account-url="{{ route('customer.header') }}" aria-labelledby="account-title">
-    <div class="overlay-heading"><h2 id="account-title">حساب کاربری</h2><button type="button" data-storefront-close aria-label="بستن حساب کاربری"><x-storefront.icon name="close" /></button></div>
-    <div class="guest-identity"><span><x-storefront.icon name="account" /></span><div><strong>به {{ config('business.name') }} خوش آمدید</strong><p data-account-guest-copy @if($account) hidden @endif>برای مشاهدهٔ حساب خود وارد شوید.</p></div></div>
-    <div data-storefront-account-content><x-home.customer-entry :account="$account" /></div>
-    <a class="account-link" href="{{ route('cart.index') }}" data-account-guest-copy @if($account) hidden @endif><x-storefront.icon name="cart" />مشاهدهٔ سبد خرید<x-storefront.icon name="arrow" /></a>
-    <a class="account-link" href="{{ config('business.phone_uri') }}"><x-storefront.icon name="phone" />پشتیبانی {{ config('business.name') }}<x-storefront.icon name="arrow" /></a>
-</dialog>

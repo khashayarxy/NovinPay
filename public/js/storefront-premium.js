@@ -307,10 +307,10 @@
         activate(next, trigger && next.contains(trigger) ? trigger : null);
     }
 
-    document.querySelector('.premium-storefront [data-customer-header]')?.addEventListener('click', event => {
+    document.querySelector('[data-customer-header]')?.addEventListener('click', event => {
         const trigger = event.target.closest('[data-customer-entry] [data-customer-guest], [data-customer-entry] summary');
         const dialog = document.getElementById('account-dialog');
-        if (!trigger || !dialog || !matchMedia('(max-width: 700px)').matches
+        if (!trigger || !dialog
             || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         event.preventDefault();
         open(dialog, trigger);

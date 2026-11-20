@@ -39,7 +39,7 @@
 .np-section-heading > div { max-width: 68%; text-align: center; }
 .np-section-heading h2, .np-brands h2, .np-location h2 { font-size: 22px; font-weight: 800; line-height: 1.4; }
 .np-section-heading p, .np-brands > p { color: #52678b; font-size: 11px; line-height: 1.9; margin-top: 3px; }
-.np-small-link { position: absolute; inset-inline-start: 0; top: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #d7e5f6; border-radius: 99px; min-height: 36px; padding: 7px 14px; font-size: 11px; color: var(--color-brand-700); white-space: nowrap; }
+.np-small-link { position: absolute; inset-inline-start: 0; top: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #d7e5f6; border-radius: 99px; min-height: 44px; padding: 8px 14px; font-size: 11px; color: var(--color-brand-700); white-space: nowrap; }
 .np-small-link .np-icon { width: 16px; height: 16px; }
 .np-services__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 11px; }
 .np-service { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 118px; border: 1px solid #e3ecf8; border-radius: 12px; padding: 12px 5px; transition: border-color .15s, background-color .15s; }
