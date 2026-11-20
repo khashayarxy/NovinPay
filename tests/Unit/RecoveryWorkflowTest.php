@@ -312,4 +312,47 @@ class RecoveryWorkflowTest extends TestCase
             unlink($path);
         }
     }
+
+    public function test_source_release_v2_accepts_multi_asset_vite_and_rejects_unsafe_entries(): void
+    {
+        $m = $this->manifest();
+        $m['format'] = 'novinpay-source-release-v2';
+        $m += [
+            'releaseName' => 'fixture-v2',
+            'targetBranch' => 'codex/novinpay-final-integration',
+            'viteAssets' => ['assets/app-a7TAy_rq.css', 'assets/app-Dt2RDo5L.js'],
+            'successResult' => 'SOURCE_RELEASE_PASS',
+        ];
+        $m['httpChecks'] = ['/' => ['status' => 200], '/login' => ['status' => 200]];
+        $m['baselineFiles'] = array_fill_keys(['public/build/manifest.json', 'bootstrap/cache/routes-v7.php', 'public/build/support-chat/manifest.json'], str_repeat('a', 64));
+        sourceReleaseManifest($m);
+        $this->addToAssertionCount(1);
+
+        $path = tempnam(sys_get_temp_dir(), 'np-source-v2-');
+        try {
+            $zip = new \ZipArchive;
+            $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+            $zip->addFromString('assets/app-a7TAy_rq.css', 'body{}');
+            $zip->addFromString('assets/app-Dt2RDo5L.js', 'console.log(1);');
+            $zip->addFromString('manifest.json', '{}');
+            $zip->close();
+            sourceArchiveContract($path, $m['viteAssets']);
+
+            $zip->open($path);
+            $zip->addFromString('assets/extra.js', 'unexpected');
+            $zip->close();
+            try {
+                sourceArchiveContract($path, $m['viteAssets']);
+                $this->fail('Extra asset member passed');
+            } catch (GateFailure $e) {
+                $this->assertSame('source_asset_member', $e->check);
+            }
+        } finally {
+            unlink($path);
+        }
+
+        $m['viteAssets'] = ['assets/app-a7TAy_rq.css', '../escape.js'];
+        $this->expectExceptionMessage('source_release_paths');
+        sourceReleaseManifest($m);
+    }
 }

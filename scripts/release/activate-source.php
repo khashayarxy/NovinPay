@@ -92,6 +92,11 @@ try {
             require_once __DIR__.'/source-deployment-state.php';
         }
         foreach (['baseline', 'target', 'releaseName', 'targetBranch', 'cssAsset', 'successResult'] as $key) {
+            if ($key === 'cssAsset' && ($manifest['format'] ?? '') === 'novinpay-source-release-v2') {
+                echo implode(',', $manifest['viteAssets']).PHP_EOL;
+
+                continue;
+            }
             echo ($manifest[$key] ?? ($key === 'successResult' ? 'RUNTIME_RELEASE_PASS' : '-')).PHP_EOL;
         }
         echo $manifest['format'].PHP_EOL;

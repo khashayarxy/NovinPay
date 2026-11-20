@@ -238,17 +238,29 @@ function recoveryFailure(\Throwable $error, string $phase, bool $captureExists =
     return $report;
 }
 
-/** Source-only remains strict; application mode needs separately reviewed pins. */
+/** Source-only remains strict; v2 adds additive files and multi-asset Vite; application mode needs separately reviewed pins. */
 function sourceReleaseManifest(array $m): void
 {
-    requireGate(in_array($m['format'] ?? null, ['novinpay-source-release-v1', 'novinpay-application-release-v1'], true), 'source_release_format', 'reviewed release format', [], 'Use a separately reviewed procedure for schema or dependency changes.');
+    requireGate(in_array($m['format'] ?? null, ['novinpay-source-release-v1', 'novinpay-source-release-v2', 'novinpay-application-release-v1'], true), 'source_release_format', 'reviewed release format', [], 'Use a separately reviewed procedure for schema or dependency changes.');
     $recovery = $m;
     $recovery['format'] = 'novinpay-recovery-v1';
     recoveryManifest($recovery);
     requireGate(preg_match('/\A[a-z0-9-]{1,64}\z/D', $m['releaseName'] ?? '') === 1
-        && preg_match('~\A[a-zA-Z0-9_./-]+\z~D', $m['targetBranch'] ?? '') === 1
-        && preg_match('~\Aassets/[a-zA-Z0-9_-]+\.css\z~D', $m['cssAsset'] ?? '') === 1,
-        'source_release_paths', 'safe release name, branch and versioned CSS asset', [], 'Inspect the artifact contract.');
+        && preg_match('~\A[a-zA-Z0-9_./-]+\z~D', $m['targetBranch'] ?? '') === 1,
+        'source_release_paths', 'safe release name and branch', [], 'Inspect the artifact contract.');
+    if ($m['format'] === 'novinpay-source-release-v2') {
+        $assets = $m['viteAssets'] ?? null;
+        requireGate(is_array($assets) && array_is_list($assets) && $assets !== []
+            && count($assets) === count(array_unique($assets)),
+            'source_release_paths', 'nonempty unique list of versioned Vite assets', [], 'Inspect the artifact contract.');
+        foreach ($assets as $asset) {
+            requireGate(is_string($asset) && preg_match('~\Aassets/[a-zA-Z0-9_-]+\.(?:css|js|woff2)\z~D', $asset) === 1,
+                'source_release_paths', 'safe versioned Vite CSS/JS/font asset path', [], 'Inspect the artifact contract.');
+        }
+    } else {
+        requireGate(preg_match('~\Aassets/[a-zA-Z0-9_-]+\.css\z~D', $m['cssAsset'] ?? '') === 1,
+            'source_release_paths', 'safe release name, branch and versioned CSS asset', [], 'Inspect the artifact contract.');
+    }
     requireGate(in_array($m['successResult'] ?? null, ['SOURCE_RELEASE_PASS', 'LOGIN_SUBMIT_RELEASE_PASS', 'APPLICATION_RELEASE_PASS'], true),
         'source_result_contract', 'known success receipt label', [], 'Inspect the release contract.');
     requireGate(is_array($m['httpChecks'] ?? null) && isset($m['httpChecks']['/'], $m['httpChecks']['/login'])
@@ -393,15 +405,17 @@ function sourceChangeEvidence(array $m): void
     } else {
         requireGate(trim($forbidden) === '', 'source_release_schema_or_dependency_change', 'unchanged migrations, dependencies and routes', [], 'Prepare the appropriate reviewed migration/dependency release.');
     }
-    $nonModified = recoveryGit('/home/novinpay/novinpay', ['diff', '--name-only', '--diff-filter='.($m['format'] === 'novinpay-application-release-v1' ? 'CDRT' : 'ACDRT'), $m['baseline'], $m['target']]);
+    $nonModified = recoveryGit('/home/novinpay/novinpay', ['diff', '--name-only', '--diff-filter='.(in_array($m['format'], ['novinpay-application-release-v1', 'novinpay-source-release-v2'], true) ? 'CDRT' : 'ACDRT'), $m['baseline'], $m['target']]);
     requireGate(trim($nonModified) === '', 'source_release_rollback_scope', 'modified existing files with complete baseline rollback coverage', [], 'Review additions, deletions, renames or type changes before adapting rollback.');
     $prior = privateRead($m['baselineReceipt']['path']);
     requireGate(hash_equals($m['baselineReceipt']['sha256'], hash('sha256', $prior)), 'baseline_release_receipt', 'preserved successful baseline receipt', [], 'Reconcile the active production release.');
-    sourceArchiveContract($m['stateDirectory'].'/'.$m['releaseName'].'-vite.zip', $m['cssAsset']);
+    sourceArchiveContract($m['stateDirectory'].'/'.$m['releaseName'].'-vite.zip', $m['format'] === 'novinpay-source-release-v2' ? $m['viteAssets'] : $m['cssAsset']);
 }
 
-function sourceArchiveContract(string $path, string $css): void
+function sourceArchiveContract(string $path, string|array $assets): void
 {
+    $expected = array_values(array_merge(is_array($assets) ? $assets : [$assets], ['manifest.json']));
+    sort($expected);
     $zip = new \ZipArchive;
     requireGate($zip->open($path) === true, 'source_asset_archive', 'readable checked asset ZIP', [], 'Preserve and inspect the package.');
     $names = [];
@@ -409,15 +423,13 @@ function sourceArchiveContract(string $path, string $css): void
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $s = $zip->statIndex($i);
             $zip->getExternalAttributesIndex($i, $os, $attributes);
-            requireGate(in_array($s['name'], [$css, 'manifest.json'], true) && ! in_array($s['name'], $names, true)
+            requireGate(in_array($s['name'], $expected, true) && ! in_array($s['name'], $names, true)
                 && (($attributes >> 16) & 0170000) !== 0120000 && $s['size'] <= 16777216,
-                'source_asset_member', 'exact relative CSS/manifest members with no links or duplicates', [], 'Reject unsafe or unexpected asset archives.');
+                'source_asset_member', 'exact relative asset/manifest members with no links or duplicates', [], 'Reject unsafe or unexpected asset archives.');
             $names[] = $s['name'];
         }
         sort($names);
-        $expected = [$css, 'manifest.json'];
-        sort($expected);
-        requireGate($names === $expected, 'source_asset_inventory', 'both approved asset members', [], 'Inspect package completeness.');
+        requireGate($names === $expected, 'source_asset_inventory', 'all approved asset members', [], 'Inspect package completeness.');
     } finally {
         $zip->close();
     }

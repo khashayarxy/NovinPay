@@ -106,6 +106,8 @@ if [[ "$mode" == novinpay-application-release-v1 ]]; then
     install -m 0600 bootstrap/cache/routes-v7.php "$journal/routes-before.php"
     cmp -s bootstrap/cache/config.php "$journal/config-before.php"
     cmp -s bootstrap/cache/routes-v7.php "$journal/routes-before.php"
+elif [[ "$mode" == novinpay-source-release-v2 ]]; then
+    git -c core.quotePath=true diff --diff-filter=A --name-only "$base" "$target" >"$journal/added-source-files.txt"
 fi
 p "$tools/activate-source.php" "$manifest" "$pin" quota
 p "$tools/activate-source.php" "$manifest" "$pin" web-check
@@ -124,22 +126,29 @@ p "$tools/activate-source.php" "$manifest" "$pin" baseline-files
 build="$app/public/build"
 test -d "$build" && test ! -L "$build" && test -d "$build/assets" && test ! -L "$build/assets"
 install -m 0600 -- "$build/manifest.json" "$journal/vite-manifest-before.json"
-sha256sum "$journal/baseline-source.tar" "$journal/vite-manifest-before.json" >"$journal/rollback.sha256"
+rollback_files=("$journal/baseline-source.tar" "$journal/vite-manifest-before.json")
+if [[ "$mode" == novinpay-source-release-v2 ]]; then rollback_files+=("$journal/added-source-files.txt"); fi
+sha256sum "${rollback_files[@]}" >"$journal/rollback.sha256"
 sha256sum --check --strict "$journal/rollback.sha256"
 protected=(.env public/.htaccess storage/app/private/support-chat/installation.env storage/framework/site-maintenance/state.json storage/framework/site-maintenance/audit.jsonl "$chat")
 if [[ "$mode" != novinpay-application-release-v1 ]]; then protected+=(bootstrap/cache/config.php "$routes"); fi
 sha256sum "${protected[@]}" >"$journal/protected.sha256"
 phase=stage_vite_assets
 stage="$journal/vite"
+IFS=, read -r -a vite_assets <<<"$asset"
+test "${#vite_assets[@]}" -ge 1
 
 mkdir -m 0700 "$stage"
 unzip -q "$kit/$release-vite.zip" -d "$stage"
 test -z "$(find "$stage" -type l -print -quit)"
-test "$(find "$stage" -type f | wc -l)" -eq 2
+test "$(find "$stage" -type f | wc -l)" -eq "$((${#vite_assets[@]} + 1))"
 ( cd "$stage"; sha256sum -c --strict "$kit/$release-assets.sha256" )
-test ! -L "$build/$asset"
-if [[ -e "$build/$asset" ]]; then cmp -s "$stage/$asset" "$build/$asset"; fi
-chmod 0644 "$stage/$asset" "$stage/manifest.json"
+for item in "${vite_assets[@]}"; do
+    test ! -L "$build/$item"
+    if [[ -e "$build/$item" ]]; then cmp -s "$stage/$item" "$build/$item"; fi
+    chmod 0644 "$stage/$item"
+done
+chmod 0644 "$stage/manifest.json"
 phase=maintenance
 p artisan down --render=errors::503 --retry=60 --no-interaction >"$journal/maintenance.log" 2>&1
 test -f storage/framework/down && test -f storage/framework/maintenance.php
@@ -170,7 +179,12 @@ verify_ippanel
 checkpoint runtime_verified
 phase=vite_publication
 cmp -s "$build/manifest.json" "$journal/vite-manifest-before.json"
-if [[ ! -e "$build/$asset" ]]; then ln -- "$stage/$asset" "$build/$asset"; fi
+for item in "${vite_assets[@]}"; do
+    if [[ ! -e "$build/$item" ]]; then
+        ln -- "$stage/$item" "$build/$item"
+        printf '%s\n' "$item" >>"$journal/published-vite-assets.txt"
+    fi
+done
 mv -T -- "$stage/manifest.json" "$build/manifest.json"
 ( cd "$build"; sha256sum -c --strict "$kit/$release-assets.sha256" )
 p "$tools/activate-source.php" "$manifest" "$pin" web-cache
