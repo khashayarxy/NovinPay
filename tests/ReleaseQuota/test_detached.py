@@ -56,6 +56,24 @@ class DetachedOperationTest(unittest.TestCase):
                 DETACHED.supervise(run, [sys.executable, "-c", "raise SystemExit(0)"])
             self.assertEqual(json.loads((run / "complete.json").read_text())["exitCode"], 75)
 
+    def test_unavailable_executable_leaves_an_inspectable_nonreplayable_claim(self):
+        with tempfile.TemporaryDirectory(prefix="novinpay-detach-") as temp:
+            run = Path(temp) / "run"
+            with self.assertRaises(FileNotFoundError):
+                DETACHED.start(run, [str(Path(temp) / "missing")])
+            self.assertEqual(json.loads((run / "complete.json").read_text())["result"], "spawn_failed")
+            with self.assertRaises(FileExistsError):
+                DETACHED.start(run, [sys.executable, "-c", "raise SystemExit(0)"])
+
+    def test_signaled_runner_is_not_reported_as_completed_deployment(self):
+        with tempfile.TemporaryDirectory(prefix="novinpay-detach-") as temp:
+            run = Path(temp)
+            child = "import os,signal; os.kill(os.getpid(), signal.SIGTERM)"
+            self.assertEqual(DETACHED.supervise(run, [sys.executable, "-c", child]), -signal.SIGTERM)
+            state = json.loads((run / "complete.json").read_text())
+            self.assertEqual(state["result"], "runner_exited")
+            self.assertEqual(state["exitCode"], -signal.SIGTERM)
+
 
 if __name__ == "__main__":
     unittest.main()

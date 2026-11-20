@@ -246,6 +246,7 @@ function sourceReleaseManifest(array $m): void
     requireGate(is_array($m['httpChecks'] ?? null) && isset($m['httpChecks']['/'], $m['httpChecks']['/login'])
         && is_array($m['baselineFiles'] ?? null) && isset($m['baselineFiles']['public/build/manifest.json'], $m['baselineFiles']['bootstrap/cache/routes-v7.php'], $m['baselineFiles']['public/build/support-chat/manifest.json']),
         'source_release_acceptance_contract', 'explicit public checks and protected asset/route identities', [], 'Pin current public routes and asset fingerprints.');
+    sourceHttpChecks($m);
     foreach ($m['baselineFiles'] ?? [] as $path => $hash) {
         requireGate(! str_starts_with($path, '/') && ! str_contains($path, '..') && ! str_contains($path, '\\')
             && preg_match('/\A[a-f0-9]{64}\z/D', $hash) === 1,
@@ -433,10 +434,36 @@ function sourceTriggerEvidence(array $m): void
     verifyRecoveryTriggers($rows, $m);
 }
 
+/** The manifest hash covers the original bytes, including the approved integer shorthand. */
+function sourceHttpChecks(array $m): array
+{
+    $checks = $m['httpChecks'] ?? null;
+    requireGate(is_array($checks) && isset($checks['/'], $checks['/login']), 'http_probe_contract', 'explicit home and login probes', [], 'Review the manifest before activation.');
+    foreach ($checks as $path => $expected) {
+        requireGate(is_string($path) && preg_match('~\A/[a-zA-Z0-9_./?=&%-]*\z~D', $path) === 1 && ! str_contains($path, '..'), 'http_probe_path', 'same-origin public path', [], 'Inspect the public acceptance contract.');
+        $expected = is_int($expected) ? ['status' => $expected] : $expected;
+        requireGate(is_array($expected) && is_int($expected['status'] ?? null) && $expected['status'] >= 200 && $expected['status'] <= 599
+            && ! array_diff(array_keys($expected), ['status', 'contains', 'excludes', 'sha256']), 'http_probe_expectation', 'valid HTTP status and documented assertions', ['path' => $path], 'Correct the manifest before activation.');
+        foreach (['contains', 'excludes'] as $field) {
+            if (array_key_exists($field, $expected)) {
+                $needles = $expected[$field];
+                requireGate(is_array($needles) && array_is_list($needles)
+                    && ! array_filter($needles, fn ($needle) => ! is_string($needle) || $needle === ''), 'http_probe_markup_expectation', 'list of nonempty markup strings', ['path' => $path], 'Correct the manifest before activation.');
+            }
+        }
+        if (array_key_exists('sha256', $expected)) {
+            requireGate(is_string($expected['sha256']) && preg_match('/\A[a-f0-9]{64}\z/D', $expected['sha256']) === 1,
+                'http_probe_checksum_expectation', 'exact lowercase SHA-256 of public bytes', ['path' => $path], 'Correct the manifest before activation.');
+        }
+        $checks[$path] = $expected;
+    }
+
+    return $checks;
+}
+
 function sourceHttpsAcceptance(array $m): void
 {
-    foreach ($m['httpChecks'] as $path => $expected) {
-        requireGate(preg_match('~\A/[a-zA-Z0-9_./?=&%-]*\z~D', $path) === 1 && ! str_contains($path, '..'), 'http_probe_path', 'same-origin public path', [], 'Inspect the public acceptance contract.');
+    foreach (sourceHttpChecks($m) as $path => $expected) {
         $h = curl_init('https://novinpaypos.com'.$path);
         curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false, CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 25, CURLOPT_ENCODING => '']);

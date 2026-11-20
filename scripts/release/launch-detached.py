@@ -25,6 +25,11 @@ def receipt(directory, name, data):
         os.fsync(stream.fileno())
     os.link(temp, path)
     temp.unlink()
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def start(directory, command):
@@ -32,15 +37,19 @@ def start(directory, command):
     directory.mkdir(mode=0o700)
     receipt(directory, "launch.json", {"result": "launch_claimed"})
     with (directory / "operation.log").open("xb") as log:
-        process = subprocess.Popen(
-            command,
-            stdin=subprocess.DEVNULL,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            close_fds=True,
-            start_new_session=True,
-            cwd=directory,
-        )
+        try:
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                close_fds=True,
+                start_new_session=True,
+                cwd=directory,
+            )
+        except OSError:
+            receipt(directory, "complete.json", {"result": "spawn_failed", "exitCode": None})
+            raise
     return process.pid
 
 
@@ -51,7 +60,16 @@ def supervise(directory, command):
     except OSError:
         receipt(directory, "complete.json", {"result": "exec_failed", "exitCode": None})
         return 1
-    receipt(directory, "complete.json", {"result": "runner_exited", "exitCode": result})
+    log = directory / "operation.log"
+    log_synced = False
+    try:
+        if log.is_file() and not log.is_symlink():
+            with log.open("rb") as stream:
+                os.fsync(stream.fileno())
+            log_synced = True
+    except OSError:
+        pass
+    receipt(directory, "complete.json", {"result": "runner_exited", "exitCode": result, "logSynced": log_synced})
     return result
 
 
@@ -86,6 +104,9 @@ def main():
     manifest = Path(name)
     command = verify(tool, manifest, digest, action)
     directory = KIT / f"dispatch-{action}-{digest}"
+    if mode == "status" and action == "deploy":
+        return subprocess.run([PHP, "-d", "opcache.enable_cli=0", str(tool.with_name("activate-source.php")),
+                               str(manifest), digest, "status"], stdin=subprocess.DEVNULL, check=False).returncode
     if mode == "start":
         pid = start(directory, [sys.executable, "-I", str(tool), "worker", action, name, digest])
         print(json.dumps({"result": "DETACHED_OPERATION_STARTED", "manifestSha256": digest, "action": action, "pid": pid}))
