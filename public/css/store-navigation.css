@@ -11,7 +11,8 @@
     body:has(.global-store-nav) { padding-bottom: var(--store-nav-space); }
     body.homepage { padding-bottom: 0; }
     body.homepage .global-store-nav { display: none; }
-    body:not(.homepage):has(.global-store-nav) .np-header .np-customer-header { display: none; }
+    body:not(.homepage):has(.global-store-nav) .np-header .np-customer-header,
+    body.premium-storefront:has(.global-store-nav) .np-header .np-customer-header { display: none !important; }
     .global-store-nav {
         position: fixed;
         z-index: 38;

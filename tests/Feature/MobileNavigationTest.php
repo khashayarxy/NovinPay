@@ -70,8 +70,8 @@ class MobileNavigationTest extends TestCase
             $this->assertSame(1, $active->length);
             $this->assertSame(route('products.index'), $active->item(0)->getAttribute('href'));
             $this->assertSame('location', $active->item(0)->getAttribute('aria-current'));
-            $this->assertSame(1, $xpath->query('//header//button[@aria-controls="category-dialog" and @aria-haspopup="dialog"]')->length);
-            $this->assertSame(1, $xpath->query('//dialog[@id="category-dialog"]//a[@href="'.route('products.index').'"]')->length);
+            $this->assertSame(1, $xpath->query('//header//button[@aria-controls="mobile-drawer" and @aria-haspopup="dialog"]')->length);
+            $this->assertSame(1, $xpath->query('//dialog[@id="mobile-drawer"]//a[@href="'.route('products.index').'"]')->length);
         }
     }
 

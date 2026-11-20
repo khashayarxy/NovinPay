@@ -266,15 +266,24 @@
     .np-mobile-drawer.is-closing .np-mobile-drawer__panel { animation: np-drawer-out 180ms cubic-bezier(0.4, 0, 1, 1) forwards; }
     .np-mobile-drawer__heading { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; margin-bottom: 10px; border-bottom: 1px solid #e6eff7; }
     .np-mobile-drawer__logo { display: flex; align-items: center; min-height: 44px; border-radius: 8px; }
-    .np-mobile-drawer__logo .np-wordmark { width: 96px; height: auto; }
+    .np-mobile-drawer__logo .np-wordmark { width: 80px; height: auto; }
     .np-mobile-drawer nav { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; overscroll-behavior: contain; padding-inline-end: 2px; }
-    .np-mobile-drawer nav a { display: flex; align-items: center; min-height: 46px; gap: 11px; padding: 10px 12px; border-radius: 11px; font-size: 14px; font-weight: 550; line-height: 1.6; transition: background-color 140ms ease, color 140ms ease; }
+    .np-mobile-drawer nav > a, .np-drawer-categories > summary { display: flex; align-items: center; min-height: 46px; gap: 11px; padding: 10px 12px; border-radius: 11px; font-size: 14px; font-weight: 600; line-height: 1.6; color: #163a61; list-style: none; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+    .np-drawer-categories > summary::-webkit-details-marker { display: none; }
     .np-mobile-drawer nav :is(.np-icon, .np-nav-icon) { width: 20px; height: 20px; flex: 0 0 20px; color: #546e85; }
-    .np-mobile-drawer nav a:hover, .np-mobile-drawer nav [aria-current] { background: #eff7ff; color: var(--color-brand-700); }
-    .np-mobile-drawer nav a:hover :is(.np-icon, .np-nav-icon), .np-mobile-drawer nav [aria-current] :is(.np-icon, .np-nav-icon) { color: var(--color-brand-700); }
-    .np-mobile-drawer nav [aria-current="page"] { font-weight: 700; box-shadow: inset -3px 0 var(--color-brand-500); }
-    .np-mobile-drawer__footer { flex: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e6eff7; }
-    .np-mobile-drawer__contact-label { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #5b7288; }
+    .np-mobile-drawer nav > a:hover, .np-drawer-categories > summary:hover, .np-mobile-drawer nav > a[aria-current] { background: #eff7ff; color: var(--color-brand-700); }
+    .np-mobile-drawer nav > a:hover :is(.np-icon, .np-nav-icon), .np-drawer-categories > summary:hover :is(.np-icon, .np-nav-icon), .np-mobile-drawer nav > a[aria-current] :is(.np-icon, .np-nav-icon) { color: var(--color-brand-700); }
+    .np-mobile-drawer nav > a[aria-current="page"] { font-weight: 700; box-shadow: inset -3px 0 var(--color-brand-500); }
+    .np-drawer-arrow { margin-inline-start: auto; width: 15px; height: 15px; flex: none; color: #7d92a6; }
+    .np-drawer-chevron { margin-inline-start: auto; width: 18px; height: 18px; flex: none; color: #6c8296; transition: transform 180ms ease, color 140ms ease; }
+    .np-drawer-categories[open] > summary .np-drawer-chevron { transform: rotate(180deg); color: var(--color-brand-700); }
+    .np-drawer-categories__list { margin: 4px 0 6px; padding: 4px; background: #f6fafd; border: 1px solid #e4eef7; border-radius: 12px; display: flex; flex-direction: column; gap: 2px; }
+    .np-drawer-categories__list > a { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 9px 12px; border-radius: 9px; font-size: 13.5px; font-weight: 500; color: #24435f; transition: background-color 140ms ease, color 140ms ease; }
+    .np-drawer-categories__list > a:hover, .np-drawer-categories__list > a[aria-current="page"] { background: #e6f3ff; color: var(--color-brand-700); font-weight: 650; }
+    .np-mobile-drawer__footer { flex: none; margin-top: 10px; padding-top: 12px; border-top: 1px solid #e6eff7; display: flex; flex-direction: column; gap: 8px; }
+    .np-mobile-drawer__account { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #d5e6f5; border-radius: 11px; background: #f1f7fd; color: #075da6; font-size: 14px; font-weight: 650; transition: background-color 140ms ease, border-color 140ms ease; }
+    .np-mobile-drawer__account:hover { background: #e3f0fc; border-color: #b5d5f2; }
+    .np-mobile-drawer__account .np-nav-icon { width: 19px; height: 19px; flex: none; color: #075da6; }
     .np-mobile-drawer__phones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .np-mobile-drawer__phones a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 6px 8px; border: 1px solid #d5e6f5; border-radius: 10px; background: #f2f7fc; color: #075da6; font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; transition: background-color 140ms ease, border-color 140ms ease; }
     .np-mobile-drawer__phones a:hover { background: #e3f0fc; border-color: #b5d5f2; }

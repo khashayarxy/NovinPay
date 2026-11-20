@@ -308,12 +308,13 @@
     }
 
     document.querySelector('[data-customer-header]')?.addEventListener('click', event => {
-        const trigger = event.target.closest('[data-customer-entry] [data-customer-guest], [data-customer-entry] summary');
-        const dialog = document.getElementById('account-dialog');
-        if (!trigger || !dialog
+        const trigger = event.target.closest('[data-customer-menu] summary');
+        if (!trigger || !matchMedia('(max-width: 850px)').matches
             || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const dashboardLink = trigger.closest('[data-customer-menu]')?.querySelector('nav a[href]');
+        if (!dashboardLink) return;
         event.preventDefault();
-        open(dialog, trigger);
+        location.assign(dashboardLink.href);
     });
     window.StorefrontOverlays = {open, close, register};
     triggers.forEach(trigger => {
@@ -360,21 +361,7 @@
             else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
         });
     }
-    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-    document.querySelectorAll('[data-storefront-dialog]').forEach(dialog => {
-        if (dialog.id === 'category-dialog') {
-            register(dialog, {
-                hide: () => dialog.classList.remove('is-closing'),
-                beforeClose: () => {
-                    if (reducedMotion.matches) return;
-                    dialog.classList.add('is-closing');
-                    return new Promise(resolve => setTimeout(resolve, 180));
-                },
-            });
-            return;
-        }
-        register(dialog);
-    });
+    document.querySelectorAll('[data-storefront-dialog]').forEach(dialog => register(dialog));
     const filters = document.querySelector('[data-catalog-filters]');
     if (filters) {
         const dialog = document.getElementById('catalog-filter-dialog');

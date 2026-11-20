@@ -1,6 +1,6 @@
 export function initMobileNavigation() {
     const header = document.querySelector('[data-mobile-header]');
-    const dialog = header?.querySelector('.np-mobile-drawer');
+    const dialog = header?.querySelector('.np-mobile-drawer') || document.getElementById('mobile-drawer');
     const toggle = header?.querySelector('[data-navigation-toggle]');
     if (!dialog || !toggle || dialog.dataset.bound) return;
     dialog.dataset.bound = 'true';
