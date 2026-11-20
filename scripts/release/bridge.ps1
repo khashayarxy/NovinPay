@@ -5,7 +5,8 @@ param(
  [Parameter(Mandatory)][string]$PrivateRoot,
  [Parameter(Mandatory)][string]$StatusPath,
  [ValidateRange(1,24)][int]$Hours=24,
- [switch]$QuotaOnly
+ [switch]$QuotaOnly,
+ [switch]$PublishScheduledProof
 )
 $ErrorActionPreference='Stop'
 $m=Get-Content -LiteralPath $ManifestPath -Raw|ConvertFrom-Json
@@ -18,16 +19,32 @@ $modernScope=$QuotaOnly -and $m.format -cin @('novinpay-recovery-v1','novinpay-s
 $recoveryScope=$modernScope -and $m.format -ceq 'novinpay-recovery-v1'
 $sourceScope=$modernScope -and $m.format -cin @('novinpay-source-release-v1','novinpay-application-release-v1','novinpay-runtime-release-v1') -and $m.releaseName -cmatch '^[a-z0-9-]{1,64}$'
 if(!$legacyScope -and !$pr13Scope -and !$pr13Activation -and !$recoveryScope -and !$sourceScope){throw 'Bridge manifest scope mismatch'}
+if($PublishScheduledProof -and !$recoveryScope){throw 'Scheduled proof publication requires recovery scope'}
 if($modernScope){$package=$m.stateDirectory}
+if($null -ne $m.quotaProtocol -and (($m.quotaProtocol -isnot [long] -and $m.quotaProtocol -isnot [int]) -or $m.quotaProtocol -notin @(1,2))){
+ throw 'quota_protocol_version'
+}
+$quotaV2=$m.quotaProtocol -ceq 2
+if($quotaV2 -and !$modernScope){throw 'Quota protocol 2 requires a modern private manifest'}
+. (Join-Path $PSScriptRoot 'quota-bridge.ps1')
+$quotaDirectory=if($quotaV2){"$package/quota-v2-$pin"}else{$package}
 $deadline=[DateTimeOffset]::UtcNow.AddHours($Hours)
-function Status([string]$state){[IO.File]::WriteAllText($StatusPath,(@{result=$state;pid=$PID;atUtc=[DateTimeOffset]::UtcNow.ToString('o');manifestSha256=$pin}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))}
+function Write-BridgeStatus($state){
+ $tmp=$StatusPath+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
+ [IO.File]::WriteAllText($tmp,($state|ConvertTo-Json),[Text.UTF8Encoding]::new($false))
+ [IO.File]::Move($tmp,$StatusPath,$true)
+}
+function Status([string]$state){Write-BridgeStatus @{result=$state;pid=$PID;atUtc=[DateTimeOffset]::UtcNow.ToString('o');manifestSha256=$pin;quotaProtocol=if($quotaV2){2}else{1}}}
 function UploadNewPrivate([string]$name,[byte[]]$bytes,[string]$directory) {
- if($directory -cne '/home/novinpay/novinpay-direct-pr13' -or $name -cnotmatch '^quota-[a-f0-9]{32}-(reply|ready)\.json$' -or $bytes.Length -lt 1 -or $bytes.Length -gt 65536){throw 'Quota upload outside scope'}
+ $response=$quotaV2 -and $directory -ceq $quotaDirectory -and $name -cmatch '^quota-[a-f0-9]{32}-response\.json$'
+ $legacy=$directory -ceq '/home/novinpay/novinpay-direct-pr13' -and $name -cmatch '^quota-[a-f0-9]{32}-(reply|ready)\.json$'
+ $scheduled=$PublishScheduledProof -and $directory -ceq $package -and $name -ceq "scheduled-$pin-offhost.json"
+ if((!$response -and !$legacy -and !$scheduled) -or $bytes.Length -lt 1 -or $bytes.Length -gt 65536){throw 'Quota upload outside scope'}
  if(@(Get-Entries $directory|Where-Object file -ceq $name).Count){throw 'Existing quota evidence preserved'}
  $hash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
  $form=[Net.Http.MultipartFormDataContent]::new();$form.Add([Net.Http.StringContent]::new($directory),'dir');$part=[Net.Http.ByteArrayContent]::new($bytes);$part.Headers.ContentType=[Net.Http.Headers.MediaTypeHeaderValue]::new('application/octet-stream');$form.Add($part,'file-1',$name);$part.Headers.ContentDisposition.Name='"file-1"';$part.Headers.ContentDisposition.FileName='"'+$name+'"';$part.Headers.ContentDisposition.FileNameStar=$null
  $req=[Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Post,('https://leda.asemanhost.com:2083/execute/Fileman/upload_files?dir='+[uri]::EscapeDataString($directory)+'&overwrite=0&permissions=0600'));[void]$req.Headers.TryAddWithoutValidation('Authorization','cpanel novinpay:'+[Runtime.InteropServices.Marshal]::PtrToStringBSTR($tokenPointer));$req.Content=$form
- try {$res=$httpClient.SendAsync($req).GetAwaiter().GetResult();try {if(!$res.IsSuccessStatusCode){throw 'Quota proof upload HTTP failure'};$r=$res.Content.ReadAsStringAsync().GetAwaiter().GetResult()|ConvertFrom-Json;$r=if($r.result){$r.result}else{$r};if($r.status -ne 1 -or $r.data.succeeded -ne 1 -or $r.data.failed -ne 0){throw 'Ambiguous quota upload; reconcile before retry'}}finally{$res.Dispose()}}finally{$req.Dispose()}
+ try {$res=$httpClient.SendAsync($req).GetAwaiter().GetResult();try {if(!$res.IsSuccessStatusCode){throw ('cPanel HTTP failure '+[int]$res.StatusCode)};$r=$res.Content.ReadAsStringAsync().GetAwaiter().GetResult()|ConvertFrom-Json;$r=if($r.result){$r.result}else{$r};if($r.status -ne 1 -or $r.data.succeeded -ne 1 -or $r.data.failed -ne 0){throw 'quota_upload_ambiguous'}}finally{$res.Dispose()}}finally{$req.Dispose()}
  $meta=Invoke-Cpanel 'Fileman/get_file_information' @{path=$directory+'/'+$name;show_hidden=1;include_permissions=1}
  if($meta.type -ne 'file' -or [long]$meta.size -ne $bytes.Length -or $meta.nicemode.TrimStart('0') -cne '600' -or (Get-TextHash (Read-HostText ($directory+'/'+$name))) -cne $hash){throw 'Quota proof readback failed'}
  return $hash
@@ -53,6 +70,7 @@ function EnsurePrivate([string]$name,[byte[]]$bytes,[string]$directory) {
 }
 function Get-AuthenticatedQuota {
  for($attempt=0;$attempt -lt 3;$attempt++){
+  $failureCode='quota_transport_failure'
   $res=$null
   $cancel=[Threading.CancellationTokenSource]::new()
   $cancel.CancelAfter(15000)
@@ -67,9 +85,11 @@ function Get-AuthenticatedQuota {
    if($res){
     try{
      $status=[int]$res.StatusCode
-     $transient=$status -eq 429 -or $status -ge 500
+     $transient=$status -in @(408,429) -or $status -ge 500
+     if($transient){$failureCode='cPanel HTTP failure '+$status}
      if(!$transient){
-      if(!$res.IsSuccessStatusCode -or !$res.Headers.Date){throw 'Authenticated quota rejected'}
+      if(!$res.IsSuccessStatusCode){throw ('cPanel HTTP failure '+[int]$res.StatusCode)}
+      if(!$res.Headers.Date){throw 'quota_server_clock_missing'}
       $server=$res.Headers.Date.ToUnixTimeSeconds()
       if([Math]::Abs($server-[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) -gt 5){throw 'Quota clock mismatch'}
       $j=$res.Content.ReadAsStringAsync($cancel.Token).GetAwaiter().GetResult()|ConvertFrom-Json
@@ -81,8 +101,8 @@ function Get-AuthenticatedQuota {
    }
   }catch [Threading.Tasks.TaskCanceledException]{$transient=$true}
   finally{$req.Dispose();$cancel.Dispose()}
-  if(!$transient -or $attempt -eq 2){throw 'Quota API temporarily unavailable; no capture started'}
-  Start-Sleep -Milliseconds (500 * [Math]::Pow(2,$attempt))
+  if(!$transient -or $attempt -eq 2){throw $failureCode}
+  Wait-QuotaBackoff $attempt
  }
 }
 function Read-QuotaEntries([string]$directory) {
@@ -99,10 +119,78 @@ function Read-QuotaEntries([string]$directory) {
 }
 $runtimeQuotaResponses=0
 $opened=$false;$done=@{};$check='open_authenticated_access'
+$outboxLock=$null
+$published=@{}
+$lastGoodPoll=[DateTimeOffset]::UtcNow
+$pollDegraded=$false
 try {
  . OpenAccess; $opened=$true
+ if($quotaV2){
+  $httpClient.Timeout=[TimeSpan]::FromSeconds(8)
+  $check='quota_mailbox_identity'
+  $mailbox=Invoke-QuotaRead { Invoke-Cpanel 'Fileman/get_file_information' @{path=$quotaDirectory;show_hidden=1;include_permissions=1} }
+  if($mailbox.type -cne 'dir' -or $mailbox.nicemode -cne '0700'){throw 'quota_mailbox_metadata'}
+  $allowed=@([Security.Principal.WindowsIdentity]::GetCurrent().User.Value,'S-1-5-18','S-1-5-32-544')
+  if((Get-Item -LiteralPath $PrivateRoot).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint) -or
+     @((Get-Acl -LiteralPath $PrivateRoot).Access|Where-Object {$_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -notin $allowed}).Count){throw 'quota_outbox_permissions'}
+  $outboxLock=[IO.File]::Open((Join-Path $PrivateRoot "quota-$pin.lock"),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+ }
  Status 'READY'
  while([DateTimeOffset]::UtcNow -lt $deadline){
+  if($quotaV2){
+   $check='read_quota_mailbox'
+   try{
+    $entries=@(Invoke-QuotaRead { Get-Entries $quotaDirectory })
+   }catch{
+    if(!(Test-QuotaTransient $_) -or ([DateTimeOffset]::UtcNow-$lastGoodPoll).TotalSeconds -ge 90){throw}
+    if(!$pollDegraded){Status 'QUOTA_MAILBOX_DEGRADED';$pollDegraded=$true}
+    Wait-QuotaBackoff 4
+    continue
+   }
+   $lastGoodPoll=[DateTimeOffset]::UtcNow
+   if($pollDegraded){Status 'READY';$pollDegraded=$false}
+   foreach($entry in $entries | Where-Object file -cmatch '^quota-[a-f0-9]{32}-request\.json$'){
+    $base=$entry.file.Substring(0,$entry.file.Length-13)
+    if($done.ContainsKey($base)){continue}
+    if($published.ContainsKey($base) -and $entries.file -cnotcontains "$base-ack.json"){continue}
+    $check='validate_quota_request'
+    if($entry.type -cne 'file' -or $entry.nicemode -cne '0600' -or [long]$entry.size -gt 2048){throw 'quota_request_metadata'}
+    $raw=Invoke-QuotaRead {Read-HostText "$quotaDirectory/$($entry.file)"}
+    if([Text.Encoding]::UTF8.GetByteCount($raw) -ne [long]$entry.size){throw 'quota_request_changed'}
+    $requestPin=Get-QuotaDigest ([Text.Encoding]::UTF8.GetBytes($raw))
+    $now=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $q=Get-QuotaV2Request $raw $base $m $pin $now
+    $ack=$null
+    if($entries.file -ccontains "$base-ack.json"){
+     $check='validate_quota_acknowledgment'
+     $ack=Read-QuotaAcknowledgment (Read-QuotaPrivate $quotaDirectory "$base-ack.json" 2048) $q $requestPin
+    }
+    if($ack){
+     $done[$base]=$true
+     if($ack.result -ceq 'accepted'){
+      $responseRaw=Read-QuotaPrivate $quotaDirectory "$base-response.json" 8192
+      if($null -eq $responseRaw -or (Get-QuotaDigest ([Text.Encoding]::UTF8.GetBytes($responseRaw))) -cne $ack.responseSha256){throw 'quota_ack_response_identity'}
+      if($sourceScope -and $q.phase -ceq 'fence'){
+       $runtimeQuotaResponses++
+       if($m.format -cne 'novinpay-runtime-release-v1' -or $runtimeQuotaResponses -ge 2){Status 'ACTIVATION_QUOTA_PASS';exit 0}
+      }
+     }else{Status ('QUOTA_'+$ack.result.ToUpperInvariant())}
+     continue
+    }
+    if($now -ge $q.expiresAtUnix){$done[$base]=$true;continue}
+    $check='quota_durable_outbox'
+    $outbox=Join-Path $PrivateRoot "$pin-$($q.nonce).response.json"
+    [byte[]]$envelope=Get-QuotaOutbox $outbox {Get-QuotaV2Envelope $q $requestPin (Get-AuthenticatedQuota) ($m.format -ceq 'novinpay-runtime-release-v1')}
+    Assert-QuotaOutboxBinding $envelope $q $requestPin ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
+    $check='quota_envelope_publication'
+    if($entries.file -cnotcontains "$base-response.json"){Publish-QuotaEnvelope $quotaDirectory "$base-response.json" $envelope $q.expiresAtUnix;Status 'QUOTA_RESPONSE_PUBLISHED'}
+    else{
+     $published=Read-QuotaPrivate $quotaDirectory "$base-response.json" 8192
+     if((Get-QuotaDigest ([Text.Encoding]::UTF8.GetBytes($published))) -cne (Get-QuotaDigest $envelope)){throw 'quota_remote_envelope_conflict'}
+    }
+    $published[$base]=$true
+   }
+  }else{
   $check='read_quota_requests';$entries=@(Read-QuotaEntries $package)
   foreach($entry in $entries|Where-Object file -cmatch '^quota-[a-f0-9]{32}-request.json$'){
    $base=$entry.file.Substring(0,$entry.file.Length-13)
@@ -136,15 +224,16 @@ try {
    $check='quota_reply_upload';$hash=UploadNewPrivate ($base+'-reply.json') $bytes $package
    $null=UploadNewPrivate ($base+'-ready.json') ([Text.Encoding]::UTF8.GetBytes((@{sha256=$hash}|ConvertTo-Json -Compress))) $package
    $done[$base]=$true;Status ('QUOTA_'+$q.phase.ToUpperInvariant())
-   if($sourceScope){
+   if($sourceScope -and $q.phase -ceq 'fence'){
     $runtimeQuotaResponses++
     if($m.format -cne 'novinpay-runtime-release-v1' -or $runtimeQuotaResponses -ge 2){Status 'ACTIVATION_QUOTA_PASS';exit 0}
    }
   }
+  }
   if($QuotaOnly){
-   if($recoveryScope -and @(Get-Entries '/home/novinpay/novinpay-private-backups'|Where-Object file -ceq ([IO.Path]::GetFileName($m.backup.directory))).Count){
-    if(@(Get-Entries $m.backup.directory|Where-Object file -ceq 'receipt.json').Count){
-     $receipt=Read-HostText ($m.backup.directory+'/receipt.json')|ConvertFrom-Json
+   if($recoveryScope -and @(Invoke-QuotaRead {Get-Entries '/home/novinpay/novinpay-private-backups'}|Where-Object file -ceq ([IO.Path]::GetFileName($m.backup.directory))).Count){
+    if(@(Invoke-QuotaRead {Get-Entries $m.backup.directory}|Where-Object file -ceq 'receipt.json').Count){
+     $receipt=Invoke-QuotaRead {Read-HostText ($m.backup.directory+'/receipt.json')}|ConvertFrom-Json
      if($receipt.result -cne 'BACKUP_AND_DISPOSABLE_RESTORE_PASS' -or $receipt.sourceCommit -cne $m.baseline -or $receipt.restoreDatabase -cne $m.backup.restoreDatabase -or $receipt.migrations -ne $m.migrations.Count -or $receipt.triggers -ne $m.expectedTriggers){throw 'Recovery receipt identity mismatch'}
      $check='independent_offhost_verification'
      Close-CpanelAccess;$opened=$false
@@ -153,6 +242,15 @@ try {
      }
      $verified=Get-Content -LiteralPath (Join-Path $PrivateRoot 'OFFHOST-PROOF.json') -Raw|ConvertFrom-Json
      if($verified.archiveSha256 -cne $receipt.archiveSha256 -or $verified.sourceCommit -cne $m.baseline -or $verified.restoreDatabase -cne $m.backup.restoreDatabase -or $verified.migrations -ne $m.migrations.Count -or $verified.triggers -ne $m.expectedTriggers -or !$verified.authenticatedDecryption -or !$verified.isolatedRestoreVerified){throw 'Independent recovery evidence mismatch'}
+     if($PublishScheduledProof){
+      if($verified.result -cne 'INDEPENDENT_OFFHOST_RECOVERY_PASS' -or $verified.syntheticFixture -ne $false -or
+         !$verified.archiveContentsVerified -or !$verified.databaseDumpRowDigestMatches -or !$verified.recoveryKeyAvailable -or
+         [long]$verified.snapshotUnix -ne [long]$receipt.snapshotUnix -or $verified.serverArchivePath -cne ($m.backup.directory+'/backup.npb')){throw 'Scheduled proof identity mismatch'}
+      $check='publish_scheduled_recovery_proof'
+      . $AccessHelper
+      $opened=$true
+      $null=EnsurePrivate "scheduled-$pin-offhost.json" ([IO.File]::ReadAllBytes((Join-Path $PrivateRoot 'OFFHOST-PROOF.json'))) $package
+     }
      Status 'DATABASE_RECOVERY_PASS';exit 0
     }
    }
@@ -196,5 +294,5 @@ try {
  # Exception strings may contain API bodies: never serialize them.
  $httpStatus=$null
  if($_.Exception.Message -match '^cPanel HTTP failure ([0-9]{3})$'){$httpStatus=[int]$Matches[1]}
- [IO.File]::WriteAllText($StatusPath,(@{result='STOP';check=$check;category=$_.Exception.GetBaseException().GetType().Name;httpStatus=$httpStatus;manifestSha256=$pin;productionModified=$false;retrySafe=$false;nextAction='Inspect the named bridge operation and server receipts; do not repeat backup or activation blindly.'}|ConvertTo-Json),[Text.UTF8Encoding]::new($false));exit 1
-}finally{if($opened){Close-CpanelAccess}}
+ Write-BridgeStatus @{result='STOP';check=$check;category=$_.Exception.GetBaseException().GetType().Name;httpStatus=$httpStatus;manifestSha256=$pin;productionModified=$false;retrySafe=$false;nextAction='Inspect the named bridge operation and server receipts; do not repeat backup or activation blindly.'};exit 1
+}finally{if($outboxLock){$outboxLock.Dispose()};if($opened){Close-CpanelAccess}}

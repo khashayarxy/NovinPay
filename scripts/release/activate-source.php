@@ -30,18 +30,56 @@ function gate(bool $valid, string $check): void
 $action = $argv[3] ?? '';
 try {
     gate(PHP_SAPI === 'cli' && PHP_VERSION_ID >= 80401 && posix_geteuid() === 1321
-        && in_array($action, ['contract', 'runtime-execute', 'migration-paths', 'migrate-reviewed', 'database-ready', 'baseline-files', 'smoke', 'preflight', 'ready', 'web-check', 'web-cache', 'quota'], true), 'execution_scope');
+        && in_array($action, ['contract', 'runtime-execute', 'migration-paths', 'migrate-reviewed', 'database-ready', 'baseline-files', 'smoke', 'preflight', 'ready', 'web-check', 'web-cache', 'quota', 'quota-admission', 'checkpoint', 'publish-receipt', 'status'], true), 'execution_scope');
     require __DIR__.'/recovery-contract.php';
     $raw = NovinPay\Release\privateRead($argv[1]);
     $manifest = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
     $manifest['_sha256'] = hash('sha256', $raw);
-    gate(count($argv) === 4 && preg_match('/\A[a-f0-9]{64}\z/D', $argv[2]) === 1 && hash_equals($argv[2], hash('sha256', $raw)), 'manifest_pin');
+    gate(count($argv) === ($action === 'checkpoint' ? 5 : 4) && preg_match('/\A[a-f0-9]{64}\z/D', $argv[2]) === 1 && hash_equals($argv[2], hash('sha256', $raw)), 'manifest_pin');
     $runtime = ($manifest['format'] ?? '') === 'novinpay-runtime-release-v1';
     if ($runtime) {
         require_once __DIR__.'/runtime-release.php';
         NovinPay\Release\runtimeReleaseContract($manifest);
     } else {
         NovinPay\Release\sourceReleaseManifest($manifest);
+    }
+    if (in_array($action, ['checkpoint', 'publish-receipt', 'status'], true)) {
+        gate(! $runtime && dirname($argv[1]) === KIT, 'source_journal_scope');
+        require_once __DIR__.'/source-deployment-state.php';
+        $journal = KIT.'/'.$manifest['releaseName'].'-attempt';
+        if ($action === 'status') {
+            $dispatch = KIT.'/dispatch-deploy-'.$manifest['_sha256'].'/complete.json';
+            $worker = is_file($dispatch) ? json_decode(NovinPay\Release\privateRead($dispatch), true, 16, JSON_THROW_ON_ERROR) : null;
+            $status = NovinPay\Release\sourceDeploymentStatus($journal, $manifest, $worker);
+            $status['productionHead'] = trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD']));
+            if (! is_dir(dirname($dispatch)) && ! is_dir($journal)) {
+                $status['result'] = 'SOURCE_ATTEMPT_NOT_STARTED';
+            } elseif ($worker === null && $status['result'] === 'SOURCE_RECONCILIATION_REQUIRED') {
+                $lockPath = KIT.'/.operation.lock';
+                if (is_file($lockPath) && ! is_link($lockPath) && ($handle = fopen($lockPath, 'rb')) !== false) {
+                    if (! flock($handle, LOCK_SH | LOCK_NB, $wouldBlock) && $wouldBlock) {
+                        $status['result'] = 'HOST_OPERATION_ACTIVE';
+                    }
+                    fclose($handle);
+                }
+            }
+            $status['workerResult'] = $worker['result'] ?? null;
+            $status['nextAction'] = match ($status['result']) {
+                'SOURCE_ATTEMPT_NOT_STARTED' => 'start_after_authorization',
+                'HOST_OPERATION_ACTIVE' => 'check_status_after_operation',
+                'APPLICATION_RECEIPT_VERIFIED' => 'none',
+                default => 'inspect_without_replay',
+            };
+            echo json_encode($status, JSON_THROW_ON_ERROR).PHP_EOL;
+            exit(0);
+        }
+        gate(is_dir($journal) && ! is_link($journal) && fileowner($journal) === 1321 && (fileperms($journal) & 0777) === 0700, 'source_journal_permissions');
+        if ($action === 'checkpoint') {
+            NovinPay\Release\recordSourceCheckpoint($journal, $manifest, $argv[4]);
+        } else {
+            NovinPay\Release\publishSourceCompletion($journal, $manifest);
+        }
+        exit(0);
     }
     if ($action === 'runtime-execute') {
         gate($runtime, 'runtime_execution_contract');
@@ -50,6 +88,9 @@ try {
         exit(0);
     }
     if ($action === 'contract') {
+        if (! $runtime) {
+            require_once __DIR__.'/source-deployment-state.php';
+        }
         foreach (['baseline', 'target', 'releaseName', 'targetBranch', 'cssAsset', 'successResult'] as $key) {
             echo ($manifest[$key] ?? ($key === 'successResult' ? 'RUNTIME_RELEASE_PASS' : '-')).PHP_EOL;
         }
@@ -73,6 +114,13 @@ try {
         exit(0);
     }
 
+    if ($action === 'quota-admission') {
+        if (($manifest['quotaProtocol'] ?? 1) === 2) {
+            NovinPay\Release\requestQuota($manifest, KIT, 'admission');
+            echo "ADMIN_QUOTA_ADMISSION_PASS\n";
+        }
+        exit(0);
+    }
     if ($action === 'quota') {
         NovinPay\Release\requestQuota($manifest, KIT, 'fence');
         echo "ADMIN_QUOTA_PASS\n";

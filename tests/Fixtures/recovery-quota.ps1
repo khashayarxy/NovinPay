@@ -1,6 +1,7 @@
 $ErrorActionPreference='Stop'
 $tokens=$null;$errors=$null
 $source=Join-Path $PSScriptRoot '../../scripts/release/bridge.ps1'
+. (Join-Path (Split-Path -Parent $source) 'quota-bridge.ps1')
 $ast=[Management.Automation.Language.Parser]::ParseFile($source,[ref]$tokens,[ref]$errors)
 if($errors.Count){throw 'Shared quota companion syntax failed'}
 $function=$ast.Find({param($n)$n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-AuthenticatedQuota'},$true)

@@ -54,6 +54,7 @@ function runtimeReleaseContract(array $m): void
     ksort($triggers);
     requireGate($triggers === expectedTriggerContracts($m['migrations']), 'runtime_trigger_contract', 'reviewed unchanged trigger bodies', [], 'Reject trigger contract drift.');
     requireGate(is_array($m['httpChecks'] ?? null) && isset($m['httpChecks']['/'], $m['httpChecks']['/login']), 'runtime_http_contract', 'explicit public HTTPS acceptance', [], 'Prepare read-only smoke checks.');
+    sourceHttpChecks($m);
 }
 
 function runtimePath(string $path): void

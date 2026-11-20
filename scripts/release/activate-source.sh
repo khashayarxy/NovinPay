@@ -29,6 +29,7 @@ if [[ "$mode" == novinpay-runtime-release-v1 ]]; then
     exit 0
 fi
 journal="$kit/$release-attempt"
+checkpoint() { p "$tools/activate-source.php" "$manifest" "$pin" checkpoint "$1"; }
 status() { curl -sS --connect-timeout 10 --max-time 25 -o /dev/null -w '%{http_code}' "https://novinpaypos.com$1"; }
 verify_ippanel() {
     p -r '
@@ -86,7 +87,11 @@ verify_ippanel
 p "$tools/activate-source.php" "$manifest" "$pin" baseline-files
 phase=recovery_runtime_and_quota
 p "$tools/activate-source.php" "$manifest" "$pin" preflight
+phase=quota_bridge_admission
+p "$tools/activate-source.php" "$manifest" "$pin" quota-admission
+phase=journal_preparation
 mkdir -m 0700 "$journal"
+checkpoint initialized
 p "$tools/activate-source.php" "$manifest" "$pin" migration-paths >"$journal/migration-paths.txt"
 mapfile -t migration_paths <"$journal/migration-paths.txt"
 if [[ "$mode" == novinpay-application-release-v1 ]]; then
@@ -140,17 +145,20 @@ p artisan down --render=errors::503 --retry=60 --no-interaction >"$journal/maint
 test -f storage/framework/down && test -f storage/framework/maintenance.php
 test "$(status /login)" = 503
 sha256sum --check --strict "$journal/protected.sha256"
+checkpoint maintenance_entered
 if [[ "$mode" == novinpay-application-release-v1 ]]; then
     phase=reviewed_migration
     schema_changed=true
     p "$tools/activate-source.php" "$manifest" "$pin" migrate-reviewed >"$journal/migration.log" 2>&1
     p "$tools/activate-source.php" "$manifest" "$pin" database-ready
 fi
+checkpoint schema_verified
 phase=source
 (umask 022; git merge --ff-only "$target") >"$journal/source.log" 2>&1
 test "$(git rev-parse HEAD)" = "$target"
 git diff --cached --quiet
 git diff --quiet -- . ':(exclude)public/.htaccess'
+checkpoint source_installed
 phase=runtime
 if [[ "$mode" == novinpay-application-release-v1 ]]; then
     p artisan config:cache --no-interaction >"$journal/config.log" 2>&1
@@ -159,6 +167,7 @@ fi
 p artisan view:cache --no-interaction >"$journal/views.log" 2>&1
 p "$tools/activate-source.php" "$manifest" "$pin" ready
 verify_ippanel
+checkpoint runtime_verified
 phase=vite_publication
 cmp -s "$build/manifest.json" "$journal/vite-manifest-before.json"
 if [[ ! -e "$build/$asset" ]]; then ln -- "$stage/$asset" "$build/$asset"; fi
@@ -166,13 +175,18 @@ mv -T -- "$stage/manifest.json" "$build/manifest.json"
 ( cd "$build"; sha256sum -c --strict "$kit/$release-assets.sha256" )
 p "$tools/activate-source.php" "$manifest" "$pin" web-cache
 sha256sum --check --strict "$journal/protected.sha256"
+checkpoint assets_published
 phase=reopen
+checkpoint traffic_reopen_intent
 p artisan up --no-interaction >"$journal/up.log" 2>&1
 test ! -e storage/framework/down && test ! -e storage/framework/maintenance.php
+checkpoint traffic_reopened
 phase=https_acceptance
 p "$tools/activate-source.php" "$manifest" "$pin" smoke
 sha256sum --check --strict "$journal/protected.sha256"
 verify_ippanel
-printf '{"result":"%s","commit":"%s","migrationsApplied":%s,"smsConfigurationPreserved":true,"activeProvider":"ippanel","otpReady":true,"testResetOnLogoutPreserved":true,"testSmsDeliveryPreserved":true,"sendingExecuted":false}\n' "$success_result" "$target" "${#migration_paths[@]}" >"$journal/complete.json"
-cat "$journal/complete.json"
+checkpoint acceptance_verified
+phase=receipt_publication
+p "$tools/activate-source.php" "$manifest" "$pin" publish-receipt
 passed=true
+cat "$journal/complete.json" || :
