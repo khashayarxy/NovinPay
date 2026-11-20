@@ -50,7 +50,27 @@ try {
         if ($action === 'status') {
             $dispatch = KIT.'/dispatch-deploy-'.$manifest['_sha256'].'/complete.json';
             $worker = is_file($dispatch) ? json_decode(NovinPay\Release\privateRead($dispatch), true, 16, JSON_THROW_ON_ERROR) : null;
-            echo json_encode(NovinPay\Release\sourceDeploymentStatus($journal, $manifest, $worker), JSON_THROW_ON_ERROR).PHP_EOL;
+            $status = NovinPay\Release\sourceDeploymentStatus($journal, $manifest, $worker);
+            $status['productionHead'] = trim(NovinPay\Release\recoveryGit(ROOT, ['rev-parse', 'HEAD']));
+            if (! is_dir(dirname($dispatch)) && ! is_dir($journal)) {
+                $status['result'] = 'SOURCE_ATTEMPT_NOT_STARTED';
+            } elseif ($worker === null && $status['result'] === 'SOURCE_RECONCILIATION_REQUIRED') {
+                $lockPath = KIT.'/.operation.lock';
+                if (is_file($lockPath) && ! is_link($lockPath) && ($handle = fopen($lockPath, 'rb')) !== false) {
+                    if (! flock($handle, LOCK_SH | LOCK_NB, $wouldBlock) && $wouldBlock) {
+                        $status['result'] = 'HOST_OPERATION_ACTIVE';
+                    }
+                    fclose($handle);
+                }
+            }
+            $status['workerResult'] = $worker['result'] ?? null;
+            $status['nextAction'] = match ($status['result']) {
+                'SOURCE_ATTEMPT_NOT_STARTED' => 'start_after_authorization',
+                'HOST_OPERATION_ACTIVE' => 'check_status_after_operation',
+                'APPLICATION_RECEIPT_VERIFIED' => 'none',
+                default => 'inspect_without_replay',
+            };
+            echo json_encode($status, JSON_THROW_ON_ERROR).PHP_EOL;
             exit(0);
         }
         gate(is_dir($journal) && ! is_link($journal) && fileowner($journal) === 1321 && (fileperms($journal) & 0777) === 0700, 'source_journal_permissions');

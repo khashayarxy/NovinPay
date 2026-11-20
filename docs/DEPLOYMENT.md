@@ -267,3 +267,9 @@ Qualification requires that exact-head CI rehearsal to succeed and the
 private source artifact/inventory to be rebound to the final SHA. Private manifests
 marked `activationReady: false` cannot execute through the hosting adapter. No upload
 or production activation is authorized by this Phase 5 preparation.
+
+## Default operator workflow for incremental source and application releases
+
+Prepare the reviewed Git delta and changed asset artifacts, reuse passing CI for the exact SHA, and stage the private bundle with byte-for-byte readback. Reuse recovery evidence only when the baseline, integrity, compatibility and 72-hour policy still pass. When new recovery is needed, complete the existing detached capture, isolated restore and independent Windows verification before binding the activation manifest. The host cannot issue the independent off-host proof itself. Keep any payment activation separately scoped.
+
+Include the checksum of `qualified-operation.sh` in the reviewed operator command and pin the bundle checksum list and all runner dependencies. After authorization, use `bash qualified-operation.sh deploy RELEASE LIST_SHA256` for the reviewed source or additive application release. The existing detached runner checks the host and backup gates, installs the approved delta, executes only reviewed migrations, rebuilds required caches, verifies health and records the outcome. The launcher returns immediately. Use `bash qualified-operation.sh status RELEASE LIST_SHA256` for progress and completion. An existing dispatch or attempt routes a repeated deployment request to inspection. A partial migration or missing receipt requires the Conventional source completion and reconciliation procedure. This entry point requires the checkpoint-capable runner and is for future qualified packages.
