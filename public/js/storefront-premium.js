@@ -13,8 +13,7 @@
     let cartVersion = 0;
     let cartRead = null;
     let cartEpoch = 0;
-    let cartHydrated = false;
-    let cartHydratedEpoch = -1;
+    let cartSnapshot = null;
     let cartPreloadPromise = null;
     const commerce = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('novinpay-commerce') : null;
     let accountVersion = 0;
@@ -32,6 +31,7 @@
     function deactivate() {
         const previous = active;
         active = null;
+        if (previous === cartDialog) clearCart(cartDialog);
         if (previous) layers.get(previous.id)?.hide?.();
         previous?.close();
         pending.forEach((controller, key) => {
@@ -113,7 +113,7 @@
         }
     }
 
-    function applyCartDocument(dialog, doc, epochAtFetch) {
+    function applyCartDocument(dialog, doc, epochAtFetch, html = null) {
         const content = doc.querySelector('[data-storefront-cart]');
         if (!content) throw new Error('Cart content unavailable');
         const container = dialog.querySelector('[data-live-cart]');
@@ -139,20 +139,24 @@
         summary.inert = false;
         status.textContent = '';
         status.hidden = false;
-        cartHydrated = true;
-        cartHydratedEpoch = epochAtFetch;
+        if (html !== null && dialog.hasAttribute('data-cart-preload')) {
+            cartSnapshot = {html, epoch: epochAtFetch};
+        }
     }
 
     function preloadCart(dialog) {
-        if (!dialog?.dataset.cartUrl || cartPreloadPromise || cartRead || active === dialog) return;
+        if (!dialog?.dataset.cartUrl || !dialog.hasAttribute('data-cart-preload') || cartPreloadPromise || cartRead || active === dialog) return;
         const epochAtStart = cartEpoch;
         cartPreloadPromise = (async () => {
             try {
                 const doc = await readPage(dialog.dataset.cartUrl, 'cart-preload');
-                if (epochAtStart !== cartEpoch || active === dialog || cartRead) return;
-                applyCartDocument(dialog, doc, epochAtStart);
+                if (epochAtStart !== cartEpoch) return;
+                const content = doc.querySelector('[data-storefront-cart]');
+                if (!content) return;
+                if (content.dataset.cartCount !== undefined) renderCartCount(Number(content.dataset.cartCount));
+                cartSnapshot = {html: doc.documentElement.outerHTML, epoch: epochAtStart};
             } catch {
-                // Silent background preload; clicking Cart will fall back to live refreshCart().
+                // Silent background preload; clicking Cart falls back to live refreshCart().
             } finally {
                 cartPreloadPromise = null;
             }
@@ -190,7 +194,7 @@
             try {
                 const doc = await readPage(dialog.dataset.cartUrl, 'cart');
                 if (!current()) return;
-                applyCartDocument(dialog, doc, epochAtStart);
+                applyCartDocument(dialog, doc, epochAtStart, doc.documentElement.outerHTML);
                 if (focusKey && window.document.activeElement === closeButton) {
                     const control = container.querySelector('[data-cart-focus="' + CSS.escape(focusKey) + '"]');
                     const focus = control?.disabled
@@ -217,8 +221,6 @@
 
     function clearCart(dialog) {
         ++cartVersion;
-        cartHydrated = false;
-        cartHydratedEpoch = -1;
         pending.get('cart')?.abort();
         cartRead = null;
         dialog.querySelector('[data-live-cart]').replaceChildren();
@@ -262,7 +264,7 @@
             if (!Number.isInteger(count) || count < 0) throw new Error();
             commerce?.postMessage('cart-change');
             if (epoch !== cartEpoch) return;
-            cartHydrated = false;
+            cartSnapshot = null;
             renderCartCount(count);
             if (active === cartDialog) {
                 const focusInCart = cartDialog.querySelector('[data-live-cart]').contains(document.activeElement);
@@ -319,7 +321,19 @@
         layers.get(dialog.id)?.show?.();
         const target = focus || (!dialog.dataset.cartUrl && dialog.querySelector('input:not([type="hidden"]), iframe')) || dialog.querySelector('[data-storefront-close]');
         target?.focus({preventScroll: true});
-        if (dialog.dataset.cartUrl && (!cartHydrated || cartHydratedEpoch !== cartEpoch)) refreshCart(dialog);
+        if (dialog.dataset.cartUrl) {
+            if (dialog.hasAttribute('data-cart-preload') && cartSnapshot && cartSnapshot.epoch === cartEpoch) {
+                try {
+                    const doc = new DOMParser().parseFromString(cartSnapshot.html, 'text/html');
+                    applyCartDocument(dialog, doc, cartEpoch);
+                } catch {
+                    cartSnapshot = null;
+                    refreshCart(dialog);
+                }
+            } else {
+                refreshCart(dialog);
+            }
+        }
         if (dialog.dataset.accountUrl) refreshAccount(dialog);
     }
 
@@ -423,13 +437,14 @@
     commerce?.addEventListener('message', event => {
         if (event.data === 'identity-change') {
             ++cartEpoch;
+            cartSnapshot = null;
             renderCartCount(0);
             if (cartDialog) {
                 clearCart(cartDialog);
                 if (active === cartDialog) close();
             }
         } else if (event.data === 'cart-change' && cartDialog) {
-            cartHydrated = false;
+            cartSnapshot = null;
             if (active === cartDialog) refreshCart(cartDialog, {supersede: true});
             else preloadCart(cartDialog);
         }
@@ -437,14 +452,15 @@
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState !== 'visible') {
             ++cartEpoch;
+            cartSnapshot = null;
             if (cartDialog && active === cartDialog) clearCart(cartDialog);
             return;
         }
         if (active?.dataset.accountUrl) refreshAccount(active);
         if (active && active === cartDialog) refreshCart(active, {discard: true});
-        else if (cartDialog && (!cartHydrated || cartHydratedEpoch !== cartEpoch)) preloadCart(cartDialog);
+        else if (cartDialog && (!cartSnapshot || cartSnapshot.epoch !== cartEpoch)) preloadCart(cartDialog);
     });
-    if (cartDialog?.dataset.cartUrl && !document.querySelector('[data-storefront-cart]')) {
+    if (cartDialog?.dataset.cartUrl && cartDialog.hasAttribute('data-cart-preload') && !document.querySelector('[data-storefront-cart]')) {
         const schedulePreload = window.requestIdleCallback || (fn => setTimeout(fn, 120));
         schedulePreload(() => preloadCart(cartDialog));
     }

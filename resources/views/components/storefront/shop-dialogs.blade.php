@@ -1,4 +1,4 @@
-<dialog id="cart-dialog" class="cart-dialog store-cart-drawer" data-storefront-dialog data-cart-url="{{ route('cart.index') }}" aria-labelledby="cart-title">
+<dialog id="cart-dialog" class="cart-dialog store-cart-drawer" data-storefront-dialog data-cart-url="{{ route('cart.index') }}" data-cart-preload aria-labelledby="cart-title">
     <div class="overlay-heading"><h2 id="cart-title">سبد خرید</h2><button type="button" data-storefront-close aria-label="بستن سبد خرید"><x-storefront.icon name="close" /></button></div>
     <p class="store-cart-status" data-cart-status role="status" hidden></p>
     <div class="live-cart" data-live-cart></div>
