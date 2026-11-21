@@ -36,7 +36,7 @@
         <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=commerce-stage2-7') }}">
     @endif
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
-        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=commerce-stage2-9') }}">
+        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=commerce-stage2-10') }}">
     @endif
     @if(request()->routeIs('account.*'))
         <x-password-visibility-assets />

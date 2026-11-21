@@ -42,7 +42,7 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             'max' => ':attribute طولانی‌تر از حد مجاز است.',
             'issue.max' => 'شرح مشکل دستگاه نباید بیشتر از ۲۰۰۰ کاراکتر باشد.',
             'contact_phone.regex' => 'شماره موبایل ۱۱ رقمی با ۰۹ وارد کنید.',
-            'device_brand' => 'یکی از برندهای PAX، NewPOS یا Newland را انتخاب کنید.',
+            'device_brand' => 'یکی از برندهای مجاز دستگاه را انتخاب کنید.',
             'submission_token' => 'فرم را دوباره باز کنید و درخواست را ارسال کنید.',
         ];
     }
