@@ -558,13 +558,16 @@
         const y = Math.max(0, scrollY);
         const delta = y - previousY;
         previousY = y;
-        if (!floatingNavigation.matches || y < 64 || navigation.contains(document.activeElement)) {
+        if (!floatingNavigation.matches || y < 64 || (!delta && navigation.contains(document.activeElement))) {
             navHidden = false;
             travel = 0;
         } else if (delta && !root.classList.contains('storefront-overlay-open')) {
             travel = Math.sign(delta) === Math.sign(travel) ? travel + delta : delta;
             if (travel > 38) navHidden = true;
             if (travel < -20) navHidden = false;
+        }
+        if (navHidden && navigation.contains(document.activeElement)) {
+            document.activeElement.blur();
         }
         navigation.toggleAttribute('data-scroll-hidden', navHidden);
         navigation.inert = navHidden;

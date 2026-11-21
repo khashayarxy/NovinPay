@@ -29,7 +29,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <script src="{{ asset('js/storefront-scroll-lock.js?v=1') }}" defer></script>
-        <script src="{{ asset('js/storefront-premium.js?v=commerce-stage2-9') }}" defer></script>
+        <script src="{{ asset('js/storefront-premium.js?v=commerce-stage2-10') }}" defer></script>
     @endif
     @stack('page-head')
     @if ($hasStoreNavigation)

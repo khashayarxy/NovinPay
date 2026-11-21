@@ -65,7 +65,7 @@ class HomePageTest extends TestCase
         $this->assertStringNotContainsString('enamad-8644634.png', $markup);
     }
 
-    public function test_homepage_presents_all_approved_sections_and_seven_service_links(): void
+    public function test_homepage_presents_all_approved_sections_and_eight_service_links(): void
     {
         $response = $this->get('/')->assertOk();
         foreach (['hero-title', 'popular-services-title', 'brands-title', 'location-title'] as $section) {
@@ -75,7 +75,7 @@ class HomePageTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
         $this->assertSame(1, $xpath->query('//h1')->length);
-        $this->assertSame(7, $xpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " np-service ")]')->length);
+        $this->assertSame(8, $xpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " np-service ")]')->length);
         $this->assertSame(4, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " np-trust__item ")]')->length);
         foreach ($xpath->query('//a') as $link) {
             $this->assertNotSame('', $link->getAttribute('href'));
@@ -90,13 +90,14 @@ class HomePageTest extends TestCase
         $xpath = new DOMXPath($document);
         $cards = $xpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " np-service ")]');
         $expected = [
-            ['انتقال مالکیت کارتخوان', 'راهنمایی و انجام مراحل', 'contact'],
-            ['تغییر حساب بانکی', 'بررسی و راه‌اندازی مجدد', 'contact'],
-            ['رفع مشکل چاپ رسید', 'بررسی چاپ و قطعات', 'repair'],
-            ['رفع مشکل روشن‌نشدن', 'عیب‌یابی دستگاه', 'repair'],
-            ['رفع مشکل آنتن کارتخوان', 'بررسی ارتباط و آنتن', 'repair'],
-            ['رفع مشکل شارژ دستگاه', 'بررسی باتری و تغذیه', 'repair'],
-            ['سایر خدمات کارتخوان', 'راه‌اندازی و پشتیبانی', 'contact'],
+            ['انتقال مالکیت کارتخوان', 'انجام مراحل قانونی و تغییر مالک', 'contact'],
+            ['تغییر حساب و راه‌اندازی مجدد', 'تغییر حساب بانکی و فعال‌سازی دستگاه', 'contact'],
+            ['تبدیل دستگاه‌های 2G به 4G', 'ارتقای شبکه و افزایش سرعت تراکنش', 'repair'],
+            ['رفع مشکل آنتن‌دهی', 'تعمیر آنتن، خشاب سیم‌کارت و اتصال شبکه', 'repair'],
+            ['رفع مشکل شارژ و خاموشی', 'تعمیر باتری، سوکت شارژ و مدار تغذیه', 'repair'],
+            ['تعمیر پرینتر و چاپ رسید', 'رفع کمرنگی، گیر کاغذ و تعویض هد چاپگر', 'repair'],
+            ['تعویض LCD و ضربه‌خوردگی', 'تعمیر صفحه‌نمایش و آسیب‌های فیزیکی', 'repair'],
+            ['تعمیر دستگاه‌های آب‌خورده', 'سرویس تخصصی برد و احیای دستگاه', 'repair'],
         ];
         $this->assertCount(count($expected), $cards);
         foreach ($expected as $index => [$title, $description, $route]) {
@@ -118,10 +119,10 @@ class HomePageTest extends TestCase
         $xpath = new DOMXPath($document);
         $features = $xpath->query('//div[@class="np-trust__item"]');
         $expected = [
-            ['مشاوره تخصصی خرید', 'انتخاب کارتخوان متناسب با نیاز و بودجه شما'],
-            ['پیگیری آنلاین تعمیر', 'با کد پیگیری'],
-            ['ارسال و تحویل به تمام نقاط', 'در سریع‌ترین زمان ممکن'],
-            ['تعمیرات تخصصی کارتخوان', 'رسیدگی به مشکلات فنی دستگاه'],
+            ['مشاوره و فروش کارتخوان', 'انتخاب دستگاه متناسب با کسب‌وکار شما'],
+            ['تعمیرات تخصصی کارتخوان', 'عیب‌یابی و تعمیر سخت‌افزار و نرم‌افزار'],
+            ['پیگیری آنلاین تعمیرات', 'مشاهده وضعیت تعمیر با کد پیگیری'],
+            ['ارسال به سراسر کشور', 'ارسال سریع دستگاه، رول کاغذ و لوازم جانبی'],
         ];
         $this->assertCount(4, $features);
         foreach ($expected as $index => [$title, $description]) {
@@ -140,15 +141,15 @@ class HomePageTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
         $cards = $xpath->query('//a[@class="np-brand"]');
-        $this->assertCount(3, $cards);
-        $this->assertSame(['Newland', 'NewPOS', 'PAX'], array_map(fn ($card) => $xpath->query('./img', $card)->item(0)->getAttribute('alt'), iterator_to_array($cards)));
+        $this->assertCount(6, $cards);
+        $this->assertSame(['Newland', 'NewPOS', 'PAX', 'SZZT', 'TOPWISE', 'MoreFun'], array_map(fn ($card) => $xpath->query('./img', $card)->item(0)->getAttribute('alt'), iterator_to_array($cards)));
         foreach ($cards as $card) {
             $brand = $xpath->query('./img', $card)->item(0)->getAttribute('alt');
             $this->assertSame('کارتخوان‌های '.$brand, $card->getAttribute('aria-label'));
             $this->assertSame(route('products.index', ['q' => $brand]), $card->getAttribute('href'));
             $this->assertSame('', trim($card->textContent));
         }
-        foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
+        foreach (['PAX', 'NewPOS', 'Newland', 'SZZT', 'TOPWISE', 'MoreFun'] as $brand) {
             $response->assertSee(route('products.index', ['q' => $brand]), false);
             $this->get(route('products.index', ['q' => $brand]))->assertOk();
         }
@@ -165,8 +166,8 @@ class HomePageTest extends TestCase
         $response->assertSee('np-location__directions')->assertDontSee('np-hero-signature');
         $response->assertSee('data-map-url="'.config('business.map_embed').'"', false);
         $response->assertDontSee('<iframe', false);
-        foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
-            $response->assertSee(asset('brand/manufacturers/'.$brand.'.svg'));
+        foreach (['PAX.svg', 'NewPOS.svg', 'Newland.svg', 'SZZT.png', 'TOPWISE.svg', 'MoreFun.png'] as $asset) {
+            $response->assertSee(asset('brand/manufacturers/'.$asset));
         }
         $response->assertDontSee('mascot-newpos.png');
         $response->assertDontSee('file_00000000');
