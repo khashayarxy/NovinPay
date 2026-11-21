@@ -61,18 +61,12 @@
             <a href="{{ route('articles.index') }}" @if (request()->routeIs('articles.*')) aria-current="page" @endif><x-storefront.icon name="book" class="np-nav-icon" /><span>مقالات و آموزش‌ها</span></a>
             <a href="{{ route('contact') }}" @if (request()->routeIs('contact')) aria-current="page" @endif><x-storefront.icon name="phone" class="np-nav-icon" /><span>تماس با ما</span></a>
         </nav>
-        <div class="np-mobile-drawer__footer" aria-label="حساب کاربری و شماره‌های تماس {{ config('business.name') }}">
+        <div class="np-mobile-drawer__footer" aria-label="حساب کاربری {{ config('business.name') }}">
             <a class="np-mobile-drawer__account" href="{{ $customerAccount ? route('account.index') : route('account.login') }}">
                 <x-storefront.icon name="account" class="np-nav-icon" />
                 <span>{{ $customerAccount ? 'حساب کاربری' : 'ورود / ثبت‌نام' }}</span>
                 <x-storefront.icon name="arrow" class="np-drawer-arrow" />
             </a>
-            <div class="np-mobile-drawer__phones">
-                <x-business-phone><x-home.icon name="phone" /></x-business-phone>
-                @if (config('business.secondary_phone'))
-                    <x-business-phone secondary><x-home.icon name="phone" /></x-business-phone>
-                @endif
-            </div>
         </div>
     </div>
 </dialog>
