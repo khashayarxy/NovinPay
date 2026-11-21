@@ -20,34 +20,34 @@ class MobileNavigationTest extends TestCase
     public static function sections(): array
     {
         return [
-            'home' => ['/', ['products.index', 'repair'], 'home'],
-            'home query' => ['/?from=menu', ['products.index', 'repair'], 'home'],
-            'catalogue' => ['/products', ['home', 'repair'], 'products.index'],
-            'filtered paginated catalogue' => ['/products?q=PAX&page=2', ['home', 'repair'], 'products.index'],
-            'NewPOS filter' => ['/products?q=NewPOS', ['home', 'repair'], 'products.index'],
-            'Newland filter' => ['/products?q=Newland', ['home', 'repair'], 'products.index'],
-            'catalogue trailing slash' => ['/products/', ['home', 'repair'], 'products.index'],
-            'repair' => ['/repair', ['home', 'products.index'], 'repair'],
-            'repair query and trailing slash' => ['/repair/?from=menu', ['home', 'products.index'], 'repair'],
-            'confirmation' => ['/repair/confirmation', ['home', 'products.index'], 'repair'],
-            'confirmation query' => ['/repair/confirmation/?from=menu', ['home', 'products.index'], 'repair'],
-            'tracking' => ['/repair/track', ['products.index', 'repair'], 'repair.track'],
-            'tracking query' => ['/repair/track?from=menu', ['products.index', 'repair'], 'repair.track'],
-            'tracking trailing slash' => ['/repair/track/', ['products.index', 'repair'], 'repair.track'],
-            'contact' => ['/contact', ['products.index', 'repair'], 'contact'],
-            'consultation has repair CTA but is unrelated' => ['/consultation', ['products.index', 'repair'], null],
-            'privacy' => ['/privacy', ['products.index', 'repair'], null],
-            'terms' => ['/terms', ['products.index', 'repair'], null],
-            'articles' => ['/articles', ['products.index', 'repair'], 'articles.index'],
+            'home' => ['/', 'home'],
+            'home query' => ['/?from=menu', 'home'],
+            'catalogue' => ['/products', 'products.index'],
+            'filtered paginated catalogue' => ['/products?q=PAX&page=2', 'products.index'],
+            'NewPOS filter' => ['/products?q=NewPOS', 'products.index'],
+            'Newland filter' => ['/products?q=Newland', 'products.index'],
+            'catalogue trailing slash' => ['/products/', 'products.index'],
+            'repair' => ['/repair', 'repair'],
+            'repair query and trailing slash' => ['/repair/?from=menu', 'repair'],
+            'confirmation' => ['/repair/confirmation', 'repair'],
+            'confirmation query' => ['/repair/confirmation/?from=menu', 'repair'],
+            'tracking' => ['/repair/track', 'repair.track'],
+            'tracking query' => ['/repair/track?from=menu', 'repair.track'],
+            'tracking trailing slash' => ['/repair/track/', 'repair.track'],
+            'contact' => ['/contact', 'contact'],
+            'consultation has repair CTA but is unrelated' => ['/consultation', null],
+            'privacy' => ['/privacy', null],
+            'terms' => ['/terms', null],
+            'articles' => ['/articles', 'articles.index'],
         ];
     }
 
     #[DataProvider('sections')]
-    public function test_navigation_is_server_route_aware(string $uri, array $quickRoutes, ?string $current): void
+    public function test_navigation_is_server_route_aware(string $uri, ?string $current): void
     {
         $html = $this->withSession(['repair_reference' => 'NP-'.str_repeat('A', 32)])
             ->get($uri)->assertOk()->getContent();
-        $this->assertNavigation($html, $quickRoutes, $current);
+        $this->assertNavigation($html, $current);
     }
 
     public function test_published_product_slugs_and_queries_remain_in_shopping_section(): void
@@ -60,11 +60,22 @@ class MobileNavigationTest extends TestCase
         ]);
         foreach (['', '?from=menu', '/'] as $suffix) {
             $html = $this->get(route('products.show', $product).$suffix)->assertOk()->getContent();
-            $this->assertNavigation($html, ['home', 'repair'], 'products.index');
+            $document = new DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+            $xpath = new DOMXPath($document);
+            $this->assertSame(1, $xpath->query('//header//*[@data-customer-entry or @data-storefront-open="account-dialog"]')->length);
+            $this->assertSame($product->name, trim($xpath->query('//h1')->item(0)->textContent));
+            $this->assertSame($product->name, trim($xpath->query('//nav[contains(@class,"breadcrumb")]//*[@aria-current="page"]')->item(0)->textContent));
+            $active = $xpath->query('//nav[@data-mobile-bottom-nav]/a[@aria-current]');
+            $this->assertSame(1, $active->length);
+            $this->assertSame(route('products.index'), $active->item(0)->getAttribute('href'));
+            $this->assertSame('location', $active->item(0)->getAttribute('aria-current'));
+            $this->assertSame(1, $xpath->query('//header//button[@aria-controls="mobile-drawer" and @aria-haspopup="dialog"]')->length);
+            $this->assertSame(1, $xpath->query('//dialog[@id="mobile-drawer"]//a[@href="'.route('products.index').'"]')->length);
         }
     }
 
-    public function test_published_article_and_category_routes_keep_default_shortcuts_and_article_highlight(): void
+    public function test_published_article_and_category_routes_highlight_the_articles_link(): void
     {
         $owner = User::factory()->superAdmin()->create();
         $publishing = app(ArticlePublishing::class);
@@ -78,49 +89,46 @@ class MobileNavigationTest extends TestCase
 
         foreach ([route('articles.show', $article->slug), route('articles.category', ArticleCategory::findOrFail($categoryId)->slug)] as $url) {
             foreach (['', '?from=menu', '/'] as $suffix) {
-                $this->assertNavigation($this->get($url.$suffix)->assertOk()->getContent(), ['products.index', 'repair'], 'articles.index');
+                $this->assertNavigation($this->get($url.$suffix)->assertOk()->getContent(), 'articles.index');
             }
         }
     }
 
-    private function assertNavigation(string $html, array $quickRoutes, ?string $current): void
+    private function assertNavigation(string $html, ?string $current): void
     {
         $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
         $xpath = new DOMXPath($document);
-        $quick = $xpath->query('//header/nav[@aria-label="دسترسی سریع"]/a');
-        $this->assertCount(2, $quick);
-        $this->assertSame(array_map(fn ($name) => route($name), $quickRoutes), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($quick)));
-        $labels = ['home' => 'صفحه اصلی', 'products.index' => 'فروشگاه', 'repair' => 'تعمیرات'];
-        $this->assertSame(array_map(fn ($name) => $labels[$name], $quickRoutes), array_map(fn ($link) => trim($link->textContent), iterator_to_array($quick)));
-        $this->assertSame(0, $xpath->query('//header/nav[@aria-label="دسترسی سریع"]/a[@aria-current]')->length);
+        $this->assertSame(0, $xpath->query('//header/nav[@aria-label="دسترسی سریع"]')->length);
+        $drawerLogo = $xpath->query('//dialog[@id="mobile-drawer"]//a[contains(@class,"np-mobile-drawer__logo") and @href="'.route('home').'"]/img');
+        $this->assertSame(1, $drawerLogo->length);
+        $this->assertSame($xpath->query('//header//a[contains(@class,"np-logo-link")]/img')->item(0)->getAttribute('src'), $drawerLogo->item(0)->getAttribute('src'));
 
         $menu = $xpath->query('//nav[@id="mobile-navigation"]')->item(0);
         $links = $xpath->query('./a', $menu);
-        $this->assertSame(['حساب کاربری', 'پیگیری تعمیرات', 'مقالات', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(['صفحه اصلی', 'تعمیرات کارتخوان', 'پیگیری تعمیرات', 'مقالات و آموزش‌ها', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
         $this->assertSame(0, $xpath->query('//a[normalize-space(.)="تعمیرگاه" or normalize-space(.)="خدمات و تعمیرات"]')->length);
-        $this->assertSame(array_map(fn ($name) => route($name), ['account.index', 'repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
-        $this->assertSame(0, $xpath->query('./a[normalize-space(.)="صفحه اصلی" or normalize-space(.)="خرید کارتخوان" or normalize-space(.)="تعمیرات"]', $menu)->length);
-        $active = $xpath->query('./a[@aria-current="page"]', $menu);
-        $verticalCurrent = in_array($current, ['repair.track', 'articles.index', 'contact'], true) ? $current : null;
-        $this->assertSame($verticalCurrent ? 1 : 0, $active->length);
-        if ($verticalCurrent) {
-            $this->assertSame(route($verticalCurrent), $active->item(0)->getAttribute('href'));
+        $this->assertSame(array_map(fn ($name) => route($name), ['home', 'repair', 'repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
+        $this->assertSame(5, $xpath->query('./a/*[@aria-hidden="true"]', $menu)->length);
+        $shopAccordion = $xpath->query('./details[contains(@class,"np-drawer-categories")]', $menu)->item(0);
+        $this->assertNotNull($shopAccordion);
+        $this->assertSame('فروشگاه', trim($xpath->query('./summary', $shopAccordion)->item(0)->textContent));
+        $this->assertSame($current === 'products.index', $shopAccordion->hasAttribute('open'));
+        $this->assertSame(1, $xpath->query('.//a[@href="'.route('products.index').'" and normalize-space(.)="همه محصولات"]', $shopAccordion)->length);
+        $active = $xpath->query('.//a[@aria-current="page"]', $menu);
+        $this->assertSame($current ? 1 : 0, $active->length);
+        if ($current) {
+            $this->assertSame(route($current), $active->item(0)->getAttribute('href'));
         }
-        $this->assertSame(0, $xpath->query('./a[@aria-current="location"]', $menu)->length);
-        // Without JS, summary exposes its native expanded state. The enhancement
-        // adds aria-expanded at runtime rather than leaving a stale false value.
-        $this->assertSame(1, $xpath->query('//summary[@aria-controls="mobile-navigation" and not(@aria-expanded)]')->length);
+        $this->assertSame(0, $xpath->query('.//a[@aria-current="location"]', $menu)->length);
+        $this->assertSame(1, $xpath->query('//button[@aria-controls="mobile-drawer" and @aria-expanded="false" and @aria-haspopup="dialog"]')->length);
+        $this->assertSame(1, $xpath->query('//dialog[@id="mobile-drawer" and @aria-label="ناوبری موبایل" and not(@open)]')->length);
         $this->assertSame(0, $xpath->query('//header//*[@role="menu" or @role="menuitem"]')->length);
-        $this->assertSame(2, $xpath->query('//header//a[@href="'.route('account.index').'"]')->length);
-        $this->assertSame(0, $xpath->query('//header//a[contains(@href,"/login") or @href="#"]')->length);
+        $this->assertSame(0, $xpath->query('//header//a[@href="'.route('account.index').'"]')->length);
+        $this->assertSame(1, $xpath->query('//header//a[@data-customer-guest and @href="'.route('account.login').'"]')->length);
+        $this->assertSame(0, $xpath->query('//header//a[(contains(@href,"/login") and not(@data-customer-guest)) or @href="#"]')->length);
         foreach ($links as $link) {
-            $href = $link->getAttribute('href');
-            if ($href === route('account.index')) {
-                $this->get($href)->assertRedirect(route('account.login'));
-            } else {
-                $this->get($href)->assertOk();
-            }
+            $this->get($link->getAttribute('href'))->assertOk();
         }
     }
 }

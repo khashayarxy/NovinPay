@@ -30,7 +30,7 @@ return static function (string $root): array {
         'LARAVEL_STORAGE_PATH' => $root.'/storage', 'APP_CONFIG_CACHE' => $root.'/config.php',
         'APP_ROUTES_CACHE' => $root.'/routes.php', 'APP_EVENTS_CACHE' => $root.'/events.php',
         'CACHE_STORE' => 'file', 'SESSION_DRIVER' => 'database', 'SESSION_CONNECTION' => 'sqlite', 'SESSION_SECURE_COOKIE' => 'true',
-        'SUPPORT_CHAT_ENABLED' => 'true', 'SMSIR_ENABLED' => 'false', 'SMSIR_NOTIFICATIONS_ENABLED' => 'false',
+        'SUPPORT_CHAT_ENABLED' => 'true',
         'ZIBAL_ENABLED' => 'false', 'ZIBAL_LIVE_REQUESTS' => 'false',
         'POSTEX_QUOTES_ENABLED' => 'false', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'false',
         'QUEUE_CONNECTION' => 'sync', 'MAIL_MAILER' => 'array',
@@ -48,6 +48,14 @@ return static function (string $root): array {
     if (! is_dir($root.'/storage') || is_link($root.'/storage')
         || str_replace('\\', '/', (string) realpath($root.'/storage')) !== $root.'/storage') {
         $fail();
+    }
+
+    // Older private local settings need no rewrite. Never inherit a live OTP switch.
+    foreach (['IPPANEL_ENABLED', 'OPERATIONS_SCHEDULED_PAYMENTS'] as $switch) {
+        if (isset($settings[$switch]) && $settings[$switch] !== 'false') {
+            $fail();
+        }
+        $settings[$switch] = 'false';
     }
 
     return $settings;

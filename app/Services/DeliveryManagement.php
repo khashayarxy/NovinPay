@@ -18,6 +18,45 @@ use Illuminate\Support\Str;
 
 class DeliveryManagement
 {
+    public const CHECKOUT_METHODS = [
+        'pickup' => ['تحویل حضوری', 'بدون هزینهٔ ارسال'],
+        'tipax' => ['تیپاکس', 'هزینه هنگام تحویل به شرکت حمل پرداخت می‌شود.'],
+        'courier' => ['پیک', 'امکان ارسال و هزینه پس از بررسی نشانی اعلام می‌شود.'],
+    ];
+
+    public function checkoutAddress(CustomerAccount $account, ?string $addressId, string $method): ?array
+    {
+        if ($method === 'pickup') {
+            return null;
+        }
+        $address = CustomerAddress::query()->where('public_id', $addressId)->where('customer_account_id', $account->id)->lockForUpdate()->firstOrFail();
+
+        return $this->addressSnapshot($address);
+    }
+
+    public function applyCheckoutPreference(FinancialDocument $document, SalesOrder $order): void
+    {
+        $encrypted = DB::table('cart_purchase_snapshots')->where('sales_order_id', $order->id)->value('delivery');
+        if (! $encrypted || ! $order->customer_account_id) {
+            return;
+        }
+        $preference = decrypt($encrypted);
+        $plan = new DeliveryPlan;
+        $plan->financial_document_id = $document->id;
+        $plan->public_id = (string) Str::uuid();
+        $plan->customer_account_id = $order->customer_account_id;
+        $plan->requested_method = $preference['method'];
+        $plan->requested_address = $preference['address'];
+        $plan->version = 1;
+        $plan->save();
+        $this->event($plan, 'change_requested', null, $order->customer_account_id);
+    }
+
+    private function addressSnapshot(CustomerAddress $address): array
+    {
+        return ['recipient' => $address->recipient, 'phone' => $address->phone, 'province' => $address->province, 'city' => $address->city, 'address' => $address->address, 'postal_code' => $address->postal_code];
+    }
+
     public function request(CustomerAccount $account, string $documentId, string $method, ?string $addressId, int $version): DeliveryPlan
     {
         abort_unless(in_array($method, ['pickup', 'post', 'tipax', 'courier'], true), 422);
@@ -36,7 +75,7 @@ class DeliveryManagement
             $plan->public_id ??= (string) Str::uuid();
             $plan->customer_account_id = $account->id;
             $plan->requested_method = $method;
-            $plan->requested_address = $address ? ['recipient' => $address->recipient, 'phone' => $address->phone, 'province' => $address->province, 'city' => $address->city, 'address' => $address->address, 'postal_code' => $address->postal_code] : null;
+            $plan->requested_address = $address ? $this->addressSnapshot($address) : null;
             $plan->version = $plan->exists ? $plan->version + 1 : 1;
             $plan->save();
             $this->event($plan, 'change_requested', null, $account->id);
@@ -123,7 +162,7 @@ class DeliveryManagement
                 $order = SalesOrder::query()->findOrFail($document->sales_order_id);
                 app(CommerceManagement::class)->execute($actor, 'order.fulfill', ['operation_key' => (string) Str::uuid(), 'version' => $order->version, 'reason' => 'ثبت تحویل واقعی پس از تسویه', 'fulfillment_info' => $recipient.' / '.$tracking], $order);
             } else {
-                app(RepairOperations::class)->update($actor, $case, 'delivery', ['version' => $case->version, 'recipient_name' => $recipient, 'delivered_at' => RepairTime::input(), 'outcome_notes' => 'تحویل واقعی با مرجع '.$tracking, 'handover_confirmed' => true, 'amounts_confirmed' => true]);
+                app(RepairOperations::class)->update($actor, $case, 'delivery', ['version' => $case->version, 'recipient_name' => $recipient, 'delivered_at' => RepairTime::input(), 'outcome_notes' => 'تحویل واقعی با مرجع '.$tracking, 'handover_confirmed' => true, 'amounts_confirmed' => true, 'current_password' => $password]);
             }
         }, 3);
     }
@@ -132,6 +171,9 @@ class DeliveryManagement
     {
         $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->lockForUpdate()->first();
         abort_unless($plan && ! $plan->requested_method && $plan->state === 'planned', 409, 'روش تحویل باید تأیید شده باشد.');
+        $trackingLength = mb_strlen(trim((string) $plan->tracking));
+        abort_if($plan->method !== 'pickup' && ($trackingLength < 3 || $trackingLength > 200), 409,
+            'برای ثبت ارسال، شرکت ارسال و کد پیگیری را وارد کنید.');
         $plan->state = $plan->method === 'pickup' ? 'collected' : 'dispatched';
         $plan->version++;
         $plan->save();

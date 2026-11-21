@@ -38,12 +38,33 @@ function writeNew(string $path, array $value): void
             && fflush($handle) && fsync($handle), 'receipt_write', 'durable private receipt', [], 'Preserve the temporary receipt; inspect filesystem health.');
         fclose($handle);
         $handle = null;
-        requireGate(rename($tmp, $path), 'receipt_publish', 'atomic receipt publication', [], 'Preserve journal files and reconcile before resuming.');
+        requireGate(@link($tmp, $path), 'receipt_publish', 'atomic no-clobber receipt publication', [], 'Preserve journal files and reconcile before resuming.');
+        unlink($tmp);
     } finally {
         if (is_resource($handle)) {
             fclose($handle);
         }
     }
+}
+
+/** Shared by recovery and the conventional source updater, never application requests. */
+function operationLock(string $directory)
+{
+    $path = $directory.'/.operation.lock';
+    requireGate(! is_link($path), 'operation_lock_type', 'regular private operation lock', [], 'Preserve the unexpected path.');
+    if (file_exists($path)) {
+        requireGate(is_file($path) && (PHP_OS_FAMILY === 'Windows' || (fileowner($path) === posix_geteuid() && (fileperms($path) & 0777) === 0600)),
+            'operation_lock_permissions', 'same-owner private regular file', [], 'Inspect lock permissions without changing them.');
+    }
+    $mask = umask(0077);
+    try {
+        $handle = fopen($path, 'c+b');
+    } finally {
+        umask($mask);
+    }
+    requireGate(is_resource($handle) && flock($handle, LOCK_EX | LOCK_NB), 'operation_already_running', 'exclusive backup or release operation', [], 'Wait for the current owned operation; do not terminate it.');
+
+    return $handle;
 }
 
 final class Journal
@@ -114,6 +135,11 @@ final class Journal
 /** API secrets stay in the existing local DPAPI workflow. Each request is unique. */
 function requestQuota(array $manifest, string $directory, string $purpose, int $required = 805306368): array
 {
+    $protocol = $manifest['quotaProtocol'] ?? 1;
+    requireGate(in_array($protocol, [1, 2], true), 'quota_protocol_version', 'known pinned quota protocol', [], 'Use the matching qualified bridge and release tools.');
+    if ($protocol === 2) {
+        return requestQuotaV2($manifest, $directory, $purpose, $required);
+    }
     $nonce = bin2hex(random_bytes(16));
     $request = ['format' => 1, 'nonce' => $nonce, 'phase' => $purpose, 'sourceCommit' => $manifest['baseline'],
         'targetCommit' => $manifest['target'], 'manifestSha256' => $manifest['_sha256'], 'createdAtUnix' => time(), 'requiredFreeBytes' => $required];
@@ -122,18 +148,13 @@ function requestQuota(array $manifest, string $directory, string $purpose, int $
     $deadline = microtime(true) + 180;
     do {
         clearstatcache();
-        if (is_file($base.'-ready.json')) {
-            try {
-                $ready = json_decode(privateRead($base.'-ready.json'), true, 16, JSON_THROW_ON_ERROR);
-            } catch (\JsonException) {
-                // The API may have created the file while still uploading it.
+        if (is_file($base.'-ready.json') && is_file($base.'-reply.json')) {
+            $proof = quotaReply(privateRead($base.'-ready.json'), privateRead($base.'-reply.json'));
+            if ($proof === null) {
                 usleep(250000);
 
                 continue;
             }
-            $text = privateRead($base.'-reply.json');
-            requireGate(hash_equals($ready['sha256'] ?? '', hash('sha256', $text)), 'quota_response_hash', 'verified API response', [], 'Inspect broker evidence.');
-            $proof = json_decode($text, true, 16, JSON_THROW_ON_ERROR);
             quotaGate($proof, time(), $nonce, $manifest['baseline'], (int) disk_free_space('/home/novinpay'), $required);
             requireGate(($proof['manifestSha256'] ?? '') === $manifest['_sha256'] && ($proof['phase'] ?? '') === $purpose
                 && $proof['observedAtUnix'] >= $request['createdAtUnix'] - 2, 'quota_request_binding', 'response to this exact request', [], 'Refresh only quota.');
@@ -145,10 +166,96 @@ function requestQuota(array $manifest, string $directory, string $purpose, int $
     throw new Pending('quota_api_response_pending');
 }
 
-/** No raw argv/stderr is ever printed. Supports only caller-supplied reviewed argv. */
-function command(array $argv, string $cwd, string $operation, int $timeout = 180): array
+/** The coordinator creates a private mailbox before the Windows receiver declares READY. */
+function quotaMailbox(string $directory, string $pin): string
 {
-    $p = proc_open($argv, [0 => ['file', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $cwd, null, ['bypass_shell' => true]);
+    requireGate(preg_match('/\A[a-f0-9]{64}\z/D', $pin) === 1, 'quota_manifest_pin', 'exact manifest SHA-256', [], 'Pin the reviewed release manifest.');
+    $path = $directory.'/quota-v2-'.$pin;
+    requireGate(is_dir($path) && ! is_link($path) && realpath($path) === str_replace('/', DIRECTORY_SEPARATOR, $path)
+        && (PHP_OS_FAMILY === 'Windows' || (fileowner($path) === posix_geteuid() && (fileperms($path) & 0777) === 0700)),
+        'quota_mailbox_identity', 'prepared private same-owner mailbox', [], 'Prepare and verify the mailbox before starting deployment or capture.');
+
+    return $path;
+}
+
+/** An incomplete upload is never consumable. A complete envelope is immutable. */
+function quotaEnvelope(string $bytes, array $request, string $requestHash): ?array
+{
+    requireGate(strlen($bytes) <= 8192, 'quota_envelope_size', 'bounded quota envelope', [], 'Preserve the response and reconcile the bridge.');
+    try {
+        $envelope = json_decode($bytes, true, 8, JSON_THROW_ON_ERROR);
+    } catch (\JsonException) {
+        return null;
+    }
+    requireGate(is_array($envelope) && ($envelope['format'] ?? null) === 2 && is_string($envelope['body'] ?? null)
+        && is_string($envelope['sha256'] ?? null), 'quota_envelope_identity', 'versioned quota envelope', [], 'Inspect the response and the prepared bridge version.');
+    $body = base64_decode($envelope['body'], true);
+    requireGate(is_string($body) && hash_equals($envelope['sha256'], hash('sha256', $body)),
+        'quota_response_hash', 'authentic complete quota response bytes', [], 'Preserve the mismatched response.');
+    try {
+        $response = json_decode($body, true, 12, JSON_THROW_ON_ERROR);
+    } catch (\JsonException) {
+        $response = null;
+    }
+    requireGate(is_array($response) && ($response['requestSha256'] ?? null) === $requestHash
+        && ($response['format'] ?? null) === 2, 'quota_request_binding', 'exact request digest and protocol', [], 'Inspect the pinned operation.');
+    foreach (['nonce', 'phase', 'sourceCommit', 'targetCommit', 'manifestSha256'] as $key) {
+        requireGate(($response[$key] ?? null) === $request[$key], 'quota_request_binding', 'response bound to the same operation', [], 'Inspect the pinned operation.');
+    }
+
+    return $response;
+}
+
+function requestQuotaV2(array $manifest, string $directory, string $purpose, int $required): array
+{
+    $mailbox = quotaMailbox($directory, $manifest['_sha256']);
+    $nonce = bin2hex(random_bytes(16));
+    $created = time();
+    $request = ['format' => 2, 'nonce' => $nonce, 'phase' => $purpose, 'sourceCommit' => $manifest['baseline'],
+        'targetCommit' => $manifest['target'], 'manifestSha256' => $manifest['_sha256'], 'createdAtUnix' => $created,
+        'expiresAtUnix' => $created + 180, 'requiredFreeBytes' => $required];
+    $base = $mailbox.'/quota-'.$nonce;
+    writeNew($base.'-request.json', $request);
+    $requestHash = hash('sha256', privateRead($base.'-request.json'));
+    $status = ['format' => 2, 'nonce' => $nonce, 'phase' => $purpose, 'manifestSha256' => $manifest['_sha256'], 'requestSha256' => $requestHash];
+    $deadline = hrtime(true) + 180_000_000_000;
+    $replyHash = null;
+    $incomplete = false;
+    try {
+        while (hrtime(true) < $deadline && time() < $request['expiresAtUnix']) {
+            clearstatcache();
+            $path = $base.'-response.json';
+            if (file_exists($path) || is_link($path)) {
+                $data = privateRead($path);
+                $response = quotaEnvelope($data, $request, $requestHash);
+                $incomplete = $response === null;
+                if ($response !== null) {
+                    $replyHash = hash('sha256', $data);
+                    requireGate(($response['observedAtUnix'] ?? 0) >= $created - 2,
+                        'quota_request_binding', 'observation taken for this request', [], 'Refresh quota through a qualified new attempt.');
+                    quotaGate($response, time(), $nonce, $manifest['baseline'], (int) disk_free_space('/home/novinpay'), $required);
+                    writeNew($base.'-ack.json', $status + ['result' => 'accepted', 'responseSha256' => $replyHash, 'observedAtUnix' => time()]);
+
+                    return $response;
+                }
+            }
+            usleep(500000);
+        }
+        throw new Pending($incomplete ? 'quota_incomplete_response' : 'quota_api_response_pending');
+    } catch (Throwable $error) {
+        if (! file_exists($base.'-ack.json')) {
+            writeNew($base.'-ack.json', $status + ['result' => $error instanceof Pending ? 'expired' : 'rejected',
+                'check' => $error instanceof GateFailure ? $error->check : ($error instanceof Pending ? $error->getMessage() : 'quota_consumer'),
+                'responseSha256' => $replyHash, 'observedAtUnix' => time()]);
+        }
+        throw $error;
+    }
+}
+
+/** No raw argv/stderr is ever printed. Supports only caller-supplied reviewed argv. */
+function command(array $argv, string $cwd, string $operation, int $timeout = 180, ?array $environment = null): array
+{
+    $p = proc_open($argv, [0 => ['file', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $cwd, $environment, ['bypass_shell' => true]);
     requireGate(is_resource($p), $operation, 'native process starts', [], 'Inspect executable availability.');
     foreach ($pipes as $pipe) {
         stream_set_blocking($pipe, false);

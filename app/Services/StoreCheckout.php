@@ -10,6 +10,8 @@ use App\Models\SalesOrder;
 use App\Models\SalesOrderEvent;
 use App\Models\SalesOrderLine;
 use App\Support\OrderMoney;
+use App\Support\ProductSale;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -17,22 +19,47 @@ class StoreCheckout
 {
     public function offer(Product $product, bool $lock = false): ?InventoryItem
     {
-        if (! $product->is_published || $product->is_sample || ! $product->price || $product->price <= 0 || $product->stock_status->value === 'out_of_stock') {
+        if (! ProductSale::permitsInventoryCheck($product)) {
             return null;
         }
-        $query = InventoryItem::query()->where('product_id', $product->id)->where('condition', $product->condition->value)->orderBy('id');
-        $items = ($lock ? $query->lockForUpdate() : $query)->get();
 
-        // Ambiguous catalogue/SKU mapping is not an invitation to choose arbitrary stock.
-        return $items->count() === 1 && $items->first()->available > 0 ? $items->first() : null;
+        return $this->availableStock($product, $lock);
     }
 
-    public function create(CustomerAccount $account, array $cart, string $key): SalesOrder
+    public function availableStock(Product $product, bool $lock = false): ?InventoryItem
     {
-        abort_unless(Str::isUuid($key) && count($cart) > 0 && count($cart) <= 30, 422);
+        $item = $this->confirmedInventory($product, $lock);
+
+        return $item && $item->available > 0 ? $item : null;
+    }
+
+    public function confirmedInventory(Product $product, bool $lock = false): ?InventoryItem
+    {
+        if (! $product->stock_status->permitsCheckout()) {
+            return null;
+        }
+        $query = $product->inventoryItems()->where('condition', $product->condition->value)->orderBy('id');
+        $items = ! $lock && $product->relationLoaded('inventoryItems')
+            ? $product->inventoryItems->where('condition', $product->condition->value)
+            : ($lock ? $query->lockForUpdate() : $query)->get();
+
+        // Ambiguous catalogue/SKU mapping is not an invitation to choose arbitrary stock.
+        return $items->count() === 1 ? $items->first() : null;
+    }
+
+    public function quote(Collection $products): string
+    {
+        $prices = $products->mapWithKeys(fn (Product $product) => [$product->slug => (string) $product->price])->sortKeys();
+
+        return hash_hmac('sha256', $prices->toJson(JSON_THROW_ON_ERROR), config('app.key'));
+    }
+
+    public function create(CustomerAccount $account, array $cart, string $key, ?string $quote = null): SalesOrder
+    {
+        abort_unless(Str::isUuid($key) && count($cart) <= 30, 422);
         ksort($cart);
 
-        return DB::transaction(function () use ($account, $cart, $key): SalesOrder {
+        return DB::transaction(function () use ($account, $cart, $key, $quote): SalesOrder {
             $digest = hash_hmac('sha256', json_encode($cart, JSON_THROW_ON_ERROR), config('app.key'));
             $fresh = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
             abort_unless($fresh->is_active && $fresh->session_version === $account->session_version && $fresh->customer_id, 403, 'ابتدا پروفایل و اتصال حساب خود را تکمیل کنید.');
@@ -40,12 +67,15 @@ class StoreCheckout
             abort_unless($customer->is_active && ! $customer->merged_into_id, 409);
             $previous = SalesOrder::query()->where('checkout_key', $key)->first();
             if ($previous) {
-                abort_unless($previous->customer_account_id === $fresh->id && hash_equals($previous->checkout_digest, $digest), 409);
+                abort_unless($previous->customer_account_id === $fresh->id
+                    && ($cart === [] || hash_equals($previous->checkout_digest, $digest)), 409);
 
                 return $previous;
             }
+            abort_if($cart === [], 422);
             $products = Product::query()->whereIn('slug', array_keys($cart))->orderBy('id')->lockForUpdate()->get();
             abort_unless($products->count() === count($cart), 409);
+            abort_if($quote !== null && ! hash_equals($this->quote($products), $quote), 409, 'قیمت کالا تغییر کرده است؛ سبد را دوباره بررسی کنید.');
             $order = new SalesOrder;
             foreach (['public_id' => (string) Str::uuid(), 'customer_id' => $customer->id, 'customer_account_id' => $fresh->id, 'checkout_key' => $key, 'checkout_digest' => $digest, 'status' => 'draft', 'currency' => 'TOMAN', 'total' => '0.00', 'version' => 1] as $field => $value) {
                 $order->$field = $value;

@@ -55,7 +55,7 @@ class ProductCatalogTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('دستگاه کارتخوان نمونه');
-        $response->assertSee('۱,۲۰۰,۰۰۰');
+        $response->assertSee('۱٬۲۰۰٬۰۰۰');
         $response->assertSee('موجود');
         $response->assertSee('نو');
         $response->assertSee('داده نمونه');
@@ -303,7 +303,7 @@ class ProductCatalogTest extends TestCase
         $response->assertOk();
         $response->assertSee('استوک');
         $response->assertSee('ناموجود');
-        $response->assertSee('تماس بگیرید');
+        $response->assertSee('قیمت اعلام نشده')->assertDontSee('استعلام قیمت');
     }
 
     public function test_sample_seeder_creates_clearly_labelled_rows(): void
@@ -395,6 +395,19 @@ class ProductCatalogTest extends TestCase
             ->assertSee('استعلام قیمت')
             ->assertSee('href="tel:09362896373"', false)
             ->assertDontSee('پس از تکمیل بخش مدیریت');
+    }
+
+    public function test_catalogue_canonicals_use_configured_origin_and_never_include_private_query_input(): void
+    {
+        $product = $this->makeProduct(['slug' => 'canonical-product', 'is_sample' => false]);
+        $origin = rtrim(config('app.url'), '/');
+        $this->withServerVariables(['HTTP_HOST' => 'untrusted.example']);
+        $this->get('/?token=PRIVATE')->assertOk()->assertSee('rel="canonical" href="'.$origin.'/"', false);
+        $this->get('/products/'.$product->slug.'?token=PRIVATE')->assertOk()
+            ->assertSee('rel="canonical" href="'.$origin.'/products/canonical-product"', false)->assertDontSee('PRIVATE');
+        $this->get('/products?q=canonical&token=PRIVATE')->assertOk()
+            ->assertSee('rel="canonical" href="'.$origin.'/products"', false)
+            ->assertSee('content="noindex, follow"', false)->assertDontSee('PRIVATE');
     }
 
     public function test_filter_validation_error_is_rendered_in_focusable_summary(): void

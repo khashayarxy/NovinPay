@@ -21,7 +21,7 @@ class PreviewAwareSession extends StartSession
             && $request->route('path') === 'api.php'
             && (isset($query['widget_config']) || isset($query['recovery_availability']));
         $this->readOnlyPreview = (($request->isMethod('GET') || $request->isMethod('HEAD'))
-            && $request->routeIs('admin.maintenance.preview', 'admin.maintenance.preview.page', 'support.chat.operator.asset'))
+            && $request->routeIs('admin.maintenance.preview', 'admin.maintenance.preview.page', 'support.chat.operator.asset', 'customer.header'))
             || $publicChatConfiguration;
         try {
             if ($this->readOnlyPreview && $this->sessionConfigured()) {
@@ -45,7 +45,7 @@ class PreviewAwareSession extends StartSession
     protected function storeCurrentUrl($request, $session)
     {
         // The widget and its background requests share the customer's Laravel session.
-        if (! $request->routeIs('support.chat', 'support.panel.worker')) {
+        if (! $request->routeIs('support.chat', 'support.panel.worker', 'customer.header')) {
             parent::storeCurrentUrl($request, $session);
         }
     }

@@ -38,12 +38,13 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0 # Real baseline/candidate release rehearsal in this existing job.
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sqlite3, xml, xmlwriter, zip
           coverage: none
-          tools: composer:v2
+          tools: composer:2.10.2 # Match the prepared vendor's generator, including Windows proxies.
       - name: Generate disposable application key
         run: |
           touch .env
@@ -67,6 +68,13 @@ jobs:
           cache: npm
       - name: Build assets required by rendered PHP responses
         run: npm ci && npm run build
+      - name: Quota bridge transport and interruption faults
+        run: |
+          pwsh -NoProfile -File tests/ReleaseQuota/bridge.ps1
+          python3 -B tests/ReleaseQuota/test_detached.py
+          bash tests/ReleaseQuota/qualified-operation.sh
+      - name: Schema-neutral runtime activation and forced file rollback
+        run: php scripts/release/prepare-runtime-rehearsal.php
       - name: Full SQLite regression suite
         run: php artisan test --compact --display-warnings --fail-on-warning
       - name: Article upgrade rollback and reapply preservation

@@ -12,6 +12,7 @@ use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
@@ -27,6 +28,35 @@ class SupportChatTest extends TestCase
     use RefreshDatabase;
 
     private string $private;
+
+    public function test_phone_recovery_reuses_only_ippanel_with_explicit_cli_gates(): void
+    {
+        app(ChatBridge::class)->begin();
+        require_once resource_path('support-chat/support/sms.php');
+        $names = ['SUPPORT_SMS_PROVIDER', 'SUPPORT_SMS_REAL_DELIVERY_ENABLED', 'SUPPORT_PHONE_RECOVERY_ENABLED'];
+        $before = array_combine($names, array_map('getenv', $names));
+        try {
+            putenv('SUPPORT_SMS_PROVIDER=ippanel');
+            putenv('SUPPORT_SMS_REAL_DELIVERY_ENABLED=1');
+            putenv('SUPPORT_PHONE_RECOVERY_ENABLED=1');
+            config(['customer.ippanel' => ['enabled' => true, 'api_key' => 'synthetic-key', 'pattern_code' => 'syntheticpattern', 'parameter' => 'code', 'sender' => '+983000505']]);
+            // CI logs to stderr; an isolated PHPUnit child must not emit provider diagnostics.
+            Log::spy();
+            Http::preventStrayRequests();
+            Http::fake(['https://edge.ippanel.com/v1/api/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [123]]])]);
+            $this->assertTrue(support_sms_ready());
+            $this->assertSame('accepted', (new \SupportIpPanel)->send('09120000000', '123456'));
+            Http::assertSentCount(1);
+            config(['customer.ippanel.enabled' => false]);
+            $this->assertFalse(support_sms_ready());
+            $this->expectException(\SupportFailure::class);
+            (new \SupportIpPanel)->send('09120000000', '123456');
+        } finally {
+            foreach ($before as $key => $value) {
+                putenv($value === false ? $key : $key.'='.$value);
+            }
+        }
+    }
 
     protected function setUp(): void
     {
@@ -433,6 +463,18 @@ class SupportChatTest extends TestCase
         $this->actingAs($account, 'customer')->withSession(['customer_session_version' => 1]);
         $this->get('https://localhost/support-chat/api.php?get_session=1')->assertOk();
         $this->assertDatabaseHas('chat_customer_owners', ['customer_account_id' => $account->id]);
+
+        $message = ['send_message' => '1', 'csrf_token' => $token, 'protocol_version' => '2', 'user_id' => $id,
+            'message' => 'Synthetic authenticated message', 'client_message_id' => (string) Str::uuid()];
+        $ack = $this->post('https://localhost/support-chat/api.php', $message)
+            ->assertOk()->assertJsonPath('replayed', false)->json('message_id');
+        $this->post('https://localhost/support-chat/api.php', $message)
+            ->assertOk()->assertJsonPath('replayed', true)->assertJsonPath('message_id', $ack);
+        $this->get('https://localhost/support-chat/api.php?get_conversation=1&user_id='.$id)
+            ->assertOk()->assertJsonCount(1, 'messages')->assertJsonPath('messages.0.text', $message['message']);
+        $stored = json_decode(file_get_contents($this->private.'/data/chat_conversations.json'), true, 64, JSON_THROW_ON_ERROR);
+        $this->assertSame($ack, $stored['conversations'][$id]['messages'][0]['id']);
+
         auth('customer')->logout();
         $this->post('https://localhost/support-chat/api.php', ['send_message' => '1', 'csrf_token' => $token, 'protocol_version' => '2', 'user_id' => $id, 'message' => 'synthetic rejected message', 'client_message_id' => (string) Str::uuid()])->assertUnauthorized();
         $this->get('https://localhost/support-chat/api.php?get_session=1')->assertUnauthorized();

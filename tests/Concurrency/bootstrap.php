@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
+require __DIR__.'/exit-guard.php';
 $db = DB::connection();
 $driver = $db->getDriverName();
 $database = $db->getDatabaseName();

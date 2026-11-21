@@ -347,7 +347,7 @@ try {
         'APP_BASE_PATH' => KIT.'/pr13-activation-app-r4', 'LARAVEL_STORAGE_PATH' => KIT.'/pr13-activation-app-r4/storage', 'APP_CONFIG_CACHE' => KIT.'/pr13-activation-app-r4/bootstrap/cache/release-config.php',
         'DB_CONNECTION' => 'mariadb', 'DB_HOST' => 'localhost', 'DB_PORT' => '3306', 'DB_DATABASE' => 'novinpay_live1', 'DB_USERNAME' => $mig['user'], 'DB_PASSWORD' => $mig['password'], 'DB_SOCKET' => '',
         'DB_URL' => 'mariadb://localhost/novinpay_live1?timezone=%2B00%3A00', 'CACHE_STORE' => 'file', 'SESSION_DRIVER' => 'file', 'QUEUE_CONNECTION' => 'sync', 'MAIL_MAILER' => 'log',
-        'ZIBAL_ENABLED' => 'false', 'ZIBAL_LIVE_REQUESTS' => 'false', 'SMSIR_ENABLED' => 'false', 'SMSIR_NOTIFICATIONS_ENABLED' => 'false', 'POSTEX_QUOTES_ENABLED' => 'false', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'false'];
+        'ZIBAL_ENABLED' => 'false', 'ZIBAL_LIVE_REQUESTS' => 'false', 'IPPANEL_ENABLED' => 'false', 'POSTEX_QUOTES_ENABLED' => 'false', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'false'];
     foreach ($overrides as $key => $value) {
         putenv($key.'='.$value);
     }

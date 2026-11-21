@@ -1,16 +1,17 @@
 // Playwright function for the local Herd site. Session and history responses are synthetic.
 async page=>{
  const origin='https://novinpaypos.test',out=[],id='user_'+('a'.repeat(32))+'_42',fixture={role:'customer',protocol_version:2,scope_id:'b'.repeat(64),session_epoch:'c'.repeat(32)};
- for(const {mobile,fail,existing} of [{mobile:false,fail:true,existing:true},{mobile:true,fail:false,existing:true},{mobile:false,fail:false,existing:false}]){
+ for(const {mobile,fail,existing,sessionFail=false} of [{mobile:false,fail:true,existing:true},{mobile:true,fail:false,existing:true,sessionFail:true},{mobile:true,fail:false,existing:true},{mobile:false,fail:false,existing:false}]){
   const c=await page.context().browser().newContext({viewport:mobile?{width:390,height:844}:{width:1200,height:850},isMobile:mobile,hasTouch:mobile,reducedMotion:'reduce'});
   try{
    const p=await c.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
-   let histories=0;const reply=(route,json,status=200)=>route.fulfill({status,json,headers:{'Cache-Control':'no-store'}});
-   await c.route(origin+'/support-chat/api.php?**',async route=>{
+   let histories=0,sessions=0;const reply=(route,json,status=200)=>route.fulfill({status,json,headers:{'Cache-Control':'no-store'}});
+   await c.route(origin+'/support-chat/**',async route=>{
     const u=new URL(route.request().url()),q=u.searchParams;
+    if(!u.pathname.endsWith('.php')||u.pathname.endsWith('support-widget.php'))return route.continue();
     if(q.has('widget_config'))return route.continue();
     if(route.request().method()!=='GET')return reply(route,{status:'success'});
-    if(q.has('get_session')){await new Promise(r=>setTimeout(r,450));return reply(route,{status:'success',token:'d'.repeat(64),context:fixture,user_id:existing?id:null,draft_user_id:id});}
+    if(q.has('get_session')){const n=++sessions;await new Promise(r=>setTimeout(r,450));if(sessionFail&&n===1)return reply(route,{status:'error'},503);return reply(route,{status:'success',token:'d'.repeat(64),context:fixture,user_id:existing?id:null,draft_user_id:id});}
     if(q.has('get_csrf'))return reply(route,{token:'d'.repeat(64),context:fixture});
     if(q.has('get_conversation')){
      const n=++histories;await new Promise(r=>setTimeout(r,650));
@@ -18,7 +19,7 @@ async page=>{
      const rows=existing&&!q.has('after_sequence')?[1,2].map((id,i)=>({id,sequence:id,client_message_id:null,type:'admin',text:'پیام آزمایشی '+id,time:'2026-11-08 08:0'+i+':00',customer_read:true,sender_account_group:'e'.repeat(32)})):[];
      return reply(route,{status:'success',protocol_version:2,conversation_id:id,store_epoch:'f'.repeat(32),next_after:existing?2:0,high_watermark:existing?2:0,head_sequence:existing?2:0,has_more:false,messages:rows,lifecycle:{resolved:false,episode:1}});
     }
-    return route.continue();
+    return reply(route,{status:'success',push_enabled:false,active:true});
    });
    await p.goto(origin+'/',{waitUntil:'domcontentloaded'});
    const launch=p.locator('[data-support-launcher]');await launch.evaluate(el=>el.addEventListener('click',()=>window.chatClick=performance.now(),{once:true}));await launch.click();
@@ -27,7 +28,7 @@ async page=>{
    const shellState=()=>shell.evaluate(el=>{const d=el.ownerDocument,rect=s=>{const r=d.querySelector(s).getBoundingClientRect();return [r.x,r.y,r.width,r.height];};window.firstHeader??=d.querySelector('.chat-header');return {same:window.firstHeader===d.querySelector('.chat-header'),header:rect('.chat-header'),composer:rect('#inputArea'),shell:rect('#chatWindow'),disabled:d.querySelector('#chatInput').disabled,rows:d.querySelectorAll('#messages article').length,state:el.dataset.initState};});
    const loading=await shellState();
    if(!loading.disabled||loading.rows||loading.state!=='initializing')throw Error(JSON.stringify({badLoading:loading}));
-   if(fail){const retry=f.locator('[data-init-retry]');await retry.waitFor({state:'visible'});const stopped=histories;await p.waitForTimeout(350);if(histories!==stopped)throw Error('Automatic history retry');await retry.click();}
+   // The first transient history failure recovers without a click or reload.
    await f.locator('#chatWindow[data-init-state=ready]').waitFor({timeout:10000});
    const ready=await shellState();
    if(!ready.same||ready.disabled||ready.rows!==(existing?2:0)||JSON.stringify(loading.header)!==JSON.stringify(ready.header)||JSON.stringify(loading.composer)!==JSON.stringify(ready.composer)||JSON.stringify(loading.shell)!==JSON.stringify(ready.shell))throw Error(JSON.stringify({loading,ready}));
@@ -43,7 +44,7 @@ async page=>{
    if(await f.locator('#messages article').count()!==(existing?2:0))throw Error('Reload lost or duplicated history');
    if(existing&&histories-beforeReload!==1)throw Error('Reload requested initial history more than once');
    if(errors.length)throw Error(errors[0]);
-   out.push({mobile,fail,existing,histories,stable:true,ready});
-  }finally{await c.close();}
+   out.push({mobile,fail,sessionFail,existing,histories,sessions,stable:true,ready});
+  }catch(error){const details=await c.pages()[0]?.frames().find(frame=>frame.url().includes('support-widget'))?.evaluate(()=>({state:document.querySelector('#chatWindow')?.dataset,diagnostics:globalThis.SupportInitDiagnostics,metrics:globalThis.SupportDeliveryMetrics})).catch(()=>null);throw new Error(JSON.stringify({message:error.message,mobile,fail,existing,details}));}finally{await c.close();}
  }return out;
 }

@@ -2,7 +2,6 @@
 
 require dirname(__DIR__).'/Concurrency/bootstrap.php';
 
-use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -14,14 +13,14 @@ $paths = array_map(fn ($path) => 'database/migrations/'.basename($path), array_s
 auditCheck(str_ends_with($paths[6], 'renormalize_search_text.php'), 'Expected seven-migration baseline');
 auditCheck(Artisan::call('migrate:fresh', ['--path' => $paths, '--force' => true]) === 0, 'Baseline installation succeeds');
 User::factory()->create(['name' => 'Synthetic retained owner']);
-Product::create(['name' => 'Synthetic retained product', 'slug' => 'synthetic-upgrade-product', 'category' => 'pos_terminal', 'condition' => 'used', 'is_published' => true]);
+DB::table('products')->insert(['name' => 'Synthetic retained product', 'slug' => 'synthetic-upgrade-product', 'category' => 'pos_terminal', 'condition' => 'used', 'is_published' => true]);
 $before = [];
 foreach (['users', 'products', 'migrations'] as $table) {
     $before[$table] = DB::table($table)->orderBy('id')->get()->toArray();
 }
 auditCheck(Artisan::call('migrate', ['--force' => true]) === 0, 'Additive upgrade succeeds');
 foreach (['users', 'products'] as $table) {
-    auditCheck($before[$table] == DB::table($table)->orderBy('id')->get()->toArray(), $table.' unchanged on upgrade');
+    auditCheck($before[$table] == DB::table($table)->select(array_keys((array) $before[$table][0]))->orderBy('id')->get()->toArray(), $table.' original columns unchanged on upgrade');
 }
 auditCheck($before['migrations'] == DB::table('migrations')->orderBy('id')->limit(7)->get()->toArray(), 'Original migration records/batches unchanged');
 auditCheck(DB::table('admin_accounts')->count() === 0, 'Migration grants no administrator');

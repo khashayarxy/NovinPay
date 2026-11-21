@@ -1,15 +1,24 @@
-import { initSimpleRepair } from './admin-simple-repair';
 import { initMobileNavigation } from './mobile-navigation';
-import { initAdminCalendar } from './admin-calendar';
-import { initAdminDigits } from './admin-digits';
+import { initClickMap } from './click-map';
+import { initCustomerNavigation } from './customer-navigation';
+
+if (typeof BroadcastChannel !== 'undefined') {
+    const commerce = new BroadcastChannel('novinpay-commerce');
+    document.addEventListener('submit', event => {
+        const path = new URL(event.target.action, location.href);
+        if (path.origin === location.origin && /^\/account\/(verify|password-login|logout|password)$/.test(path.pathname)) {
+            commerce.postMessage('identity-change');
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
+    initClickMap();
     initMobileNavigation();
-    initSimpleRepair();
+    initCustomerNavigation();
     const admin = document.querySelector('.admin-site #main-content');
     if (admin) {
-        initAdminCalendar(admin);
-        initAdminDigits(admin);
+        import('./admin-fields.js').then(({initAdminFields}) => initAdminFields(admin));
     }
     const adminNavigation = document.querySelector('[data-admin-navigation]');
     if (adminNavigation instanceof HTMLDetailsElement) {
@@ -78,19 +87,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (window.isSecureContext && navigator.clipboard?.writeText) {
-        document.querySelectorAll('[data-copy-address], [data-copy-account]').forEach((button) => {
+        document.querySelectorAll('[data-copy-account]').forEach((button) => {
             button.hidden = false;
             button.addEventListener('click', async () => {
-                const isAccount = button.hasAttribute('data-copy-account');
-                const source = document.getElementById(button.dataset.copyAccount ?? button.dataset.copyAddress);
+                const source = document.getElementById(button.dataset.copyAccount);
                 const status = document.getElementById(button.getAttribute('aria-describedby'));
                 if (!source || !status) return;
                 status.textContent = '';
                 try {
                     await navigator.clipboard.writeText(source.textContent.trim());
-                    status.textContent = isAccount ? 'شناسه کپی شد.' : 'نشانی کپی شد.';
+                    status.textContent = 'شناسه کپی شد.';
                 } catch {
-                    status.textContent = isAccount ? 'کپی خودکار انجام نشد. شناسه را انتخاب و کپی کنید.' : 'کپی خودکار انجام نشد؛ نشانی را انتخاب و کپی کنید.';
+                    status.textContent = 'کپی خودکار انجام نشد. شناسه را انتخاب و کپی کنید.';
                 }
             });
         });

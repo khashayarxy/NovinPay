@@ -51,6 +51,16 @@ class RepairRequestTest extends TestCase
         return RepairRequest::query()->sole();
     }
 
+    public function test_repair_start_preserves_the_form_as_the_login_destination(): void
+    {
+        $this->get(route('repair.start'))->assertRedirect(route('repair'));
+        auth('customer')->logout();
+
+        $this->get(route('repair.start'))
+            ->assertRedirect(route('account.login'))
+            ->assertSessionHas('customer_intended', route('repair', [], false));
+    }
+
     public function test_repair_form_has_one_description_and_preserves_submissions_from_older_forms(): void
     {
         $this->get('/repair')->assertOk()->assertSee('شرح مشکل دستگاه')

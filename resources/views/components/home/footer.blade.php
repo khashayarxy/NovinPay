@@ -1,12 +1,26 @@
-<footer class="np-footer">
+@props(['compact' => false])
+<footer @class(['np-footer', 'np-footer--compact' => $compact])>
+    @if ($compact)
+        <div class="np-container np-footer__transaction">
+            <a href="{{ route('home') }}">{{ config('business.name') }}</a>
+            <a href="{{ route('terms') }}">شرایط خرید</a>
+            <x-business-phones link-class="np-footer__phone" />
+        </div>
+    @else
     <div class="np-container">
         <div class="np-footer__grid">
             <div class="np-footer__brand">
                 <div class="np-footer__identity">
                     <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
-                    <p>فروش و تعمیر دستگاه‌های کارتخوان در شهریار</p>
+                    <p>فروش و تعمیر کارتخوان در شهریار</p>
                 </div>
-                <x-home.enamad />
+                <div class="np-footer__marks">
+                    <x-home.enamad />
+                    @if (config('business.show_footer_affiliation_marks', false))
+                        <img class="np-footer__nezam" src="{{ asset('brand/trust/NezamSenfi.svg') }}" width="64" height="51" alt="سازمان نظام صنفی رایانه‌ای" loading="lazy" decoding="async">
+                        <img class="np-footer__shaparak" src="{{ asset('brand/trust/Shaparak.svg') }}" width="76" height="50" alt="شاپرک، شبکهٔ پرداخت" loading="lazy" decoding="async">
+                    @endif
+                </div>
             </div>
             <nav aria-label="پیوندهای کاربردی">
                 <h2>دسترسی سریع</h2>
@@ -26,4 +40,5 @@
             <p>تمامی حقوق برای {{ config('business.name') }} محفوظ است. © {{ \App\Support\FaNumber::digits(now()->year) }}</p>
         </div>
     </div>
+    @endif
 </footer>

@@ -116,6 +116,14 @@
                 @error('price')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
+                @if ($product->price_changed_at)
+                    <p class="text-sm text-slate-600">آخرین تغییر ثبت‌شده {{ \App\Support\FinanceTime::persianDate($product->price_changed_at) ?? \App\Support\FinanceTime::display($product->price_changed_at, false) }}</p>
+                @elseif ($product->exists && \App\Support\ProductSale::priceConfirmed($product))
+                    <label class="label mt-2" for="historical_price_date">تاریخ مستند قیمت فعلی (اختیاری)</label>
+                    <input class="input" id="historical_price_date" name="historical_price_date" dir="ltr" maxlength="10"
+                        placeholder="۱۴۰۵/۰۸/۱۰" value="{{ old('historical_price_date') }}" aria-describedby="price-date-help">
+                    <p id="price-date-help" class="text-sm text-slate-600">اگر تاریخ دقیق معلوم است، آن را بدون تغییر قیمت وارد کنید. تغییر قیمت جدید خودکار ثبت می‌شود.</p>
+                @endif
             </div>
 
             <div>
@@ -137,11 +145,13 @@
         </div>
 
         <div class="admin-form-grid">
+            <input type="hidden" name="is_published" value="0">
             <label class="admin-checkbox">
                 <input type="checkbox" name="is_published" value="1" class="size-4 rounded border-slate-300"
                     @checked($isPublishedChecked)>
                 <span>منتشر شود (نمایش در وب‌سایت عمومی)</span>
             </label>
+            <input type="hidden" name="is_sample" value="0">
             <label class="admin-checkbox">
                 <input type="checkbox" name="is_sample" value="1" class="size-4 rounded border-slate-300"
                     @checked($isSampleChecked)>
@@ -223,13 +233,16 @@
         <button type="button" class="btn btn-secondary" data-add-spec-row>افزودن ردیف مشخصات</button>
     </details>
 
+    @include('admin.products._storefront')
+
     <div class="admin-section space-y-3">
         <h2 class="text-base font-semibold">تصویر محصول</h2>
 
         @if ($product->image_path)
             <div class="flex items-center gap-4">
-                <img src="{{ asset('storage/' . $product->image_path) }}" alt="تصویر فعلی {{ $product->name }}"
-                    class="size-20 rounded-lg border border-slate-200 object-cover">
+                <img src="{{ route('products.media', basename($product->image_path)) }}"
+                    alt="{{ $product->primaryImage()['alt'] ?? 'تصویر فعلی '.$product->name }}" width="80" height="80"
+                    class="size-20 rounded-lg border border-slate-200 object-contain">
                 <p class="text-xs leading-6 text-slate-500">با انتخاب فایل جدید، تصویر فعلی جایگزین می‌شود.</p>
             </div>
         @endif
@@ -245,6 +258,54 @@
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
             @enderror
         </div>
+        <div>
+            <label class="label" for="image_alt">متن جایگزین تصویر اصلی</label>
+            <input class="input" id="image_alt" name="image_alt" type="text" maxlength="160"
+                value="{{ old('image_alt', $product->primaryImage()['alt'] ?? '') }}">
+            @error('image_alt')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+        @if ($product->galleryImages())
+            <div class="flex flex-wrap gap-3" aria-label="تصاویر فعلی گالری">
+                @foreach ($product->galleryImages() as $image)
+                    <img src="{{ route('products.media', basename($image['path'])) }}"
+                        alt="{{ $image['alt'] ?? 'تصویر '.$product->name }}" loading="lazy" width="80" height="80"
+                        class="size-20 rounded-lg border border-slate-200 object-contain">
+                @endforeach
+            </div>
+            @if (count($product->galleryImages()) === 2)
+                <input type="hidden" name="gallery_revision" value="{{ $product->galleryRevision() }}">
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="gallery_order" value="reverse" @checked(old('gallery_order') === 'reverse')>
+                    جای دو تصویر فعلی گالری عوض شود
+                </label>
+                @error('gallery_order')<p role="alert" class="text-sm text-red-600">{{ $message }}</p>@enderror
+            @endif
+        @endif
+        <fieldset class="space-y-3">
+            <legend class="label">تصاویر گالری</legend>
+            <p class="text-xs leading-6 text-slate-500">تا دو تصویر به ترتیب انتخاب کنید. بارگذاری تصاویر جدید جایگزین گالری فعلی می‌شود.</p>
+            @for ($index = 0; $index < 2; $index++)
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <div>
+                        <label class="label" for="gallery-image-{{ $index }}">تصویر گالری {{ \App\Support\FaNumber::digits($index + 1) }}</label>
+                        <input class="input" type="file" id="gallery-image-{{ $index }}" name="gallery_images[{{ $index }}]"
+                            accept="image/jpeg,image/png,image/webp">
+                    </div>
+                    <div>
+                        <label class="label" for="gallery-alt-{{ $index }}">متن جایگزین تصویر گالری {{ \App\Support\FaNumber::digits($index + 1) }}</label>
+                        <input class="input" type="text" id="gallery-alt-{{ $index }}" name="gallery_alts[{{ $index }}]"
+                            maxlength="160" value="{{ old('gallery_alts.'.$index) }}">
+                    </div>
+                </div>
+            @endfor
+            @foreach ($errors->get('gallery_images*') + $errors->get('gallery_alts*') as $messages)
+                @foreach ($messages as $message)
+                    <p class="text-xs text-red-600">{{ $message }}</p>
+                @endforeach
+            @endforeach
+        </fieldset>
     </div>
 
     <div class="admin-form-footer">

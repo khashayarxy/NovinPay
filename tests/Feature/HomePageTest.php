@@ -28,6 +28,8 @@ class HomePageTest extends TestCase
             $this->assertCount(1, $xpath->query('//footer//div[contains(@class,"np-footer__brand")]//'.$selector));
             $this->assertCount(0, $xpath->query('//img[starts-with(@src,"https://trustseal.enamad.ir/")]'));
             $this->assertCount(1, $xpath->query('//img[@src="'.asset('brand/trust/enamad-8644634.png').'"]'));
+            $this->assertCount(1, $xpath->query('//footer//div[@class="np-footer__marks"]//img'));
+            $this->assertCount(0, $xpath->query('//footer//img[contains(@src,"NezamSenfi.svg") or contains(@src,"Shaparak.svg")]'));
 
             $link = $links->item(0);
             $image = $xpath->query('./img', $link)->item(0);
@@ -161,8 +163,8 @@ class HomePageTest extends TestCase
         $response->assertDontSee('np-promotions')->assertDontSee('np-why');
         $response->assertDontSee('np-model-selection')->assertDontSee('np-model-focus');
         $response->assertSee('np-location__directions')->assertDontSee('np-hero-signature');
-        $response->assertSee('src="'.config('business.map_embed').'"', false);
-        $response->assertSee('loading="lazy"', false);
+        $response->assertSee('data-map-url="'.config('business.map_embed').'"', false);
+        $response->assertDontSee('<iframe', false);
         foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
             $response->assertSee(asset('brand/manufacturers/'.$brand.'.svg'));
         }
@@ -174,7 +176,7 @@ class HomePageTest extends TestCase
     public function test_hero_uses_exact_owner_copy_and_an_uncropped_eager_local_illustration(): void
     {
         $response = $this->get('/')->assertOk();
-        $response->assertSee('فروش و تعمیر<br><span>کارتخوان</span>', false)
+        $response->assertSee('فروش و تعمیر <span>کارتخوان</span>', false)
             ->assertDontSee('فروش و تعمیر تخصصی')
             ->assertSee('انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.')
             ->assertSee('نه عکس تأییدشدهٔ محصول')
@@ -219,10 +221,10 @@ class HomePageTest extends TestCase
         $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
-        $this->assertSame(6, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
-        $this->assertSame(4, $xpath->query('//header//details/nav[@aria-label="ناوبری موبایل"]/a')->length);
+        $this->assertSame(5, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
+        $this->assertSame(5, $xpath->query('//dialog[@id="mobile-drawer"]//nav[@aria-label="ناوبری موبایل"]/a')->length);
         $desktop = $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]')->item(0);
-        $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها', 'حساب کاربری'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
+        $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
         $this->assertSame(5, $xpath->query('//main/section')->length);
         $response->assertSeeInOrder(['id="hero-title"', 'np-trust np-container', 'id="popular-services-title"', 'id="brands-title"', 'id="location-title"'], false);
@@ -269,10 +271,55 @@ class HomePageTest extends TestCase
             $this->assertSame('noopener noreferrer', $link->getAttribute('rel'));
         }
         $this->assertSame(3, $links->length);
+        // Only the three navigation buttons remain; no duplicate link or reserved row.
         $this->assertSame(0, $xpath->query('//div[contains(@class,"np-location__directions")]//a')->length);
-        $this->assertSame(config('business.map_embed'), $xpath->query('//iframe')->item(0)->getAttribute('src'));
-        $this->assertSame(1, $xpath->query('//button[@type="button" and @data-copy-address="visit-address" and @hidden]')->length);
-        $this->assertSame(1, $xpath->query('//*[@id="address-copy-status" and @role="status" and @aria-live="polite"]')->length);
+        $this->assertSame(0, $xpath->query('//*[@data-map-fallback or contains(@class,"np-map-fallback-slot")]')->length);
+        $this->assertSame(3, $xpath->query('//section[@data-map-preview]//a')->length);
+        $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//p[not(@data-map-status)]')->length);
+        $this->assertSame(0, $xpath->query('//iframe')->length);
+        $this->assertSame(config('business.map_embed'), $xpath->query('//*[@data-map-preview]')->item(0)->getAttribute('data-map-url'));
+        $this->assertSame(0, $xpath->query('//button[@data-copy-address]')->length);
+        $this->assertStringContainsString('گوگل مپ', $links->item(0)->textContent);
+        $this->assertStringContainsString('لطفاً پیش از مراجعه حضوری، تماس بگیرید.', $copy->textContent);
+        $this->assertSame(1, $xpath->query('//button[@data-map-activate and contains(text(),"فعال‌سازی نقشه")]')->length);
+        $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*[local-name()="svg"]')->length);
+        $this->assertSame(3, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@alt="" and @aria-hidden="true"]')->length);
+        foreach (['google-maps-2026.png' => ['14', '18'], 'neshan.svg' => ['16', '16'], 'balad.svg' => ['17', '17']] as $icon => $dimensions) {
+            $this->assertFileExists(public_path('brand/maps/'.$icon));
+            $image = $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon).'"]')->item(0);
+            $this->assertSame($dimensions[0], $image->getAttribute('width'));
+            $this->assertSame($dimensions[1], $image->getAttribute('height'));
+            $this->assertSame(1, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//img[@src="'.asset('brand/maps/'.$icon).'"]')->length);
+        }
+        $this->assertSame(0, $xpath->query('//nav[@aria-label="مسیریابی فروشگاه"]//span[@class="np-icon"]')->length);
+        $this->assertSame('8a61a28baa07584890df7d46bc6bd85ee4d15d6716f4067bd96d1fca37f10f87', hash_file('sha256', public_path('brand/maps/google-maps-2026.png')));
+        $this->assertStringNotContainsString('باز کردن در نشان', $document->textContent);
+        $this->assertSame(1, $xpath->query('//*[@data-map-viewport]//*[@data-map-placeholder]')->length);
+        $this->assertSame(0, $xpath->query('//*[@data-map-placeholder]//*')->length);
+        $this->assertSame(1, $xpath->query('//*[@data-map-viewport]/div[contains(@class,"np-map-preview__action")]/button[@data-map-activate]')->length);
+        $this->assertSame(0, $xpath->query('//*[@id="address-copy-status"]')->length);
+    }
+
+    public function test_supplied_navigation_vectors_preserve_the_artwork_without_active_content(): void
+    {
+        foreach ([
+            'neshan.svg' => ['414644c5b95c91e3b97ea15dea0a7229b14653400412a7b374a4fef3d6be4ac2', ' viewBox="0 0 500 516"'],
+            'balad.svg' => ['da6f7470619175bc57daae0bcace6f0011f0a1612411aa450684ef3c7af0dfaf', ''],
+        ] as $file => [$sourceHash, $addedCanvas]) {
+            $bytes = file_get_contents(public_path('brand/maps/'.$file));
+            $original = $addedCanvas === '' ? $bytes : str_replace($addedCanvas, '', $bytes);
+            $this->assertSame($sourceHash, hash('sha256', $original));
+            $document = new DOMDocument;
+            $this->assertTrue($document->loadXML($bytes, LIBXML_NONET));
+            $this->assertSame('http://www.w3.org/2000/svg', $document->documentElement->namespaceURI);
+            $this->assertNotSame('', $document->documentElement->getAttribute('viewBox'));
+            $xpath = new DOMXPath($document);
+            $this->assertSame(0, $xpath->query('//*[local-name()="script" or local-name()="foreignObject" or local-name()="image"] | //@*[starts-with(local-name(),"on") or local-name()="href"]')->length);
+        }
+        $png = file_get_contents(public_path('brand/maps/google-maps-2026.png'));
+        $this->assertSame("\x89PNG\r\n\x1a\n", substr($png, 0, 8));
+        $this->assertSame(['width' => 138, 'height' => 176], unpack('Nwidth/Nheight', substr($png, 16, 8)));
+        $this->assertSame(6, ord($png[25])); // RGBA: the supplied transparency is retained.
     }
 
     public function test_public_pages_share_homepage_chrome_while_admin_remains_separate(): void

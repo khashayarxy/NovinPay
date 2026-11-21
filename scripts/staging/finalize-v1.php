@@ -147,7 +147,7 @@ try {
     $plain = openssl_decrypt(substr($encoded, 65), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, substr($encoded, 37, 12), substr($encoded, 49, 16), 'NPSB1');
     np_need(is_string($plain) && str_starts_with($plain, 'PK'), 'backup_authenticated_decryption');
     unset($plain,$key,$encoded);
-    foreach (['SMSIR_ENABLED', 'SMSIR_NOTIFICATIONS_ENABLED', 'ZIBAL_ENABLED', 'ZIBAL_LIVE_REQUESTS', 'POSTEX_QUOTES_ENABLED', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED', 'BANK_TRANSFER_ENABLED'] as $flag) {
+    foreach (['IPPANEL_ENABLED', 'ZIBAL_ENABLED', 'ZIBAL_LIVE_REQUESTS', 'POSTEX_QUOTES_ENABLED', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED', 'BANK_TRANSFER_ENABLED'] as $flag) {
         np_need(($env[$flag] ?? '') === 'false', 'private_provider_guard');
     }
     $phase = 'application_readiness';
@@ -157,7 +157,7 @@ try {
     $kernel = $app->make(Kernel::class);
     $kernel->bootstrap();
     np_need(! config('app.debug') && app()->environment('staging') && config('app.url') === 'https://staging.novinpaypos.com' && config('support_chat.enabled') === true, 'application_configuration');
-    foreach (['customer.sms_enabled', 'customer.notifications_enabled', 'payments.zibal.enabled', 'payments.zibal.live_requests', 'postex.independent_postage_verified'] as $flag) {
+    foreach (['customer.ippanel.enabled', 'payments.zibal.enabled', 'payments.zibal.live_requests', 'postex.independent_postage_verified'] as $flag) {
         np_need(! config($flag), 'provider_disabled');
     }
     $pdo = DB::connection()->getPdo();

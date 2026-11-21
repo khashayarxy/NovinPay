@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 
 class ZibalPayments
 {
+    private const REQUEST_REJECTIONS = [102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 118, 140, 141];
+
     public function __construct(private ZibalGateway $gateway, private PaymentSettlement $settlement) {}
 
     public function merchantDigest(): string
@@ -22,6 +24,12 @@ class ZibalPayments
     {
         abort_unless($account->is_active && $account->customer_id, 403);
         $query = FinancialDocument::query()->where('public_id', $reference)->where('customer_id', $account->customer_id);
+        foreach (['sales_orders' => 'sales_order_id', 'repair_cases' => 'repair_case_id'] as $table => $column) {
+            // A legacy CRM link must not override an explicitly assigned account.
+            $query->whereNotExists(fn ($source) => $source->selectRaw('1')->from($table)
+                ->whereColumn("$table.id", "financial_documents.$column")
+                ->where("$table.customer_account_id", '<>', $account->id));
+        }
 
         return ($lock ? $query->lockForUpdate() : $query)->firstOrFail();
     }
@@ -62,17 +70,20 @@ class ZibalPayments
 
         return DB::transaction(function () use ($attempt, $response): PaymentAttempt {
             $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
-            $track = $response['trackId'] ?? null;
-            if (($response['result'] ?? null) === 100 && (is_int($track) || is_string($track)) && preg_match('/\A[0-9]{1,20}\z/D', (string) $track)) {
+            $track = ZibalGateway::trackNumber($response['trackId'] ?? null);
+            if (($response['result'] ?? null) === 100 && $track !== null) {
                 $current->track_id = (string) $track;
                 $current->state = 'pending';
+            } elseif (in_array($response['result'] ?? null, self::REQUEST_REJECTIONS, true)) {
+                // Documented request validation rejection, unlike a lost response.
+                $current->state = 'failed';
             } else {
                 // Request may have reached the gateway. Never blindly recreate it.
                 $current->state = 'uncertain';
             }
             $current->retry_at = now()->addMinutes(2);
             $current->save();
-            $this->event($current, $current->state);
+            $this->event($current, $current->state === 'failed' ? 'request_rejected_'.$response['result'] : $current->state);
 
             return $current;
         }, 3);
@@ -83,10 +94,10 @@ class ZibalPayments
         if ($attempt->fresh()->state === 'settled') {
             return $attempt->fresh();
         }
-        abort_unless($this->gateway->available(), 503, 'پرداخت آنلاین هنوز فعال نشده است.');
+        abort_unless($this->gateway->canVerify(), 503, 'پرداخت آنلاین هنوز فعال نشده است.');
         $claim = DB::transaction(function () use ($attempt): ?PaymentAttempt {
             $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
-            if (in_array($current->state, ['settled', 'failed', 'review'], true) || ! $current->track_id || ($current->lease_until && $current->lease_until->isFuture())) {
+            if ($current->state === 'settled' || ! $current->track_id || ($current->lease_until && $current->lease_until->isFuture())) {
                 return null;
             }
             abort_unless(hash_equals($current->merchant_digest, $this->merchantDigest()), 503);
@@ -100,24 +111,27 @@ class ZibalPayments
         if (! $claim) {
             return $attempt->fresh();
         }
-        $response = $this->gateway->call('verify', ['trackId' => $claim->track_id]);
+        $track = ZibalGateway::trackNumber($claim->track_id);
+        if ($track === null) {
+            return $this->finish($claim, 'review', 'invalid_gateway_track');
+        }
+        $response = $this->gateway->call('verify', ['trackId' => $track]);
         $code = $response['result'] ?? null;
         if (! in_array($code, [100, 201], true)) {
-            // "Not paid" is an observation, not proof the customer cannot finish
-            // an already-open gateway session later. Keep late callbacks viable.
-            return $this->finish($claim, 'uncertain');
+            return $this->resolveUnverified($claim, $track);
         }
-        // The local immutable attempt supplies a binding, but a missing provider amount
-        // triggers inquiry instead of silently trusting an unverified browser parameter.
-        if (! isset($response['orderId'], $response['amount'])) {
-            $inquiry = $this->gateway->call('inquiry', ['trackId' => $claim->track_id]);
-            if (($inquiry['result'] ?? null) !== 100 || ! in_array($inquiry['status'] ?? null, [1, 2], true)) {
-                return $this->finish($claim, 'uncertain');
+        if ($this->bindingConflicts($claim, $response) || (isset($response['status']) && $response['status'] !== 1)) {
+            return $this->finish($claim, 'review');
+        }
+        // An incomplete verification response needs an independently bound, verified inquiry.
+        if (! isset($response['orderId'], $response['amount']) || ($code === 201 && ! isset($response['status']))) {
+            $inquiry = $this->gateway->call('inquiry', ['trackId' => $track]);
+            if (($inquiry['result'] ?? null) !== 100 || ($inquiry['status'] ?? null) !== 1) {
+                return $this->finish($claim, $this->needsReview($claim) ? 'review' : 'uncertain');
             }
             $response = $inquiry;
         }
-        $amount = $response['amount'] ?? null;
-        if (($response['orderId'] ?? null) !== $claim->public_id || ! (is_int($amount) || (is_string($amount) && ctype_digit($amount))) || (string) $amount !== (string) $claim->amount_rial) {
+        if (! $this->bindingMatches($claim, $response)) {
             return $this->finish($claim, 'review');
         }
 
@@ -141,16 +155,100 @@ class ZibalPayments
         }, 3);
     }
 
-    private function finish(PaymentAttempt $attempt, string $state): PaymentAttempt
+    private function resolveUnverified(PaymentAttempt $claim, int $track): PaymentAttempt
     {
-        return DB::transaction(function () use ($attempt, $state): PaymentAttempt {
+        $inquiry = $this->gateway->call('inquiry', ['trackId' => $track]);
+        $fallback = $this->needsReview($claim) ? 'review' : 'uncertain';
+        if (($inquiry['result'] ?? null) !== 100 || ! $this->bindingMatches($claim, $inquiry)) {
+            return $this->finish($claim, $fallback);
+        }
+
+        $status = $inquiry['status'] ?? null;
+
+        return match ($status) {
+            -1 => $this->finish($claim, $fallback === 'review' ? 'review' : 'pending', 'gateway_waiting'),
+            3 => $this->finish($claim, 'failed', 'gateway_canceled'),
+            4, 5, 6, 7, 8, 9, 10, 12, 21 => $this->finish($claim, 'failed', 'gateway_unpaid_'.$status),
+            15, 16, 18 => $this->finish($claim, 'review', 'gateway_return_'.$status),
+            // Status 2 has not been verified. A status-1 inquiry after a failed
+            // verify is reconciled on a later accepted verify (e.g. result 201).
+            default => $this->finish($claim, $fallback),
+        };
+    }
+
+    private function bindingMatches(PaymentAttempt $attempt, array $response): bool
+    {
+        return isset($response['orderId'], $response['amount']) && ! $this->bindingConflicts($attempt, $response);
+    }
+
+    private function bindingConflicts(PaymentAttempt $attempt, array $response): bool
+    {
+        $expected = ['orderId' => $attempt->public_id, 'amount' => (string) $attempt->amount_rial, 'trackId' => $attempt->track_id];
+        foreach ($expected as $key => $value) {
+            if (! isset($response[$key])) {
+                continue;
+            }
+            $actual = $response[$key];
+            if ((! is_int($actual) && ! is_string($actual)) || (string) $actual !== $value) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function needsReview(PaymentAttempt $attempt): bool
+    {
+        return $attempt->attempts >= (int) config('payments.zibal.reconciliation_limit')
+            || $attempt->created_at->lte(now()->subMinutes((int) config('payments.zibal.review_after_minutes')));
+    }
+
+    /** Fair, bounded work; missing track IDs never cause a second request. */
+    public function reconcile(int $limit = 40, int $budgetSeconds = 180): int
+    {
+        $started = microtime(true);
+        $processed = 0;
+        $attempts = PaymentAttempt::query()->whereIn('state', ['requesting', 'pending', 'uncertain', 'processing'])
+            ->where('created_at', '<=', now()->subMinutes(2))
+            ->where(fn ($q) => $q->whereNull('retry_at')->orWhere('retry_at', '<=', now()))
+            ->where(fn ($q) => $q->whereNull('lease_until')->orWhere('lease_until', '<=', now()))
+            ->orderBy('retry_at')->orderBy('id')->limit($limit)->get();
+        foreach ($attempts as $attempt) {
+            if (microtime(true) - $started >= $budgetSeconds) {
+                break;
+            }
+            if (! $attempt->track_id || $attempt->attempts >= (int) config('payments.zibal.reconciliation_limit')) {
+                DB::transaction(function () use ($attempt): void {
+                    $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
+                    if (in_array($current->state, ['requesting', 'pending', 'uncertain', 'processing'], true)
+                        && (! $current->lease_until || $current->lease_until->isPast())) {
+                        $current->state = 'review';
+                        $current->retry_at = null;
+                        $current->lease_until = null;
+                        $current->save();
+                        $this->event($current, $current->track_id ? 'reconciliation_exhausted' : 'request_outcome_unknown');
+                    }
+                }, 3);
+            } else {
+                $this->verify($attempt);
+            }
+            $processed++;
+        }
+
+        return $processed;
+    }
+
+    private function finish(PaymentAttempt $attempt, string $state, ?string $event = null): PaymentAttempt
+    {
+        return DB::transaction(function () use ($attempt, $state, $event): PaymentAttempt {
             $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
             if ($current->state !== 'settled' && (int) $current->attempts === (int) $attempt->attempts) {
                 $current->state = $state;
                 $current->lease_until = null;
-                $current->retry_at = now()->addMinutes(2);
+                $current->retry_at = in_array($state, ['failed', 'review'], true) ? null
+                    : now()->addSeconds(min(3600, 120 * (2 ** min(5, max(0, $current->attempts - 1)))));
                 $current->save();
-                $this->event($current, $state);
+                $this->event($current, $event ?? $state);
             }
 
             return $current;

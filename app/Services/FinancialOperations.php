@@ -142,6 +142,9 @@ final class FinancialOperations
             $document->$key = $value;
         }
         $document->save();
+        if ($source instanceof SalesOrder && $source->customer_account_id) {
+            app(DeliveryManagement::class)->applyCheckoutPreference($document, $source);
+        }
 
         return $document;
     }

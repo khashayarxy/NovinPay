@@ -4,6 +4,8 @@ import {mountCustomer,customerInitHost} from './customer.js?v=team1';
 import {quickThemeToggle} from './theme.js?v=0.1.0-r14';
 import {customerTools} from './customer-v2-tools.js?v=ux1';
 import {renderCustomerV2} from './customer-v2-renderer.js?v=team1';
+import {CustomerReconnect,transientFailure} from './reconnect.js';
+import {retryAfter} from './network.js?v=team1';
 const publishTheme=()=>{if(parent!==window)parent.postMessage({type:'support-widget-theme',resolved:document.documentElement.dataset.supportTheme},location.origin);};
 addEventListener('support-theme-change',publishTheme);
 
@@ -44,13 +46,15 @@ const launch=()=>{if(bootJob)return bootJob;const retry=loading.querySelector('[
   if(embedded)config=JSON.parse(embedded.textContent);
   else {
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
-   try{const r=await fetch('api.php?widget_config=1',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();config=await r.json();}
+   try{let r;try{r=await fetch('api.php?widget_config=1',{cache:'no-store',signal:controller.signal});}catch(e){throw Object.assign(new Error(),{status:0,code:e.name==='AbortError'?'timeout':'network'});}if(!r.ok)throw Object.assign(new Error(),{status:r.status,retryAfter:retryAfter(r.headers.get('Retry-After'))});try{config=await r.json();}catch{throw Object.assign(new Error(),{status:0,code:'invalid_response'});}}
    finally{clearTimeout(timer);}
   }
   if(typeof config?.name!=='string')throw Error();
   globalThis.SupportWidgetConfig=config;window.SupportTheme?.configure(config);const requested=new URL(location.href).searchParams.get('source_path');let referring=null;try{const ref=new URL(document.referrer);if(ref.origin===location.origin)referring=ref.pathname;}catch{}globalThis.SupportSourcePath=allowed(requested)||allowed(referring);
   tools=customerTools();mounted=true;await mountCustomer({shellFactory:shell,transcriptRenderer:renderCustomerV2,presentation:tools,onClose:parent!==window?closeFrame:null});
   if(!startup.classList.contains('active'))window.toggleChat();if(parent!==window){parent.postMessage({type:'support-widget-ready'},location.origin);publishTheme();}
- })().catch(()=>{startup.dataset.initState='failed';startup.setAttribute('aria-busy','false');loading.hidden=false;text.textContent='بارگذاری چت انجام نشد.';retry.hidden=false;retry.onclick=mounted?()=>location.reload():launch;loading.querySelector('[data-init-reference]').textContent='کد بررسی: '+diagnostics.reference;diagnostics.events.push({stage:mounted?'mount':'configuration',code:'unavailable',ms:Math.round(performance.now())});diagnostics.events=diagnostics.events.slice(-12);dispatchEvent(new Event('support-init-state'));})
+ })().catch(error=>{startup.dataset.initState='failed';startup.setAttribute('aria-busy','false');loading.hidden=false;text.textContent='گفتگو در دسترس نیست. دوباره بررسی کنید.';retry.hidden=false;retry.onclick=mounted?()=>location.reload():()=>configurationRecovery.start(true);loading.querySelector('[data-init-reference]').textContent='';diagnostics.events.push({stage:mounted?'mount':'configuration',code:transientFailure(error)?'transient':'terminal',ms:Math.round(performance.now())});diagnostics.events=diagnostics.events.slice(-12);dispatchEvent(new Event('support-init-state'));throw error;})
  .finally(()=>{retry.disabled=false;if(bootJob===job)bootJob=null;});bootJob=job;return job;
-};launch();
+};
+const configurationRecovery=new CustomerReconnect(launch,{state:state=>{if(['waiting','offline'].includes(state)){startup.dataset.initState='initializing';startup.setAttribute('aria-busy','true');loading.querySelector('[data-init-text]').textContent='در حال اتصال دوباره…';loading.querySelector('[data-init-retry]').hidden=true;}}});
+addEventListener('online',()=>{if(!mounted)configurationRecovery.onlineAgain();});configurationRecovery.start();

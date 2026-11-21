@@ -1,10 +1,10 @@
 param([Parameter(Mandatory)][string]$PrivateRoot,[Parameter(Mandatory)][ValidatePattern('^[a-f0-9]{64}$')][string]$ExpectedArchiveSha256,[string]$RecoveryManifest,[string]$ExpectedManifestSha256)
 $ErrorActionPreference='Stop'
-$expectedBaseline='33d4a52c2c2862493dec9dcf4a81b18263cc4b74';$expectedRestore='novinpay_restore10r3';$expectedServer='/home/novinpay/novinpay-private-backups/maintenance-pr12-v2'
+if(!$RecoveryManifest){throw 'Pinned recovery manifest required'}
 if($RecoveryManifest){
  if($ExpectedManifestSha256 -cnotmatch '^[a-f0-9]{64}$' -or (Get-FileHash -LiteralPath $RecoveryManifest).Hash.ToLowerInvariant() -cne $ExpectedManifestSha256){throw 'Recovery manifest pin mismatch'}
  $context=Get-Content -LiteralPath $RecoveryManifest -Raw|ConvertFrom-Json
- if($context.baseline -cne '1f39bb476fd31880600564e58599c4488622c4c0' -or $context.backup.restoreDatabase -cne 'novinpay_restore13r1' -or $context.backup.directory -cne '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1'){throw 'Recovery manifest scope mismatch'}
+ if($context.format -cne 'novinpay-recovery-v1' -or $context.baseline -cnotmatch '^[a-f0-9]{40}$' -or $context.backup.restoreDatabase -cnotmatch '^novinpay_restore[a-z0-9]+$' -or $context.backup.directory -cnotmatch '^/home/novinpay/novinpay-private-backups/recovery-[a-z0-9-]{1,60}$'){throw 'Recovery manifest scope mismatch'}
  $expectedBaseline=$context.baseline;$expectedRestore=$context.backup.restoreDatabase;$expectedServer=$context.backup.directory
 }
 $root=[IO.Path]::GetFullPath($PrivateRoot)
@@ -12,7 +12,7 @@ if($root.StartsWith('C:\Users\Khashayar\Documents\NovinPay',[StringComparison]::
 $allowed=@([Security.Principal.WindowsIdentity]::GetCurrent().User.Value,'S-1-5-18','S-1-5-32-544')
 foreach($path in @($root,(Join-Path $root 'backup.npb'),(Join-Path $root 'backup-key.dpapi'),(Join-Path $root 'server-receipt.json'))){if(@((Get-Acl -LiteralPath $path).Access|Where-Object {$_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -notin $allowed}).Count){throw 'Private ACL failed'}}
 $r=Get-Content -LiteralPath (Join-Path $root 'server-receipt.json') -Raw|ConvertFrom-Json
-if($r.sourceCommit -cne $expectedBaseline -or $r.sourceDatabase -cne 'novinpay_live1' -or $r.restoreDatabase -cne $expectedRestore -or !$r.schemaAndDefinersMatch -or !$r.allSnapshotRowsMatch -or !$r.environmentPreserved -or !$r.publicHtmlUnchanged -or !$r.serverPlaintextRemoved -or !$r.serverKeyRetained -or !$r.privateMaintenanceStateVerified -or $r.productionUpdated -or $r.migrations -ne 14 -or $r.triggers -ne 5){throw 'Fresh backup/restore receipt incomplete'}
+if($r.sourceCommit -cne $expectedBaseline -or $r.sourceDatabase -cne 'novinpay_live1' -or $r.restoreDatabase -cne $expectedRestore -or !$r.schemaAndDefinersMatch -or !$r.allSnapshotRowsMatch -or !$r.environmentPreserved -or !$r.publicHtmlUnchanged -or !$r.serverPlaintextRemoved -or !$r.serverKeyRetained -or !$r.privateMaintenanceStateVerified -or $r.productionUpdated -or $r.migrations -ne $context.migrations.Count -or $r.triggers -ne $context.expectedTriggers){throw 'Fresh backup/restore receipt incomplete'}
 if( $r.archiveSha256 -cne $ExpectedArchiveSha256 -or (Get-FileHash -LiteralPath (Join-Path $root 'backup.npb')).Hash.ToLowerInvariant() -cne $r.archiveSha256){throw 'Archive mismatch'}
 $key=$null;$plain=$null;$tar=$null;$gz=$null;$memory=$null
 try{
@@ -30,7 +30,13 @@ try{
   $entries++;$name=$entry.Name
   if($name.StartsWith('/') -or $name.Contains('\') -or $name.Split('/') -contains '..'){throw 'Unsafe archive member'}
   if($entry.EntryType -eq [System.Formats.Tar.TarEntryType]::SymbolicLink){$symlinks++;if($name -cne 'novinpay/public/storage' -or $entry.LinkName -notin @('/home/novinpay/novinpay/storage/app/public','../storage/app/public')){throw 'Unexpected recovery symlink'};continue}
-  if(!$entry.DataStream){continue};$total+=$entry.Length;if($total -gt 268435456 -or $entry.Length -gt 67108864){throw 'Expanded archive bounds'}
+  if(!$entry.DataStream){
+   if($entry.Length -eq 0 -and $entry.EntryType -in @([System.Formats.Tar.TarEntryType]::RegularFile,[System.Formats.Tar.TarEntryType]::V7RegularFile,[System.Formats.Tar.TarEntryType]::ContiguousFile)){
+    if($hashes.ContainsKey($name)){throw 'Duplicate archive member'}
+    $hashes[$name]='e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+   }
+   continue
+  };$total+=$entry.Length;if($total -gt 268435456 -or $entry.Length -gt 67108864){throw 'Expanded archive bounds'}
   if($hashes.ContainsKey($name)){throw 'Duplicate archive member'}
   if($name -in $keep){$buf=[IO.MemoryStream]::new();try{$entry.DataStream.CopyTo($buf);$bytes=$buf.ToArray();$hashes[$name]=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant();$texts[$name]=[Text.Encoding]::UTF8.GetString($bytes);[Array]::Clear($bytes,0,$bytes.Length)}finally{$buf.Dispose()}}
   else{$hashes[$name]=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($entry.DataStream)).ToLowerInvariant()}
@@ -39,7 +45,7 @@ try{
  $meta=$texts['release-metadata.json']|ConvertFrom-Json
  if($meta.sourceCommit -cne $expectedBaseline -or $meta.sourceDatabase -cne 'novinpay_live1'){throw 'Release metadata identity'}
  foreach($prop in $meta.protectedFileHashes.PSObject.Properties){if($hashes['novinpay/'+$prop.Name] -cne $prop.Value){throw 'Protected configuration digest mismatch'}}
- if(!$meta.sourceFileHashes -or !$meta.assetFileHashes -or $meta.sourceBranch -cne 'codex/novinpay-release-contact-corrections'){throw 'Source/asset recovery inventory absent'}
+ if(!$meta.sourceFileHashes -or !$meta.assetFileHashes -or $meta.sourceBranch -cne $context.sourceBranch){throw 'Source/asset recovery inventory absent'}
  foreach($prop in $meta.sourceFileHashes.PSObject.Properties){if($hashes['novinpay/'+$prop.Name] -cne $prop.Value){throw 'Source or retained production modification mismatch'}}
  foreach($prop in $meta.assetFileHashes.PSObject.Properties){if($hashes['novinpay/public/build/'+$prop.Name] -cne $prop.Value){throw 'Prebuilt asset mismatch'}}
  if(!$meta.maintenanceStateFileHashes){throw 'Private maintenance inventory missing'}
@@ -48,9 +54,9 @@ try{
  if($persistent -ne [int]$r.persistentFiles){throw 'Persistent inventory mismatch'}
  $sql=$texts['database.sql'];$rowHash=[Security.Cryptography.IncrementalHash]::CreateHash([Security.Cryptography.HashAlgorithmName]::SHA256);$counts=@{}
  try{foreach($line in $sql.Split("`n")){if($line -cmatch '^INSERT INTO `([a-z0-9_]+)` '){$table=$Matches[1];$counts[$table]=[int]$counts[$table]+1;$rowHash.AppendData([Text.Encoding]::UTF8.GetBytes($line+"`n"))}};$digest=[Convert]::ToHexString($rowHash.GetHashAndReset()).ToLowerInvariant()}finally{$rowHash.Dispose()}
- if($digest -cne $r.snapshotDataDigest -or $counts['migrations'] -ne 14){throw 'Database snapshot row digest mismatch'}
- $triggerCount=0;foreach($trigger in @('article_versions_no_DELETE','article_versions_no_UPDATE','financial_document_identity','financial_entries_no_DELETE','financial_entries_no_UPDATE')){if($sql -notmatch ('\bTRIGGER\s+(?:`?[a-z0-9_]+`?\.)?`?'+[regex]::Escape($trigger)+'`?\b')){throw 'Required trigger definition missing'};$triggerCount++}
+ if($digest -cne $r.snapshotDataDigest -or $counts['migrations'] -ne $context.migrations.Count){throw 'Database snapshot row digest mismatch'}
+ $triggerCount=0;foreach($trigger in $context.triggers.PSObject.Properties.Name){if($sql -notmatch ('\bTRIGGER\s+(?:`?[a-z0-9_]+`?\.)?`?'+[regex]::Escape($trigger)+'`?\b')){throw 'Required trigger definition missing'};$triggerCount++}
  if($texts['novinpay/.env'] -notmatch '(?m)^APP_KEY=\S+' -or $texts['novinpay/.env'] -notmatch '(?m)^DB_DATABASE=novinpay_live1\s*$'){throw 'Private recovery environment incomplete'}
- $proof=@{result='MAINTENANCE_V1_INDEPENDENT_OFFHOST_PASS';syntheticFixture=[bool]$r.syntheticFixture;sourceCommit=$expectedBaseline;privateMaintenanceHistoryVerified=$true;sourceDatabase='novinpay_live1';restoreDatabase=$expectedRestore;snapshotUnix=[long]$r.snapshotUnix;archiveSha256=$r.archiveSha256;serverArchivePath=($expectedServer+'/backup.npb');archiveContentsVerified=$true;isolatedRestoreVerified=$true;schemaAndDefinersMatch=$true;allSnapshotRowsMatch=$true;noPlaintextWrittenToWindowsDisk=$true;recoveryKeyAvailable=$true;sha256=$r.archiveSha256;authenticatedDecryption=$true;tarMembers=$entries;expandedBytes=$total;symlinksNotFollowed=$symlinks;requiredApplicationAndConfigurationPresent=$true;allProtectedFileHashesMatch=$true;persistentFilesVerified=$persistent;databaseDumpRowDigestMatches=$true;migrations=14;triggers=$triggerCount;recoveryInstructionsPresent=$true;releaseMetadataMatches=$true;plaintextWrittenToDisk=$false;protectedFileHashes=$meta.protectedFileHashes;productionUpdated=$false}
- $proofPath=Join-Path $root 'OFFHOST-PROOF.json';$out=[IO.FileStream]::new($proofPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None);try{$data=[Text.UTF8Encoding]::new($false).GetBytes(($proof|ConvertTo-Json -Depth 6));$out.Write($data,0,$data.Length);$out.Flush($true)}finally{$out.Dispose()};Write-Output 'INDEPENDENT OFF-HOST DECRYPTION, ARCHIVE AND SNAPSHOT PASS; no plaintext written to disk; preserve the DPAPI key and owner profile'
+ $proof=@{result='INDEPENDENT_OFFHOST_RECOVERY_PASS';syntheticFixture=[bool]$r.syntheticFixture;sourceCommit=$expectedBaseline;privateMaintenanceHistoryVerified=$true;sourceDatabase='novinpay_live1';restoreDatabase=$expectedRestore;snapshotUnix=[long]$r.snapshotUnix;archiveSha256=$r.archiveSha256;serverArchivePath=($expectedServer+'/backup.npb');archiveContentsVerified=$true;isolatedRestoreVerified=$true;schemaAndDefinersMatch=$true;allSnapshotRowsMatch=$true;noPlaintextWrittenToWindowsDisk=$true;recoveryKeyAvailable=$true;sha256=$r.archiveSha256;authenticatedDecryption=$true;tarMembers=$entries;expandedBytes=$total;symlinksNotFollowed=$symlinks;requiredApplicationAndConfigurationPresent=$true;allProtectedFileHashesMatch=$true;persistentFilesVerified=$persistent;databaseDumpRowDigestMatches=$true;migrations=$context.migrations.Count;triggers=$triggerCount;recoveryInstructionsPresent=$true;releaseMetadataMatches=$true;plaintextWrittenToDisk=$false;protectedFileHashes=$meta.protectedFileHashes;productionUpdated=$false}
+ $proofPath=Join-Path $root 'OFFHOST-PROOF.json';$temporaryProof=Join-Path $root ('offhost-proof-'+[guid]::NewGuid().ToString('N')+'.tmp');$out=[IO.FileStream]::new($temporaryProof,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None);try{$data=[Text.UTF8Encoding]::new($false).GetBytes(($proof|ConvertTo-Json -Depth 6));$out.Write($data,0,$data.Length);$out.Flush($true)}finally{$out.Dispose()};[IO.File]::Move($temporaryProof,$proofPath,$false);Write-Output 'INDEPENDENT OFF-HOST DECRYPTION, ARCHIVE AND SNAPSHOT PASS; no plaintext written to disk; preserve the DPAPI key and owner profile'
 }finally{if($tar){$tar.Dispose()};if($gz){$gz.Dispose()};if($memory){$memory.Dispose()};if($key){[Array]::Clear($key,0,$key.Length)};if($plain){[Array]::Clear($plain,0,$plain.Length)};$texts=$null;$sql=$null}

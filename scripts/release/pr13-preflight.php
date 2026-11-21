@@ -3,6 +3,8 @@
 declare(strict_types=1);
 use NovinPay\Release\GateFailure;
 
+require_once __DIR__.'/lib.php';
+
 // Read-only inventory only. This entry point never backs up, migrates or activates.
 function pr13MigrationDelta(array $actual, array $baseline, array $candidate): array
 {
@@ -22,18 +24,9 @@ function pr13MigratorSchemaPrivilegesPresent(array $rows, string $database, stri
     if ($database !== 'novinpay_live1' || $account !== 'novinpay_mig1@localhost') {
         return false;
     }
-    // MariaDB metadata retains escaped literal underscores in database grants.
-    // Match only these two exact spellings; never expand SQL grant patterns.
-    $scopes = [$database, str_replace('_', '\\_', $database)];
-    $privileges = [];
-    foreach ($rows as $row) {
-        if (($row['GRANTEE'] ?? null) === "'novinpay_mig1'@'localhost'"
-            && in_array($row['TABLE_SCHEMA'] ?? null, $scopes, true)) {
-            $privileges[] = $row['PRIVILEGE_TYPE'] ?? null;
-        }
-    }
 
-    return array_diff(['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'INDEX', 'TRIGGER'], $privileges) === [];
+    return \NovinPay\Release\databasePrivilegesPresent($rows, $database, $account,
+        ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'INDEX', 'TRIGGER']);
 }
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') !== __FILE__) {

@@ -29,6 +29,7 @@ final class SimpleRepairRecords
             }
             $case = RepairCase::query()->lockForUpdate()->findOrFail($target->id);
             abort_unless($case->version === (int) $data['version'], 409, 'پرونده تغییر کرده است؛ صفحه را تازه کنید.');
+            abort_unless($case->simple_workflow, 409, 'این پرونده در گردش کار کامل است؛ از عملیات کامل تعمیر استفاده کنید.');
             abort_if($case->status->closed(), 409, 'پرونده تحویل شده است؛ اصلاحات مالی را در سند مالی ثبت کنید.');
             $before = $case->status;
             $beforeRecord = $case->only(['repair_price_toman', 'repair_notes', 'delivery_method', 'delivery_carrier', 'settlement_method']);
@@ -90,7 +91,6 @@ final class SimpleRepairRecords
                 abort_if($document && ($price + (int) $case->inbound_shipping_cost) * 100 !== $document->source_amount_minor,
                     409, 'برای تغییر مبلغ سند صادرشده، اصلاح مالی ثبت کنید.');
                 $case->repair_price_toman = $price;
-                $case->simple_workflow = true;
             }
         }
         if (array_key_exists('repair_notes', $data)) {
@@ -128,9 +128,7 @@ final class SimpleRepairRecords
             app(FinancialOperations::class)->reconcile($document);
         }
         if ($case->customer_account_id && $document) {
-            if ($shipping && ! isset($data['confirmed_delivery_method'])) {
-                app(PaymentReview::class)->actor($actor, $data['current_password'] ?? '');
-            }
+            app(PaymentReview::class)->actor($actor, $data['current_password'] ?? '');
             $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->lockForUpdate()->first();
             abort_unless($plan && $plan->method === ($shipping ? $case->delivery_carrier : 'pickup')
                 && $plan->state === 'planned' && $plan->requested_method === null, 409, 'روش تحویل پرونده باید با برنامه تأییدشده یکسان باشد.');

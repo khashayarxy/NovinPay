@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\AdminAccount;
 use App\Models\AdminActivity;
 use App\Models\Customer;
+use App\Models\CustomerAccount;
 use App\Models\InventoryItem;
 use App\Models\InventoryUnit;
 use App\Models\Product;
@@ -13,6 +14,7 @@ use App\Models\SalesOrderEvent;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\CommerceManagement;
+use App\Services\ProductPurchaseVerification;
 use App\Support\OrderMoney;
 use App\Support\RepairIdentity;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -68,6 +70,42 @@ class OrdersInventoryTest extends TestCase
     private function transition(SalesOrder $order, string $action, array $extra = []): void
     {
         $this->command('order.'.$action, ['reason' => 'Synthetic operational review'] + $extra, $order);
+    }
+
+    public function test_customer_origin_order_cannot_be_reassigned_to_another_customer(): void
+    {
+        $item = $this->item();
+        $order = $this->order($item);
+        $account = new CustomerAccount;
+        foreach (['public_id' => (string) Str::uuid(), 'customer_id' => $this->customer->id,
+            'phone' => '09000000001', 'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000001'),
+            'verified_at' => now()] as $key => $value) {
+            $account->$key = $value;
+        }
+        $account->save();
+        $order->customer_account_id = $account->id;
+        $order->save();
+        $other = $this->customer->replicate();
+        $other->public_id = (string) Str::uuid();
+        $other->phone_digest = bin2hex(random_bytes(32));
+        $other->identity_digest = bin2hex(random_bytes(32));
+        $other->save();
+        $events = SalesOrderEvent::count();
+        $data = ['customer' => $other->public_id, 'lines' => [['item' => $item->public_id,
+            'quantity' => 2, 'unit_price' => '456.78']], 'reason' => 'Synthetic reassignment'];
+
+        $this->conflict(fn () => $this->command('order.save', $data, $order));
+
+        $this->assertSame($this->customer->id, $order->fresh()->customer_id);
+        $this->assertSame($account->id, $order->fresh()->customer_account_id);
+        $this->assertSame('123.45', $order->fresh()->total);
+        $this->assertSame($events, SalesOrderEvent::count());
+        $this->assertCount(1, $order->fresh()->lines);
+
+        // The ordinary draft edit remains available for the original customer.
+        $data['customer'] = $this->customer->public_id;
+        $this->command('order.save', $data, $order);
+        $this->assertSame('913.56', $order->fresh()->total);
     }
 
     private function conflict(callable $callback, int $status = 409): void
@@ -147,9 +185,20 @@ class OrdersInventoryTest extends TestCase
 
     public function test_full_lifecycle_conserves_bulk_stock_without_payment_side_effects(): void
     {
-        $item = $this->item();
+        $product = Product::create(['slug' => 'linked-terminal', 'name' => 'Linked terminal',
+            'category' => 'pos_terminal', 'condition' => 'new', 'stock_status' => 'in_stock']);
+        $item = InventoryItem::findOrFail($this->command('item.create', ['sku' => 'LINKED-TERMINAL',
+            'name' => 'Linked terminal', 'condition' => 'new', 'serialized' => false,
+            'product_id' => $product->id, 'low_stock_threshold' => 2, 'reason' => 'Synthetic approved item']));
         $this->receive($item, 5);
         $order = $this->order($item, 2);
+        $account = new CustomerAccount;
+        $account->forceFill(['public_id' => (string) Str::uuid(), 'customer_id' => $this->customer->id,
+            'phone' => '09000000001', 'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000001'),
+            'verified_at' => now()])->save();
+        $account->refresh();
+        $verification = app(ProductPurchaseVerification::class);
+        $this->assertFalse($verification->verified($account, $product));
         $this->assertSame('246.90', $order->total);
         $this->assertSame(0, $item->fresh()->reserved);
         $this->transition($order, 'reserve');
@@ -159,6 +208,10 @@ class OrdersInventoryTest extends TestCase
         $this->assertNull($order->fresh()->fulfilled_at);
         $this->transition($order, 'fulfill', ['fulfillment_info' => 'PRIVATE-HANDOVER-DATA']);
         $this->assertSame('fulfilled', $order->fresh()->status);
+        $this->assertNull($order->fresh()->customer_account_id);
+        $this->assertTrue($verification->verified($account, $product));
+        $account->customer_id = null;
+        $this->assertFalse($verification->verified($account, $product));
         $this->assertSame([3, 0, 2], [$item->fresh()->on_hand, $item->fresh()->reserved, $item->fresh()->dispatched]);
         $this->assertSame(5, (int) StockMovement::where('inventory_item_id', $item->id)->sum('on_hand_delta') + (int) StockMovement::where('inventory_item_id', $item->id)->sum('dispatched_delta'));
         $this->conflict(fn () => $this->transition($order, 'fulfill', ['fulfillment_info' => 'Duplicate delivery attempt']));

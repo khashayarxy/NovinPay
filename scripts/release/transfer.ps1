@@ -1,10 +1,10 @@
 param([Parameter(Mandatory)][string]$PrivateRoot,[Parameter(Mandatory)][ValidatePattern('^[a-f0-9]{64}$')][string]$ExpectedArchiveSha256,[switch]$TransferAuthorized,[Parameter(Mandatory)][string]$AccessHelper,[string]$RecoveryManifest,[string]$ExpectedManifestSha256)
 $ErrorActionPreference='Stop'
-$expectedBaseline='33d4a52c2c2862493dec9dcf4a81b18263cc4b74';$expectedRestore='novinpay_restore10r3';$expectedServer='/home/novinpay/novinpay-private-backups/maintenance-pr12-v2'
+if(!$RecoveryManifest){throw 'Pinned recovery manifest required'}
 if($RecoveryManifest){
  if($ExpectedManifestSha256 -cnotmatch '^[a-f0-9]{64}$' -or (Get-FileHash -LiteralPath $RecoveryManifest).Hash.ToLowerInvariant() -cne $ExpectedManifestSha256){throw 'Recovery manifest pin mismatch'}
  $context=Get-Content -LiteralPath $RecoveryManifest -Raw|ConvertFrom-Json
- if($context.baseline -cne '1f39bb476fd31880600564e58599c4488622c4c0' -or $context.backup.restoreDatabase -cne 'novinpay_restore13r1' -or $context.backup.directory -cne '/home/novinpay/novinpay-private-backups/maintenance-pr13-v1'){throw 'Recovery manifest scope mismatch'}
+ if($context.format -cne 'novinpay-recovery-v1' -or $context.baseline -cnotmatch '^[a-f0-9]{40}$' -or $context.backup.restoreDatabase -cnotmatch '^novinpay_restore[a-z0-9]+$' -or $context.backup.directory -cnotmatch '^/home/novinpay/novinpay-private-backups/recovery-[a-z0-9-]{1,60}$'){throw 'Recovery manifest scope mismatch'}
  $expectedBaseline=$context.baseline;$expectedRestore=$context.backup.restoreDatabase;$expectedServer=$context.backup.directory
 }
 if(!$TransferAuthorized){throw 'Explicit authorization required before any hosting connection'}

@@ -1,5 +1,127 @@
 # NovinPayPos: controlled cPanel production release
 
+## Generate and verify release checksum manifests
+
+Use `scripts/release/checksum-manifest.py` (Python 3.11+) for every generated
+SHA-256 sheet, including nested `tools.sha256`, asset sheets and the outer
+release manifest. Pass the exact ordered file inventory relative to the
+directory where the release runner will check that sheet.
+
+```sh
+python3 scripts/release/checksum-manifest.py /private/kit tools.sha256 lib.php runtime.php
+python3 scripts/release/checksum-manifest.py --check /private/kit tools.sha256 lib.php runtime.php
+```
+
+The writer hashes binary payload bytes and writes UTF-8 with LF and no BOM,
+including on Windows. It refuses to overwrite existing evidence. Write inner
+sheets before hashing them into outer sheets. After packaging, run `--check` on
+the unpacked release inputs using the same inventories, and run GNU
+`sha256sum --check --strict` from each sheet's checksum root. Repeat verification
+against the uploaded bytes before issuing an activation command. Treat a mismatch
+as a packaging failure. Keep the failed inputs and prepare a separate corrected
+kit with updated dependent hashes instead of converting manifests on the host.
+
+## Phase 4 candidate: explicit compatibility STOP (2026-11-14)
+
+The baseline is `ecf672110214a24a9171d942a2730d9bfad5f65c`; the final candidate SHA
+belongs in the private release inventory, not a self-referencing tracked checksum.
+No production activation is authorized in this phase.
+
+The complete Git diff, not only Phases 2/3, confirms **zero migration additions,
+edits or removals**, unchanged 24 migration names and the same 13 MariaDB trigger
+contracts. Only `laravel/framework` changes in composer.lock: 13.35.0 -> 13.40.0
+(reviewed security correction). Composer/package metadata and the Node lock are
+unchanged. No environment variable, provider flag, APP_KEY or broad permission change
+is required. Keep IPPanel/test-reset settings and Zibal/scheduled providers unchanged.
+
+Prepare locally, outside Git/public directories, using the existing private release
+directory: candidate Git source archive; complete compiled Vite assets including the
+new admin JS chunk, fonts, generated scoped `.htaccess` and version manifests; locked
+production-only vendor archive; per-file SHA-256 inventories and package checksums.
+Never include `.env`, auth files, keys, SQLite files, storage, uploads or QA browser
+profiles. Compare the production-only installed package names/versions/references
+against composer.lock and verify source/archive and asset hashes independently.
+Do not upload or run a package merely because it was prepared.
+
+**The current shared updater cannot activate this package.** Its explicit dependency,
+asset-shape and nonempty-migration guards must remain intact for existing callers.
+Do not pass a fake additive migration, reuse only the CSS ZIP, keep old Laravel vendor
+files, or publish a PASS-looking command. Qualify the smallest reviewed extension of
+the existing workflow before requesting production authorization; do not revive the
+retired PR13 pipeline or start a new framework. Preparation is not execution proof.
+
+Required execution sequence after that compatibility work and exact-SHA approval:
+
+1. Read back production HEAD, protected file/config/cache hashes, original release
+   receipt, clean index/unexpected changes and public symlink identity. Preserve the
+   current root `.htaccess` and its ea-php84 handler; the candidate has no root-file
+   change. Confirm explicit CLI and web PHP >=8.4.1/extensions separately.
+2. Reuse the verified `recovery-ecf6721-postdeploy-1` generation while it passes the
+   72-hour policy, source/schema compatibility, archive/proof hashes and independent
+   restore/off-host evidence. No capture or restore at this development checkpoint.
+   Refresh only if actually necessary at the imminent approved activation. Obtain
+   current account quota/inode evidence through the existing coordinator.
+3. Bind the complete source/vendor/Vite inventories to the approved commit and a
+   unique journal. Verify 24 exact live migration names and 13 trigger bodies/definers
+   using the authorized read-only observer. **Execute no migrate/seed/down command.**
+4. Under the existing exclusive operation lock, preserve affected source, vendor,
+   asset manifests and configuration for file rollback; verify those copies before
+   a brief conventional Laravel maintenance boundary. Preserve uploads/chat/sessions,
+   provider settings and private maintenance audit/state. No schema/write-drain claim.
+5. Install only the approved source and locked production vendor, publish all referenced
+   hashed assets while retaining older versions, and rebuild compatible route/view
+   caches. Do not regenerate keys or clear all sessions/cache. Preserve config unless
+   an explicitly reviewed rebuild is needed. Use the existing scoped web OPcache
+   procedure, including changed vendor code; do not reset global hosting settings.
+6. Verify installed source/dependency/asset hashes, 24/13 unchanged database contracts,
+   IPPanel settings and provider-OFF switches before reopening. Check redirects/private
+   no-store headers, hashed CSS/JS/fonts immutable cache and manifest freshness on actual
+   LiteSpeed; HSTS host-only 300 seconds, CSP report-only, map activation, WebOTP and chat.
+7. Public HTTPS and existing authenticated owner smoke acceptance must pass with
+   maintenance OFF. No synthetic production orders/payments/SMS for smoke tests.
+   Any uncertainty is STOP/PENDING, not PASS. No blind retry of a partial journal.
+
+Rollback for this **schema-neutral** candidate restores the checked matching baseline
+source AND vendor, route/view caches and prior asset manifests; remove only exact
+candidate additions recorded in the journal. Preserve old hashed assets for open tabs.
+Never restore an old database or discard newer customer/chat/financial records.
+If compatibility/file restore cannot be verified, remain protected and use forward
+recovery. Merge PR #22 only after separately authorized deployment and acceptance.
+
+## Shared tooling
+
+Use the tracked `scripts/release/recover.php` with an explicit private manifest and its SHA-256. `inspect` performs read-only production/database checks; `capture` checks an empty approved restore target, obtains live quota evidence, captures durable storage plus transactional SQL, restores only the isolated target, and publishes an encrypted receipt. The Linux `capture.py` monitor rejects any durable-storage mutation, including a write followed by restoration of the same bytes. The companion `bridge.ps1 -QuotaOnly` consumes that same pinned manifest and performs quota response, encrypted transfer and independent verification through `transfer.ps1` and `verify-offhost.ps1`.
+
+Deploy these helpers together in an immutable private tool directory and checksum the whole tool bundle. Release-specific facts belong in manifests, including current branch, commits, exact migration/trigger contracts, retained files, state/audit pins, isolated destination and a unique backup generation. Never copy a historical PHP helper and replace commit strings. Keep private manifests, encryption keys and receipts outside Git. The cPanel File Manager API supports preparation/readback, but this environment has no authorized server-execution API; the owner invokes the verified CLI command.
+
+After independent recovery PASS, `activate-source.sh` and `activate-source.php` consume a separately pinned release manifest and the existing approved source/CSS artifacts. They cover modified existing files, preserve dependencies/routes/schema and configuration, verify file rollback archives, use conventional Laravel maintenance, and verify HTTPS/assets before publishing PASS. They reject migrations, dependency changes, additions/deletions/renames and unsupported asset shapes. Such releases need a reviewed extension of this workflow; never fall back to the retired PR13 activation pipeline.
+
+A failed capture or occupied restore target is preserved and cannot be replayed. Preflight STOPs produce a manifest-bound private receipt with the specific check and safe metadata. Only an explicit `resume` of a recorded pre-capture quota PENDING is allowed, with the same pinned manifest and a new full preflight/SQL-empty check; other failures require reconciliation. Completed captures are recognized by their manifest and archive hashes and reused without another restore. Never delete a journal or provision another database automatically. An off-host transfer interruption preserves the encrypted partial file and cannot trigger another backup. Read-only quota requests alone have bounded transport retries; integrity/authorization failures and database mutations are never retried automatically. The 72-hour limit is checked at activation, alongside integrity and independent recovery, rather than during ordinary development.
+
+### Quota bridge protocol 2
+
+Set `quotaProtocol` to the integer `2` only in a newly qualified manifest and pin all matching PHP, PowerShell and launcher files. Older pinned bundles keep their protocol. Create `quota-v2-<manifest SHA-256>` as an account-owned 0700 directory under the existing private kit before arming its Windows bridge. The bridge requires this directory and its ACL-restricted local outbox before reporting READY.
+
+PHP publishes an immutable nonce-bound request. The bridge scopes discovery to the mailbox, uses bounded jittered backoff for transient API failures and stages one private response in its durable local outbox. A response is consumable only as one complete, checksum-verified envelope bound to the exact request bytes, both commits, phase and manifest. The readback after a lost upload response decides whether another upload is needed. Matching bytes are reused. Conflicting or partial remote artifacts are preserved for reconciliation. PHP enforces the original authenticated account quota, physical space and freshness checks, then writes the immutable accepted, expired or rejected acknowledgment. Retain the mailbox and outbox through completion. An acknowledgment records quota acceptance independently of the final deployment or recovery outcome.
+
+The conventional source runner requires a protocol-2 admission acknowledgment before it opens its activation journal. The receiver stays active for the distinct fence request and exits successfully only after PHP accepts that fence. The admission reply never substitutes for the fence.
+
+Use `launch-detached.py` with the qualified private tools on the hosting CLI if the host permits detached processes. The launcher redirects all streams, starts a separate POSIX session and reserves a nonreplayable dispatch directory per action and manifest. The original host operation lock, recovery checks and mutation journals still apply. An incomplete dispatch has no automatic retry. Reconcile the runner and actual host state before preparing a new attempt. An explicit `resume` remains limited to the existing pre-capture PENDING contract.
+
+The cPanel server-execution boundary, the 72-hour recovery contract, private key custody and independent verification are unchanged. Keep a Windows quota receiver on verified standby at execution time. A stopped conventional release with a quota request and a pre-migration journal is handled with `inspect-stopped-source.php` before any new manifest or deployment. Do not reuse an occupied attempt directory or treat an old nonce as authorization.
+
+### Conventional source completion and reconciliation
+
+Pin `source-deployment-state.php` with the matching runner. The loader validates every HTTP expectation before requesting quota or entering maintenance. Integer statuses are accepted as shorthand for a status-only assertion. They are expanded in memory, leaving the original manifest bytes and SHA-256 untouched. Invalid assertions fail at contract validation.
+
+The source runner writes immutable manifest-bound checkpoints after maintenance, schema, source, runtime, assets, traffic and HTTPS acceptance. It records reopen intent before reopening traffic. The existing migration-started and migration-complete receipts remain authoritative for DDL. After verified acceptance, it publishes `complete.json` atomically before rendering any output. A detached process exit remains a separate data point.
+
+Use the same pinned detached launcher with `status deploy <manifest> <sha256>` to read the last durable checkpoint, migration markers, receipt status and worker exit. `ACCEPTED_RECEIPT_MISSING` or `SOURCE_RECONCILIATION_REQUIRED` calls for inspection. Never replay the deployment or migrations from either status. For a live additive application release, use the separately pinned `reconcile-source.php ... inspect` procedure. It checks production, published assets, lock, triggered database contract and recovery evidence read-only. A conflict or unexplained baseline-row difference stops for review. Only after acceptance and owner authorization may `record <evidence-sha256>` revalidate live evidence and publish a missing receipt. The existing worker and journal entries remain intact.
+
+Recovery and activation share an exclusive operation lock; capture also holds a database advisory lock through isolated restoration. Only the diagnostic `error_log` may append while preserving its original prefix. All durable chat/security/session files remain covered by the strict capture monitor. The enabled private test-account flag can coexist with approved real SMS delivery and logout reset; verify effective/fresh configuration agreement instead of requiring the obsolete all-test-features-OFF state. No backup operation changes provider settings or sends an SMS.
+
+Shared recovery qualification passed on 2026-11-13 against production baseline `9082e64`, with 23 migrations, 13 triggers, matching schema/definers/rows, and independent encrypted off-host verification of all protected files and 82 persistent files. Source activation remains pending. Reuse this evidence within policy instead of repeating capture/restore. See [deployment lessons](DEPLOYMENT-LESSONS-LEARNED.md).
+
 Owner workflow decision: 2026-11-06. This replaces the old fresh-install/staging sequence. Production is already installed: do not reinstall, recreate users/databases, regenerate APP_KEY, replace directories, or replay Stage 1/2/Phase 8.
 
 1. Develop on the existing feature branch at `https://novinpaypos.test` using Herd and the isolated test runner. Preserve unrelated work and private configuration. Present UI/features locally for owner approval.
@@ -17,3 +139,143 @@ No routine hosted staging, staging Basic login, staging acceptance gate or new t
 SMS/notifications, Zibal live payments and Postex billing/shipment operations remain disabled unless separately authorized. Never copy ZizoLearn secrets/data or modify its website.
 
 References: [AGENTS](../AGENTS.md), [handoff](AI-PROJECT-HANDOFF.md), [lessons](DEPLOYMENT-LESSONS-LEARNED.md), [MariaDB compatibility](MARIADB-COMPATIBILITY.md), [maintenance recovery](admin-maintenance.md), and the exact separately approved release/rollback manifest. Prepared scripts are not proof of execution.
+
+## Current schema inventory and post-cleanup tools
+
+Use the shared `recover.php` / `activate-source.*` bundles, not removed standalone
+installers or historical PR13 activation commands. Package `schema-contract.php`
+and `trigger-contracts.json` alongside `lib.php`; validate the entire bundle checksum
+list before execution. The JSON file is the reviewed trigger contract, including
+introducing migration, body hash and definer. Migration identity is the sorted name
+set from the exact baseline/candidate `database/migrations`, never a historical count.
+`backup.php` verifies the live baseline names and exact reviewed trigger contracts;
+additive candidate migrations must be reviewed separately. A healthy HTTP response
+or an old restore receipt is not a fresh SQL inventory. Use the authorized migrator
+observer for trigger metadata; never expand runtime privileges.
+
+The older `pipeline.php` is not the supported production entry point. Standalone
+`login-submit-*` / `login-recovery-*` checksum lists left on the host reference removed
+helpers and must not be replayed. Current shared-tool syntax/checksum validation does
+not authorize an actual deployment, restore, migration, or cron installation.
+
+## Scheduler readiness (not installed automatically)
+
+The observed production cache driver is `database`; Laravel's database cache store
+implements cross-process locks and the baseline includes `cache` / `cache_locks`.
+No live lock acquisition or current CLI execution was performed through cPanel API.
+The configured web handler is ea-php84; verify the explicit CLI version at activation.
+After separate owner authorization, use this cPanel cron once per minute:
+
+```cron
+* * * * * cd /home/novinpay/novinpay && /opt/cpanel/ea-php84/root/usr/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+`operations:status` is read-only and reports heartbeat age, stale/review counts and
+cache-lock capability, without customer identifiers or network calls. Missing/stale
+heartbeat is not scheduler success. The heartbeat should update within three minutes.
+Payment processing retains overlap locks and defaults to disabled via `OPERATIONS_SCHEDULED_PAYMENTS=false`. Customer notifications stay in-account; there is no external notification worker.
+Enabling cron does not authorize provider processing; payment live switches and
+notification configuration remain separate gates. Never enable them by implication.
+
+Do not schedule `recover.php` as a recurring backup job: it is a unique, guarded
+capture/isolated-restore operation and may encounter an occupied destination. Reuse
+verified encrypted recovery within the approved 72-hour policy. A separately approved
+recurring encrypted capture/transfer task is still pending; do not silently introduce
+a restore database, recurring restore, new daemon, or another backup during development.
+
+
+## Reviewed additive application release
+
+The existing `activate-source.*` entry point also accepts the separately reviewed
+`novinpay-application-release-v1` manifest. The original source-only format still
+rejects route/config/schema changes. Application mode requires exact candidate blob
+hashes for ALL changed config/routes/migrations, new migration names only, and the
+baseline-plus-additions name inventory. Composer/Node dependency changes, historical
+migration edits, deletions/renames/type changes and changed trigger contracts remain
+unsupported. A current baseline cached-config hash is mandatory.
+
+The same operation flock and quota/recovery gates precede a unique non-replayable
+journal. During conventional Laravel maintenance, stage and hash only reviewed
+migration files from Git, run only those through the existing migrator account in
+process memory, verify the candidate migration set/trigger contracts, then fast-forward
+application code. The additive nullable payment-attempt metadata is compatible with
+baseline code; Laravel request admission is closed and live payment/cron workers stay
+disabled. This is not a claim of global process draining or chat-writer fencing; the
+independent chat does not write the altered payment-attempt table.
+
+Rebuild config/routes/views; compare protected configuration semantically against the
+checksum-pinned original (only the reviewed new local defaults may differ). Recheck
+IPPanel/test-reset preservation and provider-OFF gates; invalidate changed application,
+route and config opcodes through the authenticated existing web probe. Publish checked
+Vite assets and reopen only after readiness. Reusing an existing CSS file is allowed
+only when byte-identical to the checked package.
+
+Any migration-started/partial-DDL failure keeps maintenance and all journals; NEVER
+replay, run down(), restore an older database, or blindly restore old application
+files. Forward recovery is required after migration uncertainty/new customer writes.
+Before DDL, cancellation still requires verified baseline compatibility. A successful
+local/CI contract test does not establish hosted activation: current live SQL inventory,
+applicable encrypted recovery/rollback, exact artifact pins and explicit production
+operation approval remain release gates. No production activation was performed here.
+
+## Phase 5: schema-neutral locked runtime extension
+
+The existing `activate-source.*` entry point dispatches the explicitly separate
+`novinpay-runtime-release-v1` contract to `runtime-release.php` and the fixed
+`runtime-host.php` adapter. Source-only v1 and additive-application v1 remain strict:
+Composer changes, multi-file assets and zero-migration plans are not silently admitted
+into those legacy formats. No retired activation pipeline is used.
+
+This contract is limited to the ecf6721 baseline, the approved 9f2e6a4 application
+payload, 24 unchanged migration names/bytes, 13 reviewed trigger bodies/definers and
+the sole Laravel 13.35.0 -> 13.40.0 production dependency change. Later commits may
+change only release tooling, tests, documentation and the existing CI workflow.
+Archives are SHA-256 pinned, bounded, checked member-by-member, and bound to real
+Git blobs and Composer package names/versions/source/dist references. Composer never
+runs on hosting. Generated runtime files, secrets, links and unlisted archive members
+are rejected; Git archive directory entries must be empty inventoried ancestors.
+
+A unique private journal and the existing exclusive operation lock prevent replay.
+Before maintenance, check eligible encrypted/off-host/isolated-restore evidence under
+the unchanged 72-hour policy, current byte quota, explicit account inode quota and
+physical inode capacity. Stage all files and verify a complete baseline vendor copy.
+Preserve the hosting root handler, public symlink, cached configuration, private
+support identity and persistent state. During Laravel maintenance, fast-forward
+source, switch staged vendor, publish complete assets with manifests last, rebuild
+routes/views, invalidate scoped application/vendor opcodes, verify the actual web
+framework version, inspect unchanged live SQL/trigger inventory, then admit traffic.
+Old hashed assets remain available. No migrations, seeds or database restores exist
+in this transaction. This is not a process-draining or global chat-write fence.
+
+Before traffic is admitted, a verified rollback restores matched baseline Git source
+(detached at the exact baseline, without moving branch history), original vendor,
+caches/views and prior mutable asset manifests. Only recorded operation-owned new
+assets may be removed. An uncertain rollback stays protected; a failed public smoke
+check attempts maintenance and requires explicit reconciliation, never database
+restoration. Interrupted/previous journals cannot be resumed or replayed automatically.
+
+The local rehearsal uses the same transaction and real baseline/candidate source,
+production-only vendor and complete assets. Windows denied native symlink creation;
+that check must not be faked. The existing Linux PHP SQLite CI job therefore runs
+`php scripts/release/prepare-runtime-rehearsal.php` after its normal build/tests.
+It exercises real Laravel caches/maintenance, symlink preservation, activation and
+forced file rollback against a synthetic isolated SQLite sentinel. cPanel quota,
+MariaDB trigger metadata, HTTPS and LiteSpeed OPcache are explicitly simulated there;
+actual hosting checks remain mandatory at a separately authorized activation.
+
+Qualification requires that exact-head CI rehearsal to succeed and the
+private source artifact/inventory to be rebound to the final SHA. Private manifests
+marked `activationReady: false` cannot execute through the hosting adapter. No upload
+or production activation is authorized by this Phase 5 preparation.
+
+## Default operator workflow for incremental source and application releases
+
+Prepare the reviewed Git delta and changed asset artifacts, reuse passing CI for the exact SHA, and stage the private bundle with byte-for-byte readback. Reuse recovery evidence only when the baseline, integrity, compatibility and 72-hour policy still pass. When new recovery is needed, complete the existing detached capture, isolated restore and independent Windows verification before binding the activation manifest. The host cannot issue the independent off-host proof itself. Keep any payment activation separately scoped.
+
+Include the checksum of `qualified-operation.sh` in the reviewed operator command and pin the bundle checksum list and all runner dependencies. After authorization, use `bash qualified-operation.sh deploy RELEASE LIST_SHA256` for the reviewed source or additive application release. The existing detached runner checks the host and backup gates, installs the approved delta, executes only reviewed migrations, rebuilds required caches, verifies health and records the outcome. The launcher returns immediately. Use `bash qualified-operation.sh status RELEASE LIST_SHA256` for progress and completion. An existing dispatch or attempt routes a repeated deployment request to inspection. A partial migration or missing receipt requires the Conventional source completion and reconciliation procedure. This entry point requires the checkpoint-capable runner and is for future qualified packages.
+
+### Schema-neutral additive source and multi-asset Vite contract (`novinpay-source-release-v2`)
+
+Use `novinpay-source-release-v2` when a schema-neutral, dependency-neutral, config/route-neutral release introduces new source files (`A`) alongside modified files (`M`) and/or updates multiple Vite assets (for example both `assets/app-*.css` and `assets/app-*.js`). Existing `novinpay-source-release-v1` and `novinpay-application-release-v1` contracts remain strict and unchanged.
+
+The v2 manifest replaces single `cssAsset` with a nonempty unique `viteAssets` array (`assets/[a-zA-Z0-9_-]+\.(?:css|js|woff2)`). The runner continues to reject any diff in migrations, Composer/Node locks, `config/`, `routes/`, `public/.htaccess`, or `CDRT` (copies, deletions, renames, type changes). Before maintenance it records and checksum-pins `baseline-source.tar` (all `M` files), `added-source-files.txt` (all `A` files), and `vite-manifest-before.json`. During publication it verifies all staged ZIP members against `release-assets.sha256`, links new hashed assets while preserving existing assets for open tabs, records newly published asset names in `published-vite-assets.txt`, and atomically swaps `manifest.json` last. Rollback restores matched baseline source and `vite-manifest-before.json`, removes only recorded `added-source-files.txt` entries, rebuilds view caches, and never touches the database.

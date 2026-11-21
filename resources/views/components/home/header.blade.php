@@ -1,11 +1,11 @@
+@props(['premium' => false])
+
 @php
+    $shopTools = request()->routeIs('home', 'products.*', 'cart.*', 'repair*', 'account.*', 'articles.*', 'contact', 'consultation*', 'terms', 'privacy');
+    request()->attributes->set('customer_header_rendered', true);
+    $customerAccount = app(\App\Services\CustomerLogin::class)->authenticatedAccount(request());
+    $activeCategory = request()->routeIs('products.index') ? request()->query('category') : null;
     $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما'], ['articles.index', 'articles.*', 'مقاله‌ها']];
-    $mobileNavigation = [['account.index', 'account.*', 'حساب کاربری'], ['repair.track', 'repair.track*', 'پیگیری تعمیرات'], ['articles.index', 'articles.*', 'مقالات'], $navigation[3]];
-    $quickNavigation = match (true) {
-        request()->routeIs('products.*') => [$navigation[0], $navigation[2]],
-        request()->routeIs('repair', 'repair.*') && ! request()->routeIs('repair.track*') => [$navigation[0], $navigation[1]],
-        default => [$navigation[1], $navigation[2]],
-    };
 @endphp
 
 <header class="np-header" data-mobile-header>
@@ -15,25 +15,64 @@
             @foreach ($navigation as [$route, $active, $label])
                 <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
             @endforeach
-            <a href="{{ route('account.index') }}" @if (request()->routeIs('account.*')) aria-current="page" @endif>حساب کاربری</a>
         </nav>
         <div class="np-header__actions">
-            <details class="np-mobile-menu">
-                <summary aria-label="فهرست ناوبری" aria-controls="mobile-navigation">
+            <div class="np-mobile-menu">
+                <button type="button" data-navigation-toggle aria-label="فهرست ناوبری" aria-controls="mobile-drawer" aria-haspopup="dialog" aria-expanded="false">
                     <svg class="np-menu-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-                    <svg class="np-menu-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
-                </summary>
-                <nav id="mobile-navigation" aria-label="ناوبری موبایل">
-                    @foreach ($mobileNavigation as [$route, $active, $label])
-                        <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
-                    @endforeach
-                </nav>
-            </details>
+                </button>
+            </div>
+        </div>
+        @if ($shopTools)
+            <a class="np-customer-trigger store-mobile-search" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-controls="search-dialog" aria-label="جست‌وجوی محصولات"><x-storefront.icon name="search" width="20" height="20" /></a>
+        @endif
+        <div class="np-customer-header" data-customer-header data-session-url="{{ route('customer.header') }}">
+            @if ($shopTools)
+                <div class="premium-desktop-tools store-desktop-tools" aria-label="ابزارهای فروشگاه">
+                    <a class="np-customer-trigger" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-label="جست‌وجوی محصولات"><x-storefront.icon name="search" /></a>
+                    <a class="np-customer-trigger" href="{{ route('cart.index') }}" data-storefront-open="cart-dialog" aria-haspopup="dialog" aria-label="سبد خرید"><x-storefront.icon name="cart" /><x-storefront.cart-count /></a>
+                </div>
+            @endif
+            <x-home.customer-entry :account="$customerAccount" />
         </div>
     </div>
-    <nav class="np-quick-nav np-container" aria-label="دسترسی سریع">
-        @foreach ($quickNavigation as [$route, $active, $label])
-            <a href="{{ route($route) }}">{{ $label }}</a>
-        @endforeach
-    </nav>
 </header>
+<dialog id="mobile-drawer" class="np-mobile-drawer" aria-label="ناوبری موبایل">
+    <div class="np-mobile-drawer__panel">
+        <div class="np-mobile-drawer__heading">
+            <a href="{{ route('home') }}" class="np-mobile-drawer__logo" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
+            <button type="button" data-navigation-close aria-label="بستن فهرست ناوبری" autofocus>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
+            </button>
+        </div>
+        <nav id="mobile-navigation" aria-label="ناوبری موبایل">
+            <a href="{{ route('home') }}" @if (request()->routeIs('home')) aria-current="page" @endif><x-storefront.icon name="home" class="np-nav-icon" /><span>صفحه اصلی</span></a>
+            <details class="np-drawer-categories" @if (request()->routeIs('products.*')) open @endif>
+                <summary><x-storefront.icon name="shop" class="np-nav-icon" /><span>فروشگاه</span><x-storefront.icon name="chevron-down" class="np-drawer-chevron" /></summary>
+                <div class="np-drawer-categories__list">
+                    <a href="{{ route('products.index') }}" @if (request()->routeIs('products.*') && ! $activeCategory) aria-current="page" @endif><span>همه محصولات</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
+                    @foreach (\App\Enums\ProductCategory::cases() as $category)
+                        <a href="{{ route('products.index', ['category' => $category->value]) }}" @if ($activeCategory === $category->value) aria-current="page" @endif><span>{{ $category->label() }}</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
+                    @endforeach
+                </div>
+            </details>
+            <a href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif><x-storefront.icon name="repair" class="np-nav-icon" /><span>تعمیرات کارتخوان</span></a>
+            <a href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif><x-storefront.icon name="search" class="np-nav-icon" /><span>پیگیری تعمیرات</span></a>
+            <a href="{{ route('articles.index') }}" @if (request()->routeIs('articles.*')) aria-current="page" @endif><x-storefront.icon name="book" class="np-nav-icon" /><span>مقالات و آموزش‌ها</span></a>
+            <a href="{{ route('contact') }}" @if (request()->routeIs('contact')) aria-current="page" @endif><x-storefront.icon name="phone" class="np-nav-icon" /><span>تماس با ما</span></a>
+        </nav>
+        <div class="np-mobile-drawer__footer" aria-label="حساب کاربری و شماره‌های تماس {{ config('business.name') }}">
+            <a class="np-mobile-drawer__account" href="{{ $customerAccount ? route('account.index') : route('account.login') }}">
+                <x-storefront.icon name="account" class="np-nav-icon" />
+                <span>{{ $customerAccount ? 'حساب کاربری' : 'ورود / ثبت‌نام' }}</span>
+                <x-storefront.icon name="arrow" class="np-drawer-arrow" />
+            </a>
+            <div class="np-mobile-drawer__phones">
+                <x-business-phone><x-home.icon name="phone" /></x-business-phone>
+                @if (config('business.secondary_phone'))
+                    <x-business-phone secondary><x-home.icon name="phone" /></x-business-phone>
+                @endif
+            </div>
+        </div>
+    </div>
+</dialog>

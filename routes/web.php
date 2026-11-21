@@ -26,7 +26,10 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\Payments\PaymentController;
 use App\Http\Controllers\Payments\ReceiptController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductFeedbackController;
+use App\Http\Controllers\ProductMediaController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SupportChatController;
 use App\Http\Middleware\EnsureAdminSession;
 use App\Http\Middleware\EnsureCustomerSession;
@@ -35,6 +38,7 @@ use App\Http\Middleware\PrivateAdminResponse;
 use App\Http\Middleware\PrivateRepairResponse;
 use App\Http\Middleware\PublicArticleResponse;
 use App\Services\CustomerAccountLink;
+use App\Services\CustomerLogin;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -52,12 +56,12 @@ Route::get('/support-chat/{path}', SupportChatController::class)
 
 Route::get('/support', [SupportChatController::class, 'operatorPanel'])
     ->withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
-    ->middleware('throttle:600,1')->name('support.panel');
-Route::get('/support/sw.js', [SupportChatController::class, 'operatorWorker'])->middleware('throttle:600,1')->name('support.panel.worker');
+    ->middleware('throttle:600,1,support-chat:')->name('support.panel');
+Route::get('/support/sw.js', [SupportChatController::class, 'operatorWorker'])->middleware('throttle:600,1,support-chat:')->name('support.panel.worker');
 
 Route::get('/support-chat/operator/{asset}', [SupportChatController::class, 'operatorAsset'])
     ->where('asset', '[a-zA-Z0-9_./-]+\.(?:js|css|json|woff2|png|svg)')
-    ->middleware('throttle:600,1')
+    ->middleware('throttle:600,1,support-chat:')
     ->withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
     ->name('support.chat.operator.asset');
 
@@ -66,19 +70,26 @@ foreach (['operator-api.php', 'support-content-admin.php'] as $operatorEndpoint)
     Route::match(['GET', 'POST'], '/support-chat/'.$operatorEndpoint, SupportChatController::class)
         ->defaults('path', $operatorEndpoint)
         ->withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
-        ->middleware('throttle:600,1')->name('support.chat.operator.'.str_replace('.php', '', $operatorEndpoint));
+        ->middleware('throttle:600,1,support-chat:')->name('support.chat.operator.'.str_replace('.php', '', $operatorEndpoint));
 }
 
 Route::match(['GET', 'POST'], '/support-chat/{path?}', SupportChatController::class)
     ->where('path', '[a-zA-Z0-9_./-]*')
     ->withoutMiddleware(PreventRequestForgery::class)
-    ->middleware('throttle:600,1')->name('support.chat');
+    ->middleware('throttle:600,1,support-chat:')->name('support.chat');
 
 Route::get('/login', [CustomerAccountController::class, 'login'])->block(20, 15)->middleware(PrivateRepairResponse::class)->name('account.login');
+
+Route::get('/customer-header', fn (Request $request, CustomerLogin $login) => response()
+    ->view('components.home.customer-entry', ['account' => $login->authenticatedAccount($request)])
+    ->header('X-LiteSpeed-Cache-Control', 'no-cache'))
+    ->middleware(PrivateRepairResponse::class)
+    ->block(20, 15)->name('customer.header');
 
 Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('account.')->group(function (): void {
     $controller = CustomerAccountController::class;
     Route::get('login', fn () => redirect()->route('account.login'))->name('login.legacy');
+    Route::get('login-state', [$controller, 'loginState'])->block(20, 15)->middleware('throttle:60,1')->name('login.state');
     Route::post('start', [$controller, 'start'])->block(20, 15)->middleware('throttle:customer-otp')->name('start');
     Route::post('restart', [$controller, 'restart'])->block(20, 15)->name('restart');
     Route::post('otp', [$controller, 'send'])->block(20, 15)->middleware('throttle:customer-otp')->name('otp');
@@ -100,31 +111,60 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
 });
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+// Public crawler documents contain no session/identity-dependent content.
+Route::withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])->group(function (): void {
+    Route::get('/llms.txt', [PageController::class, 'discovery'])->name('public.discovery');
+    Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
+    Route::get('/sitemap-{type}-{page}.xml', [SitemapController::class, 'part'])
+        ->whereIn('type', ['pages', 'products', 'articles'])->where('page', '[1-9][0-9]{0,5}')->name('sitemap.part');
+});
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $payment = PaymentController::class;
+    Route::get('/payments/zibal/callback', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.callback');
+    Route::middleware(EnsureCustomerSession::class)->prefix('payments')->name('payments.')->group(function () use ($payment): void {
+        Route::post('/documents/{document}/zibal', [$payment, 'start'])->whereUuid('document')->middleware('throttle:10,1,cart-checkout:')->name('start');
+        Route::get('/{payment}/connect', [$payment, 'connect'])->whereUuid('payment')->middleware('throttle:60,1')->name('connect');
+        Route::get('/{payment}/gateway', [$payment, 'gateway'])->whereUuid('payment')->middleware('throttle:60,1')->name('gateway');
+        Route::get('/{payment}/result', [$payment, 'result'])->whereUuid('payment')->name('result');
+        Route::get('/{payment}/status', [$payment, 'paymentStatus'])->whereUuid('payment')->middleware('throttle:60,1')->name('status');
+    });
     Route::get('/pay/{page}.html', [$payment, 'page'])->whereIn('page', ['index', 'canceled', 'error', 'failed', 'paid', 'processing', 'success'])->name('payments.page');
-    Route::get('/bot/payment_verify.php', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.callback');
-    Route::get('/bot/check_payment_status.php', [$payment, 'status'])->middleware('throttle:60,1')->name('payments.status');
+    Route::get('/bot/payment_verify.php', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.legacy.callback');
+    Route::get('/bot/check_payment_status.php', [$payment, 'status'])->middleware('throttle:60,1')->name('payments.legacy.status');
     Route::get('/bot/receipt_info.php', [$payment, 'receipt'])->middleware('throttle:30,1')->name('payments.receipt');
-    Route::post('/account/documents/{document}/zibal', [$payment, 'start'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('payments.start');
+    Route::post('/account/documents/{document}/zibal', [$payment, 'start'])->whereUuid('document')->middleware([EnsureCustomerSession::class, 'throttle:10,1,cart-checkout:'])->name('payments.legacy.start');
     $receipt = ReceiptController::class;
+    Route::get('/shop/orders/{order}/payment', [$receipt, 'order'])->whereUuid('order')->middleware(EnsureCustomerSession::class)->name('payments.order');
+    Route::get('/repairs/{repair}/payment', [$receipt, 'repair'])->whereUuid('repair')->middleware(EnsureCustomerSession::class)->name('payments.repair');
     Route::get('/account/documents/{document}', [$receipt, 'show'])->middleware(EnsureCustomerSession::class)->name('payments.document');
-    Route::post('/account/documents/{document}/receipts', [$receipt, 'store'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('payments.upload');
+    Route::post('/account/documents/{document}/receipts', [$receipt, 'store'])->middleware([EnsureCustomerSession::class, 'throttle:10,1,cart-checkout:'])->name('payments.upload');
     Route::get('/payment-receipts/{receipt}', [$receipt, 'image'])->middleware('throttle:60,1')->name('payments.image');
     Route::get('/account/documents/{document}/delivery', [DeliveryController::class, 'show'])->middleware(EnsureCustomerSession::class)->name('delivery.show');
-    Route::post('/account/documents/{document}/delivery', [DeliveryController::class, 'request'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('delivery.request');
+    Route::post('/account/documents/{document}/delivery', [DeliveryController::class, 'request'])->middleware([EnsureCustomerSession::class, 'throttle:10,1,cart-checkout:'])->name('delivery.request');
 });
 
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/product-media/{filename}', ProductMediaController::class)
+    ->where('filename', '[A-Za-z0-9_-][A-Za-z0-9._-]*\.(?i:jpg|jpeg|png|webp)')
+    ->withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+    ->name('products.media');
+Route::get('/product-comparison', [ProductController::class, 'compare'])->name('products.compare');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+Route::middleware([PrivateRepairResponse::class, EnsureCustomerSession::class, 'throttle:product-feedback'])->group(function (): void {
+    Route::post('/products/{product}/feedback', [ProductFeedbackController::class, 'store'])->name('products.feedback.store');
+    Route::post('/products/{product}/feedback/{feedback}/report', [ProductFeedbackController::class, 'report'])->name('products.feedback.report');
+});
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $cart = CartController::class;
-    Route::get('/cart', [$cart, 'index'])->name('cart.index');
-    Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1')->name('cart.add');
-    Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1')->name('cart.remove');
-    Route::post('/cart/checkout', [$cart, 'checkout'])->middleware([EnsureCustomerSession::class, 'throttle:10,1'])->name('cart.checkout');
+    Route::get('/cart', [$cart, 'index'])->block(20, 15)->name('cart.index');
+    Route::get('/cart/checkout', [$cart, 'review'])->middleware(EnsureCustomerSession::class)->block(20, 15)->name('cart.review');
+    Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.add');
+    Route::post('/cart/products/{product}/quantity', [$cart, 'update'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.update');
+    Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.remove');
+    Route::post('/cart/legacy/claim', [$cart, 'claimLegacy'])->middleware('throttle:10,1,cart-mutation:')->block(20, 15)->name('cart.legacy.claim');
+    Route::post('/cart/checkout', [$cart, 'checkout'])->middleware([EnsureCustomerSession::class, 'throttle:10,1,cart-checkout:'])->block(20, 15)->name('cart.checkout');
 });
 
 Route::middleware(PublicArticleResponse::class)->prefix('articles')->name('articles.')->group(function (): void {
@@ -135,6 +175,7 @@ Route::middleware(PublicArticleResponse::class)->prefix('articles')->name('artic
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/repair', [RepairRequestController::class, 'create'])->name('repair');
+    Route::get('/repair/start', [RepairRequestController::class, 'start'])->middleware(EnsureCustomerSession::class)->name('repair.start');
     Route::post('/repair', [RepairRequestController::class, 'store'])->middleware([EnsureCustomerSession::class, 'throttle:repair-submit'])->name('repair.store');
     Route::get('/repair/confirmation', [RepairRequestController::class, 'confirmation'])->name('repair.confirmation');
     Route::get('/repair/track', [RepairRequestController::class, 'tracking'])->name('repair.track');
@@ -173,6 +214,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
         Route::get('payments', [App\Http\Controllers\Admin\PaymentController::class, 'index'])->middleware('can:finance.view')->name('payments.index');
         Route::get('payments/receipts/{receipt}/image', [ReceiptController::class, 'image'])->middleware(['can:finance.receive', 'can:finance.details'])->name('payments.image');
         Route::post('payments/{receipt}/review', [App\Http\Controllers\Admin\PaymentController::class, 'review'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('payments.review');
+        Route::post('payments/attempts/{attempt}/resolve', [App\Http\Controllers\Admin\PaymentController::class, 'resolveAttempt'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:10,1'])->name('payments.attempt.resolve');
         Route::post('payments/receive', [App\Http\Controllers\Admin\PaymentController::class, 'store'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('payments.store');
         Route::post('payments/refund', [App\Http\Controllers\Admin\PaymentController::class, 'refund'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:15,1'])->name('payments.refund');
         Route::post('customer-accounts/link', function (Request $request, CustomerAccountLink $service) {
@@ -200,6 +242,9 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
             Route::get('products/{product}/edit', [AdminProductController::class, 'edit'])->name('products.edit');
             Route::match(['put', 'patch'], 'products/{product}', [AdminProductController::class, 'update'])->name('products.update');
             Route::delete('products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
+            Route::get('products/{product}/feedback', [App\Http\Controllers\Admin\ProductFeedbackController::class, 'index'])->name('products.feedback.index');
+            Route::patch('products/{product}/feedback/{feedback}', [App\Http\Controllers\Admin\ProductFeedbackController::class, 'update'])
+                ->middleware('throttle:30,1,product-moderation:')->name('products.feedback.update');
         });
         Route::resource('staff', StaffController::class)->only(['index', 'create', 'edit'])->middleware('can:staff.manage');
         Route::post('staff', [StaffController::class, 'store'])->middleware(['can:staff.manage', 'throttle:10,1'])->name('staff.store');

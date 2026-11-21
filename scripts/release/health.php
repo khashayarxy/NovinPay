@@ -60,7 +60,9 @@ try {
     try {
         $s = $pdo->query('SELECT DATABASE() db,CURRENT_USER() account,@@session.time_zone zone,@@session.explicit_defaults_for_timestamp dates,@@session.check_constraint_checks checks_on,@@session.foreign_key_checks fk')->fetch(PDO::FETCH_ASSOC);
         check($s['db'] === 'novinpay_live1' && explode('@', $s['account'])[0] === 'novinpay_app1' && $s['zone'] === '+00:00' && (int) $s['dates'] === 1 && (int) $s['checks_on'] === 1 && (int) $s['fk'] === 1, 'database_readonly_identity');
-        check((int) $pdo->query('SELECT COUNT(*) FROM migrations')->fetchColumn() === 14, 'unchanged_migrations');
+        \NovinPay\Release\verifyMigrationInventory(
+            $pdo->query('SELECT migration FROM migrations ORDER BY migration')->fetchAll(PDO::FETCH_COLUMN),
+            \NovinPay\Release\migrationInventory($root.'/database/migrations'));
         $public = Article::published()->with('publishedVersion.category')->limit(10)->get();
         $hidden = Article::query()->whereNotIn('id', Article::published()->select('id'))->limit(10)->get(['id', 'slug']);
     } finally {

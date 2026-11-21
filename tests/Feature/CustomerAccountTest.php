@@ -29,11 +29,11 @@ class CustomerAccountTest extends TestCase
 
     private function otp(string $phone = '09000000000'): array
     {
-        config(['customer.sms_enabled' => true, 'customer.sms_api_key' => 'test-placeholder', 'customer.otp_template' => 1, 'customer.otp_parameter' => 'CODE', 'customer.approved_template_ids' => [1]]);
+        config(['customer.ippanel' => ['enabled' => true, 'api_key' => 'synthetic-key', 'pattern_code' => 'syntheticpattern', 'parameter' => 'code', 'sender' => '+983000505']]);
         Http::preventStrayRequests();
-        Http::fake(['api.sms.ir/*' => Http::response(['status' => 1, 'data' => ['messageId' => 123]])]);
+        Http::fake(['https://edge.ippanel.com/v1/api/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [123]]])]);
         $challenge = app(CustomerLogin::class)->issue($phone);
-        $code = Http::recorded()[0][0]['parameters'][0]['value'];
+        $code = Http::recorded()[0][0]['params']['code'];
 
         return [$challenge, $code];
     }
@@ -45,6 +45,102 @@ class CustomerAccountTest extends TestCase
         $this->actingAs($account, 'customer')->withSession(['customer_session_version' => $account->session_version]);
 
         return $account;
+    }
+
+    public function test_mobile_customer_header_is_private_and_uses_existing_account_routes(): void
+    {
+        $this->get('/')->assertOk()->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
+        $this->withSession(['_previous' => ['url' => 'http://localhost/products']])
+            ->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSessionMissing('customer_intended');
+        $this->assertSame('http://localhost/products', session('_previous.url'));
+
+        $account = $this->loginCustomer();
+        $response = $this->get('/customer-header')->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('X-LiteSpeed-Cache-Control', 'no-cache')
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
+            ->assertSee('داشبورد حساب')->assertSee('اطلاعات حساب')->assertSee('سفارش‌های من')
+            ->assertSee('سبد خرید')->assertSee('خروج از حساب')
+            ->assertSee('name="_token"', false)
+            ->assertSee(route('account.logout'), false)
+            ->assertSee(route('account.index', ['section' => 'profile']), false)
+            ->assertSee(route('account.index', ['section' => 'orders']), false)
+            ->assertDontSee($account->phone)->assertDontSee($account->public_id);
+        $this->assertStringContainsString('method="post"', $response->getContent());
+        $this->get('/')->assertOk()->assertSee('mobile-customer-navigation')->assertDontSee('ورود / ثبت‌نام')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('X-LiteSpeed-Cache-Control', 'no-cache')
+            ->assertDontSee($account->phone)->assertDontSee($account->public_id);
+        $this->post('/account/logout')->assertRedirect('/login');
+        $this->assertGuest('customer');
+        $this->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام');
+        $this->assertDatabaseHas('customer_accounts', ['id' => $account->id]);
+    }
+
+    public function test_mobile_header_rejects_revoked_or_disabled_customer_sessions_and_admin_only_login(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $this->actingAs($admin, 'web')->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام');
+        $this->assertAuthenticatedAs($admin, 'web');
+
+        $account = $this->loginCustomer();
+        $this->withSession(['customer_session_version' => $account->session_version + 1])
+            ->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
+        $this->get('/')->assertOk()->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
+        $this->get('/account')->assertRedirect(route('account.login'));
+        $this->assertGuest('customer');
+        $account->forceFill(['is_active' => false])->save();
+        $this->actingAs($account, 'customer')->withSession(['customer_session_version' => $account->session_version])
+            ->get('/customer-header')->assertOk()->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
+        $this->get('/account')->assertRedirect(route('account.login'));
+        $this->assertGuest('customer');
+    }
+
+    public function test_mobile_header_logout_uses_native_csrf_protection(): void
+    {
+        $account = $this->loginCustomer();
+        $this->app->detectEnvironment(fn () => 'local');
+        $this->get('/customer-header')->assertOk()->assertSee('name="_token"', false);
+        $this->post('/account/logout')->assertStatus(419);
+        $this->assertAuthenticatedAs($account, 'customer');
+        $this->post('/account/logout', ['_token' => session()->token()])->assertRedirect('/login');
+        $this->assertGuest('customer');
+    }
+
+    public function test_customer_header_initial_html_tracks_password_login_refresh_navigation_and_logout(): void
+    {
+        Http::preventStrayRequests();
+        config(['customer.ippanel.enabled' => false]);
+        $account = CustomerAccount::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'phone_digest' => RepairIdentity::digest('customer-account-phone', '09000000000'),
+            'phone' => '09000000000',
+            'password' => Hash::make('synthetic-header-passphrase'),
+            'verified_at' => now(),
+        ]);
+        $this->get('/')->assertOk()->assertSee('data-customer-state="guest"', false)
+            ->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('X-LiteSpeed-Cache-Control', 'no-cache');
+        $this->post('/account/start', ['phone' => $account->phone])->assertRedirect();
+        $this->post('/account/password-login', ['password' => 'synthetic-header-passphrase'])->assertRedirect('/account');
+
+        foreach (['/', '/products', '/contact', '/', '/products'] as $path) {
+            Auth::forgetGuards();
+            $this->withHeaders(['Cache-Control' => 'no-cache'])->get($path)->assertOk()
+                ->assertSee('data-customer-state="authenticated"', false)
+                ->assertSee('mobile-customer-navigation')->assertDontSee('ورود / ثبت‌نام')
+                ->assertHeader('Cache-Control', 'no-store, private')
+                ->assertHeader('X-LiteSpeed-Cache-Control', 'no-cache')
+                ->assertDontSee($account->phone)->assertDontSee($account->public_id);
+        }
+        $this->post('/account/logout')->assertRedirect('/login');
+        Auth::forgetGuards();
+        $this->get('/')->assertOk()->assertSee('data-customer-state="guest"', false)
+            ->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation');
+        $this->assertDatabaseHas('customer_accounts', ['id' => $account->id]);
     }
 
     public function test_disabled_sms_never_makes_external_requests(): void
@@ -62,7 +158,7 @@ class CustomerAccountTest extends TestCase
         $phone = '09000000000';
         [$realChallenge, $realCode] = $this->otp($phone);
         $real = app(CustomerLogin::class)->verify($realChallenge, $realCode);
-        config(['customer.sms_enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
+        config(['customer.ippanel.enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
         Http::fake();
         $this->get('/account/login')->assertRedirect('/login');
         config(['support_chat.enabled' => true]);
@@ -109,7 +205,7 @@ class CustomerAccountTest extends TestCase
         $this->assertAuthenticatedAs($admin, 'web');
         $this->assertGuest('customer');
 
-        config(['customer.sms_enabled' => false]);
+        config(['customer.ippanel.enabled' => false]);
         $this->post('/account/start', ['phone' => $account->phone])->assertRedirect(route('account.login', ['flow' => session('customer_login_flow')]))->assertSessionHasErrors('code');
         $this->post('/account/password-login', ['password' => $original])->assertRedirect('/account');
         $this->post('/account/password', ['password' => $changed, 'password_confirmation' => $changed, 'current_password' => 'wrong password'])
@@ -129,7 +225,7 @@ class CustomerAccountTest extends TestCase
     public function test_admin_can_repeat_registration_and_reset_three_times_without_reusing_sessions(): void
     {
         $phone = '09000000000';
-        config(['customer.sms_enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
+        config(['customer.ippanel.enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => [$phone]]);
         Http::fake();
         $owner = User::factory()->superAdmin()->create();
         $login = app(CustomerLogin::class);
@@ -282,7 +378,7 @@ class CustomerAccountTest extends TestCase
     {
         [$challenge, $code] = $this->otp();
         $real = app(CustomerLogin::class)->verify($challenge, $code);
-        config(['customer.sms_enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => ['09000000000']]);
+        config(['customer.ippanel.enabled' => false, 'customer.test_otp_enabled' => true, 'customer.test_otp_phones' => ['09000000000']]);
         $login = app(CustomerLogin::class);
         $test = $login->verify($login->issue('09000000000'), $login->privateTestCode('09000000000'));
         $this->actingAs($test, 'customer')->withSession(['customer_session_version' => 1]);
@@ -428,6 +524,15 @@ class CustomerAccountTest extends TestCase
         $other = app(CustomerLogin::class)->verify($challenge, $code);
         $this->actingAs($other, 'customer')->withSession(['customer_session_version' => 1]);
         $this->get($path)->assertNotFound();
+
+        // A CRM relink must not grant another account an explicitly owned request.
+        $this->post('/account/profile', ['name' => 'Synthetic Other Customer'])->assertRedirect();
+        $repair->customer_id = $other->fresh()->customer_id;
+        $repair->save();
+        $this->get($path)->assertNotFound();
+        $this->get('/account?section=repairs')->assertDontSee('SYNTHETIC');
+        $this->actingAs($account, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get($path)->assertOk();
     }
 
     public function test_addresses_are_private_and_customer_guard_cannot_enter_admin(): void

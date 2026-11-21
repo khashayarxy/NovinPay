@@ -12,7 +12,10 @@ final class CustomerTimeline
 {
     public static function repairStatus(RepairCase $repair, ?DeliveryPlan $plan = null): string
     {
-        return $plan?->state === 'dispatched' ? 'ارسال به شرکت حمل ثبت شد' : ($repair->status === RepairStage::Delivered ? 'تحویل ثبت شد' : $repair->status->label());
+        $shipped = $plan?->state === 'dispatched'
+            || ($repair->status->closed() && $repair->delivery_method === 'shipping');
+
+        return $shipped ? 'ارسال به شرکت حمل ثبت شد' : ($repair->status === RepairStage::Delivered ? 'تحویل ثبت شد' : $repair->status->label());
     }
 
     public static function orderStatus(SalesOrder $order, ?DeliveryPlan $plan = null): string

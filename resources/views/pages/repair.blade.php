@@ -2,13 +2,13 @@
 @section('title', 'درخواست تعمیر')
 @section('meta_description', 'ثبت آنلاین درخواست تعمیر کارتخوان و دریافت کد پیگیری نوین‌پی')
 @section('content')
-<div class="np-container public-section">
-    <x-page-heading title="تعمیرات تخصصی کارتخوان" eyebrow="تعمیرات نوین‌پی" icon="tool" lead="مشکل دستگاه را بنویسید و کد پیگیری بگیرید.">
-        <a href="{{ route('repair.track') }}" class="public-inline-link">پیگیری درخواست قبلی <x-home.icon name="arrow-left" /></a>
-    </x-page-heading>
-    <div class="public-split public-split--form">
-        <section class="public-panel" aria-labelledby="repair-form-title">
-            <div class="public-panel__heading"><span class="public-icon"><x-home.icon name="tool" /></span><div><h2 id="repair-form-title">ثبت درخواست تعمیر</h2><p>فیلدهای ستاره‌دار را پر کنید.</p></div></div>
+<div class="np-container public-section repair-entry">
+    <header class="store-page-intro">
+        <h1>ثبت درخواست تعمیر کارتخوان</h1>
+        <p>مشکل دستگاه را ثبت کنید و کد پیگیری بگیرید.</p>
+    </header>
+    <div class="repair-entry-layout">
+        <section class="public-panel" aria-label="ثبت درخواست تعمیر">
             <x-form-errors />
             @if(auth('customer')->check())
             <form method="post" action="{{ route('repair.store') }}" class="public-form">
@@ -24,11 +24,22 @@
                 <p class="public-hint">نام، شماره موبایل، مدل دستگاه و شرح مشکل برای ثبت درخواست ذخیره می‌شوند. <a class="public-inline-link" href="{{ route('privacy') }}">اطلاعات حریم خصوصی</a></p>
                 <button class="np-button np-button--primary" type="submit">ثبت درخواست تعمیر <x-home.icon name="arrow-left" /></button>
             </form>
-            @else<div class="public-notice"><h2>ابتدا شماره موبایل خود را تأیید کنید</h2><p>برای حفظ حریم خصوصی، درخواست در حساب شما ثبت می‌شود.</p><a class="np-button np-button--primary" href="{{ route('account.login') }}">ورود یا ثبت‌نام</a></div>@endif
+            @else
+                <p>برای ثبت درخواست، شماره موبایل خود را تأیید کنید.</p>
+                <a class="np-button np-button--primary" href="{{ route('repair.start') }}">ورود و ثبت درخواست <x-storefront.icon name="arrow" /></a>
+            @endif
+            <a class="public-inline-link repair-tracking-link" href="{{ route('repair.track') }}">پیگیری درخواست قبلی <x-storefront.icon name="arrow" /></a>
         </section>
-        <aside class="public-sidebar">
-            <div class="public-notice"><x-home.icon name="shield-check" /><h2>ثبت درخواست قبل از تحویل دستگاه</h2><p>با ثبت درخواست، دستگاه هنوز به ما تحویل داده نشده و هزینه و زمان تعمیر هم تأیید نشده است.</p></div>
-            <div class="public-panel"><h2>بعد از ثبت چه می‌شود؟</h2><ol class="public-steps"><li><span>۱</span><div><h3>کد پیگیری</h3><p>کد پیگیری را در جای امن نگه دارید.</p></div></li><li><span>۲</span><div><h3>پیگیری با شماره موبایل</h3><p>با کد پیگیری و شماره موبایل ثبت‌شده، وضعیت درخواست را ببینید.</p></div></li><li><span>۳</span><div><h3>هماهنگی مراجعه</h3><p>برای هماهنگی مراجعه یا پرسش دربارهٔ دستگاه با ما تماس بگیرید.</p></div></li></ol><x-business-phone class="public-inline-link"><x-home.icon name="phone" /></x-business-phone></div>
+        <aside class="repair-entry-notes">
+            <p class="repair-before-delivery"><x-storefront.icon name="shield" /><span>ثبت درخواست یعنی دستگاه هنوز به ما تحویل داده نشده است. هزینه و زمان تعمیر پس از بررسی مشخص می‌شود.</span></p>
+            <details>
+                <summary>بعد از ثبت درخواست چه می‌شود؟</summary>
+                <p>کد پیگیری را نگه دارید. با این کد و شمارهٔ موبایل ثبت‌شده می‌توانید وضعیت درخواست را ببینید.</p>
+            </details>
+            <section class="repair-contact" aria-label="تماس با تعمیرگاه">
+                <h2>تماس با تعمیرگاه</h2>
+                <x-business-phone both />
+            </section>
         </aside>
     </div>
 </div>

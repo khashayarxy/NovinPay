@@ -1,0 +1,106 @@
+@font-face {
+    font-family: Vazirmatn;
+    src: url('../pay/assets/Vazirmatn.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+:root {
+    color-scheme: light;
+    font: 100%/1.85 Vazirmatn, Tahoma, sans-serif;
+    color: #122940;
+    background: #f2f7fc;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+
+.payment-shell {
+    width: min(100%, 42rem);
+    margin-inline: auto;
+    padding: max(2rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+        max(2rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    padding-block-start: max(clamp(2rem, 10vh, 6rem), env(safe-area-inset-top));
+}
+
+.payment-brand { margin-block-end: 1.25rem; }
+.payment-brand img { display: block; inline-size: 8.75rem; max-inline-size: 100%; block-size: auto; }
+
+.payment-panel {
+    padding: clamp(1rem, 5vw, 2.25rem);
+    border: 1px solid #dce7f0;
+    border-radius: .75rem;
+    background: #fff;
+    box-shadow: 0 8px 28px rgb(18 41 64 / 5%);
+}
+
+.payment-context {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    inline-size: fit-content;
+    color: #075da6;
+    font-size: .875rem;
+    font-weight: 620;
+}
+
+.payment-context svg { inline-size: 1.25rem; block-size: 1.25rem; }
+.payment-panel h1 { margin: .5rem 0 1rem; font-size: clamp(1.3rem, 4vw, 1.75rem); line-height: 1.5; }
+.payment-panel p { margin: 0; color: #475e73; overflow-wrap: anywhere; }
+.payment-panel p + p { margin-block-start: .5rem; }
+
+.payment-note {
+    background: #eff6fc;
+    border-inline-start: 3px solid #098cf7;
+    border-radius: .5rem;
+    padding: .75rem 1rem;
+}
+
+.payment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-block-start: 1.5rem;
+}
+
+.payment-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 46px;
+    max-inline-size: 100%;
+    padding: .375rem 1rem;
+    border: 1px solid #b7cce0;
+    border-radius: .5rem;
+    color: #075da6;
+    font-size: .875rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+}
+
+.payment-button:hover { background: #eff6fc; }
+.payment-button--primary { background: #075da6; color: #fff; border-color: #075da6; }
+.payment-button--primary:hover { background: #0a4f89; }
+a:focus-visible { outline: 2px solid #075da6; outline-offset: 3px; }
+
+.payment-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0 1rem;
+    margin-block-start: 1rem;
+    border-block-start: 1px solid #dce7f0;
+    padding-block-start: .25rem;
+}
+
+.payment-footer a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+    color: #475e73;
+    font-size: .8125rem;
+    text-underline-offset: .2em;
+}

@@ -28,10 +28,12 @@ class ProductionTriggerContractTest extends TestCase
 
             return true;
         });
-        foreach (['2026_10_21_000003_create_financial_tables', '2026_10_21_000004_create_article_tables',
-            '2026_11_03_000003_create_payment_records', '2026_11_04_000001_add_simple_repair_records'] as $name) {
-            (require database_path('migrations/'.$name.'.php'))->up();
+        foreach (glob(database_path('migrations/*.php')) as $path) {
+            if (str_contains(file_get_contents($path), 'CREATE TRIGGER')) {
+                (require $path)->up();
+            }
         }
-        $this->assertCount(13, pr13VerifyTriggerContracts($rows, true));
+        $expected = \NovinPay\Release\expectedTriggerContracts(\NovinPay\Release\migrationInventory(database_path('migrations')));
+        $this->assertCount(count($expected), pr13VerifyTriggerContracts($rows, true));
     }
 }

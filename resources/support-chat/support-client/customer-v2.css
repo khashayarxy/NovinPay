@@ -69,6 +69,8 @@ html[data-support-surface=customer-v2],html[data-support-surface=customer-v2] bo
  position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:center;align-items:center;
  background:var(--canvas);text-align:center;direction:rtl;
 }
+[data-support-stable-shell][data-connection-state] .support-init-status{inset:8px 12px auto;flex-direction:row;gap:8px;padding:8px 12px;border-radius:10px;background:var(--surface);pointer-events:auto}
+[data-connection-state] .support-init-dots{display:none}
 [data-support-stable-shell]:not([data-init-state=ready]) .support-conversation>:not(.support-init-status){visibility:hidden}
 [data-support-stable-shell] #chatInput{min-height:44px;line-height:24px;padding-block:9px}
 .support-init-dots{display:flex;gap:6px;color:var(--blue)}

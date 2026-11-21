@@ -178,6 +178,10 @@ final class CommerceManagement
             abort_if($before !== null && $before !== 'draft', 409, 'ویرایش فقط در پیش‌نویس مجاز است؛ ابتدا رزرو را آزاد کنید.');
             $customer = Customer::query()->where('public_id', $data['customer'])->lockForUpdate()->firstOrFail();
             abort_unless($customer->is_active && $customer->merged_into_id === null, 409, 'پروفایل مشتری فعال و مستقل انتخاب کنید.');
+            // A customer-origin order must keep its original account/CRM ownership pair.
+            // Reassigning only the CRM ID would expose it through two account scopes.
+            abort_if($order->customer_account_id && $order->customer_id !== $customer->id, 409,
+                'مشتری سفارش اینترنتی قابل تغییر نیست؛ سفارش را برای همان مشتری ویرایش کنید.');
             $items = InventoryItem::query()->whereIn('public_id', array_column($data['lines'], 'item'))->orderBy('id')->lockForUpdate()->get()->keyBy('public_id');
             abort_unless($items->count() === count($data['lines']), 422, 'کالای موجودی معتبر انتخاب کنید.');
             if (! $order->exists) {

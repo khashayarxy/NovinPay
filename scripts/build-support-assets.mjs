@@ -29,6 +29,10 @@ for(let i=0;i<files.length;i++){
  const target=path.join(destination,version,files[i]);
  await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes[i]);
 }
-await writeFile(path.join(destination,'.htaccess'),'<IfModule mod_headers.c>\nHeader set Cache-Control "public, max-age=31536000, immutable"\nHeader set X-Content-Type-Options "nosniff"\n</IfModule>\n');
+await writeFile(path.join(destination,'.htaccess'),'<IfModule mod_headers.c>\nHeader set Cache-Control "public, max-age=31536000, immutable"\nHeader set X-Content-Type-Options "nosniff"\n<Files "manifest.json">\nHeader set Cache-Control "no-cache, max-age=0, must-revalidate"\n</Files>\n</IfModule>\n');
 await writeFile(path.join(destination,'manifest.json'),JSON.stringify({version,files}));
 console.log(`Published ${files.length} public support assets: ${version}`);
+// Vite clears its output directory on rebuild. Publish the scoped asset rule
+// afterwards, without touching cPanel's root .htaccess or PHP handler.
+await mkdir(path.resolve('public/build/assets'), {recursive:true});
+await writeFile(path.resolve('public/build/assets/.htaccess'), await readFile(new URL('../resources/vite-assets.htaccess', import.meta.url)));

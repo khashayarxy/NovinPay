@@ -1,0 +1,290 @@
+{
+    "assets/fonts/font-face.css": [
+        [
+            0,
+            3
+        ]
+    ],
+    "operator/analytics.js": [
+        [
+            0,
+            33
+        ]
+    ],
+    "operator/app.css": [
+        [
+            0,
+            40
+        ]
+    ],
+    "operator/auth-lifecycle.js": [
+        [
+            0,
+            14
+        ]
+    ],
+    "operator/drafts.js": [
+        [
+            0,
+            40
+        ]
+    ],
+    "operator/emoji.js": [
+        [
+            0,
+            116
+        ]
+    ],
+    "operator/faq-settings.js": [
+        [
+            0,
+            15
+        ]
+    ],
+    "operator/health.js": [
+        [
+            0,
+            6
+        ]
+    ],
+    "operator/mobile.css": [
+        [
+            0,
+            71
+        ]
+    ],
+    "operator/mobile.js": [
+        [
+            0,
+            34
+        ]
+    ],
+    "operator/modules/analytics.js": [
+        [
+            0,
+            454
+        ]
+    ],
+    "operator/modules/health.js": [
+        [
+            0,
+            196
+        ]
+    ],
+    "operator/modules/icons.js": [
+        [
+            0,
+            33
+        ]
+    ],
+    "operator/modules/mobile-table.js": [
+        [
+            0,
+            9
+        ]
+    ],
+    "operator/modules/replies.js": [
+        [
+            0,
+            11
+        ]
+    ],
+    "operator/modules/router.js": [
+        [
+            0,
+            115
+        ]
+    ],
+    "operator/modules/settings.js": [
+        [
+            0,
+            165
+        ]
+    ],
+    "operator/overlays.js": [
+        [
+            0,
+            32
+        ]
+    ],
+    "operator/productivity.js": [
+        [
+            0,
+            36
+        ]
+    ],
+    "operator/pwa.js": [
+        [
+            0,
+            12
+        ]
+    ],
+    "operator/quick-reply-editor.js": [
+        [
+            0,
+            16
+        ]
+    ],
+    "operator/readiness.js": [
+        [
+            0,
+            19
+        ]
+    ],
+    "operator/sw.js": [
+        [
+            1,
+            26
+        ]
+    ],
+    "operator/widget-settings.js": [
+        [
+            0,
+            14
+        ]
+    ],
+    "support-client/attention-store.js": [
+        [
+            0,
+            12
+        ]
+    ],
+    "support-client/attention.js": [
+        [
+            0,
+            205
+        ]
+    ],
+    "support-client/bplus.css": [
+        [
+            0,
+            73
+        ]
+    ],
+    "support-client/bplus.js": [
+        [
+            0,
+            16
+        ]
+    ],
+    "support-client/chat.css": [
+        [
+            0,
+            147
+        ]
+    ],
+    "support-client/compat-bootstrap.js": [
+        [
+            0,
+            9
+        ]
+    ],
+    "support-client/composer-size.js": [
+        [
+            0,
+            19
+        ]
+    ],
+    "support-client/customer-faq.js": [
+        [
+            0,
+            11
+        ]
+    ],
+    "support-client/customer-layout.css": [
+        [
+            0,
+            51
+        ]
+    ],
+    "support-client/customer-shell.js": [
+        [
+            0,
+            25
+        ]
+    ],
+    "support-client/design-tokens.css": [
+        [
+            0,
+            71
+        ]
+    ],
+    "support-client/icons.js": [
+        [
+            0,
+            7
+        ]
+    ],
+    "support-client/issuance.js": [
+        [
+            0,
+            63
+        ]
+    ],
+    "support-client/launcher.css": [
+        [
+            0,
+            18
+        ]
+    ],
+    "support-client/message-edit.js": [
+        [
+            0,
+            41
+        ]
+    ],
+    "support-client/recovery.js": [
+        [
+            0,
+            38
+        ]
+    ],
+    "support-client/reply.js": [
+        [
+            0,
+            16
+        ]
+    ],
+    "support-client/satisfaction.js": [
+        [
+            0,
+            42
+        ]
+    ],
+    "support-client/selection-toast.js": [
+        [
+            0,
+            13
+        ]
+    ],
+    "support-client/send-cooldown.js": [
+        [
+            0,
+            13
+        ]
+    ],
+    "support-client/theme-init.js": [
+        [
+            0,
+            18
+        ]
+    ],
+    "support-client/unread-jump.js": [
+        [
+            0,
+            52
+        ]
+    ],
+    "support-client/widget.css": [
+        [
+            0,
+            49
+        ]
+    ],
+    "support-client/widget.js": [
+        [
+            0,
+            11
+        ]
+    ]
+}

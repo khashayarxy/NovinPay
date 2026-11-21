@@ -6,10 +6,12 @@ use App\Enums\AdminAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RepairOperationRequest;
 use App\Http\Requests\SimpleRepairRequest;
+use App\Models\AdminAccount;
 use App\Models\FinancialDocument;
 use App\Models\RepairCase;
 use App\Models\RepairRecordRevision;
 use App\Models\RepairRequest;
+use App\Models\User;
 use App\Services\RepairOperations;
 use App\Services\SimpleRepairRecords;
 use App\Support\AdminHistory;
@@ -127,6 +129,19 @@ class RepairCaseController extends Controller
         $financial = ['repairDocument' => $document, 'hasRepairDocument' => $hasDocument];
 
         $events = $repairCase->events()->with('actor:id,name')->latest('id')->paginate(20);
+        if (! $repairCase->simple_workflow) {
+            return view('admin.repair-cases.show', $financial + [
+                'case' => $repairCase, 'customer' => $customer, 'events' => $events,
+                'estimates' => $customer ? $repairCase->estimates()->with(['actor:id,name', 'decision'])->latest('revision')->get() : collect(),
+                'inspections' => $customer ? $repairCase->inspections()->with('actor:id,name')->latest('id')->get() : collect(),
+                'work' => $customer ? $repairCase->workEntries()->with('actor:id,name')->latest('id')->get() : collect(),
+                'delivery' => $repairCase->delivery,
+                'repairBillable' => $customer ? $repairCase->billableToman() : null,
+                'technicians' => Gate::allows('operate', [$repairCase, 'assign'])
+                    ? User::query()->whereIn('id', AdminAccount::query()->where('is_active', true)->select('user_id'))
+                        ->get()->filter(RepairOperations::eligibleTechnician(...)) : collect(),
+            ]);
+        }
         $revisions = $customer ? RepairRecordRevision::query()->where('repair_case_id', $repairCase->id)
             ->whereIn('id', $events->getCollection()->where('subject_type', 'repair_revision')->pluck('subject_id'))->get()->keyBy('id') : collect();
 

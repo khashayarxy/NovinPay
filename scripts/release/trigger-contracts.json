@@ -1,0 +1,106 @@
+{
+    "article_versions_no_DELETE": {
+        "tableName": "article_versions",
+        "eventName": "DELETE",
+        "timing": "BEFORE",
+        "bodySha256": "887db1c1869149b37cd8485e1ea6611876cfeaf0e2f308b35c3182544c46a975",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_10_21_000004_create_article_tables"
+    },
+    "article_versions_no_UPDATE": {
+        "tableName": "article_versions",
+        "eventName": "UPDATE",
+        "timing": "BEFORE",
+        "bodySha256": "887db1c1869149b37cd8485e1ea6611876cfeaf0e2f308b35c3182544c46a975",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_10_21_000004_create_article_tables"
+    },
+    "financial_document_identity": {
+        "tableName": "financial_documents",
+        "eventName": "UPDATE",
+        "timing": "BEFORE",
+        "bodySha256": "7cd8138d2439e6dffe22b1ae01a0439f177407f4b23e09e5bcca0158412dc644",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_10_21_000003_create_financial_tables"
+    },
+    "financial_entries_no_DELETE": {
+        "tableName": "financial_entries",
+        "eventName": "DELETE",
+        "timing": "BEFORE",
+        "bodySha256": "bd516f034852d3c7b2ee2ce74d2c97857115a65e9aa5b1780851441286b03cb9",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_10_21_000003_create_financial_tables"
+    },
+    "financial_entries_no_UPDATE": {
+        "tableName": "financial_entries",
+        "eventName": "UPDATE",
+        "timing": "BEFORE",
+        "bodySha256": "bd516f034852d3c7b2ee2ce74d2c97857115a65e9aa5b1780851441286b03cb9",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_10_21_000003_create_financial_tables"
+    },
+    "payment_credit_events_no_delete": {
+        "tableName": "payment_credit_events",
+        "eventName": "DELETE",
+        "timing": "BEFORE",
+        "bodySha256": "43a812b48a097c61f20aaf2ec874989da34595a968c8f45ce800e7ab15fe4e1d",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_11_03_000003_create_payment_records"
+    },
+    "payment_credit_events_no_update": {
+        "tableName": "payment_credit_events",
+        "eventName": "UPDATE",
+        "timing": "BEFORE",
+        "bodySha256": "43a812b48a097c61f20aaf2ec874989da34595a968c8f45ce800e7ab15fe4e1d",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_11_03_000003_create_payment_records"
+    },
+    "payment_events_no_delete": {
+        "tableName": "payment_events",
+        "eventName": "DELETE",
+        "timing": "BEFORE",
+        "bodySha256": "43a812b48a097c61f20aaf2ec874989da34595a968c8f45ce800e7ab15fe4e1d",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_11_03_000003_create_payment_records"
+    },
+    "payment_events_no_update": {
+        "tableName": "payment_events",
+        "eventName": "UPDATE",
+        "timing": "BEFORE",
+        "bodySha256": "43a812b48a097c61f20aaf2ec874989da34595a968c8f45ce800e7ab15fe4e1d",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_11_03_000003_create_payment_records"
+    },
+    "payment_transactions_no_delete": {
+        "tableName": "payment_transactions",
+        "eventName": "DELETE",
+        "timing": "BEFORE",
+        "bodySha256": "43a812b48a097c61f20aaf2ec874989da34595a968c8f45ce800e7ab15fe4e1d",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_11_03_000003_create_payment_records"
+    },
+    "payment_transactions_no_update": {
+        "tableName": "payment_transactions",
+        "eventName": "UPDATE",
+        "timing": "BEFORE",
+        "bodySha256": "43a812b48a097c61f20aaf2ec874989da34595a968c8f45ce800e7ab15fe4e1d",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_11_03_000003_create_payment_records"
+    },
+    "repair_revisions_no_delete": {
+        "tableName": "repair_record_revisions",
+        "eventName": "DELETE",
+        "timing": "BEFORE",
+        "bodySha256": "f59605b83aed56c86378d0ae9cf5de816ef4f1ebbbf0f25a4d296d3bb2888593",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_11_04_000001_add_simple_repair_records"
+    },
+    "repair_revisions_no_update": {
+        "tableName": "repair_record_revisions",
+        "eventName": "UPDATE",
+        "timing": "BEFORE",
+        "bodySha256": "f59605b83aed56c86378d0ae9cf5de816ef4f1ebbbf0f25a4d296d3bb2888593",
+        "definer": "novinpay_mig1@localhost",
+        "migration": "2026_11_04_000001_add_simple_repair_records"
+    }
+}

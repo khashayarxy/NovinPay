@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\CustomerAccount;
 use App\Support\RepairIdentity;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -22,6 +25,18 @@ class CustomerLogin
     private const DAILY_SMS_LIMIT = 15;
 
     private const DAILY_SMS_SECONDS = 86400;
+
+    public function authenticatedAccount(Request $request): ?CustomerAccount
+    {
+        if (! $request->hasSession()) {
+            return null;
+        }
+        $account = Auth::guard('customer')->user();
+
+        return $account && $account->is_active
+            && $account->session_version === $request->session()->get('customer_session_version')
+            && ($account->verified_at || $this->testAllowed($account->phone)) ? $account : null;
+    }
 
     public function testAllowed(string $phone): bool
     {
@@ -93,7 +108,7 @@ class CustomerLogin
         }, 400000);
     }
 
-    public function issue(string $phone): string
+    public function issue(string $phone, ?callable $reserved = null): string
     {
         abort_unless(preg_match('/\A09[0-9]{9}\z/D', $phone), 422);
         $test = $this->testAllowed($phone);
@@ -127,12 +142,17 @@ class CustomerLogin
 
             return now()->timestamp + RateLimiter::availableIn($quotaKey);
         }, 3);
+        // Bind the reserved challenge to the initiating session before provider I/O.
+        // A lost/ambiguous delivery response must not orphan a delivered code.
+        if ($reserved !== null) {
+            $reserved($challenge);
+        }
         // Never log the request, OTP, mobile, API response or transport exception.
         $outcome = $privateCode ? 'accepted' : $sms->sendOutcome($phone, $code);
         if ($outcome !== 'accepted') {
             $wait = DB::transaction(function () use ($challenge, $outcome, $quotaKey, $quotaUntil): int {
                 $row = DB::table('customer_login_challenges')->where('challenge_id', $challenge)->lockForUpdate()->first();
-                if ($row) {
+                if ($row && $outcome === 'rejected') {
                     DB::table('customer_login_challenges')->where('id', $row->id)->update(['code_hash' => null]);
                 }
                 $remaining = RateLimiter::availableIn($quotaKey);
@@ -155,15 +175,23 @@ class CustomerLogin
 
     public function activeChallenge(string $phone, mixed $challenge): bool
     {
+        return $this->challengeState($phone, $challenge) !== null;
+    }
+
+    public function challengeState(string $phone, mixed $challenge): ?array
+    {
         if (! is_string($challenge) || $challenge === '') {
-            return false;
+            return null;
         }
         $row = DB::table('customer_login_challenges')
             ->where('phone_digest', $this->digest($phone, $this->testAllowed($phone)))
-            ->where('challenge_id', $challenge)->first(['code_hash', 'attempts', 'expires_at']);
+            ->where('challenge_id', $challenge)->first(['code_hash', 'attempts', 'expires_at', 'resend_at']);
 
         return $row && $row->code_hash && $row->attempts < 5 && now()->lt($row->expires_at)
-            && (! $this->testUsesSms($phone) || str_starts_with($row->code_hash, self::TEST_SMS_HASH_PREFIX));
+            && (! $this->testUsesSms($phone) || str_starts_with($row->code_hash, self::TEST_SMS_HASH_PREFIX))
+            ? ['expiresAt' => Carbon::parse($row->expires_at)->timestamp,
+                'resendAt' => Carbon::parse($row->resend_at)->timestamp]
+            : null;
     }
 
     public function verify(string $challenge, string $code): CustomerAccount

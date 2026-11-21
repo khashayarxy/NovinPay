@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\ArticleVersion;
+use App\Models\Product;
 use App\Models\User;
 use App\Services\ArticlePublishing;
 use DOMDocument;
@@ -13,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 final class PublicArticlesTest extends TestCase
@@ -56,6 +58,20 @@ final class PublicArticlesTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
 
         return new DOMXPath($document);
+    }
+
+    public function test_article_social_schema_uses_only_the_current_published_snapshot(): void
+    {
+        $article = $this->article();
+        $this->command('save', $this->draft(['version' => $article->version, 'title' => 'PRIVATE NEW TITLE', 'summary' => 'PRIVATE SUMMARY']), $article->id);
+        $response = $this->get('/articles/'.$article->slug)->assertOk()->assertDontSee('PRIVATE NEW TITLE')->assertDontSee('PRIVATE SUMMARY');
+        $xpath = $this->xpath($response->getContent());
+        $schema = json_decode($xpath->query('//script[@type="application/ld+json"]')->item(0)->textContent, true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame('https://schema.org', $schema['@context']);
+        $this->assertSame('Article', $schema['@graph'][0]['@type']);
+        $this->assertSame('راهنمای عمومی کارتخوان', $schema['@graph'][0]['headline']);
+        $this->assertSame($article->published_at->toIso8601String(), $schema['@graph'][0]['datePublished']);
+        $this->get('/articles/'.$article->slug.'?mode=draft')->assertOk()->assertDontSee('application/ld+json', false);
     }
 
     public function test_guest_can_read_only_the_current_published_snapshot_and_safe_renderer(): void
@@ -171,7 +187,7 @@ final class PublicArticlesTest extends TestCase
     {
         $article = $this->article();
         $this->get('/admin/articles/'.$article->public_id.'/preview')->assertRedirect(route('admin.login'));
-        foreach (['/articles/pos-guide/preview', '/articles/pos-guide/versions/'.$article->published_version_id, '/articles/'.$article->public_id, '/blog', '/sitemap.xml'] as $uri) {
+        foreach (['/articles/pos-guide/preview', '/articles/pos-guide/versions/'.$article->published_version_id, '/articles/'.$article->public_id, '/blog'] as $uri) {
             $this->get($uri)->assertNotFound();
         }
         $this->post('/admin/articles/'.$article->public_id.'/publish', ['confirmed' => true])->assertRedirect(route('admin.login'));
@@ -179,6 +195,118 @@ final class PublicArticlesTest extends TestCase
         $this->get('/admin/articles/'.$article->public_id.'/preview')->assertForbidden();
         $this->post('/admin/articles/'.$article->public_id.'/unpublish', [])->assertForbidden();
         $this->get('/articles/pos-guide')->assertOk();
+    }
+
+    public function test_sitemap_exposes_only_current_public_slugs_from_the_trusted_origin(): void
+    {
+        $article = $this->article();
+        $draft = $this->article(['slug' => 'private-draft'], false);
+        foreach (['published-product' => [true, false], 'hidden-product' => [false, false], 'sample-product' => [true, true]] as $slug => [$published, $sample]) {
+            Product::create(['name' => 'Synthetic catalogue item', 'slug' => $slug, 'category' => 'pos_terminal',
+                'condition' => 'new', 'stock_status' => 'in_stock', 'is_published' => $published, 'is_sample' => $sample]);
+        }
+        $origin = rtrim(config('app.url'), '/');
+        $this->withServerVariables(['HTTP_HOST' => 'untrusted.example']);
+        $index = $this->get('/sitemap.xml?token=PRIVATE')->assertOk()
+            ->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private')->assertDontSee('untrusted.example')->assertDontSee('PRIVATE');
+        $xml = new DOMDocument;
+        $this->assertTrue($xml->loadXML($index->getContent()));
+        $this->assertSame('sitemapindex', $xml->documentElement->localName);
+        $this->get('/sitemap-products-1.xml')->assertOk()->assertSee($origin.'/products/published-product')
+            ->assertDontSee('hidden-product')->assertDontSee('sample-product')->assertDontSee('?slug=');
+        $this->get('/sitemap-articles-1.xml')->assertOk()->assertSee($origin.'/articles/pos-guide')
+            ->assertDontSee('private-draft')->assertDontSee($draft->public_id)->assertDontSee('?product=');
+        $this->get('/sitemap-pages-1.xml')->assertOk()->assertDontSee('/admin')->assertDontSee('/account')
+            ->assertDontSee('/support')->assertDontSee('/cart')->assertDontSee('/login')->assertDontSee('/repair/confirmation');
+        $this->command('unpublish', ['version' => $article->version, 'reviewed_version_id' => $article->published_version_id, 'confirmed' => true], $article->id);
+        $this->get('/sitemap-articles-1.xml')->assertNotFound();
+        $this->get('/sitemap.xml')->assertOk()->assertDontSee('/sitemap-articles-');
+    }
+
+    public static function sitemapPhpConfigurations(): array
+    {
+        return [
+            'short tags off, index' => ['0', true],
+            'short tags on, index' => ['1', true],
+            'short tags off, URL set' => ['0', false],
+            'short tags on, URL set' => ['1', false],
+        ];
+    }
+
+    #[DataProvider('sitemapPhpConfigurations')]
+    public function test_sitemap_compiles_and_renders_valid_escaped_xml_with_either_short_tag_setting(string $shortTags, bool $index): void
+    {
+        // short_open_tag affects token_get_all during Blade compilation and cannot
+        // be switched reliably with ini_set. Compile AND execute in a real child.
+        $code = <<<'PHP'
+require $argv[1];
+if ((bool) ini_get('short_open_tag') !== ($argv[3] === '1')) {
+    throw new RuntimeException('Requested PHP configuration was not applied');
+}
+$compiler = new Illuminate\View\Compilers\BladeCompiler(new Illuminate\Filesystem\Filesystem, sys_get_temp_dir());
+$compiled = $compiler->compileString(file_get_contents($argv[2]));
+$__env = new Illuminate\View\Factory(new Illuminate\View\Engines\EngineResolver,
+    new Illuminate\View\FileViewFinder(new Illuminate\Filesystem\Filesystem, [dirname($argv[2])]),
+    new Illuminate\Events\Dispatcher);
+$index = $argv[4] === '1';
+$urls = json_decode($argv[5], true, 16, JSON_THROW_ON_ERROR);
+$path = tempnam(sys_get_temp_dir(), 'np-sitemap-');
+try {
+    if ($path === false || file_put_contents($path, $compiled) !== strlen($compiled)) {
+        throw new RuntimeException('Unable to create isolated compiled view');
+    }
+    require $path;
+} finally {
+    if (is_string($path) && is_file($path)) {
+        unlink($path);
+    }
+}
+PHP;
+        $urls = ['https://novinpaypos.test/products/example?label=الف&filter=<tag>"\''];
+        $root = dirname(__DIR__, 2);
+        $process = new Process([PHP_BINARY, '-d', 'short_open_tag='.$shortTags,
+            '-d', 'opcache.enable_cli=0', '-d', 'opcache.file_cache_only=0', '-d', 'opcache.file_cache=',
+            '-d', 'display_errors=stderr', '-d', 'log_errors=0', '-r', $code,
+            $root.'/vendor/autoload.php', $root.'/resources/views/sitemap.blade.php', $shortTags,
+            $index ? '1' : '0', json_encode($urls, JSON_THROW_ON_ERROR)], $root);
+        $process->setTimeout(20)->run();
+        $this->assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        $xml = $process->getOutput();
+        $this->assertStringStartsWith('<?xml version="1.0" encoding="UTF-8"?>', $xml);
+        $this->assertStringNotContainsString('{!!', $xml);
+        $this->assertStringNotContainsString('@foreach', $xml);
+        $this->assertStringContainsString('&amp;', $xml);
+        $this->assertStringContainsString('&lt;tag&gt;', $xml);
+        $document = new DOMDocument;
+        $this->assertTrue($document->loadXML($xml, LIBXML_NONET));
+        $this->assertSame($index ? 'sitemapindex' : 'urlset', $document->documentElement->localName);
+        $this->assertSame('http://www.sitemaps.org/schemas/sitemap/0.9', $document->documentElement->namespaceURI);
+        $this->assertSame($urls[0], $document->getElementsByTagName('loc')->item(0)->textContent);
+    }
+
+    public function test_sitemap_partitions_catalogue_urls_and_rejects_unknown_or_out_of_range_parts(): void
+    {
+        $rows = [];
+        for ($i = 1; $i <= 1001; $i++) {
+            $rows[] = ['name' => 'Synthetic item', 'slug' => 'partition-'.$i, 'category' => 'pos_terminal',
+                'condition' => 'new', 'stock_status' => 'in_stock', 'is_published' => true, 'is_sample' => false];
+        }
+        foreach (array_chunk($rows, 250) as $chunk) {
+            Product::insert($chunk);
+        }
+        $this->get('/sitemap.xml')->assertOk()->assertSee('/sitemap-products-1.xml')->assertSee('/sitemap-products-2.xml');
+        $one = $this->get('/sitemap-products-1.xml')->assertOk();
+        $two = $this->get('/sitemap-products-2.xml')->assertOk();
+        foreach ([[$one, 1000], [$two, 1]] as [$response, $count]) {
+            $xml = new DOMDocument;
+            $this->assertTrue($xml->loadXML($response->getContent()));
+            $this->assertSame($count, $xml->getElementsByTagName('loc')->length);
+        }
+        $two->assertSee('/products/partition-1001');
+        foreach (['/sitemap-products-0.xml', '/sitemap-products-3.xml', '/sitemap-pages-2.xml', '/sitemap-customers-1.xml'] as $path) {
+            $this->get($path)->assertNotFound();
+        }
     }
 
     public function test_draft_writes_cannot_change_the_stable_public_slug(): void

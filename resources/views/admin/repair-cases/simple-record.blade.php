@@ -183,9 +183,9 @@
                         <input type="hidden" name="intent" value="handover">
                         @if($shipping)
                             <x-operation-field name="shipment_tracking" label="کد پیگیری ارسال" :maxlength="200"/>
-                            @if($case->customer_account_id && $repairDocument)
-                                <x-operation-field name="current_password" label="رمز عبور فعلی" type="password" :maxlength="255"/>
-                            @endif
+                        @endif
+                        @if($case->customer_account_id && $repairDocument)
+                            <x-operation-field name="current_password" label="رمز عبور فعلی" type="password" :maxlength="255"/>
                         @endif
                         <label class="admin-checkbox"><input type="checkbox" name="handover_confirmed" value="1" required> {{ $shipping ? 'دستگاه به شرکت ارسال تحویل داده شد.' : 'دستگاه حضوری تحویل داده شد.' }}</label>
                         <button class="btn btn-secondary" type="submit">{{ $shipping ? 'ثبت ارسال انجام‌شده' : 'ثبت تحویل حضوری' }}</button>

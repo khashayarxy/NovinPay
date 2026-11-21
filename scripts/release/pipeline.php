@@ -30,7 +30,9 @@ function backupVerified(array $receipt, array $m): bool
 {
     return ($receipt['result'] ?? '') === 'BACKUP_AND_DISPOSABLE_RESTORE_PASS'
         && ($receipt['sourceCommit'] ?? '') === $m['baseline'] && ($receipt['sourceDatabase'] ?? '') === 'novinpay_live1'
-        && ($receipt['restoreDatabase'] ?? '') === $m['backup']['restoreDatabase'] && ($receipt['migrations'] ?? 0) === 14 && ($receipt['triggers'] ?? 0) === 5
+        && ($receipt['restoreDatabase'] ?? '') === $m['backup']['restoreDatabase']
+        && ($receipt['migrations'] ?? 0) === count(\NovinPay\Release\migrationInventory('/home/novinpay/novinpay/database/migrations'))
+        && ($receipt['triggers'] ?? 0) === count(\NovinPay\Release\expectedTriggerContracts(\NovinPay\Release\migrationInventory('/home/novinpay/novinpay/database/migrations')))
         && ($receipt['schemaAndDefinersMatch'] ?? false) && ($receipt['allSnapshotRowsMatch'] ?? false)
         && ($receipt['privateMaintenanceStateVerified'] ?? false) && ($receipt['serverPlaintextRemoved'] ?? false)
         && ($receipt['productionUpdated'] ?? true) === false && is_file($m['backup']['directory'].'/backup.npb')

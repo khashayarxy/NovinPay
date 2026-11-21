@@ -37,8 +37,11 @@
             @endunless
             @if(session('success') && !$passwordMode)<p class="np-account-notice" role="status">{{ session('success') }}</p>@endif
             @if(!$phone)
-                <form class="np-account-form" method="post" action="{{ route('account.start') }}" data-account-submit>
+                <form class="np-account-form" method="post" action="{{ route('account.start') }}" data-account-submit data-account-send data-login-state="{{ route('account.login.state') }}">
                     @csrf
+                    <input type="hidden" name="flow" value="{{ $flow }}">
+                    <input type="hidden" name="request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                    <p class="np-account-notice" role="status" data-send-status hidden></p>
                     <label for="account-phone">شماره موبایل</label>
                     <input id="account-phone" type="tel" name="phone" dir="ltr" autocomplete="tel" inputmode="tel" enterkeyhint="go" maxlength="40" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required>
                     <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ادامه</button>
@@ -58,9 +61,10 @@
                 </div>
             @else
                 @if($challenge)
-                    <form class="np-account-form" method="post" action="{{ route('account.verify') }}" data-account-otp>
+                    <form class="np-account-form" method="post" action="{{ route('account.verify') }}" data-account-otp data-login-state="{{ route('account.login.state') }}" data-otp-expires="{{ $expiresAt }}" data-server-now="{{ now()->timestamp }}">
                         @csrf
                         <input type="hidden" name="flow" value="{{ $flow }}">
+                        <input type="hidden" name="challenge" value="{{ $challengeId }}">
                         @if($recovery)<input type="hidden" name="recover" value="1">@endif
                         <label for="account-code">کد تأیید شش‌رقمی</label>
                         <div class="np-otp" dir="ltr" @if($errors->has('code')) data-otp-error @endif>
@@ -80,9 +84,11 @@
                     <p>درخواست کد تأیید بدهید یا با رمز عبور وارد شوید.</p>
                 @endif
                 <div class="np-auth__alternatives">
-                    <form method="post" action="{{ route('account.otp') }}">
+                    <form method="post" action="{{ route('account.otp') }}" data-account-send data-login-state="{{ route('account.login.state') }}">
                         @csrf
                         <input type="hidden" name="flow" value="{{ $flow }}">
+                        <input type="hidden" name="request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                        <p class="np-account-notice" role="status" data-send-status hidden></p>
                         @if($recovery)<input type="hidden" name="recover" value="1">@endif
                         <button type="submit" class="np-account-link" data-account-wait="{{ $wait('otp', $resendAt) }}">{{ $challenge ? 'درخواست کد جدید' : 'درخواست کد تأیید' }}</button>
                     </form>
@@ -109,5 +115,5 @@
         </div>
     </aside>
 </div>
-<script src="{{ asset('js/customer-otp.js?v=5') }}" defer></script>
+<script src="{{ asset('js/customer-otp.js?v=6') }}" defer></script>
 @endsection

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\AddSecurityHeaders;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class SecurityHeadersTest extends TestCase
@@ -27,6 +29,34 @@ class SecurityHeadersTest extends TestCase
         $response->assertOk();
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
         $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+    }
+
+    public function test_https_uses_short_host_only_hsts_and_http_does_not(): void
+    {
+        $this->get('https://localhost/')->assertOk()->assertHeader('Strict-Transport-Security', 'max-age=300');
+        $this->get('http://localhost/')->assertOk()->assertHeaderMissing('Strict-Transport-Security');
+    }
+
+    public function test_html_policies_preserve_existing_endpoint_csp_and_webotp(): void
+    {
+        $response = $this->get('/')->assertOk();
+        $response->assertHeader('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
+        $report = $response->headers->get('Content-Security-Policy-Report-Only');
+        $this->assertStringContainsString("frame-src 'self' https://neshan.org", $report);
+        $this->assertStringNotContainsString('unsafe-eval', $report);
+        $permissions = $response->headers->get('Permissions-Policy');
+        $this->assertStringContainsString('payment=()', $permissions);
+        $this->assertStringNotContainsString('otp-credentials', $permissions);
+        $middleware = new AddSecurityHeaders;
+        $protected = $middleware->handle(Request::create('/private'), fn () => response('private', 200, [
+            'Content-Type' => 'text/html',
+            'Content-Security-Policy' => "default-src 'none'; sandbox",
+            'Strict-Transport-Security' => 'max-age=86400',
+            'Permissions-Policy' => 'camera=()',
+        ]));
+        $this->assertSame("default-src 'none'; sandbox", $protected->headers->get('Content-Security-Policy'));
+        $this->assertSame('max-age=86400', $protected->headers->get('Strict-Transport-Security'));
+        $this->assertSame('camera=()', $protected->headers->get('Permissions-Policy'));
     }
 
     public function test_not_found_response_carries_baseline_security_headers(): void

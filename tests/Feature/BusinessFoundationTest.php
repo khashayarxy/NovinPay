@@ -94,7 +94,7 @@ class BusinessFoundationTest extends TestCase
             'lockups/logo-wordmark-white-on-black.svg' => '4ade69a30d90e80e03b4517c74869643cc54a51768361ddff4adf4d83b31eabc',
             'manufacturers/PAX.svg' => '6aa3d004bc802c1b93a06cea8438ca66faeb03090c5d91b4b9d445cd749c7279',
             'manufacturers/NewPOS.svg' => 'bab89b1858b7b632f48b8a2a6c87d5df1db19d8ac6fc7fc1aa96b502e9e63a4e',
-            'manufacturers/Newland.svg' => '791bc50abdd828ceadd789dfbfc50dde057bb9e87f7ca10c6bb0085a536bd416',
+            'manufacturers/Newland.svg' => 'df86f918749dccedb07793af4361249b8b7708ff252352b418d06b55842f384c',
         ] as $path => $fingerprint) {
             $document = new \DOMDocument;
             $this->assertTrue($document->load(public_path('brand/'.$path), LIBXML_NONET));
@@ -103,5 +103,24 @@ class BusinessFoundationTest extends TestCase
             }
             $this->assertSame($fingerprint, hash('sha256', $document->C14N()), $path);
         }
+    }
+
+    public function test_newland_uses_the_safe_owner_vector_with_its_original_geometry(): void
+    {
+        $bytes = file_get_contents(public_path('brand/manufacturers/Newland.svg'));
+        $this->assertSame('a386b0a4a1f03d364ddeba0cc4f67de3e3d35ef1f0dbfefdf7d226e0c949543b', hash('sha256', str_replace(' viewBox="0 0 1100 295"', '', $bytes)));
+        $document = new \DOMDocument;
+        $this->assertTrue($document->loadXML($bytes, LIBXML_NONET));
+        $this->assertSame('0 0 1100 295', $document->documentElement->getAttribute('viewBox'));
+        $xpath = new \DOMXPath($document);
+        $this->assertSame(16, $xpath->query('//*[local-name()="path"]')->length);
+        $this->assertSame(0, $xpath->query('//*[not(local-name()="svg" or local-name()="path")] | //@*[starts-with(local-name(),"on") or local-name()="href"]')->length);
+        $page = new \DOMDocument;
+        @$page->loadHTML($this->get('/')->assertOk()->getContent());
+        $image = (new \DOMXPath($page))->query('//img[@alt="Newland"]')->item(0);
+        $this->assertNotNull($image);
+        $this->assertSame('1100', $image->getAttribute('width'));
+        $this->assertSame('295', $image->getAttribute('height'));
+        $this->assertSame(asset('brand/manufacturers/Newland.svg').'?v='.substr(hash('sha256', $bytes), 0, 12), $image->getAttribute('src'));
     }
 }

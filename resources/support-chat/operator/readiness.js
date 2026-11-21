@@ -14,7 +14,7 @@ export function notificationReadiness({host,load,warn}){
   row('سیاست اعلان',`تأخیر SMS: ${server.policy.sms_delay_seconds}s · سقف روزانهٔ نصب: ${server.policy.sms_daily_budget} · هر اپراتور: ${server.policy.per_operator_sms_daily} · quiet: ${server.policy.quiet_start}–${server.policy.quiet_end} · بی‌صدا اکنون: ${server.account.quiet_now?'بله':'خیر'}`);
   row('TTL و محدودیت پس‌زمینه',`TTL فعلی: ${server.policy.push_ttl_seconds}s · urgency: ${server.policy.push_urgency} · JWT: ${server.policy.vapid_jwt_seconds}s؛ سازگاری cadence اپل و دریافت روی گوشی واقعی NOT VERIFIED است.`);
   row('نشست و لغو',`پنجرهٔ فعالیت: ${server.policy.interactive_session_seconds}s · سقف نشست: ${server.policy.absolute_session_seconds}s؛ logout/لغو حساب/انقضا دوباره بررسی می‌شود.`);
-  row('شبکه و گوشی قفل‌شده','NOT VERIFIED؛ دسترسی سرور و دستگاه به سرویس Push و دسترسی سرور به SMS.ir لازم است. شبکهٔ ملی، نمایش اعلان را تضمین نمی‌کند. این بررسی permission یا ارسال ایجاد نمی‌کند.');
+  row('شبکه و گوشی قفل‌شده','NOT VERIFIED؛ دسترسی سرور و دستگاه به سرویس Push لازم است. اعلان پیامکی اپراتور فعال نیست. شبکهٔ ملی، نمایش اعلان را تضمین نمی‌کند. این بررسی permission یا ارسال ایجاد نمی‌کند.');
  }catch(e){warn(e);}finally{busy=false;button.disabled=false;}};
  return {clear(){result.replaceChildren();}};
 }

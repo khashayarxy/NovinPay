@@ -1,6 +1,7 @@
 import {Outbox,blockedReason} from './outbox.js?v=team1';
 import {Transport,ConversationSync,Poller,RequestError,apiHealth} from './network.js?v=team1';
 import {messageDate,persianDate} from './persian-date.js';
+import {transientFailure} from './reconnect.js';
 const presenceBudget=new Map();
 export class ChatEngine {
     constructor(role,hooks={},dependencies={}) {
@@ -10,18 +11,19 @@ export class ChatEngine {
         this.sendCooldowns=new Map();
         this.sync=new ConversationSync(this.transport,(...args)=>this.hooks.messages?.(...args));
         this.poller=new Poller(async()=>{
-            if(this.hooks.deferSync?.())return false;
+            if(this.hooks.deferSync?.()||this.sync.busy)return false;
             const changed=await this.sync.sync();
             await this.presence();
             if(this.sync.hasNewer)await this.hooks.gap?.();
             this.hooks.recovered?.();this.hooks.connection?.('متصل؛ ثبت در سرور فقط با تأیید هر پیام');return changed;
-        },{visible:()=>!document.hidden&&this.hooks.visible?.()!==false,onerror:e=>{if(!this.hooks.pollError?.(e))this.handleError(e);}});
+        },{visible:()=>!document.hidden&&this.hooks.visible?.()!==false,onerror:e=>{if(!this.hooks.pollError?.(e))this.handleError(e);},
+            ...(role==='customer'?{customerRecovery:true,shouldRetry:transientFailure,online:()=>navigator.onLine!==false}:{})});
         this.box.onchange=event=>{
             if(event.type==='read'&&event.scope===this.scope&&event.tab!==this.box.tab)this.poller.wake();
             if(event.type==='logout'&&event.scope===this.scope){this.freeze();this.hooks.identity?.('از این هویت در تب دیگر خارج شده‌اید.');}
             this.renderQueue().catch(e=>this.hooks.warning?.(e.message));
         };
-        this.wake=()=>{this.poller.wake();this.scheduleSender(0);};
+        this.wake=()=>{if(this.role==='customer'&&!this.paused&&!this.frozen)this.poller.resumeTransient();this.poller.wake();this.scheduleSender(0);};
         this.queueTicker=setInterval(()=>this.renderQueue().catch(()=>{}),2000);
         window.addEventListener('online',this.wake);document.addEventListener('visibilitychange',this.wake);
     }
@@ -83,6 +85,7 @@ export class ChatEngine {
     handleError(error,conversation=null) {
         if(this.role==='operator'&&error.code==='conversation_owned'){this.hooks.ownership?.(conversation,error.replyOwnership);this.hooks.warning?.(error.message,'chat');return;}
         const restricted=this.restrictSend(conversation,error);
+        if(this.role==='customer'&&transientFailure(error))this.hooks.warning?.(null,'connectivity');
         if(error.retryAfter>0&&!restricted&&conversation)this.senderNotBefore=Math.max(this.senderNotBefore||0,Date.now()+error.retryAfter);
         this.hooks.connection?.(error.status===429?'در انتظار سهمیهٔ سرور':'ارتباط تأیید نشده؛ متن‌های صف حفظ شده‌اند');
         if(!restricted&&(error.status&&error.status<500||apiHealth.state==='unavailable'))this.hooks.warning?.(error.message,!error.status||error.status>=500?'connectivity':'chat');
@@ -116,7 +119,7 @@ export class ChatEngine {
         if(this.frozen||this.paused||!this.sync.id)throw new Error('ابتدا هویت و گفتگوی معتبر را برقرار کنید؛ متن حفظ شده است.');
         this.assertSendAllowed();
         if(this.hooks.canSend?.(this.sync.id)===false)throw new Error(this.hooks.sendBlockReason?.(this.sync.id)||'این گفتگو پایان یافته است؛ پیش‌نویس حفظ شد.');
-        const row=await this.box.enqueue(this.context,this.sync.id,text,{attachments,replyTo,faqArticle,teamThrough:this.role==='operator'?(teamThrough??Math.max(0,...this.sync.values().filter(m=>m.type==='user'&&Number.isSafeInteger(m.id)).map(m=>m.id))):null,sourcePath:this.role==='customer'?(Object.hasOwn(globalThis,'SupportSourcePath')?globalThis.SupportSourcePath:location.pathname):null});
+        const row=await this.box.enqueue(this.context,this.sync.id,text,{attachments,replyTo,faqArticle,teamThrough:this.role==='operator'?(teamThrough??Math.max(0,...this.sync.values().filter(m=>m.type==='user'&&Number.isSafeInteger(m.id)).map(m=>m.id))):null,sourcePath:this.role==='customer'?(Object.prototype.hasOwnProperty.call(globalThis,'SupportSourcePath')?globalThis.SupportSourcePath:location.pathname):null});
         this.freshSubmissions.add(row.key);
         if(this.box.temporaryUnavailable&&!this.box.persistent)this.hooks.warning?.('بازیابی صف موقت در این مرورگر در دسترس نیست؛ پیش از تازه‌سازی منتظر تأیید پیام بمانید.','storage');this.hooks.queued?.(row);await this.renderQueue();this.scheduleSender(0);return row;
     }

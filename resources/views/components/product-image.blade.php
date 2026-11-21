@@ -1,7 +1,11 @@
-@props(['product'])
+@props(['product', 'image' => null, 'eager' => false])
+@php($image ??= $product->primaryImage())
 
-@if ($product->image_path)
-    <img src="{{ asset('storage/' . $product->image_path) }}" alt="تصویر {{ $product->name }}" loading="lazy"
+@if ($image)
+    <img src="{{ route('products.media', basename($image['path'])) }}"
+        alt="{{ $image['alt'] ?? 'تصویر '.$product->name }}"
+        @if (isset($image['width'], $image['height'])) width="{{ $image['width'] }}" height="{{ $image['height'] }}" @endif
+        @if ($eager) loading="eager" fetchpriority="high" data-gallery-main @else loading="lazy" decoding="async" @endif
         class="h-full w-full object-contain">
 @else
     <div class="flex h-full w-full items-center justify-center bg-slate-100" role="img"

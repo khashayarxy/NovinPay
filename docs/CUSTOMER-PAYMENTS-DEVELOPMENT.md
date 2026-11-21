@@ -6,7 +6,7 @@ Development branch for GitHub review only. No production access, real SMS, gatew
 ## Current scope and manual checks
 
 1. **Repairs:** `/admin/repairs` retains the original cases/history but groups the UI into five primary stages. Assign a technician, submit diagnosis and quotation together, record an unanswered call (which must NOT approve work), then approve or decline. Complete approved work. Diagnosis fees apply only after decline, not in addition to successful repair. Only inbound shipping paid by the shop can enter the charge. Positive debt blocks handover until settled. Specialist revisions/history stay collapsed. Public tracking continues to disclose only a minimal match, not private repair details.
-2. **Accounts:** `/account/login` uses SMS.ir OTP with three-minute expiry, one-minute cooldown, five guesses, IP/phone throttles, single use and a separate customer guard/session version. `/account` provides profile, addresses and scoped history. New phone ownership alone never claims historical CRM data. The customer supplies their account UUID to staff; the existing customer page provides an explicit identity-reviewed/password-confirmed link, invalidating the previous customer session. New profiles create a CRM record only if that phone has no existing profile. Shared/ambiguous historical identities need staff review.
+2. **Accounts:** `/account/login` uses IPPanel OTP with two-minute expiry, one-minute cooldown, five guesses, IP/phone throttles, single use and a separate customer guard/session version. `/account` provides profile, addresses and scoped history. New phone ownership alone never claims historical CRM data. The customer supplies their account UUID to staff; the existing customer page provides an explicit identity-reviewed/password-confirmed link, invalidating the previous customer session. New profiles create a CRM record only if that phone has no existing profile. Shared/ambiguous historical identities need staff review.
 3. **Delivery:** the customer requests shipping or shop pickup from a document. A staff member confirms via `/admin/deliveries`. Tipax/courier charges paid to the carrier and pickup never add postage. Accepted addresses are encrypted snapshots. No method changes after handover. Dispatch uses the existing repair/order services and their stock/approval checks inside the same transaction. **Postex quote retrieval is verified** in commit `f481197`; see `POSTEX-QUOTATIONS.md`. Prepaid postal checkout remains disabled in the UI, delivery confirmation and payment entry point until independent counter-tariff applicability and measured-parcel/quote binding are completed. Pickup and freight-collect options remain usable.
 4. **Payments:** SQL attempts/events/transactions, leased verification, unique track/reference/operation identities, exact money conversion, partial settlement, reviewed private receipt uploads, shop settlement, credit liabilities and recorded refunds. `/admin/payments` provides receipt review, shop receipts, pending gateway investigations and credit/refund information. Receipt upload alone does not settle debt; operators confirm actual funds, amount and reference. Refund recording does NOT transmit money. Credit notes preserve already-paid invoices and immutable receipts; unpaid shipping reductions reduce the receivable, while already-paid reductions establish a separate refund liability.
 5. **Store:** `/cart` uses server prices and exactly one eligible product-linked SKU. Samples, missing prices, unavailable or ambiguous stock cannot be purchased. Checkout creates a customer-origin draft; staff reserve/confirm through the existing stock services before issuing a payable document. Only these confirmed customer orders can be invoiced before fulfillment; old internal orders retain their previous eligibility rule. Customer orders cannot be fulfilled unpaid. No stock is invented from public catalogue status.
@@ -23,15 +23,16 @@ Admin maintenance permits only the exact GET callback path in both early guard a
 
 ## Activation checklist — NOT authorized or performed here
 
-- Obtain a NovinPay-specific merchant and approval of domain/callback `https://novinpaypos.com/bot/payment_verify.php`; confirm current Zibal amount/result/inquiry contract, numeric track representation, verification windows and any outbound NAT-IP allowlisting with Zibal/hosting. eNAMAD/tax/account approval are external activation prerequisites, not code credentials.
+- Obtain a NovinPay-specific merchant and confirm the approved domain and any callback allowlist with Zibal. The canonical callback in the route migration is `https://novinpaypos.com/payments/zibal/callback`. See [payment routes and connectivity](PAYMENT-ROUTES.md) for cutover and legacy compatibility.
 - Configure private environment values: `ZIBAL_MERCHANT_ID`, `ZIBAL_ENABLED=false`, `ZIBAL_LIVE_REQUESTS=false`, `ZIBAL_CALLBACK_URL`, `ZIBAL_API_BASE_URL=https://gateway.zibal.ir`. Both switches stay false until separately authorized and accepted. No provider requests are required for local tests; use HTTP mocks.
 - Configure `BANK_TRANSFER_ENABLED=false`, verified `NOVINPAY_BANK_CARD` and `NOVINPAY_BANK_HOLDER` privately before enabling card transfers. No invented bank details.
-- Configure `SMSIR_ENABLED=false`, `SMSIR_API_KEY`, `SMSIR_OTP_TEMPLATE_ID`, exact `SMSIR_OTP_PARAMETER` from the provider template (no guessed default), `SMSIR_APPROVED_TEMPLATE_IDS` only after approval/parameter review, `SMSIR_NOTIFICATIONS_ENABLED=false` and approved `SMSIR_TEMPLATE_*` IDs. Configure the exact `SMSIR_NOTIFICATION_PARAMETER` to match the approved notification templates; it also has no guessed default. See `SMSIR-CPANEL-READINESS.md` for the current HTTP 401 template-metadata blocker and the no-send status command. Never display OTPs, log provider bodies or commit credentials.
+- Configure `IPPANEL_ENABLED`, `IPPANEL_API_KEY`, the approved `IPPANEL_PATTERN_CODE`, exact `IPPANEL_PATTERN_PARAMETER`, and `IPPANEL_SENDER` privately. IPPanel is the sole provider; there is no automatic fallback. `php artisan customers:sms-status` is no-send by default; `--provider` explicitly inspects approved pattern metadata. Never print OTPs, provider bodies or credentials.
+- Legacy external customer/operator notification dispatch has been retired; durable in-account records and chat push remain. No unapproved IPPanel notification pattern is substituted for an OTP pattern. A separately approved release must rebuild the configuration cache and package helpers/manifest together. The compatibility digest permits removal of only the reviewed retired keys and still binds IPPanel credentials, pattern, customer security settings and protected environment files. Existing private environment values and historical recovery packages are not deleted.
 - The quote-only Postex adapter and authentication are verified. Obtain independent-postage tariff applicability and complete measured-parcel binding before enabling prepaid postal checkout. No shipment creation, labels, wallet debit or billable shipping operation is implemented.
 - Review all six new migrations against SQLite/MySQL8/MariaDB10.6.28 and real upgrade copies. They extend existing actor columns with explicit system/customer origins. Empty extension rollback/reapply is supported; rollback with new customer/payment/shipping history deliberately stops. Do not reuse the old release/backup package's 14-migration/five-trigger assumptions unchanged.
 - Complete exact-head CI, cross-database concurrency and browser interaction acceptance before release. Publishing this Draft PR does not authorize activation. Local focused SQLite tests and offline rendered screenshots are not production or real-provider proof.
 - Keep original DB, `.env`, APP_KEY, sessions/uploads, existing .htaccess and public_html link untouched. Release only through the existing separately approved backup/restore/off-host recovery and protected GitHub workflow.
-- After approved deployment, review a single PHP8.4 `schedule:run` cron for `payments:reconcile` and `customers:notify`; never run an unguarded dev stack. Monitor unresolved attempts, notification review states and credits. No cron was installed here.
+- After approved deployment, review a single PHP8.4 `schedule:run` cron for the heartbeat and explicitly approved payment reconciliation; never run an unguarded dev stack. Customer notifications remain in-account. Monitor unresolved attempts and historical notification review states. No cron was installed here.
 
 ## Local checks
 
@@ -42,8 +43,56 @@ Focused local results include payments/delivery/notifications (22), customer acc
 ## Shortest safe cPanel release path
 
 1. Keep this PR Draft until the four exact-head CI jobs pass and the owner finishes customer/admin mobile acceptance. Existing CI runs the shared payment tests on SQLite, MySQL 8 and MariaDB 10.6.28. The existing financial competing-connection harness now also checks overlapping actual shop payments and duplicate operation keys. No local Docker is used.
-2. Configure and accept SMS.ir OTP/templates privately before exposing account-dependent ordering or repair submission. Without it login deliberately returns 503; no fixed OTP/test bypass is supplied. Zibal and card-transfer switches stay false until separate activation/configuration. Postal billing stays blocked as above.
+2. Configure and accept IPPanel OTP/pattern privately before exposing account-dependent ordering or repair submission. Without it login deliberately returns 503; no fixed OTP/test bypass is supplied. Zibal and card-transfer switches stay false until separate activation/configuration. Postal billing stays blocked as above.
 3. Rehearse the six new migrations on an isolated copy of the current production schema/data with the existing migrator/trigger-definer account. This is an additive 14-to-20 migration upgrade, not the original installation. The new portable test preserves populated legacy financial rows and actor identities; real hosted rehearsal is still a release gate.
 4. Version the release manifest, readiness and backup checks for the new schema and trigger set. The old 14-migration/five-trigger updater and maintenance-only rollback helpers must not be reused unchanged. Retain a verified encrypted current backup, isolated restore and independent off-host recovery copy, plus current quota and hosting evidence.
 5. Prepare a reviewed compatibility rollback before activation. Once new customer/system-origin financial rows or AdminAction values exist, a pristine old-code checkout is unsafe. Keep new private maintenance/audit state, nullable actor handling and enum compatibility; code rollback must never restore or overwrite newer live business data. New migration down() deliberately refuses to discard customer/payment/delivery history.
 6. Only after protected review and explicit deployment approval: in-place cPanel update at the permanent path, preserve `.env`/APP_KEY/uploads/sessions/public_html, use the migration account only for reviewed schema changes, rebuild route/view caches, verify authentication, receipts, settlement and handover without synthetic production transactions, then enable only accepted services. Review the single existing scheduler cron; do not install duplicate workers.
+
+## Confirmed audit remediation (2026-11-13)
+
+Request validation errors 102/103/104/105/106/113 are definitive request rejections;
+transport errors, malformed responses and unknown result codes remain uncertain.
+Reference: official Zibal sample `https://github.com/zibalco/gateway-php-sample/blob/master/functions.php`.
+Inquiry status 3 is accepted as cancellation only with result 100 and matching
+order/amount. A later successful verification still settles idempotently, including
+after a cancellation or manual unpaid resolution. Never infer non-payment from a
+missing track ID or browser flags.
+
+The 30-minute review threshold is LOCAL TRIAGE, not a claimed Zibal session TTL.
+Unknown/no-track requests go to manual review without replaying request creation.
+Reconciliation is due-time ordered, backed off, bounded to 40 items/180 seconds and
+8 verification attempts. Exhaustion becomes visible review, not a silent skip.
+`/admin/payments` allows independently evidenced unpaid resolution only with
+finance.correct/details/view, source access, password reauthentication and explicit
+confirmation. It never synthesizes a paid receipt. Notes are encrypted; actor/time
+and immutable payment/admin events remain attributable. Active leases prevent
+manual interference. Live Zibal flags remain disabled; all gateway tests are mocked.
+
+One additive migration adds nullable resolution actor/time/encrypted-note storage.
+No historical row is backfilled or financial CHECK/trigger changed. Its down()
+refuses to discard recorded resolutions. After admission/new resolution writes,
+prefer forward recovery; do not restore an old database or blindly revert code
+that cannot reconcile late success. The source-only format intentionally rejects this route/config/migration-bearing
+release. Use only the reviewed application-mode extension of the existing shared
+updater; do not reuse an old activation command.
+Production activation requires a separately reviewed conventional migration step,
+current baseline SQL inventory, applicable verified recovery, exact-head CI and
+explicit owner authorization. Do not create a backup during ordinary development.
+
+
+### Release preparation boundary
+
+Current remediation starts from production source 191cf4e plus the four reviewed shared
+recovery-tool commits through 2d5e74c; no unrelated feature branch was merged. Local
+validation used isolated SQLite, not the owner acceptance database. MariaDB/MySQL
+competing start/verify scenarios run in the existing CI harness. No production SQL,
+provider request, cron, backup, restore, application file or configuration was changed.
+The retained 23-migration/13-trigger recovery proof is historical evidence; fresh live
+SQL inventory and the new 24-migration candidate remain distinct. cPanel Fileman does
+not provide arbitrary SQL/CLI execution. Final production activation, including this
+single reviewed migration, still needs explicit owner authorization and live validation of the reviewed
+application-mode procedure; never run the source-only helper against schema changes.
+OTP transport UX/global SMS budgets, MFA, SEO and expanded header changes are deferred
+for separate focused work; the private test flow, live IPPanel configuration and chat
+are untouched. Account-linked pickup/shipping handover now consistently reauthenticates.

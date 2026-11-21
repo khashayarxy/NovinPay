@@ -192,6 +192,7 @@ final class ProductionActivationTest extends TestCase
             'pr13-cancel-before-ddl.php' => 'pr13-cancel-before-ddl.php', 'pr13-activation-contract.php' => 'pr13-activation-contract.php',
             'pr13-rehearsal-v2.php' => 'pr13-rehearsal.php', 'pr13-recovery-v3.php' => 'pr13-recovery.php',
             'runtime.php' => 'runtime.php', 'lib.php' => 'lib.php', 'backup-policy.php' => 'backup-policy.php',
+            'schema-contract.php' => 'schema-contract.php', 'trigger-contracts.json' => 'trigger-contracts.json',
             'pr13-schema-contract.php' => 'pr13-schema-contract.php', 'pr13-maintenance-snapshot.php' => 'pr13-maintenance-snapshot.php'];
         foreach ($files as $to => $from) {
             copy($root.$from, $bundle.'/'.$to);
@@ -448,7 +449,7 @@ final class ProductionActivationTest extends TestCase
 
     public function test_only_chat_flag_changes_and_duplicate_environment_keys_fail_closed(): void
     {
-        $before = "APP_KEY=synthetic\nDB_PASSWORD=synthetic\nSMSIR_ENABLED=false\nSUPPORT_CHAT_ENABLED=false\n";
+        $before = "APP_KEY=synthetic\nDB_PASSWORD=synthetic\nIPPANEL_ENABLED=false\nSUPPORT_CHAT_ENABLED=false\n";
         $after = enabledChatEnvironment($before);
         $this->assertSame(str_replace('SUPPORT_CHAT_ENABLED=false', 'SUPPORT_CHAT_ENABLED=true', $before), $after);
         $this->assertSame($after, enabledChatEnvironment($after));

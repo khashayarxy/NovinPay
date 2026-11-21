@@ -1,4 +1,5 @@
 import {recoveryRequest} from './recovery.js?v=0.1.0-r14';
+import {uuid} from './outbox.js';
 
 // Bearer code lives only in this closure/readonly field, never ChatEngine or storage.
 export function issuanceControls({region,menu,current,conversation,email,warn,clearWarning=()=>{},activatedCode=()=>{}}){
@@ -39,7 +40,7 @@ export function issuanceControls({region,menu,current,conversation,email,warn,cl
         const r=await request('status');
         if(r.state==='active'&&token&&r.operation===operation){activated();card.hidden=false;menu.close();return;}
         if(['active','revoked','existing'].includes(r.state)||!r.may_prepare){clear();id=selected;card.hidden=false;status.textContent=r.state==='revoked'?'کد این گفتگو باطل شده است.':'کد قبلی از این صفحه قابل بازیابی نیست؛ از نسخهٔ ذخیره‌شده یا شمارهٔ تأییدشده استفاده کنید.';menu.close();repaint();return;}
-        operation=r.operation||operation||crypto.randomUUID();
+        operation=r.operation||operation||uuid();
         const prepared=await request('prepare',{operation_id:operation});if(token!==prepared.recovery_secret)saved.checked=false;token=prepared.recovery_secret;field.value=token;active=false;status.textContent='کد آماده است و هنوز فعال نیست. آن را ذخیره و سپس فعال کنید.';card.hidden=false;menu.close();repaint();
     });
     saved.onchange=repaint;
@@ -52,9 +53,9 @@ export function issuanceControls({region,menu,current,conversation,email,warn,cl
     });
     dismiss.onclick=()=>clear();emailButton.onclick=()=>{mail.hidden=!mail.hidden;if(!mail.hidden){if(!address.value)address.value=email()||'';address.focus();}};
     address.oninput=()=>{mailOperation=challenge=backupOperation=null;mailCode.value='';mailCode.hidden=verify.hidden=backup.hidden=true;};
-    sendVerification.onclick=()=>run(async()=>{if(challenge){if(Date.now()-mailSentAt<60000)throw new Error('برای ارسال دوبارهٔ ایمیل یک دقیقه صبر کنید.');mailOperation=null;}mailOperation??=crypto.randomUUID();const r=await request('email_begin',{operation_id:mailOperation,email:address.value});challenge=r.challenge;mailSentAt=Date.now();mailCode.hidden=verify.hidden=false;mailCode.focus();status.textContent='درخواست کد ایمیل ثبت شد؛ در صورت دریافت، آن را تا پنج دقیقه وارد کنید.';});
+    sendVerification.onclick=()=>run(async()=>{if(challenge){if(Date.now()-mailSentAt<60000)throw new Error('برای ارسال دوبارهٔ ایمیل یک دقیقه صبر کنید.');mailOperation=null;}mailOperation??=uuid();const r=await request('email_begin',{operation_id:mailOperation,email:address.value});challenge=r.challenge;mailSentAt=Date.now();mailCode.hidden=verify.hidden=false;mailCode.focus();status.textContent='درخواست کد ایمیل ثبت شد؛ در صورت دریافت، آن را تا پنج دقیقه وارد کنید.';});
     verify.onclick=()=>run(async()=>{try{await request('email_verify',{challenge,code:mailCode.value});}catch(e){const r=await request('email_status',{challenge}).catch(()=>null);if(r?.verified!==true)throw e;}mailCode.value='';mailCode.hidden=verify.hidden=true;backup.hidden=false;status.textContent='ایمیل تأیید شد. اکنون می‌توانید نسخهٔ همین کد فعال را درخواست کنید.';});
-    backup.onclick=()=>run(async()=>{backupOperation??=crypto.randomUUID();await request('email_backup',{challenge,operation_id:backupOperation,recovery_secret:token});status.textContent='درخواست نسخهٔ پشتیبان ثبت شد؛ این پیام تضمین دریافت ایمیل نیست.';});
+    backup.onclick=()=>run(async()=>{backupOperation??=uuid();await request('email_backup',{challenge,operation_id:backupOperation,recovery_secret:token});status.textContent='درخواست نسخهٔ پشتیبان ثبت شد؛ این پیام تضمین دریافت ایمیل نیست.';});
     function refresh(){
         if(id&&id!==conversation()){clear();id=null;}
         action.hidden=!available||!conversation()||current()?.can_issue_recovery_code===false;

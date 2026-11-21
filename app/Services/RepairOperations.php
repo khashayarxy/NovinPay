@@ -249,6 +249,7 @@ final class RepairOperations
                         app(FinancialOperations::class)->reconcile($document);
                     }
                     if ($case->customer_account_id && $document) {
+                        app(PaymentReview::class)->actor($actor, $data['current_password'] ?? '');
                         app(DeliveryManagement::class)->completePlan($document, $actor);
                     }
                     $delivery = new RepairDelivery;
