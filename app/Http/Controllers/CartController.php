@@ -8,7 +8,6 @@ use App\Services\CustomerLogin;
 use App\Services\DeliveryManagement;
 use App\Services\LegacyCartHold;
 use App\Services\ShoppingCart;
-use App\Services\StoreCheckout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
