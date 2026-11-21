@@ -10,13 +10,12 @@
         $passwordMode => 'ورود با رمز عبور',
         $recovery => 'بازیابی رمز عبور',
         (bool) $phone => 'تأیید شماره موبایل',
-        default => 'به نوین‌پی خوش آمدید',
+        default => 'ورود یا ثبت‌نام',
     };
 @endphp
 <div class="np-auth">
     <section class="np-auth__card" aria-labelledby="auth-title">
         <a href="{{ route('home') }}" class="np-auth__logo" aria-label="صفحه اصلی نوین‌پی"><x-home.wordmark /></a>
-        <div class="np-auth__progress" aria-hidden="true"><span></span><span @class(['is-current' => $phone])></span></div>
         <div class="np-account-enter">
             <h1 id="auth-title">{{ $heading }}</h1>
             @if($phone)
@@ -24,8 +23,6 @@
                     <bdi dir="ltr">{{ \App\Support\FaNumber::digits(substr($phone, 0, 4).' ••• '.substr($phone, -4)) }}</bdi>
                     <form method="post" action="{{ route('account.restart') }}">@csrf<input type="hidden" name="flow" value="{{ $flow }}"><button class="np-account-link" type="submit">تغییر شماره</button></form>
                 </div>
-            @else
-                <p>برای ورود یا ساخت حساب، شماره موبایل خود را وارد کنید.</p>
             @endif
             <x-admin.errors />
             @unless($errors->any())
@@ -97,23 +94,6 @@
             @endif
         </div>
     </section>
-    <aside class="np-auth__aside" aria-label="امکانات حساب کاربری">
-        <div class="np-auth__signal" aria-hidden="true">
-            <svg viewBox="0 0 320 208" fill="none">
-                <path d="M22 143h60l18-33h38l20-43h52l20-32h68" stroke="#90c4ff" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 8"/>
-                <rect x="84" y="38" width="152" height="130" rx="23" fill="#174482" stroke="#79aeff"/>
-                <rect x="105" y="61" width="110" height="48" rx="10" fill="#102f66" stroke="#547fbc"/>
-                <path d="M124 85h19l9-12 11 21 10-9h23" stroke="#9fd6ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M118 132h27m11 0h10m11 0h25" stroke="#b0d5ff" stroke-width="4" stroke-linecap="round"/>
-                <path d="M22 143h40m196-108h40" stroke="#a1d6ff" stroke-width="2" stroke-linecap="round"/>
-                <circle cx="22" cy="143" r="5" fill="#b8e4ff"/><circle cx="298" cy="35" r="5" fill="#b8e4ff"/>
-            </svg>
-        </div>
-        <div>
-            <h2>از خرید تا تحویل، همراه شما</h2>
-            <p>وضعیت تعمیر، سفارش‌ها و رسیدهای خود را در یک حساب پیگیری کنید.</p>
-        </div>
-    </aside>
 </div>
 <script src="{{ asset('js/customer-otp.js?v=6') }}" defer></script>
 @endsection

@@ -119,21 +119,26 @@
         const container = dialog.querySelector('[data-live-cart]');
         const footer = dialog.querySelector('[data-cart-footer]');
         const summary = dialog.querySelector('[data-cart-summary]');
+        const viewLink = dialog.querySelector('[data-cart-view-link]');
         const retry = dialog.querySelector('[data-cart-retry]');
         const status = dialog.querySelector('[data-cart-status]');
         if (content.dataset.cartCount !== undefined) renderCartCount(Number(content.dataset.cartCount));
+        const isEmpty = content.dataset.cartEmpty === 'true';
         const contentWasEmpty = container.querySelector('.empty-cart');
-        if (content.dataset.cartEmpty === 'true') {
+        if (isEmpty) {
             if (!contentWasEmpty) container.replaceChildren(dialog.querySelector('[data-empty-cart]').content.cloneNode(true));
             summary.replaceChildren();
+            if (viewLink) viewLink.hidden = true;
+            footer.hidden = true;
         } else {
             content.querySelector('h1')?.remove();
             content.classList.add('cart-sheet-content');
             const total = content.querySelector('[data-store-cart-total]');
             summary.replaceChildren(...(total ? [total] : []));
             container.replaceChildren(content);
+            if (viewLink) viewLink.hidden = false;
+            footer.hidden = false;
         }
-        footer.hidden = false;
         retry.hidden = true;
         container.inert = false;
         summary.inert = false;
@@ -142,6 +147,15 @@
         if (html !== null && dialog.hasAttribute('data-cart-preload')) {
             cartSnapshot = {html, epoch: epochAtFetch};
         }
+    }
+
+    function hydrateCartFromSsr(dialog) {
+        const tpl = dialog.querySelector('template[data-ssr-cart]');
+        if (!tpl) return false;
+        const fragment = tpl.content.cloneNode(true);
+        if (!fragment.querySelector('[data-storefront-cart]')) return false;
+        applyCartDocument(dialog, fragment, cartEpoch, null);
+        return true;
     }
 
     function preloadCart(dialog) {
@@ -330,6 +344,8 @@
                     cartSnapshot = null;
                     refreshCart(dialog);
                 }
+            } else if (dialog.hasAttribute('data-cart-preload') && cartEpoch === 0 && hydrateCartFromSsr(dialog)) {
+                // Rendered synchronously from SSR cart payload in 0ms; no network wait needed.
             } else {
                 refreshCart(dialog);
             }
@@ -460,7 +476,7 @@
         if (active && active === cartDialog) refreshCart(active, {discard: true});
         else if (cartDialog && (!cartSnapshot || cartSnapshot.epoch !== cartEpoch)) preloadCart(cartDialog);
     });
-    if (cartDialog?.dataset.cartUrl && cartDialog.hasAttribute('data-cart-preload') && !document.querySelector('[data-storefront-cart]')) {
+    if (cartDialog?.dataset.cartUrl && cartDialog.hasAttribute('data-cart-preload') && !cartDialog.querySelector('template[data-ssr-cart]') && !document.querySelector('[data-storefront-cart]')) {
         const schedulePreload = window.requestIdleCallback || (fn => setTimeout(fn, 120));
         schedulePreload(() => preloadCart(cartDialog));
     }
