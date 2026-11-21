@@ -29,14 +29,14 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <script src="{{ asset('js/storefront-scroll-lock.js?v=1') }}" defer></script>
-        <script src="{{ asset('js/storefront-premium.js?v=commerce-stage2-7') }}" defer></script>
+        <script src="{{ asset('js/storefront-premium.js?v=commerce-stage2-8') }}" defer></script>
     @endif
     @stack('page-head')
     @if ($hasStoreNavigation)
         <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=commerce-stage2-7') }}">
     @endif
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
-        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=commerce-stage2-8') }}">
+        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=commerce-stage2-9') }}">
     @endif
     @if(request()->routeIs('account.*'))
         <x-password-visibility-assets />
@@ -51,7 +51,10 @@
         <x-home.header :premium="View::hasSection('premium-storefront')" />
     @endunless
     <main id="main-content" class="flex-1" tabindex="-1">@yield('content')</main>
-    @unless(View::hasSection('quiet-shell'))<x-home.footer :compact="View::hasSection('compact-footer')" />@endunless
+    @unless(View::hasSection('quiet-shell'))
+        <x-home.location />
+        <x-home.footer :compact="View::hasSection('compact-footer')" />
+    @endunless
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <x-storefront.mobile-navigation />
         <x-storefront.shop-dialogs />

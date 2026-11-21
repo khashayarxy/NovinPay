@@ -9,41 +9,27 @@
 }
 
 .np-auth {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, .9fr);
-    max-width: 67rem;
-    min-height: 36rem;
-    margin: clamp(1rem, 8vh, 6rem) auto;
+    display: flex;
+    flex-direction: column;
+    max-width: 26.5rem;
+    min-height: 0;
+    margin: clamp(2rem, 10vh, 5.5rem) auto;
     width: calc(100% - 2rem);
     border: 1px solid var(--account-line);
-    border-radius: 1.8rem;
+    border-radius: 1.4rem;
     background: white;
-    box-shadow: 0 24px 60px #173e6914;
+    box-shadow: 0 14px 40px #173e690f;
     overflow: hidden;
 }
 
-.np-auth__card { padding: clamp(1.5rem, 5vw, 4rem); }
-.np-auth__logo { display: inline-flex; align-items: center; min-height: 44px; max-width: 10.5rem; }
-.np-auth__progress { display: flex; gap: .35rem; margin: 1.65rem 0 1rem; }
-.np-auth__progress span { width: 1.6rem; height: .23rem; border-radius: 1rem; background: var(--account-line); }
-.np-auth__progress span:first-child, .np-auth__progress .is-current { background: var(--account-blue); }
-.np-auth h1, .np-account h1 { font-size: clamp(1.55rem, 4vw, 2.15rem); font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
+.np-auth__card { padding: clamp(1.5rem, 4vw, 2.5rem); }
+.np-auth__logo { display: flex; align-items: center; justify-content: center; min-height: 44px; max-width: 9.5rem; margin: 0 auto 1.25rem; }
+.np-auth h1 { font-size: clamp(1.3rem, 3.5vw, 1.55rem); font-weight: 800; line-height: 1.45; text-align: center; margin-bottom: .75rem; overflow-wrap: anywhere; }
+.np-account h1 { font-size: clamp(1.55rem, 4vw, 2.15rem); font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
 .np-auth p, .np-account-card p { margin-block: .55rem; }
-.np-auth__number { display: flex; gap: .8rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-block: .65rem; }
-.np-auth__number bdi { font-variant-numeric: tabular-nums; }
-.np-auth__aside {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 1.15rem;
-    padding: clamp(1.5rem, 4vw, 3rem);
-    background: radial-gradient(ellipse at 35% 22%, #205493, transparent 70%), #102d60;
-    color: white;
-}
-.np-auth__aside h2 { color: white; font-size: 1.45rem; font-weight: 800; }
-.np-auth__aside p { color: #dbeaff; max-width: 28ch; }
-.np-auth__signal svg { width: 100%; max-height: 15rem; }
-.np-auth__legal { color: var(--account-muted); font-size: .87rem; }
+.np-auth__number { display: flex; gap: .8rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-block: .5rem .85rem; padding: .5rem .75rem; border-radius: .75rem; background: #f5f9fd; border: 1px solid #e2ecf6; }
+.np-auth__number bdi { font-variant-numeric: tabular-nums; font-weight: 600; }
+.np-auth__legal { color: var(--account-muted); font-size: .82rem; text-align: center; margin-top: 1rem; }
 .np-auth__legal a { color: var(--account-blue); text-decoration: underline; text-underline-offset: 3px; }
 .np-auth__alternatives { display: flex; flex-wrap: wrap; gap: .15rem 1.1rem; margin-top: .65rem; }
 .np-auth .np-auth__code { font-size: 1.3rem; font-variant-numeric: tabular-nums; text-align: center; }

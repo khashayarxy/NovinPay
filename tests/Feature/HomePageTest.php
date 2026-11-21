@@ -226,7 +226,8 @@ class HomePageTest extends TestCase
         $desktop = $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]')->item(0);
         $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
-        $this->assertSame(5, $xpath->query('//main/section')->length);
+        $this->assertSame(4, $xpath->query('//main/section')->length);
+        $this->assertSame(1, $xpath->query('//section[contains(@class,"np-location")]')->length);
         $response->assertSeeInOrder(['id="hero-title"', 'np-trust np-container', 'id="popular-services-title"', 'id="brands-title"', 'id="location-title"'], false);
     }
 

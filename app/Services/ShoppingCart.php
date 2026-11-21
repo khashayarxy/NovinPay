@@ -348,6 +348,31 @@ class ShoppingCart
         }
     }
 
+    public function viewData(Request $request): array
+    {
+        $state = $this->read($request);
+        $products = $state['items'] === []
+            ? collect()
+            : Product::query()->published()->with('inventoryItems')->whereIn('slug', array_keys($state['items']))->get()->keyBy('slug');
+        $available = [];
+        foreach ($state['items'] as $slug => $entry) {
+            $product = $products->get($slug);
+            $offer = $product ? $this->checkout->offer($product) : null;
+            $matches = $offer && $offer->id === $entry['inventory']
+                && (! $entry['device'] || $entry['device']['inventory'] === $offer->id)
+                && (! $entry['account'] || $entry['account']['inventory'] === $offer->id);
+            $selectionLimit = $state['separate'] ? max($entry['device']['quantity'] ?? 0, $entry['account']['quantity'] ?? 0) : 10;
+            $available[$slug] = $matches ? min($selectionLimit, $offer->available) : 0;
+        }
+        $unavailable = array_keys(array_filter($available, fn ($limit, $slug) => $limit < $state['items'][$slug]['quantity'], ARRAY_FILTER_USE_BOTH));
+        $total = $products->sum(fn ($product) => (int) $product->price * $state['quantity'][$product->slug]);
+
+        return [...$state, 'products' => $products, 'unavailable' => $unavailable, 'available' => $available, 'total' => $total,
+            'legacyStatus' => app(LegacyCartHold::class)->status($request), 'overLimit' => count($state['items']) > 30,
+            'quote' => $this->checkout->quote($products),
+        ];
+    }
+
     private function encode(array $value): string
     {
         return json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
