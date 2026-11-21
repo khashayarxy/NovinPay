@@ -285,10 +285,6 @@
     .np-mobile-drawer__account { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #d5e6f5; border-radius: 11px; background: #f1f7fd; color: #075da6; font-size: 14px; font-weight: 650; transition: background-color 140ms ease, border-color 140ms ease; }
     .np-mobile-drawer__account:hover { background: #e3f0fc; border-color: #b5d5f2; }
     .np-mobile-drawer__account .np-nav-icon { width: 19px; height: 19px; flex: none; color: #075da6; }
-    .np-mobile-drawer__phones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .np-mobile-drawer__phones a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 6px 8px; border: 1px solid #d5e6f5; border-radius: 10px; background: #f2f7fc; color: #075da6; font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; transition: background-color 140ms ease, border-color 140ms ease; }
-    .np-mobile-drawer__phones a:hover { background: #e3f0fc; border-color: #b5d5f2; }
-    .np-mobile-drawer__phones .np-icon { width: 15px; height: 15px; flex: none; color: #075da6; }
     .np-mobile-menu :is(button, a):focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 3px; }
     .homepage .np-hero__grid { grid-template-columns: 1fr; padding-block: 12px 28px; gap: 8px; }
     .homepage .np-hero__copy { grid-column: 1; grid-row: 2; }

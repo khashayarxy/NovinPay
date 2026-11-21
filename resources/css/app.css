@@ -146,11 +146,6 @@
         user-select: none;
         -webkit-user-select: none;
     }
-
-    .np-mobile-drawer__phones :is(a, bdi) {
-        user-select: text;
-        -webkit-user-select: text;
-    }
 }
 
 @layer components {

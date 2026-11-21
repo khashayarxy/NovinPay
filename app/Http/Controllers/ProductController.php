@@ -70,7 +70,7 @@ class ProductController extends Controller
             'condition' => $condition,
             'term' => $term,
             'category' => $category,
-            'categories' => ProductCategory::cases(),
+            'categories' => ProductCategory::storefrontCases(),
             'hasFilters' => $term !== '' || $category !== null || $condition !== null || $sort !== null,
             'canonical' => rtrim(config('app.url'), '/').route('products.index', [], false)
                 .($products->currentPage() > 1 ? '?page='.$products->currentPage() : ''),

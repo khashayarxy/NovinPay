@@ -18,7 +18,19 @@ enum ProductCategory: string
             self::PosTerminal => 'دستگاه کارتخوان',
             self::Printer => 'پرینتر و چاپ رسید',
             self::Peripheral => 'لوازم جانبی',
-            self::Consumable => 'لوازم مصرفی',
+            self::Consumable => 'رول کاغذ کارتخوان',
         };
+    }
+
+    /**
+     * @return list<self>
+     */
+    public static function storefrontCases(): array
+    {
+        return [
+            self::PosTerminal,
+            self::Consumable,
+            self::Peripheral,
+        ];
     }
 }

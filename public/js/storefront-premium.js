@@ -431,6 +431,34 @@
         });
     }
     document.querySelectorAll('[data-storefront-dialog]').forEach(dialog => register(dialog));
+    if (cartDialog) {
+        const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+        register(cartDialog, {
+            show: () => cartDialog.classList.remove('is-closing'),
+            hide: () => cartDialog.classList.remove('is-closing'),
+            beforeClose: () => {
+                if (reducedMotion.matches) return;
+                cartDialog.classList.add('is-closing');
+                if (getComputedStyle(cartDialog).animationName === 'none') {
+                    cartDialog.classList.remove('is-closing');
+                    return;
+                }
+                return new Promise(resolve => {
+                    let done = false;
+                    const finishAnimation = () => {
+                        if (done) return;
+                        done = true;
+                        clearTimeout(timer);
+                        cartDialog.removeEventListener('animationend', onEnd);
+                        resolve();
+                    };
+                    const onEnd = event => { if (event.target === cartDialog) finishAnimation(); };
+                    const timer = setTimeout(finishAnimation, 200);
+                    cartDialog.addEventListener('animationend', onEnd);
+                });
+            },
+        });
+    }
     const filters = document.querySelector('[data-catalog-filters]');
     if (filters) {
         const dialog = document.getElementById('catalog-filter-dialog');
