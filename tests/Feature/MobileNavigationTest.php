@@ -106,16 +106,21 @@ class MobileNavigationTest extends TestCase
 
         $menu = $xpath->query('//nav[@id="mobile-navigation"]')->item(0);
         $links = $xpath->query('./a', $menu);
-        $this->assertSame(['صفحه اصلی', 'فروشگاه کارتخوان', 'تعمیرات کارتخوان', 'پیگیری تعمیرات', 'مقالات و آموزش‌ها', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(['صفحه اصلی', 'تعمیرات کارتخوان', 'پیگیری تعمیرات', 'مقالات و آموزش‌ها', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
         $this->assertSame(0, $xpath->query('//a[normalize-space(.)="تعمیرگاه" or normalize-space(.)="خدمات و تعمیرات"]')->length);
-        $this->assertSame(array_map(fn ($name) => route($name), ['home', 'products.index', 'repair', 'repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
-        $this->assertSame(6, $xpath->query('./a/*[@aria-hidden="true"]', $menu)->length);
-        $active = $xpath->query('./a[@aria-current="page"]', $menu);
+        $this->assertSame(array_map(fn ($name) => route($name), ['home', 'repair', 'repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
+        $this->assertSame(5, $xpath->query('./a/*[@aria-hidden="true"]', $menu)->length);
+        $shopAccordion = $xpath->query('./details[contains(@class,"np-drawer-categories")]', $menu)->item(0);
+        $this->assertNotNull($shopAccordion);
+        $this->assertSame('فروشگاه', trim($xpath->query('./summary', $shopAccordion)->item(0)->textContent));
+        $this->assertSame($current === 'products.index', $shopAccordion->hasAttribute('open'));
+        $this->assertSame(1, $xpath->query('.//a[@href="'.route('products.index').'" and normalize-space(.)="همه محصولات"]', $shopAccordion)->length);
+        $active = $xpath->query('.//a[@aria-current="page"]', $menu);
         $this->assertSame($current ? 1 : 0, $active->length);
         if ($current) {
             $this->assertSame(route($current), $active->item(0)->getAttribute('href'));
         }
-        $this->assertSame(0, $xpath->query('./a[@aria-current="location"]', $menu)->length);
+        $this->assertSame(0, $xpath->query('.//a[@aria-current="location"]', $menu)->length);
         $this->assertSame(1, $xpath->query('//button[@aria-controls="mobile-drawer" and @aria-expanded="false" and @aria-haspopup="dialog"]')->length);
         $this->assertSame(1, $xpath->query('//dialog[@id="mobile-drawer" and @aria-label="ناوبری موبایل" and not(@open)]')->length);
         $this->assertSame(0, $xpath->query('//header//*[@role="menu" or @role="menuitem"]')->length);

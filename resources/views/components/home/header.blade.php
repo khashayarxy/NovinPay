@@ -47,10 +47,10 @@
         </div>
         <nav id="mobile-navigation" aria-label="ناوبری موبایل">
             <a href="{{ route('home') }}" @if (request()->routeIs('home')) aria-current="page" @endif><x-storefront.icon name="home" class="np-nav-icon" /><span>صفحه اصلی</span></a>
-            <a href="{{ route('products.index') }}" @if (request()->routeIs('products.index') && ! $activeCategory) aria-current="page" @endif><x-storefront.icon name="shop" class="np-nav-icon" /><span>فروشگاه کارتخوان</span></a>
-            <details class="np-drawer-categories" open>
-                <summary><x-storefront.icon name="categories" class="np-nav-icon" /><span>دسته‌بندی محصولات</span><x-storefront.icon name="chevron-down" class="np-drawer-chevron" /></summary>
+            <details class="np-drawer-categories" @if (request()->routeIs('products.*')) open @endif>
+                <summary><x-storefront.icon name="shop" class="np-nav-icon" /><span>فروشگاه</span><x-storefront.icon name="chevron-down" class="np-drawer-chevron" /></summary>
                 <div class="np-drawer-categories__list">
+                    <a href="{{ route('products.index') }}" @if (request()->routeIs('products.*') && ! $activeCategory) aria-current="page" @endif><span>همه محصولات</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
                     @foreach (\App\Enums\ProductCategory::cases() as $category)
                         <a href="{{ route('products.index', ['category' => $category->value]) }}" @if ($activeCategory === $category->value) aria-current="page" @endif><span>{{ $category->label() }}</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
                     @endforeach

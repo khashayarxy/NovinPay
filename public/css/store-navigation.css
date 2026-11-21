@@ -9,9 +9,7 @@
         scroll-padding-bottom: calc(82px + env(safe-area-inset-bottom) + var(--store-purchase-space, 0px));
     }
     body:has(.global-store-nav) { padding-bottom: var(--store-nav-space); }
-    body.homepage { padding-bottom: 0; }
-    body.homepage .global-store-nav { display: none; }
-    body:not(.homepage):has(.global-store-nav) .np-header .np-customer-header,
+    body:has(.global-store-nav) .np-header .np-customer-header,
     body.premium-storefront:has(.global-store-nav) .np-header .np-customer-header { display: none !important; }
     .global-store-nav {
         position: fixed;
@@ -49,7 +47,7 @@
     }
     .global-store-nav a:focus-visible { outline: 2px solid #075da6; outline-offset: -2px; }
     .global-store-nav a:active { background: #dcecf9; }
-    body:not(.homepage):has(.global-store-nav) button[data-support-launcher] {
+    body:has(.global-store-nav) button[data-support-launcher] {
         bottom: calc(var(--store-nav-edge) + var(--store-nav-active-height) + 12px + var(--store-purchase-space, 0px));
     }
     body:has(dialog[open], [data-support-frame][data-state="open"]) :is(.global-store-nav, [data-product-dock]),

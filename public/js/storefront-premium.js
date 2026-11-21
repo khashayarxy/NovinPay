@@ -13,6 +13,9 @@
     let cartVersion = 0;
     let cartRead = null;
     let cartEpoch = 0;
+    let cartHydrated = false;
+    let cartHydratedEpoch = -1;
+    let cartPreloadPromise = null;
     const commerce = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('novinpay-commerce') : null;
     let accountVersion = 0;
     let cartPending = false;
@@ -29,11 +32,14 @@
     function deactivate() {
         const previous = active;
         active = null;
-        if (previous === cartDialog) clearCart(cartDialog);
         if (previous) layers.get(previous.id)?.hide?.();
         previous?.close();
-        pending.forEach(controller => controller.abort());
-        pending.clear();
+        pending.forEach((controller, key) => {
+            if (key !== 'cart-preload') {
+                controller.abort();
+                pending.delete(key);
+            }
+        });
         return previous;
     }
 
@@ -107,10 +113,57 @@
         }
     }
 
+    function applyCartDocument(dialog, doc, epochAtFetch) {
+        const content = doc.querySelector('[data-storefront-cart]');
+        if (!content) throw new Error('Cart content unavailable');
+        const container = dialog.querySelector('[data-live-cart]');
+        const footer = dialog.querySelector('[data-cart-footer]');
+        const summary = dialog.querySelector('[data-cart-summary]');
+        const retry = dialog.querySelector('[data-cart-retry]');
+        const status = dialog.querySelector('[data-cart-status]');
+        if (content.dataset.cartCount !== undefined) renderCartCount(Number(content.dataset.cartCount));
+        const contentWasEmpty = container.querySelector('.empty-cart');
+        if (content.dataset.cartEmpty === 'true') {
+            if (!contentWasEmpty) container.replaceChildren(dialog.querySelector('[data-empty-cart]').content.cloneNode(true));
+            summary.replaceChildren();
+        } else {
+            content.querySelector('h1')?.remove();
+            content.classList.add('cart-sheet-content');
+            const total = content.querySelector('[data-store-cart-total]');
+            summary.replaceChildren(...(total ? [total] : []));
+            container.replaceChildren(content);
+        }
+        footer.hidden = false;
+        retry.hidden = true;
+        container.inert = false;
+        summary.inert = false;
+        status.textContent = '';
+        status.hidden = false;
+        cartHydrated = true;
+        cartHydratedEpoch = epochAtFetch;
+    }
+
+    function preloadCart(dialog) {
+        if (!dialog?.dataset.cartUrl || cartPreloadPromise || cartRead || active === dialog) return;
+        const epochAtStart = cartEpoch;
+        cartPreloadPromise = (async () => {
+            try {
+                const doc = await readPage(dialog.dataset.cartUrl, 'cart-preload');
+                if (epochAtStart !== cartEpoch || active === dialog || cartRead) return;
+                applyCartDocument(dialog, doc, epochAtStart);
+            } catch {
+                // Silent background preload; clicking Cart will fall back to live refreshCart().
+            } finally {
+                cartPreloadPromise = null;
+            }
+        })();
+    }
+
     async function refreshCart(dialog, {discard = false, supersede = false, focusKey = null} = {}) {
         if (cartRead && !discard && !supersede) return cartRead;
         if (discard) clearCart(dialog);
         const version = ++cartVersion;
+        const epochAtStart = cartEpoch;
         const container = dialog.querySelector('[data-live-cart]');
         const footer = dialog.querySelector('[data-cart-footer]');
         const retry = dialog.querySelector('[data-cart-retry]');
@@ -135,24 +188,9 @@
 
         cartRead = (async () => {
             try {
-                const document = await readPage(dialog.dataset.cartUrl, 'cart');
-                const content = document.querySelector('[data-storefront-cart]');
-                if (!content) throw new Error('Cart content unavailable');
+                const doc = await readPage(dialog.dataset.cartUrl, 'cart');
                 if (!current()) return;
-                if (content.dataset.cartCount !== undefined) renderCartCount(Number(content.dataset.cartCount));
-                const contentWasEmpty = container.querySelector('.empty-cart');
-                if (content.dataset.cartEmpty === 'true') {
-                    if (!contentWasEmpty) container.replaceChildren(dialog.querySelector('[data-empty-cart]').content.cloneNode(true));
-                    summary.replaceChildren();
-                } else {
-                    content.querySelector('h1')?.remove();
-                    content.classList.add('cart-sheet-content');
-                    const total = content.querySelector('[data-store-cart-total]');
-                    summary.replaceChildren(...(total ? [total] : []));
-                    container.replaceChildren(content);
-                }
-                container.inert = false;
-                summary.inert = false;
+                applyCartDocument(dialog, doc, epochAtStart);
                 if (focusKey && window.document.activeElement === closeButton) {
                     const control = container.querySelector('[data-cart-focus="' + CSS.escape(focusKey) + '"]');
                     const focus = control?.disabled
@@ -160,8 +198,6 @@
                         : control;
                     focus?.focus({preventScroll: true});
                 }
-                status.textContent = '';
-                status.hidden = false;
             } catch {
                 if (!current()) return;
                 status.textContent = container.childElementCount
@@ -181,6 +217,8 @@
 
     function clearCart(dialog) {
         ++cartVersion;
+        cartHydrated = false;
+        cartHydratedEpoch = -1;
         pending.get('cart')?.abort();
         cartRead = null;
         dialog.querySelector('[data-live-cart]').replaceChildren();
@@ -224,6 +262,7 @@
             if (!Number.isInteger(count) || count < 0) throw new Error();
             commerce?.postMessage('cart-change');
             if (epoch !== cartEpoch) return;
+            cartHydrated = false;
             renderCartCount(count);
             if (active === cartDialog) {
                 const focusInCart = cartDialog.querySelector('[data-live-cart]').contains(document.activeElement);
@@ -280,7 +319,7 @@
         layers.get(dialog.id)?.show?.();
         const target = focus || (!dialog.dataset.cartUrl && dialog.querySelector('input:not([type="hidden"]), iframe')) || dialog.querySelector('[data-storefront-close]');
         target?.focus({preventScroll: true});
-        if (dialog.dataset.cartUrl) refreshCart(dialog);
+        if (dialog.dataset.cartUrl && (!cartHydrated || cartHydratedEpoch !== cartEpoch)) refreshCart(dialog);
         if (dialog.dataset.accountUrl) refreshAccount(dialog);
     }
 
@@ -385,12 +424,14 @@
         if (event.data === 'identity-change') {
             ++cartEpoch;
             renderCartCount(0);
-            if (cartDialog && active === cartDialog) {
+            if (cartDialog) {
                 clearCart(cartDialog);
-                close();
+                if (active === cartDialog) close();
             }
-        } else if (event.data === 'cart-change' && cartDialog && active === cartDialog) {
-            refreshCart(cartDialog, {supersede: true});
+        } else if (event.data === 'cart-change' && cartDialog) {
+            cartHydrated = false;
+            if (active === cartDialog) refreshCart(cartDialog, {supersede: true});
+            else preloadCart(cartDialog);
         }
     });
     document.addEventListener('visibilitychange', () => {
@@ -401,7 +442,12 @@
         }
         if (active?.dataset.accountUrl) refreshAccount(active);
         if (active && active === cartDialog) refreshCart(active, {discard: true});
+        else if (cartDialog && (!cartHydrated || cartHydratedEpoch !== cartEpoch)) preloadCart(cartDialog);
     });
+    if (cartDialog?.dataset.cartUrl && !document.querySelector('[data-storefront-cart]')) {
+        const schedulePreload = window.requestIdleCallback || (fn => setTimeout(fn, 120));
+        schedulePreload(() => preloadCart(cartDialog));
+    }
     const purchaseColumn = document.querySelector('[data-purchase-column]');
     function fitPurchaseColumn() {
         purchaseColumn?.toggleAttribute('data-too-tall', purchaseColumn.offsetHeight > innerHeight - 32);
