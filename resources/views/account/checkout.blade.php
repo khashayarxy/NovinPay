@@ -1,6 +1,5 @@
 @extends('layouts.app')
 @section('title', 'تکمیل سفارش')
-@section('compact-footer', '1')
 @section('content')
 <div class="np-container commerce-page">
     <section class="store-cart">

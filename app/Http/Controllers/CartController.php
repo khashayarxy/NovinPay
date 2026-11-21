@@ -78,26 +78,7 @@ class CartController extends Controller
 
     private function details(Request $request, ShoppingCart $cart): array
     {
-        $state = $cart->read($request);
-        $products = Product::query()->published()->with('inventoryItems')->whereIn('slug', array_keys($state['items']))->get()->keyBy('slug');
-        $checkout = app(StoreCheckout::class);
-        $available = [];
-        foreach ($state['items'] as $slug => $entry) {
-            $product = $products->get($slug);
-            $offer = $product ? $checkout->offer($product) : null;
-            $matches = $offer && $offer->id === $entry['inventory']
-                && (! $entry['device'] || $entry['device']['inventory'] === $offer->id)
-                && (! $entry['account'] || $entry['account']['inventory'] === $offer->id);
-            $selectionLimit = $state['separate'] ? max($entry['device']['quantity'] ?? 0, $entry['account']['quantity'] ?? 0) : 10;
-            $available[$slug] = $matches ? min($selectionLimit, $offer->available) : 0;
-        }
-        $unavailable = array_keys(array_filter($available, fn ($limit, $slug) => $limit < $state['items'][$slug]['quantity'], ARRAY_FILTER_USE_BOTH));
-        $total = $products->sum(fn ($product) => (int) $product->price * $state['quantity'][$product->slug]);
-
-        return [...$state, 'products' => $products, 'unavailable' => $unavailable, 'available' => $available, 'total' => $total,
-            'legacyStatus' => app(LegacyCartHold::class)->status($request), 'overLimit' => count($state['items']) > 30,
-            'quote' => $checkout->quote($products),
-        ];
+        return $cart->viewData($request);
     }
 
     private function changed(Request $request, int $count)
