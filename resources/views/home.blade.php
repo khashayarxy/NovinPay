@@ -19,7 +19,12 @@
     </section>
 
     <section class="np-trust np-container" aria-label="همراه شما در خرید و تعمیر">
-        @foreach ([['tag', 'مشاوره تخصصی خرید', 'انتخاب کارتخوان متناسب با نیاز و بودجه شما'], ['shield-check', 'پیگیری آنلاین تعمیر', 'با کد پیگیری'], ['truck', 'ارسال و تحویل به تمام نقاط', 'در سریع‌ترین زمان ممکن'], ['headphones', 'تعمیرات تخصصی کارتخوان', 'رسیدگی به مشکلات فنی دستگاه']] as [$icon, $title, $text])
+        @foreach ([
+            ['tag', 'مشاوره و فروش کارتخوان', 'انتخاب دستگاه متناسب با کسب‌وکار شما'],
+            ['tool', 'تعمیرات تخصصی کارتخوان', 'عیب‌یابی و تعمیر سخت‌افزار و نرم‌افزار'],
+            ['shield-check', 'پیگیری آنلاین تعمیرات', 'مشاهده وضعیت تعمیر با کد پیگیری'],
+            ['truck', 'ارسال به سراسر کشور', 'ارسال سریع دستگاه، رول کاغذ و لوازم جانبی'],
+        ] as [$icon, $title, $text])
             <div class="np-trust__item"><span class="np-trust__icon"><x-home.icon :name="$icon" /></span><h2>{{ $title }}</h2><p>{{ $text }}</p></div>
         @endforeach
     </section>
@@ -30,7 +35,16 @@
             <a href="{{ route('contact') }}" class="np-small-link">راهنمایی خدمات<x-home.icon name="arrow-left" /></a>
         </div>
         <div class="np-services__grid">
-            @foreach ([['user', 'انتقال مالکیت کارتخوان', 'راهنمایی و انجام مراحل', 'contact'], ['building-bank', 'تغییر حساب بانکی', 'بررسی و راه‌اندازی مجدد', 'contact'], ['printer', 'رفع مشکل چاپ رسید', 'بررسی چاپ و قطعات', 'repair'], ['power', 'رفع مشکل روشن‌نشدن', 'عیب‌یابی دستگاه', 'repair'], ['antenna-bars-5', 'رفع مشکل آنتن کارتخوان', 'بررسی ارتباط و آنتن', 'repair'], ['battery-charging', 'رفع مشکل شارژ دستگاه', 'بررسی باتری و تغذیه', 'repair'], ['settings', 'سایر خدمات کارتخوان', 'راه‌اندازی و پشتیبانی', 'contact']] as [$icon, $title, $text, $destination])
+            @foreach ([
+                ['user', 'انتقال مالکیت کارتخوان', 'انجام مراحل قانونی و تغییر مالک', 'contact'],
+                ['building-bank', 'تغییر حساب و راه‌اندازی مجدد', 'تغییر حساب بانکی و فعال‌سازی دستگاه', 'contact'],
+                ['world', 'تبدیل دستگاه‌های 2G به 4G', 'ارتقای شبکه و افزایش سرعت تراکنش', 'repair'],
+                ['antenna-bars-5', 'رفع مشکل آنتن‌دهی', 'تعمیر آنتن، خشاب سیم‌کارت و اتصال شبکه', 'repair'],
+                ['battery-charging', 'رفع مشکل شارژ و خاموشی', 'تعمیر باتری، سوکت شارژ و مدار تغذیه', 'repair'],
+                ['printer', 'تعمیر پرینتر و چاپ رسید', 'رفع کمرنگی، گیر کاغذ و تعویض هد چاپگر', 'repair'],
+                ['layout-dashboard', 'تعویض LCD و ضربه‌خوردگی', 'تعمیر صفحه‌نمایش و آسیب‌های فیزیکی', 'repair'],
+                ['tool', 'تعمیر دستگاه‌های آب‌خورده', 'سرویس تخصصی برد و احیای دستگاه', 'repair'],
+            ] as [$icon, $title, $text, $destination])
                 <a href="{{ route($destination) }}" class="np-service"><x-home.icon :name="$icon" /><h3>{{ $title }}</h3><p>{{ $text }}</p></a>
             @endforeach
         </div>
