@@ -11,7 +11,7 @@
         <details class="category-group" open>
             <summary><x-storefront.icon name="categories" /><span>دسته‌بندی محصولات</span><x-storefront.icon name="chevron-down" class="category-chevron" /></summary>
             <div class="category-sublist">
-                @foreach (\App\Enums\ProductCategory::cases() as $category)
+                @foreach (\App\Enums\ProductCategory::storefrontCases() as $category)
                     <a href="{{ route('products.index', ['category' => $category->value]) }}" @if ($activeCategory === $category->value) aria-current="page" @endif><span>{{ $category->label() }}</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
                 @endforeach
             </div>

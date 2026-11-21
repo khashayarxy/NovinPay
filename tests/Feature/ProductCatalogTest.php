@@ -253,13 +253,34 @@ class ProductCatalogTest extends TestCase
     public function test_category_filter_returns_only_matching_products(): void
     {
         $this->makeProduct(['category' => ProductCategory::Printer, 'name' => 'پرینتر رسید', 'slug' => 'printer-2']);
-        $this->makeProduct(['category' => ProductCategory::Consumable, 'name' => 'رول کاغذ', 'slug' => 'paper-1']);
+        $this->makeProduct(['category' => ProductCategory::Consumable, 'name' => 'رول حرارتی ۸۰ میلی‌متری', 'slug' => 'paper-1']);
 
         $response = $this->get('/products?category='.ProductCategory::Printer->value);
 
         $response->assertOk();
         $response->assertSee('پرینتر رسید');
-        $response->assertDontSee('رول کاغذ');
+        $response->assertDontSee('رول حرارتی ۸۰ میلی‌متری');
+    }
+
+    public function test_storefront_category_menu_uses_curated_labels_and_order(): void
+    {
+        $this->makeProduct(['category' => ProductCategory::Consumable, 'name' => 'رول حرارتی ۵۷ میلی‌متری', 'slug' => 'paper-57']);
+
+        $response = $this->get('/products');
+
+        $response->assertOk();
+        $response->assertSeeInOrder([
+            'همه محصولات',
+            'دستگاه کارتخوان',
+            'رول کاغذ کارتخوان',
+            'لوازم جانبی',
+        ]);
+        $response->assertDontSee('پرینتر و چاپ رسید');
+        $response->assertDontSee('لوازم مصرفی');
+
+        $filtered = $this->get('/products?category=consumable');
+        $filtered->assertOk();
+        $filtered->assertSee('رول حرارتی ۵۷ میلی‌متری');
     }
 
     public function test_invalid_category_is_rejected_with_persian_message(): void

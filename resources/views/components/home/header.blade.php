@@ -51,7 +51,7 @@
                 <summary><x-storefront.icon name="shop" class="np-nav-icon" /><span>فروشگاه</span><x-storefront.icon name="chevron-down" class="np-drawer-chevron" /></summary>
                 <div class="np-drawer-categories__list">
                     <a href="{{ route('products.index') }}" @if (request()->routeIs('products.*') && ! $activeCategory) aria-current="page" @endif><span>همه محصولات</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
-                    @foreach (\App\Enums\ProductCategory::cases() as $category)
+                    @foreach (\App\Enums\ProductCategory::storefrontCases() as $category)
                         <a href="{{ route('products.index', ['category' => $category->value]) }}" @if ($activeCategory === $category->value) aria-current="page" @endif><span>{{ $category->label() }}</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
                     @endforeach
                 </div>
