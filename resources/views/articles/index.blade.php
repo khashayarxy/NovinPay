@@ -29,10 +29,16 @@
         <div class="article-pagination">{{ $articles->onEachSide(1)->links('articles.pagination') }}</div>
     @else
         <section class="article-empty" aria-labelledby="article-empty-title">
-            <x-home.icon name="photo" />
+            <span class="article-empty__icon" aria-hidden="true"><x-storefront.icon name="book" /></span>
             <h2 id="article-empty-title">هنوز مقاله‌ای در این بخش منتشر نشده است</h2>
-            <p>پس از بازبینی و انتشار، راهنماهای نوین‌پی در اینجا نمایش داده می‌شوند.</p>
-            @if($category)<a href="{{ route('articles.index') }}" class="public-inline-link">همهٔ مقاله‌ها <x-home.icon name="arrow-left" /></a>@endif
+            <p>راهنماهای انتخاب، نگهداری و رفع خطای کارتخوان به‌زودی در این بخش منتشر می‌شوند.</p>
+            <div class="article-empty__actions">
+                @if($category)
+                    <a href="{{ route('articles.index') }}" class="np-button np-button--outline">همهٔ مقاله‌ها <x-home.icon name="arrow-left" /></a>
+                @else
+                    <a href="{{ route('products.index') }}" class="np-button np-button--outline">مشاهدهٔ محصولات <x-home.icon name="arrow-left" /></a>
+                @endif
+            </div>
         </section>
     @endif
 </div>

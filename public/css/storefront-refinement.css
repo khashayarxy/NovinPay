@@ -266,24 +266,22 @@ body.public-site button[data-support-launcher]::before {
 }
 .store-filter-dialog [data-filter-slot] { overflow-y: auto; padding: 16px; overscroll-behavior: contain; }
 
-.repair-entry-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); align-items: start; gap: 14px; }
-.repair-entry .public-panel { padding: 16px; }
-.repair-entry .public-panel > .np-button { margin-block-start: 10px; }
-.repair-before-delivery { display: flex; gap: 8px; align-items: start; padding: 10px; border-radius: 8px; background: #eff6fc; font-size: .85rem; }
-.repair-entry-notes details { margin-top: 8px; padding-inline: 10px; border: 1px solid #dce7f0; border-radius: 8px; }
-.repair-entry-notes summary { padding-block: 11px; min-height: 44px; cursor: pointer; font-weight: 650; }
-.repair-entry-notes details p { font-size: .85rem; padding-block: 6px; }
-.repair-tracking-link { display: flex; width: fit-content; min-height: 44px; align-items: center; gap: 5px; margin-block-start: 4px; }
-.repair-contact { margin-block-start: 12px; padding: 12px; background: #fff; border: 1px solid #dce7f0; border-radius: 12px; }
-.repair-contact h2 { color: #183650; font-size: .875rem; font-weight: 700; margin-block: 0 6px; }
-.repair-contact .store-contact-phones { display: flex; flex-wrap: wrap; gap: 6px; }
-.repair-contact .store-contact-phones a {
-    display: inline-flex; flex: 1 0 max-content; align-items: center; justify-content: center;
-    gap: 5px; min-height: 44px; padding: 4px 10px; color: #075da6;
-    background: #f0f7fd; border: 1px solid #d5e5f4; border-radius: 9px; font-size: .875rem;
+.repair-entry-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); align-items: start; gap: 16px; }
+.repair-entry .public-panel { padding: 18px; }
+.repair-entry-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-block-start: 14px; }
+.repair-entry-actions .np-button { min-height: 44px; }
+.repair-guide-card { padding: 16px 18px; border: 1px solid #d6e6f5; border-radius: 14px; background: #f4f9fe; color: #1f3b58; }
+.repair-guide-card__title { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: #075da6; }
+.repair-guide-card__title h2 { margin: 0; font-size: .95rem; font-weight: 750; color: #122940; }
+.repair-guide-card ul { margin: 0; padding-inline-start: 18px; display: grid; gap: 8px; list-style: disc; font-size: .85rem; line-height: 1.85; color: #36516d; }
+.repair-track-page { padding-block: clamp(18px, 3vw, 34px); }
+.repair-track-shell { max-width: 34rem; margin-inline: auto; }
+.repair-track-shell .public-panel { padding: 20px; }
+.repair-privacy-note {
+    display: flex; align-items: center; gap: 7px; margin: 14px 0 0; padding-top: 12px;
+    border-top: 1px solid #e6eff7; font-size: .8rem; line-height: 1.7; color: #526780;
 }
-.repair-contact .store-contact-phones a svg { width: 16px; height: 16px; }
-.repair-contact .store-contact-phones a:hover { background: #e2f1ff; }
+.repair-privacy-note .np-icon { flex: none; width: 16px; height: 16px; color: #075da6; }
 
 @media (max-width: 850px) {
     .np-header .store-desktop-tools { display: none; }

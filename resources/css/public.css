@@ -44,7 +44,7 @@
 .public-hint { font-size: 12px; line-height: 1.9; color: #52678b; margin-top: 8px; }
 .public-field-error { font-size: 12px; color: #9d3026; margin-top: 5px; }
 .public-form > .np-button { justify-self: start; cursor: pointer; }
-.public-code-input { font-family: ui-monospace, monospace; font-size: 13px !important; }
+.public-code-input { font-family: inherit; font-variant-numeric: tabular-nums; }
 .public-inline-link { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-brand-700); min-height: 44px; }
 .public-inline-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 .public-heading .public-inline-link { margin-top: 8px; }
