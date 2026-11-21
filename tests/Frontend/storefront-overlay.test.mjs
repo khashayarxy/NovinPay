@@ -100,3 +100,67 @@ test('Chromium: storefront layers retain the page geometry and cart reads retain
         rmSync(directory, {recursive:true, force:true, maxRetries:3, retryDelay:100});
     }
 });
+
+test('Chromium: mobile bottom navigation still auto-hides on scroll after closing cart drawer', t => {
+    const executable = (process.env.CHROME_BIN ? [process.env.CHROME_BIN] : process.platform === 'win32'
+        ? ['C:/Program Files/Google/Chrome/Application/chrome.exe']
+        : ['/usr/bin/google-chrome', '/usr/bin/chromium']).find(existsSync);
+    if (!executable) { t.skip('Chromium unavailable'); return; }
+    const directory = mkdtempSync(path.join(tmpdir(), 'novinpay-storefront-overlays-'));
+    try {
+        const source = name => readFileSync(new URL('../../public/js/' + name + '.js', import.meta.url), 'utf8');
+        const fixture = path.join(directory, 'mobile-nav-fixture.html');
+        writeFileSync(fixture, `<!doctype html><html dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>
+            body { margin:0; min-height:2400px; }
+            nav[data-mobile-bottom-nav] { position:fixed; bottom:0; inset-inline:0; height:56px; background:#fff; }
+            dialog.store-cart-drawer[open].is-closing { animation: close-out 40ms linear forwards; }
+            @keyframes close-out { from { transform: translateY(0); } to { transform: translateY(100%); } }
+        </style>
+        <nav data-mobile-bottom-nav><a href="/cart" data-storefront-open="cart-dialog">Cart</a></nav>
+        <dialog id="cart-dialog" class="store-cart-drawer" data-storefront-dialog data-cart-url="/cart" data-cart-preload>
+            <button data-storefront-close>Close</button>
+            <p data-cart-status role="status" hidden></p><div data-live-cart></div><p data-cart-error hidden></p>
+            <footer data-cart-footer hidden><div data-cart-summary></div><button data-cart-retry hidden>Retry</button></footer>
+            <template data-empty-cart><p class="empty-cart">Empty</p></template>
+            <template data-ssr-cart><section data-storefront-cart data-cart-count="0" data-cart-empty="true"></section></template>
+        </dialog>
+        <script>window.requestAnimationFrame = fn => setTimeout(fn, 16);</script>
+        <script>${source('storefront-scroll-lock')}</script>
+        <script>${source('storefront-premium')}</script>
+        <script>
+        ;(async () => {
+            const wait = (time = 150) => new Promise(resolve => setTimeout(resolve, time));
+            const check = (condition, message) => { if (!condition) throw Error(message); };
+            const nav = document.querySelector('[data-mobile-bottom-nav]');
+            const cart = document.querySelector('#cart-dialog');
+            const opener = nav.querySelector('[data-storefront-open="cart-dialog"]');
+            await wait();
+            scrollTo(0, 260); window.dispatchEvent(new Event('scroll')); await wait();
+            check(nav.hasAttribute('data-scroll-hidden'), 'mobile bottom nav hides when scrolling down initially (scrollY=' + scrollY + ', w=' + innerWidth + ', matches=' + matchMedia('(max-width: 850px)').matches + ')');
+            scrollTo(0, 0); window.dispatchEvent(new Event('scroll')); await wait();
+            check(!nav.hasAttribute('data-scroll-hidden'), 'mobile bottom nav reappears at top');
+            opener.click(); await wait();
+            check(cart.open && document.documentElement.classList.contains('storefront-overlay-open'), 'cart drawer opens and locks scroll');
+            cart.querySelector('[data-storefront-close]').click(); await wait(220);
+            check(!cart.open && !cart.classList.contains('is-closing') && !document.documentElement.classList.contains('storefront-overlay-open'), 'cart drawer closes and releases overlay lock');
+            check(document.activeElement === opener, 'focus restores to opener on close');
+            scrollTo(0, 260); window.dispatchEvent(new Event('scroll')); await wait();
+            check(nav.hasAttribute('data-scroll-hidden') && nav.inert, 'mobile bottom nav auto-hides again when scrolling down after closing cart drawer');
+            scrollTo(0, 120); window.dispatchEvent(new Event('scroll')); await wait();
+            check(!nav.hasAttribute('data-scroll-hidden') && !nav.inert, 'mobile bottom nav reappears when scrolling back up');
+            document.body.textContent = 'MOBILE_SCROLL_HIDE_PASS';
+        })().catch(error => { document.body.textContent = 'MOBILE_SCROLL_HIDE_FAIL: ' + error.message; });
+        </script></html>`);
+        const result = spawnSync(executable, ['--headless=new', '--disable-gpu', '--disable-background-networking',
+            '--window-size=390,844', '--no-first-run', '--user-data-dir=' + path.join(directory, 'profile'),
+            '--virtual-time-budget=6000', '--dump-dom', pathToFileURL(fixture).href],
+            {encoding:'utf8', timeout:20000, maxBuffer:1024 * 1024, windowsHide:true});
+        assert.ifError(result.error);
+        assert.equal(result.status, 0);
+        assert.ok(/<body[^>]*>MOBILE_SCROLL_HIDE_PASS<\/body>/.test(result.stdout), result.stdout.slice(-400));
+    } finally {
+        if (realpathSync(path.dirname(directory)) !== realpathSync(tmpdir()) || !path.basename(directory).startsWith('novinpay-storefront-overlays-')) throw Error('Unexpected cleanup target');
+        rmSync(directory, {recursive:true, force:true, maxRetries:3, retryDelay:100});
+    }
+});

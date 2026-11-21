@@ -140,15 +140,15 @@ class HomePageTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
         $cards = $xpath->query('//a[@class="np-brand"]');
-        $this->assertCount(3, $cards);
-        $this->assertSame(['Newland', 'NewPOS', 'PAX'], array_map(fn ($card) => $xpath->query('./img', $card)->item(0)->getAttribute('alt'), iterator_to_array($cards)));
+        $this->assertCount(6, $cards);
+        $this->assertSame(['Newland', 'NewPOS', 'PAX', 'SZZT', 'TOPWISE', 'MoreFun'], array_map(fn ($card) => $xpath->query('./img', $card)->item(0)->getAttribute('alt'), iterator_to_array($cards)));
         foreach ($cards as $card) {
             $brand = $xpath->query('./img', $card)->item(0)->getAttribute('alt');
             $this->assertSame('کارتخوان‌های '.$brand, $card->getAttribute('aria-label'));
             $this->assertSame(route('products.index', ['q' => $brand]), $card->getAttribute('href'));
             $this->assertSame('', trim($card->textContent));
         }
-        foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
+        foreach (['PAX', 'NewPOS', 'Newland', 'SZZT', 'TOPWISE', 'MoreFun'] as $brand) {
             $response->assertSee(route('products.index', ['q' => $brand]), false);
             $this->get(route('products.index', ['q' => $brand]))->assertOk();
         }
@@ -165,8 +165,8 @@ class HomePageTest extends TestCase
         $response->assertSee('np-location__directions')->assertDontSee('np-hero-signature');
         $response->assertSee('data-map-url="'.config('business.map_embed').'"', false);
         $response->assertDontSee('<iframe', false);
-        foreach (['PAX', 'NewPOS', 'Newland'] as $brand) {
-            $response->assertSee(asset('brand/manufacturers/'.$brand.'.svg'));
+        foreach (['PAX.svg', 'NewPOS.svg', 'Newland.svg', 'SZZT.png', 'TOPWISE.svg', 'MoreFun.png'] as $asset) {
+            $response->assertSee(asset('brand/manufacturers/'.$asset));
         }
         $response->assertDontSee('mascot-newpos.png');
         $response->assertDontSee('file_00000000');

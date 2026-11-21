@@ -304,8 +304,9 @@
     .homepage .np-trust__item { padding-block: 4px; }
     .homepage .np-services { padding-block: 26px 30px; }
     .homepage .np-brands { padding-bottom: 28px; }
-    .homepage .np-brands__grid { gap: 9px; }
-    .homepage .np-brand { min-height: 90px; padding: 12px 8px; }
+    .homepage .np-brands__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .homepage .np-brand { min-height: 84px; padding: 14px 12px; }
+    .homepage .np-brand .np-manufacturer { height: 36px; max-width: 136px; }
 }
 
 /* Keep the approved centered desktop group separate from mobile disclosure. */
