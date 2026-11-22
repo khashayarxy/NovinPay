@@ -261,7 +261,26 @@
         cartPending = true;
         form.setAttribute('aria-busy', 'true');
         const previouslyDisabled = submitter?.disabled;
-        if (submitter) submitter.disabled = true;
+        const originalLabel = submitter && !fromDrawer ? submitter.textContent : null;
+        if (submitter) {
+            submitter.disabled = true;
+            submitter.dataset.loading = 'true';
+            if (originalLabel !== null) submitter.textContent = 'در حال افزودن…';
+        }
+        const showCartToast = (text) => {
+            let toast = document.querySelector('.np-cart-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.className = 'np-cart-toast';
+                toast.setAttribute('role', 'status');
+                toast.setAttribute('aria-live', 'polite');
+                document.body.append(toast);
+            }
+            toast.textContent = text;
+            toast.classList.add('is-visible');
+            clearTimeout(toast._hideTimer);
+            toast._hideTimer = setTimeout(() => toast.classList.remove('is-visible'), 2600);
+        };
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
         try {
@@ -280,6 +299,7 @@
             if (epoch !== cartEpoch) return;
             cartSnapshot = null;
             renderCartCount(count);
+            if (!fromDrawer) showCartToast('به سبد خرید اضافه شد ✓');
             if (active === cartDialog) {
                 const focusInCart = cartDialog.querySelector('[data-live-cart]').contains(document.activeElement);
                 if (focusInCart || fromDrawer) cartDialog.querySelector('[data-storefront-close]')?.focus({preventScroll: true});
@@ -300,7 +320,11 @@
             clearTimeout(timeout);
             cartPending = false;
             form.removeAttribute('aria-busy');
-            if (submitter) submitter.disabled = previouslyDisabled;
+            if (submitter) {
+                submitter.disabled = previouslyDisabled;
+                delete submitter.dataset.loading;
+                if (originalLabel !== null) submitter.textContent = originalLabel;
+            }
         }
     });
 

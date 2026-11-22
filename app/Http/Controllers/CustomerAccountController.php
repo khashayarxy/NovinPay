@@ -46,7 +46,11 @@ class CustomerAccountController extends Controller
                 $request->routeIs('account.password.login') => redirect()->route('account.login', CustomerLoginFlow::parameters($request, 'password')),
                 default => back(),
             };
-            throw new HttpResponseException($redirect->withErrors($validator));
+            throw new HttpResponseException(
+                $redirect
+                    ->withInput($request->except(['password', 'password_confirmation', 'current_password', 'code']))
+                    ->withErrors($validator)
+            );
         }
 
         return $validator->validated();

@@ -226,9 +226,35 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
             .replace(/[^0-9]/g, '');
 
+        const form = container.closest('form');
+        const submitButton = form?.querySelector('button[type="submit"], button:not([type])');
+        let autoSubmitted = false;
+
         const sync = () => {
-            hiddenInput.value = boxes.map((b) => normalizeDigits(b.value).slice(0, 1)).join('');
+            const value = boxes.map((b) => normalizeDigits(b.value).slice(0, 1)).join('');
+            hiddenInput.value = value;
             hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+            if (value.length < 6) {
+                autoSubmitted = false;
+                return;
+            }
+            if (!autoSubmitted && form instanceof HTMLFormElement) {
+                autoSubmitted = true;
+                if (submitButton instanceof HTMLButtonElement) {
+                    if (!submitButton.dataset.origLabel) submitButton.dataset.origLabel = submitButton.textContent || '';
+                    submitButton.textContent = 'در حال بررسی…';
+                    submitButton.disabled = true;
+                }
+                window.setTimeout(() => {
+                    if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.submit();
+                    }
+                    if (submitButton instanceof HTMLButtonElement) submitButton.disabled = true;
+                }, 60);
+            }
         };
 
         container.classList.add('is-enhanced');
@@ -277,6 +303,91 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         boxes[0]?.focus();
+    });
+
+    // Dependent Iranian Province -> City selector (offline local dataset)
+    const iranDataEl = document.getElementById('iran-locations-data');
+    if (iranDataEl) {
+        let iranLocations = {};
+        try {
+            iranLocations = JSON.parse(iranDataEl.textContent || '{}') || {};
+        } catch {}
+        document.querySelectorAll('[data-iran-address-form]').forEach((form) => {
+            const provinceSelect = form.querySelector('[data-iran-province]');
+            const citySelect = form.querySelector('[data-iran-city]');
+            if (!(provinceSelect instanceof HTMLSelectElement) || !(citySelect instanceof HTMLSelectElement)) return;
+            const populateCities = (preserveCity = '') => {
+                const province = provinceSelect.value;
+                const cities = Array.isArray(iranLocations[province]) ? [...iranLocations[province]] : [];
+                if (preserveCity && !cities.includes(preserveCity)) cities.unshift(preserveCity);
+                citySelect.innerHTML = '';
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = province ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید';
+                citySelect.append(placeholder);
+                cities.forEach((city) => {
+                    const option = document.createElement('option');
+                    option.value = city;
+                    option.textContent = city;
+                    if (city === preserveCity) option.selected = true;
+                    citySelect.append(option);
+                });
+            };
+            provinceSelect.addEventListener('change', () => populateCities(''));
+        });
+    }
+
+    // Live Persian/Arabic digit normalization on numeric customer inputs
+    document.querySelectorAll('[data-normalize-digits]').forEach((input) => {
+        if (!(input instanceof HTMLInputElement)) return;
+        input.addEventListener('input', () => {
+            const normalized = input.value
+                .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+                .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+            if (normalized !== input.value) {
+                const pos = input.selectionStart;
+                input.value = normalized;
+                if (pos !== null) input.setSelectionRange(pos, pos);
+            }
+        });
+    });
+
+    // Lightweight live password strength meter
+    document.querySelectorAll('[data-password-strength-input]').forEach((wrapper) => {
+        const input = wrapper instanceof HTMLInputElement ? wrapper : wrapper.querySelector('input');
+        const meter = wrapper.closest('form')?.querySelector('[data-password-strength]');
+        const label = meter?.querySelector('[data-password-strength-label]');
+        if (!(input instanceof HTMLInputElement) || !(meter instanceof HTMLElement) || !(label instanceof HTMLElement)) return;
+        const evaluate = () => {
+            const val = input.value || '';
+            if (!val) {
+                meter.hidden = true;
+                meter.removeAttribute('data-level');
+                return;
+            }
+            let score = 0;
+            if (val.length >= 10) score++;
+            if (val.length >= 14) score++;
+            if (/[a-z]/.test(val) && /[A-Z]/.test(val)) score++;
+            if (/[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val)) score++;
+            if (score === 0) score = 1;
+            const labels = { 1: 'ضعیف (حداقل ۱۰ کاراکتر)', 2: 'متوسط', 3: 'خوب', 4: 'قوی' };
+            meter.hidden = false;
+            meter.dataset.level = String(score);
+            label.textContent = `قدرت رمز عبور: ${labels[score]}`;
+        };
+        input.addEventListener('input', evaluate);
+    });
+
+    // Prevent double-submission on customer forms
+    document.querySelectorAll('form[data-prevent-double-submit]').forEach((form) => {
+        form.addEventListener('submit', () => {
+            const btn = form.querySelector('button[type="submit"], button:not([type])');
+            if (btn instanceof HTMLButtonElement && !btn.disabled) {
+                btn.disabled = true;
+                btn.dataset.loading = 'true';
+            }
+        });
     });
 
     const authShowcase = document.querySelector('[data-auth-showcase]');

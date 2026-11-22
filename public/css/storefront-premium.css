@@ -655,7 +655,7 @@ body.premium-storefront {
         font-size: 27px;
     }
 }
-@media(max-width:1050px) and (min-width:701px) {
+@media(max-width: 900px) and (min-width:701px) {
     .premium-storefront .product-layout {
         grid-template-columns: 1fr 1fr;
     }
@@ -979,7 +979,7 @@ body.premium-storefront {
         transition: none!important;
     }
 }
-@media(max-width:1050px) and (min-width:701px) {
+@media(max-width: 900px) and (min-width:701px) {
     .premium-storefront .gallery {
         grid-row: 1 / 3;
     }
@@ -1020,7 +1020,7 @@ body.premium-storefront {
         font-size: 13px;
     }
 }
-@media(min-width:1051px) {
+@media(min-width: 901px) {
     .premium-storefront .purchase {
         display: flex;
         flex-direction: column;
@@ -1166,7 +1166,7 @@ body.premium-storefront {
 .premium-storefront .related {
     padding-block: 24px;
 }
-@media(min-width:1051px) {
+@media(min-width: 901px) {
     .premium-storefront .gallery {
         padding: 18px;
     }
@@ -1202,7 +1202,7 @@ body.premium-storefront {
         padding: 12px;
     }
 }
-@media(max-width:1050px) and (min-width:701px) {
+@media(max-width: 900px) and (min-width:701px) {
     .premium-storefront .header-main {
         gap: 18px;
     }
@@ -2352,7 +2352,7 @@ body.premium-storefront {
     background: transparent;
 }
 .premium-storefront .storefront-support-dialog::backdrop { background: rgb(18 41 64 / 32%); }
-@media (min-width: 1051px) {
+@media (min-width: 901px) {
     .premium-storefront .identity { min-height: 0; }
 }
 
@@ -2395,7 +2395,7 @@ body.premium-storefront {
     background: currentColor;
     border-radius: 50%;
 }
-@media (min-width: 701px) and (max-width: 1050px) {
+@media (min-width: 701px) and (max-width: 900px) {
     .premium-storefront .product-layout > .gallery { position: static; align-self: start; }
 }
 @media (max-width: 700px) {
@@ -2527,7 +2527,7 @@ html:has(body.premium-storefront) {
     overflow-y: auto;
 }
 .premium-storefront .product-lightbox img { touch-action: pan-y pinch-zoom; }
-@media (min-width: 1051px) {
+@media (min-width: 901px) {
     .premium-storefront .storefront-content {
         --purchase-width: calc((100% - 32px) * .262);
     }
@@ -2631,7 +2631,7 @@ html:has(body.premium-storefront) {
         margin-inline-end: calc(var(--purchase-width) + 16px);
     }
 }
-@media (min-width: 701px) and (max-width: 1050px) {
+@media (min-width: 701px) and (max-width: 900px) {
     .premium-storefront .product-layout {
         grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
         gap: 14px;
@@ -2899,7 +2899,7 @@ html:has(body.premium-storefront) {
 @media (min-width: 701px) {
     .premium-storefront .spec-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (min-width: 1051px) {
+@media (min-width: 901px) {
     .premium-storefront .storefront-content { --purchase-width: calc((100% - 32px) * .235); }
     .premium-storefront .product-layout { grid-template-columns: minmax(0,1.24fr) minmax(0,1fr) var(--purchase-width); }
     .premium-storefront .product-overview {
@@ -2925,7 +2925,7 @@ html:has(body.premium-storefront) {
     .premium-storefront .product-layout > .reading { order: 4; }
     .premium-storefront .product-overview .key-mobile dl > div { margin: 0; }
 }
-@media (min-width: 1051px) {
+@media (min-width: 901px) {
     .premium-storefront .product-overview .key-mobile .text-link { margin: 4px 0 0; min-height: 44px; }
     .premium-storefront .product-layout > .gallery { display: flex; flex-direction: column; }
     .premium-storefront .product-layout .gallery-footer { margin-top: auto; }
@@ -2968,7 +2968,7 @@ html:has(body.premium-storefront) {
 @media (prefers-reduced-motion: no-preference) {
     html:has(body.premium-storefront) { scroll-behavior: smooth; }
 }
-@media (min-width: 1051px) {
+@media (min-width: 901px) {
     .premium-storefront .product-layout { grid-template-rows: auto auto; align-content: start; }
     .premium-storefront .product-layout > .purchase-column { grid-row: 1 / span 2; }
     .premium-storefront .product-layout > :is(.product-overview, .gallery) { align-self: stretch; }
@@ -2991,7 +2991,7 @@ html:has(body.premium-storefront) {
     html:has(.product-layout .section-nav) { scroll-padding-top: calc(var(--product-tabs-height, 52px) + 16px); }
 }
 
-@media (max-width: 1050px) {
+@media (max-width: 900px) {
     html:has(.product-layout .section-nav) {
         scroll-padding-top: calc(var(--product-header-height, 0px) + var(--product-tabs-height, 52px) + 16px);
     }

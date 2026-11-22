@@ -52,7 +52,7 @@
 
 .np-auth-showcase { display: none; }
 
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
     .np-auth-shell {
         background: #0b192e;
     }
@@ -277,7 +277,7 @@
 
 .np-account-form { display: grid; gap: .4rem; max-width: 34rem; margin-block: 1rem; }
 .np-account-form label { font-weight: 500; margin-top: .35rem; }
-.np-account-form input, .np-account-form textarea {
+.np-account-form input, .np-account-form textarea, .np-account-form select {
     width: 100%;
     min-height: 48px;
     padding: .7rem .85rem;
@@ -288,6 +288,40 @@
     font: inherit;
     font-weight: 400;
 }
+.np-account-form :is(input, textarea, select).is-invalid,
+.np-account-form :is(input, textarea, select)[aria-invalid="true"] {
+    border-color: #dc2626;
+    background: #fff8f8;
+}
+.np-field-error {
+    margin: -.1rem 0 .35rem !important;
+    color: #b91c1c;
+    font-size: .8rem;
+    font-weight: 500;
+    line-height: 1.6;
+}
+.np-password-meter {
+    display: grid;
+    gap: .3rem;
+    margin-top: .25rem;
+}
+.np-password-meter[hidden] { display: none; }
+.np-password-meter__bars {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+}
+.np-password-meter__bars span {
+    height: 5px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    transition: background-color 160ms ease;
+}
+.np-password-meter[data-level="1"] .np-password-meter__bars span:nth-child(1) { background: #dc2626; }
+.np-password-meter[data-level="2"] .np-password-meter__bars span:nth-child(-n+2) { background: #d97706; }
+.np-password-meter[data-level="3"] .np-password-meter__bars span:nth-child(-n+3) { background: #0284c7; }
+.np-password-meter[data-level="4"] .np-password-meter__bars span { background: #16a34a; }
+.np-password-meter__label { font-size: .78rem; font-weight: 500; color: var(--account-muted); }
 .np-account-form input[dir=ltr] { text-align: left; }
 .np-account-form input[readonly] { background: var(--account-wash); }
 .np-account-form small { color: var(--account-muted); }

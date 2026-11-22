@@ -112,10 +112,11 @@
             @if($section === 'profile')
                 <section class="np-account-card">
                     <h2>اطلاعات شخصی</h2>
-                    <form method="post" class="np-account-form" action="{{ route('account.profile') }}">
+                    <form method="post" class="np-account-form" data-prevent-double-submit action="{{ route('account.profile') }}">
                         @csrf
                         <label for="profile-name">نام و نام خانوادگی</label>
-                        <input id="profile-name" name="name" value="{{ $account->name }}" autocomplete="name" minlength="2" maxlength="100" required>
+                        <input id="profile-name" name="name" value="{{ old('name', $account->name) }}" autocomplete="name" minlength="2" maxlength="100" @class(['is-invalid' => $errors->has('name')]) @error('name') aria-invalid="true" @enderror required>
+                        @error('name')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
                         @if($account->email)
                             <label for="profile-email">نشانی ایمیل</label>
                             <input id="profile-email" type="email" value="{{ $account->email }}" dir="ltr" readonly>
@@ -123,7 +124,7 @@
                         <label for="profile-mobile">شماره موبایل</label>
                         <input id="profile-mobile" type="tel" value="{{ $account->phone ? \App\Support\FaNumber::digits($account->phone) : '' }}" placeholder="ثبت نشده" dir="ltr" readonly>
                         <small>{{ $account->phone ? 'تغییر شماره به تأیید دوباره مالکیت آن نیاز دارد.' : 'شماره موبایلی برای این حساب ثبت نشده است.' }}</small>
-                        <button class="np-account-primary">ذخیره اطلاعات</button>
+                        <button class="np-account-primary" type="submit">ذخیره اطلاعات</button>
                     </form>
                 </section>
             @endif
@@ -131,8 +132,9 @@
             @if($section === 'addresses')
                 <section class="np-account-card">
                     <h2>آدرس‌های ذخیره‌شده</h2>
+                    <script type="application/json" id="iran-locations-data">@json(config('iran_locations', []))</script>
                     @forelse($addresses as $address)
-                        <details class="np-account-address">
+                        <details class="np-account-address" @if($errors->any() && old('address_form_key') === $address->public_id) open @endif>
                             <summary><strong>{{ $address->recipient }}</strong> · {{ $address->province }}، {{ $address->city }}</summary>
                             <x-account.address-form :address="$address" />
                             <form class="mt-4" method="post" action="{{ route('account.address.remove', $address->public_id) }}" data-confirm="این آدرس از فهرست شما حذف شود؟ نشانی ارسال‌های قبلی باقی می‌ماند.">
@@ -142,7 +144,7 @@
                     @empty
                         <p>هنوز آدرسی ذخیره نکرده‌اید.</p>
                     @endforelse
-                    <details class="np-account-address" @if($addresses->isEmpty() || $errors->any()) open @endif>
+                    <details class="np-account-address" @if($addresses->isEmpty() || ($errors->any() && old('address_form_key', 'new') === 'new')) open @endif>
                         <summary>افزودن آدرس</summary>
                         <x-account.address-form />
                     </details>
@@ -153,18 +155,25 @@
                 <section class="np-account-card">
                     <h2>{{ $account->password ? 'تغییر رمز عبور' : 'انتخاب رمز عبور' }}</h2>
                     @if(($canSetInitialPassword ?? false) || $recentOtp || $account->password)
-                        <form method="post" class="np-account-form" action="{{ route('account.password.update') }}">
+                        <form method="post" class="np-account-form" data-prevent-double-submit action="{{ route('account.password.update') }}">
                             @csrf
                             @if($account->password && !$recentOtp)
                                 <label for="current-password">رمز عبور فعلی</label>
                                 <x-account.password id="current-password" name="current_password" autocomplete="current-password" />
+                                @error('current_password')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
                             @endif
                             <label for="new-password">رمز عبور جدید</label>
-                            <x-account.password id="new-password" name="password" autocomplete="new-password" minlength="10" aria-describedby="password-guidance" />
+                            <x-account.password id="new-password" name="password" autocomplete="new-password" minlength="10" aria-describedby="password-guidance" data-password-strength-input />
+                            <div class="np-password-meter" data-password-strength hidden aria-live="polite">
+                                <div class="np-password-meter__bars" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                                <small class="np-password-meter__label" data-password-strength-label></small>
+                            </div>
                             <small id="password-guidance">حداقل ۱۰ کاراکتر وارد کنید. یک عبارت طولانی که به‌راحتی به خاطر می‌سپارید انتخاب کنید.</small>
+                            @error('password')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
                             <label for="password-confirmation">تکرار رمز عبور جدید</label>
                             <x-account.password id="password-confirmation" name="password_confirmation" autocomplete="new-password" minlength="10" />
-                            <button class="np-account-primary">ذخیره رمز عبور</button>
+                            @error('password_confirmation')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
+                            <button class="np-account-primary" type="submit">ذخیره رمز عبور</button>
                         </form>
                     @else
                         <p>برای انتخاب رمز، از حساب خارج شوید و دوباره با کد تأیید وارد شوید.</p>
