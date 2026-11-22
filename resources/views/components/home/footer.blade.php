@@ -23,7 +23,7 @@
                        target="_blank"
                        rel="noopener noreferrer nofollow"
                        title="پرداخت آنلاین زیبال">
-                        <img class="np-footer__zibal" src="{{ asset('images/zibal-trust.png') }}" width="54" height="76" alt="پرداخت آنلاین زیبال" loading="lazy" decoding="async">
+                        <img class="np-footer__zibal" src="{{ asset('images/zibal-trust.png') }}" width="55" height="72" alt="پرداخت آنلاین زیبال" loading="lazy" decoding="async">
                     </a>
                     <div class="np-footer__badge">
                         <img class="np-footer__nezam" src="{{ asset('brand/trust/NezamSenfi.svg') }}" width="64" height="51" alt="سازمان نظام صنفی رایانه‌ای" loading="lazy" decoding="async">
