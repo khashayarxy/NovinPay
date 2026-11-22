@@ -279,32 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
         boxes[0]?.focus();
     });
 
-    const fontSwitcher = document.querySelector('[data-site-font-switcher]');
-    if (fontSwitcher instanceof HTMLElement) {
-        const allowedFonts = new Set(['peyda', 'dana', 'iranyekanx']);
-        const fontButtons = [...fontSwitcher.querySelectorAll('button[data-site-font-choice]')];
-        const applySiteFont = (choice) => {
-            const next = allowedFonts.has(choice) ? choice : 'peyda';
-            document.documentElement.dataset.siteFont = next;
-            fontButtons.forEach((button) => {
-                const active = button.dataset.siteFontChoice === next;
-                button.classList.toggle('is-active', active);
-                button.setAttribute('aria-pressed', String(active));
-            });
-            try {
-                window.localStorage.setItem('novinpay_site_font', next);
-            } catch {}
-        };
-        let initial = document.documentElement.dataset.siteFont || 'peyda';
-        try {
-            initial = window.localStorage.getItem('novinpay_site_font') || initial;
-        } catch {}
-        applySiteFont(initial);
-        fontButtons.forEach((button) => {
-            button.addEventListener('click', () => applySiteFont(button.dataset.siteFontChoice || 'peyda'));
-        });
-    }
-
     const authShowcase = document.querySelector('[data-auth-showcase]');
     if (authShowcase instanceof HTMLElement) {
         const slides = [...authShowcase.querySelectorAll('[data-showcase-slide]')];

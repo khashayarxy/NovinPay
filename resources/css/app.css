@@ -8,60 +8,12 @@
 
 /*
 |-------------------------------------------------------------------------------
-| Static Farsi-numeral web fonts (Regular 400, Medium 500, Bold 700)
+| IRANYekanX — static Farsi-numeral web font (Regular 400, Medium 500, Bold 700)
 |-------------------------------------------------------------------------------
-| Commercial WOFF2 binaries live under public/fonts/ (gitignored). Static
-| Vazirmatn (OFL, bundled from npm) remains as the graceful fallback whenever
-| local commercial fonts are not present.
+| Commercial WOFF2 binaries live under public/fonts/iranyekanx/ (gitignored).
+| Static Vazirmatn (OFL, bundled from npm) remains as the graceful fallback
+| whenever local commercial fonts are not present.
 */
-@font-face {
-    font-family: 'Peyda';
-    src: url('/fonts/peyda/PeydaFaNumWeb-Regular.woff2') format('woff2');
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Peyda';
-    src: url('/fonts/peyda/PeydaFaNumWeb-Medium.woff2') format('woff2');
-    font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Peyda';
-    src: url('/fonts/peyda/PeydaFaNumWeb-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Dana';
-    src: url('/fonts/dana/DanaFaNum-Regular.woff2') format('woff2');
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Dana';
-    src: url('/fonts/dana/DanaFaNum-Medium.woff2') format('woff2');
-    font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Dana';
-    src: url('/fonts/dana/DanaFaNum-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
-}
-
 @font-face {
     font-family: 'IRANYekanX';
     src: url('/fonts/iranyekanx/IRANYekanXFaNum-Regular.woff2') format('woff2');
@@ -130,18 +82,6 @@
 :root {
     --site-font-fallback: 'Vazirmatn', Tahoma, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
-    --site-font-family: 'Peyda', var(--site-font-fallback);
-}
-
-html[data-site-font='peyda'] {
-    --site-font-family: 'Peyda', var(--site-font-fallback);
-}
-
-html[data-site-font='dana'] {
-    --site-font-family: 'Dana', var(--site-font-fallback);
-}
-
-html[data-site-font='iranyekanx'] {
     --site-font-family: 'IRANYekanX', var(--site-font-fallback);
 }
 
@@ -645,53 +585,6 @@ html[data-site-font='iranyekanx'] {
         .repair-step-actions > * {
             flex: 1 1 auto;
             justify-content: center;
-        }
-    }
-
-    /* Site-wide static Persian font switcher (Peyda | Dana | IRANYekanX) */
-    .np-site-font-switcher {
-        position: fixed;
-        inset-inline-start: 14px;
-        bottom: 14px;
-        z-index: 60;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px;
-        border-radius: 999px;
-        background: rgb(15 23 42 / 90%);
-        border: 1px solid rgb(255 255 255 / 16%);
-        box-shadow: 0 10px 26px rgb(2 6 23 / 28%);
-        backdrop-filter: blur(10px);
-        direction: ltr;
-    }
-
-    .np-site-font-switcher button {
-        border: 0;
-        border-radius: 999px;
-        padding: 5px 11px;
-        font-size: 11.5px;
-        font-weight: 500;
-        line-height: 1.4;
-        color: #cbd5e1;
-        background: transparent;
-        cursor: pointer;
-        transition: background-color 140ms ease, color 140ms ease;
-    }
-
-    .np-site-font-switcher button:hover {
-        color: #fff;
-    }
-
-    .np-site-font-switcher button.is-active {
-        background: #075da6;
-        color: #fff;
-        font-weight: 700;
-    }
-
-    @media (max-width: 850px) {
-        body:has(.global-store-nav) .np-site-font-switcher {
-            bottom: calc(var(--store-nav-edge, 14px) + var(--store-nav-active-height, 64px) + 12px + var(--store-purchase-space, 0px));
         }
     }
 }
