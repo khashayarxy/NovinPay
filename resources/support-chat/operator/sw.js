@@ -2,7 +2,7 @@ importScripts('/support-chat/support-client/attention-store.js?v=0.1.0-r14');
 const ASSET_SCOPE=new URL('/support-chat/operator/',self.location.origin),PANEL=new URL('/support',self.location.origin);
 // Public, non-personal assets only. HTML, JS/CSS, API, uploads and POST stay network-only.
 const PREFIX='support-operator:'+new URL(self.registration.scope).pathname+':',CACHE=PREFIX+'mobile2';
-const STATIC=['../assets/fonts/Vazirmatn.woff2','../assets/fonts/material-symbols.woff2','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','icons/apple-touch-icon.png'].map(p=>new URL(p,ASSET_SCOPE).href);
+const STATIC=['../assets/fonts/material-symbols.woff2','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','icons/apple-touch-icon.png'].map(p=>new URL(p,ASSET_SCOPE).href);
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(STATIC))));
 // No skipWaiting/reload: the waiting worker activates after existing operator windows close.
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith(PREFIX)&&k!==CACHE).map(k=>caches.delete(k))))));

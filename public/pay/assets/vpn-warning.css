@@ -1,8 +1,30 @@
-/* زیزولرن – استایل مشترک صفحه‌های پرداخت (نسخه ۵) */
+/* استایل مشترک صفحه‌های پرداخت */
 @font-face {
-    font-family: 'Vazirmatn';
-    src: url('Vazirmatn.woff2') format('woff2');
-    font-weight: 100 900;
+    font-family: 'IRANYekanXVF';
+    src: url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2-variations'),
+        url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2');
+    font-weight: 100 1000;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Dana';
+    src: url('/fonts/dana/DanaFaNum-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Dana';
+    src: url('/fonts/dana/DanaFaNum-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Dana';
+    src: url('/fonts/dana/DanaFaNum-Bold.woff2') format('woff2');
+    font-weight: 700;
     font-style: normal;
     font-display: swap;
 }
@@ -18,7 +40,7 @@
 .t-gray   { --bg1: #f5f7fa; --bg2: #e9eef5; --g1: #94a3b8; --g2: #64748b; --ring: #cbd5e1; --glow: rgba(100,116,139,.3);  --title: #334155; --btn1: #475569; --btn2: #334155; }
 
 body {
-    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    font-family: 'Dana', Tahoma, sans-serif;
     background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
     min-height: 100vh;
     min-height: 100dvh;
@@ -26,6 +48,12 @@ body {
     justify-content: center;
     align-items: center;
     padding: 20px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'IRANYekanXVF', 'Dana', Tahoma, sans-serif;
+    font-variation-settings: 'dots' 1;
+    font-feature-settings: 'dots' 1;
 }
 
 .container {

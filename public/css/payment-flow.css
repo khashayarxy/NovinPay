@@ -1,16 +1,47 @@
 @font-face {
-    font-family: Vazirmatn;
-    src: url('../pay/assets/Vazirmatn.woff2') format('woff2');
+    font-family: 'IRANYekanXVF';
+    src: url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2-variations'),
+        url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2');
     font-style: normal;
-    font-weight: 100 900;
+    font-weight: 100 1000;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Dana';
+    src: url('/fonts/dana/DanaFaNum-Regular.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Dana';
+    src: url('/fonts/dana/DanaFaNum-Medium.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Dana';
+    src: url('/fonts/dana/DanaFaNum-Bold.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 700;
     font-display: swap;
 }
 
 :root {
     color-scheme: light;
-    font: 100%/1.85 Vazirmatn, Tahoma, sans-serif;
+    font: 100%/1.85 'Dana', Tahoma, sans-serif;
     color: #122940;
     background: #f2f7fc;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'IRANYekanXVF', 'Dana', Tahoma, sans-serif;
+    font-variation-settings: 'dots' 1;
+    font-feature-settings: 'dots' 1;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

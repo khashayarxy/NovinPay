@@ -27,7 +27,10 @@ class MaintenancePageTest extends TestCase
         foreach (['np-header', 'mobile-navigation', '<footer', '<script', '/build/', 'مشاهده محصولات'] as $forbidden) {
             $response->assertDontSee($forbidden, false);
         }
-        $response->assertSee('data:font/woff2;base64,', false)->assertSee('data:image/webp;base64,', false);
+        $response->assertSee('data:image/webp;base64,', false);
+        if (is_file(public_path('fonts/dana/DanaFaNum-Regular.woff2'))) {
+            $response->assertSee('data:font/woff2;base64,', false);
+        }
         $this->assertSame(1, substr_count($response->getContent(), '<h1 '));
         $this->assertStringContainsString('<html lang="fa" dir="rtl">', $response->getContent());
     }

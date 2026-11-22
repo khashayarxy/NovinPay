@@ -1,5 +1,5 @@
 @import url('../assets/fonts/font-face.css');
-*{box-sizing:border-box}body{margin:0;font-family:Vazirmatn,Tahoma,sans-serif;background:#0f172a;--bg-body:#0f172a;--bg-card:#1e293b;--bg-chat:#0f172a;--text-primary:#f1f5f9;--text-muted:#94a3b8;--border-color:#334155;--gradient-btn:linear-gradient(135deg,#818cf8,#a78bfa);--gradient-chat-user:linear-gradient(135deg,#6366f1,#8b5cf6);--chat-admin-msg:#1e293b;--badge-text:#c4b5fd}
+*{box-sizing:border-box}body{margin:0;font-family:Dana,Tahoma,sans-serif;background:#0f172a;--bg-body:#0f172a;--bg-card:#1e293b;--bg-chat:#0f172a;--text-primary:#f1f5f9;--text-muted:#94a3b8;--border-color:#334155;--gradient-btn:linear-gradient(135deg,#818cf8,#a78bfa);--gradient-chat-user:linear-gradient(135deg,#6366f1,#8b5cf6);--chat-admin-msg:#1e293b;--badge-text:#c4b5fd}
         .chat-btn { position: fixed; bottom: 24px; left: 24px; z-index: 999; width: 60px; height: 60px; border-radius: 50%; border: none; background: var(--gradient-btn); box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; }
         .chat-btn:hover { transform: scale(1.1) rotate(5deg); }
         .chat-btn svg { width: 28px; height: 28px; stroke: white; fill: none; stroke-width: 2; }

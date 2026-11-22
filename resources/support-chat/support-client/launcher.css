@@ -13,6 +13,6 @@ button[data-support-launcher]>svg{width:var(--support-icon-size);height:var(--su
 [data-support-launcher][aria-expanded=true]::before,[data-support-launcher][data-accent-paused=true]::before{animation:none}
 @media(prefers-reduced-motion:reduce){[data-support-launcher]::before{animation:none}}
 
-.support-launcher-badge{position:absolute;top:-4px;right:4px;min-width:20px;height:20px;padding:0 5px;display:grid;place-items:center;border:2px solid var(--support-surface,#fff);box-sizing:border-box;background:#dc3545;color:#fff;border-radius:12px;font:600 11px/1.2 Vazirmatn,Tahoma,sans-serif;pointer-events:none}
+.support-launcher-badge{position:absolute;top:-4px;right:4px;min-width:20px;height:20px;padding:0 5px;display:grid;place-items:center;border:2px solid var(--support-surface,#fff);box-sizing:border-box;background:#dc3545;color:#fff;border-radius:12px;font:600 11px/1.2 Dana,Tahoma,sans-serif;pointer-events:none}
 
 .support-launcher-badge[hidden]{display:none}
