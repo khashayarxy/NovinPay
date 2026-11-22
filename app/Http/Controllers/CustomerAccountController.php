@@ -70,7 +70,8 @@ class CustomerAccountController extends Controller
         $email = $request->session()->get('customer_login_email');
         $emailPending = is_string($email) ? $request->session()->get('customer_email_challenge') : null;
         $emailState = is_string($email) ? app(CustomerEmailLogin::class)->challengeState($email, $emailPending) : null;
-        $emailChannel = $request->query('channel') === 'email' && (bool) config('customer.email_auth_enabled', true);
+        $emailChannel = ($request->query('channel') === 'email' || (! $phone && is_string($email) && $email !== ''))
+            && (bool) config('customer.email_auth_enabled', true);
 
         return response()->view('account.login', [
             'phone' => $phone,
@@ -87,6 +88,7 @@ class CustomerAccountController extends Controller
             'loginEmail' => is_string($email) ? $email : null,
             'emailChallengeId' => $emailState ? $emailPending : null,
             'emailChallenge' => $emailState !== null,
+            'emailResendAt' => is_string($email) ? (int) $request->session()->get('customer_email_resend_at', 0) : 0,
             'googleEnabled' => app(GoogleAuthService::class)->configured(),
         ]);
     }
@@ -117,7 +119,7 @@ class CustomerAccountController extends Controller
     public function restart(Request $request)
     {
         $this->checkFlow($request);
-        $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt', 'customer_send_attempts']);
+        $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt', 'customer_send_attempts', 'customer_login_email', 'customer_email_challenge', 'customer_email_resend_at']);
 
         return redirect()->route('account.login');
     }
@@ -125,7 +127,18 @@ class CustomerAccountController extends Controller
     public function start(Request $request, CustomerLogin $login)
     {
         $this->checkFlow($request);
-        $request->merge(['phone' => RepairIdentity::phone($request->input('phone'))]);
+        $rawIdentifier = trim((string) $request->input('identifier', $request->input('phone', '')));
+        if (str_contains($rawIdentifier, '@')) {
+            $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at']);
+            $request->merge(['email' => $rawIdentifier]);
+            $response = app(CustomerThreePathAuthController::class)->emailStart($request, app(CustomerEmailLogin::class));
+
+            return $request->expectsJson()
+                ? response()->json(['redirect' => $response->getTargetUrl()])
+                : $response;
+        }
+        $request->session()->forget(['customer_login_email', 'customer_email_challenge', 'customer_email_resend_at']);
+        $request->merge(['phone' => RepairIdentity::phone($rawIdentifier)]);
         $rules = ['phone' => ['required', 'regex:/\A09[0-9]{9}\z/']];
         $data = $request->expectsJson() ? $request->validate($rules) : $this->validatePrivate($request, $rules);
         if ($request->session()->get('customer_login_phone') !== $data['phone']) {
@@ -265,13 +278,32 @@ class CustomerAccountController extends Controller
     public function passwordLogin(Request $request, CustomerLogin $login)
     {
         $this->checkFlow($request);
+        $rawIdentifier = trim((string) $request->input('identifier', ''));
+        if ($rawIdentifier !== '' && str_contains($rawIdentifier, '@')) {
+            $request->merge(['email' => $rawIdentifier]);
+
+            return app(CustomerThreePathAuthController::class)->emailPasswordLogin($request, app(CustomerEmailLogin::class));
+        }
+        if ($rawIdentifier !== '') {
+            $normalizedPhone = RepairIdentity::phone($rawIdentifier);
+            if (preg_match('/\A09[0-9]{9}\z/D', $normalizedPhone) !== 1) {
+                return redirect()->route('account.login', ['method' => 'password'])
+                    ->withErrors(['identifier' => 'شماره موبایل یا نشانی ایمیل معتبر نیست.']);
+            }
+            $request->session()->put('customer_login_phone', $normalizedPhone);
+        }
+
         $data = $this->validatePrivate($request, ['password' => ['required', 'string', 'max:72']]);
         $phone = $request->session()->get('customer_login_phone');
         $password = $data['password'];
         $account = is_string($phone) && strlen($password) <= 72 && ! str_contains($password, "\0")
             ? $login->passwordAccount($phone, $password) : null;
         if (! $account) {
-            return redirect()->route('account.login', CustomerLoginFlow::parameters($request, 'password'))->withErrors([
+            $params = $request->has('flow') && is_string($phone)
+                ? CustomerLoginFlow::parameters($request, 'password')
+                : ['method' => 'password'];
+
+            return redirect()->route('account.login', $params)->withErrors([
                 'password' => 'ورود با این رمز ممکن نیست. رمز را بررسی کنید یا با کد تأیید وارد شوید.',
             ]);
         }

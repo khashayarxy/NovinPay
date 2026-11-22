@@ -215,6 +215,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById('error-summary')?.focus();
 
+    document.querySelectorAll('[data-otp-boxes]').forEach((container) => {
+        const hiddenInput = container.querySelector('input[name="code"]');
+        const grid = container.querySelector('[data-otp-grid]');
+        const boxes = [...container.querySelectorAll('.np-otp-box')];
+        if (!(hiddenInput instanceof HTMLInputElement) || !(grid instanceof HTMLElement) || boxes.length !== 6) return;
+
+        const normalizeDigits = (val) => String(val || '')
+            .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+            .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+            .replace(/[^0-9]/g, '');
+
+        const sync = () => {
+            hiddenInput.value = boxes.map((b) => normalizeDigits(b.value).slice(0, 1)).join('');
+            hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+
+        container.classList.add('is-enhanced');
+        grid.hidden = false;
+        hiddenInput.tabIndex = -1;
+
+        boxes.forEach((box, idx) => {
+            box.addEventListener('input', () => {
+                const digits = normalizeDigits(box.value);
+                if (digits.length > 1) {
+                    digits.slice(0, 6).split('').forEach((ch, i) => {
+                        if (boxes[i]) boxes[i].value = ch;
+                    });
+                    boxes[Math.min(5, digits.length - 1)]?.focus();
+                } else {
+                    box.value = digits;
+                    if (digits && idx < 5) boxes[idx + 1]?.focus();
+                }
+                sync();
+            });
+
+            box.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !box.value && idx > 0) {
+                    boxes[idx - 1].value = '';
+                    boxes[idx - 1].focus();
+                    sync();
+                } else if (e.key === 'ArrowLeft' && idx > 0) {
+                    e.preventDefault();
+                    boxes[idx - 1].focus();
+                } else if (e.key === 'ArrowRight' && idx < 5) {
+                    e.preventDefault();
+                    boxes[idx + 1].focus();
+                }
+            });
+
+            box.addEventListener('paste', (e) => {
+                const pasted = normalizeDigits(e.clipboardData?.getData('text') || '');
+                if (!pasted) return;
+                e.preventDefault();
+                pasted.slice(0, 6).split('').forEach((ch, i) => {
+                    if (boxes[i]) boxes[i].value = ch;
+                });
+                boxes[Math.min(5, pasted.length - 1)]?.focus();
+                sync();
+            });
+        });
+
+        boxes[0]?.focus();
+    });
+
     document.querySelectorAll('[data-account-password]').forEach((button) => {
         const input = document.getElementById(button.dataset.accountPassword);
         if (!(input instanceof HTMLInputElement)) return;
