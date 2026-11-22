@@ -28,8 +28,16 @@ class HomePageTest extends TestCase
             $this->assertCount(1, $xpath->query('//footer//div[contains(@class,"np-footer__brand")]//'.$selector));
             $this->assertCount(0, $xpath->query('//img[starts-with(@src,"https://trustseal.enamad.ir/")]'));
             $this->assertCount(1, $xpath->query('//img[@src="'.asset('brand/trust/enamad-8644634.png').'"]'));
-            $this->assertCount(1, $xpath->query('//footer//div[@class="np-footer__marks"]//img'));
-            $this->assertCount(0, $xpath->query('//footer//img[contains(@src,"NezamSenfi.svg") or contains(@src,"Shaparak.svg")]'));
+            $this->assertCount(3, $xpath->query('//footer//div[@class="np-footer__marks"]//img'));
+            $this->assertCount(1, $xpath->query('//footer//img[@src="'.asset('brand/trust/NezamSenfi.svg').'"]'));
+            $this->assertCount(0, $xpath->query('//footer//a[img[contains(@src,"NezamSenfi.svg")]]'));
+            $this->assertCount(0, $xpath->query('//footer//img[contains(@src,"Shaparak.svg")]'));
+            $this->assertCount(0, $xpath->query('//script[contains(@src,"zibal-trust")]'));
+
+            $zibalLinks = $xpath->query('//footer//a[@href="https://gateway.zibal.ir/trustMe/novinpaypos.com" and img[@src="'.asset('images/zibal-trust.png').'"]]');
+            $this->assertCount(1, $zibalLinks);
+            $this->assertSame('_blank', $zibalLinks->item(0)->getAttribute('target'));
+            $this->assertSame('noopener noreferrer nofollow', $zibalLinks->item(0)->getAttribute('rel'));
 
             $link = $links->item(0);
             $image = $xpath->query('./img', $link)->item(0);
