@@ -42,7 +42,7 @@ html[data-support-surface=customer-v2] #chatWindow #inputArea .chat-send:active:
 html[data-support-surface] .outgoing .support-reply-reference{--support-hover:rgba(255,255,255,.04);--support-control-focus-bg:rgba(255,255,255,.04);--support-control-selected-bg:rgba(255,255,255,.04);--support-focus:#c6dcff;transition:border-color .15s ease,background-color .12s ease}
 @media(prefers-reduced-motion:reduce){html[data-support-surface] .outgoing .support-reply-reference{transition:none}}
 
-.support-selection-toast{position:absolute;z-index:30;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--support-border,#303034);border-radius:12px;background:var(--support-surface,#19191c);color:var(--support-text,#f5f5f6);box-shadow:var(--support-float-shadow,0 4px 18px #0002);font:12px/1.8 Vazirmatn,Tahoma,sans-serif;direction:rtl;opacity:1;transition:opacity .18s ease!important;box-sizing:border-box}
+.support-selection-toast{position:absolute;z-index:30;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--support-border,#303034);border-radius:12px;background:var(--support-surface,#19191c);color:var(--support-text,#f5f5f6);box-shadow:var(--support-float-shadow,0 4px 18px #0002);font:12px/1.8 Dana,Tahoma,sans-serif;direction:rtl;opacity:1;transition:opacity .18s ease!important;box-sizing:border-box}
 .support-selection-toast>span{min-width:0;flex:1;overflow-wrap:anywhere}.support-selection-toast>button{min-width:44px;min-height:44px;width:44px;flex:none;border:0;background:transparent;color:inherit;font:20px/1 sans-serif;border-radius:8px;padding:8px}
 .support-selection-toast.leaving{opacity:0}.support-selection-toast[hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){.support-selection-toast{transition:none!important}}
@@ -63,7 +63,7 @@ html[data-support-surface=operator] #replyArea .v2-typing i:nth-child(3){animati
 .support-icon[data-svg-icon]{font-size:0!important}.support-icon[data-svg-icon]>svg{display:inline-block;width:22px;height:22px;vertical-align:middle;flex:none}.support-read-state[data-svg-icon]>svg{width:14px;height:14px}html:not(.support-icons-ready) .support-icon:not([data-svg-icon]):not(:has(img)){visibility:hidden}
 
 /* visibility:hidden alone still downloads icon fonts during CSS layout. */
-html:not(.support-icons-ready) .support-icon{font-family:Vazirmatn,Tahoma,sans-serif!important}
+html:not(.support-icons-ready) .support-icon{font-family:Dana,Tahoma,sans-serif!important}
 
 :root{--support-css-interaction:1}
 

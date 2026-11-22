@@ -7,8 +7,8 @@
     <meta name="dcterms.source" content="https://db-ip.com">
     <link rel="help" href="{{ route('privacy') }}#payment-country-data">
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-    <link rel="preload" href="{{ asset('pay/assets/Vazirmatn.woff2') }}" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="{{ asset('pay/assets/vpn-warning.css?v=1') }}">
+    <link rel="preload" href="/fonts/dana/DanaFaNum-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ asset('pay/assets/vpn-warning.css?v=2') }}">
     <title>وی‌پی‌ان را خاموش کنید | نوین‌پی</title>
     <script src="{{ asset('pay/assets/vpn-warning.js?v=1') }}" defer></script>
 </head>

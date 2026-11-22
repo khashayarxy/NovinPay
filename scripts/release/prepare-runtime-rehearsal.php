@@ -71,7 +71,13 @@ foreach (json_decode(file_get_contents($repo.'/tests/Fixtures/runtime-release-su
     }
     file_put_contents($file, implode("\n", $lines));
 }
-requireGate(symlink($repo.'/node_modules', $application.'/node_modules') && symlink($root.'/candidate/vendor', $application.'/vendor'),
+if (is_dir($repo.'/node_modules/vazirmatn')) {
+    requireGate(symlink($repo.'/node_modules', $application.'/node_modules'), 'rehearsal_build_links', 'existing locked build dependencies in the isolated approved application tree', [], 'Inspect local CI capabilities.');
+} else {
+    $npm = command(['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund'], $application, 'rehearsal_historical_npm', 180);
+    requireGate($npm['exit'] === 0, 'rehearsal_historical_npm', 'historical locked frontend dependencies for Phase 4 rehearsal fixture', [], 'Inspect historical npm ci output.');
+}
+requireGate(symlink($root.'/candidate/vendor', $application.'/vendor'),
     'rehearsal_build_links', 'existing locked build dependencies in the isolated approved application tree', [], 'Inspect local CI capabilities.');
 // The original build's explicit Tailwind storage/views source included these
 // framework error/health templates. Reproduce PUBLIC template inputs only, not
@@ -84,7 +90,7 @@ foreach (json_decode(file_get_contents($repo.'/tests/Fixtures/runtime-release-vi
 // Keep logical node_modules font identities in manifest.json when reusing the
 // job's existing dependencies through a symlink. No deployed Vite config changes.
 file_put_contents($application.'/rehearsal-vite.config.mjs', 'import config from "./vite.config.js"; export default {...config, resolve: {...config.resolve, preserveSymlinks: true}};');
-$buildAssets = command(['node', $repo.'/node_modules/vite/bin/vite.js', 'build', '--config', $application.'/rehearsal-vite.config.mjs'], $application, 'rehearsal_approved_assets', 180);
+$buildAssets = command(['node', $application.'/node_modules/vite/bin/vite.js', 'build', '--config', $application.'/rehearsal-vite.config.mjs'], $application, 'rehearsal_approved_assets', 180);
 requireGate($buildAssets['exit'] === 0, 'rehearsal_approved_assets', 'compile approved application without later tooling entering Tailwind scanning', [], 'Inspect build reproducibility.');
 $buildSupport = command(['node', $application.'/scripts/build-support-assets.mjs'], $application, 'rehearsal_support_assets', 180);
 requireGate($buildSupport['exit'] === 0, 'rehearsal_support_assets', 'exact approved support asset builder', [], 'Inspect support asset reproduction.');

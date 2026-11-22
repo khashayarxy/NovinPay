@@ -130,7 +130,7 @@ class SupportChatTest extends TestCase
         $this->get('https://localhost/support-chat/support-widget.js')->assertOk();
         $this->get('https://localhost/support-chat/support/bootstrap.php')->assertNotFound();
         $this->get('https://localhost/support-chat/UPSTREAM.json')->assertNotFound();
-        $this->get('https://localhost/support-chat/assets/fonts/Vazirmatn.woff2')->assertOk()->assertHeader('Content-Type', 'font/woff2');
+        $this->get('https://localhost/support-chat/assets/fonts/material-symbols.woff2')->assertOk()->assertHeader('Content-Type', 'font/woff2');
     }
 
     public function test_customer_boot_configuration_matches_browser_contract(): void

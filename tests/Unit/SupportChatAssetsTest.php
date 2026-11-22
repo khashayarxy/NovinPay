@@ -19,7 +19,7 @@ class SupportChatAssetsTest extends TestCase
             $pattern = $extension === 'js' ? '/(?:from\s*|import\s*)[\'"]([.][.\/]?\/[^\'"]+)[\'"]/' : '/url\([\'"]?([^\'"\s)]+)[\'"]?\)/';
             preg_match_all($pattern, file_get_contents($file->getPathname()), $matches);
             foreach ($matches[1] as $reference) {
-                if (str_starts_with($reference, 'data:') || str_starts_with($reference, '#') || str_starts_with($reference, 'http')) {
+                if (str_starts_with($reference, 'data:') || str_starts_with($reference, '#') || str_starts_with($reference, 'http') || str_starts_with($reference, '/fonts/')) {
                     continue;
                 }
                 $path = explode('?', $reference)[0];

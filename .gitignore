@@ -25,3 +25,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+run-release-*.sh
+upload-*.ps1
+/*.zip
+/*.sql
+/*.sql.gz
