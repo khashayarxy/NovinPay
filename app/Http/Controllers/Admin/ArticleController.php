@@ -17,7 +17,7 @@ final class ArticleController extends Controller
     private function screen(string $name, array $data)
     {
         $account = AdminAccess::account(auth()->user());
-        $articleAllows = fn (string $permission): bool => $account && ($account->isSuperAdmin() || in_array($permission, $account->permissions ?? [], true));
+        $articleAllows = fn (string $permission): bool => $account && ($account->hasFullAccess() || in_array($permission, $account->permissions ?? [], true));
 
         return view($name, $data + ['articleAllows' => $articleAllows]);
     }

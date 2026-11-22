@@ -25,4 +25,23 @@ class AdminAccount extends Model
     {
         return $this->role === 'super_admin' && $this->owner_slot === 1;
     }
+
+    public function isManager(): bool
+    {
+        return $this->role === 'manager' && $this->owner_slot === null;
+    }
+
+    public function hasFullAccess(): bool
+    {
+        return $this->isSuperAdmin() || $this->isManager();
+    }
+
+    public function roleLabel(): string
+    {
+        return match (true) {
+            $this->isSuperAdmin() => 'مدیر کل محافظت‌شده',
+            $this->isManager() => 'مدیر',
+            default => 'کارمند',
+        };
+    }
 }

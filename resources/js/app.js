@@ -20,6 +20,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (admin) {
         import('./admin-fields.js').then(({initAdminFields}) => initAdminFields(admin));
     }
+    const staffRoleForm = document.querySelector('[data-staff-role-form]');
+    if (staffRoleForm) {
+        const radios = [...staffRoleForm.querySelectorAll('input[name="access_level"]')];
+        const panel = staffRoleForm.querySelector('[data-staff-permissions-panel]');
+        const note = staffRoleForm.querySelector('[data-staff-manager-note]');
+        const toggleAll = staffRoleForm.querySelector('[data-staff-toggle-all]');
+        const boxes = [...staffRoleForm.querySelectorAll('input[name="permissions[]"]')];
+        const syncToggleLabel = () => {
+            if (!toggleAll || !boxes.length) return;
+            const allChecked = boxes.every((box) => box.checked);
+            toggleAll.textContent = allChecked ? 'لغو همه' : 'انتخاب همه';
+        };
+        const syncRole = () => {
+            const isManager = radios.some((radio) => radio.checked && radio.value === 'manager');
+            if (panel) panel.hidden = isManager;
+            if (note) note.hidden = !isManager;
+        };
+        radios.forEach((radio) => radio.addEventListener('change', syncRole));
+        boxes.forEach((box) => box.addEventListener('change', syncToggleLabel));
+        toggleAll?.addEventListener('click', () => {
+            const shouldCheck = !boxes.every((box) => box.checked);
+            boxes.forEach((box) => { box.checked = shouldCheck; });
+            syncToggleLabel();
+        });
+        syncRole();
+        syncToggleLabel();
+    }
     const adminNavigation = document.querySelector('[data-admin-navigation]');
     if (adminNavigation instanceof HTMLDetailsElement) {
         const desktop = window.matchMedia('(min-width: 801px)');

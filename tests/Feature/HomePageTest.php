@@ -141,15 +141,15 @@ class HomePageTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
         $cards = $xpath->query('//a[@class="np-brand"]');
-        $this->assertCount(6, $cards);
-        $this->assertSame(['Newland', 'NewPOS', 'PAX', 'SZZT', 'TOPWISE', 'MoreFun'], array_map(fn ($card) => $xpath->query('./img', $card)->item(0)->getAttribute('alt'), iterator_to_array($cards)));
+        $this->assertCount(4, $cards);
+        $this->assertSame(['Newland', 'NewPOS', 'PAX', 'TOPWISE'], array_map(fn ($card) => $xpath->query('./img', $card)->item(0)->getAttribute('alt'), iterator_to_array($cards)));
         foreach ($cards as $card) {
             $brand = $xpath->query('./img', $card)->item(0)->getAttribute('alt');
             $this->assertSame('کارتخوان‌های '.$brand, $card->getAttribute('aria-label'));
             $this->assertSame(route('products.index', ['q' => $brand]), $card->getAttribute('href'));
             $this->assertSame('', trim($card->textContent));
         }
-        foreach (['PAX', 'NewPOS', 'Newland', 'SZZT', 'TOPWISE', 'MoreFun'] as $brand) {
+        foreach (['PAX', 'NewPOS', 'Newland', 'TOPWISE'] as $brand) {
             $response->assertSee(route('products.index', ['q' => $brand]), false);
             $this->get(route('products.index', ['q' => $brand]))->assertOk();
         }
@@ -166,7 +166,7 @@ class HomePageTest extends TestCase
         $response->assertSee('np-location__directions')->assertDontSee('np-hero-signature');
         $response->assertSee('data-map-url="'.config('business.map_embed').'"', false);
         $response->assertDontSee('<iframe', false);
-        foreach (['PAX.svg', 'NewPOS.svg', 'Newland.svg', 'SZZT.png', 'TOPWISE.svg', 'MoreFun.png'] as $asset) {
+        foreach (['PAX.svg', 'NewPOS.svg', 'Newland.svg', 'TOPWISE.svg'] as $asset) {
             $response->assertSee(asset('brand/manufacturers/'.$asset));
         }
         $response->assertDontSee('mascot-newpos.png');

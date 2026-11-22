@@ -54,7 +54,7 @@
         <h2 id="brands-title">برندهای تحت پوشش</h2>
         <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
         <div class="np-brands__grid">
-            @foreach (['Newland', 'NewPOS', 'PAX', 'SZZT', 'TOPWISE', 'MoreFun'] as $brand)
+            @foreach (['Newland', 'NewPOS', 'PAX', 'TOPWISE'] as $brand)
                 <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand" aria-label="کارتخوان‌های {{ $brand }}"><x-home.manufacturer :name="$brand" /></a>
             @endforeach
         </div>

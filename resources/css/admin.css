@@ -164,6 +164,17 @@
 .admin-form legend { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
 .admin-hint { font-size: 12px; line-height: 2; color: #52687f; margin-block: 8px 14px; }
 .admin-permissions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.admin-permissions-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.admin-permissions-header legend { margin-bottom: 0; }
+.admin-permissions-toggle { border: 0; background: transparent; padding: 6px 4px; color: #075fa8; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.admin-permissions-toggle:hover { color: #054a84; text-decoration: underline; }
+.admin-segmented { display: inline-grid; grid-template-columns: repeat(2, minmax(112px, 1fr)); padding: 4px; border-radius: 12px; background: #eef3f8; border: 1px solid #dce6f1; gap: 4px; max-width: 100%; }
+.admin-segmented__option { position: relative; display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 18px; border-radius: 9px; font-size: 13px; font-weight: 650; color: #4a6078; cursor: pointer; transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease; }
+.admin-segmented__option input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.admin-segmented__option:has(input:checked) { background: #fff; color: #075fa8; box-shadow: 0 1px 4px rgb(15 30 46 / 10%); }
+.admin-segmented__option:has(input:focus-visible) { outline: 2px solid #075fa8; outline-offset: 2px; }
+.admin-manager-note { margin: 10px 0 0; font-size: 13px; color: #475e73; line-height: 1.8; }
+.admin-manager-note[hidden], [data-staff-permissions-panel][hidden] { display: none; }
 .admin-permissions label, .admin-checkbox { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 7px 9px; border: 1px solid #e0e9f4; border-radius: 10px; font-size: 12px; cursor: pointer; }
 .admin-site input[type=checkbox] { accent-color: #0674cf; width: 18px; height: 18px; flex: 0 0 auto; }
 .admin-password-form { max-width: 600px; }
@@ -204,7 +215,8 @@
     .admin-user small { font-size: 10px; }
     .admin-navigation > summary { display:flex; align-items:center; gap:7px; min-height:44px; padding-inline:10px; border:1px solid #62768f; border-radius:var(--admin-radius-control); color:#fff; font-size:13px; cursor:pointer; }
     .admin-navigation > summary .np-icon { width:18px; height:18px; }
-    .admin-navigation .admin-nav { position:absolute; inset-inline:0; inset-block-start:100%; max-height:calc(100dvh - 68px); overflow:auto; margin:0; padding:12px 16px 16px; background:var(--admin-rail); border-block-start:1px solid #33475e; box-shadow:var(--admin-shadow-overlay); }
+    .admin-navigation[open]::before { content:""; position:fixed; inset:60px 0 0 0; z-index:4; background:rgb(15 30 46 / 46%); pointer-events:none; }
+    .admin-navigation .admin-nav { position:absolute; inset-inline:0; inset-block-start:100%; z-index:6; max-height:calc(100dvh - 68px); overflow:auto; margin:0; padding:12px 16px 16px; background:var(--admin-rail); border-block-start:1px solid #33475e; box-shadow:var(--admin-shadow-overlay); }
     .admin-dashboard-grid { grid-template-columns:minmax(0,1fr); }
     .admin-nav a { min-height:44px; }
     .admin-main { padding: 24px 16px 32px; }
@@ -260,6 +272,14 @@
     .finance-cell-value { max-width:100%; font-size:13px; overflow-wrap:anywhere; }
     .finance-table time { min-width:0; }
     .finance-table .finance-empty-row td { display:block; }
+    .admin-table--cards { min-width:0; display:block; }
+    .admin-table--cards thead { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+    .admin-table--cards tbody { display:grid; gap:12px; }
+    .admin-table--cards tr { display:grid; border:1px solid #dce7f2; border-radius:14px; background:#fff; overflow:hidden; }
+    .admin-table--cards td { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 12px; padding:10px 12px; min-width:0; }
+    .admin-table--cards td[data-label]::before { content:attr(data-label); color:#52687f; font-size:11px; font-weight:600; flex:0 0 auto; }
+    .admin-table--cards td:last-child { border-bottom:0; }
+    .admin-table--cards td[colspan] { display:block; }
 }
 @media(max-width:600px) { .finance-metrics { grid-template-columns:1fr; } .finance-definition { grid-template-columns:1fr; gap:6px; } .finance-definition dd { margin-bottom:12px; } }
 .commerce-filters { display:flex; align-items:end; flex-wrap:wrap; gap:10px; margin-bottom:12px; }

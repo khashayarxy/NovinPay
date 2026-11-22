@@ -11,7 +11,7 @@
             <a class="admin-text-link" href="{{ route('admin.article-categories.edit', $category) }}">ویرایش دسته</a>
         </div>
     @empty
-        <p class="admin-hint">دسته‌ای ثبت نشده است.</p>
+        <x-admin.empty-state title="دسته‌ای ثبت نشده است" icon="tag">برای دسته‌بندی مقالات، اولین دستهٔ جدید را ایجاد کنید.</x-admin.empty-state>
     @endforelse
     {{ $categories->links() }}
 </section>

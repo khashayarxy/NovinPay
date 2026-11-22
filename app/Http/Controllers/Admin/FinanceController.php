@@ -29,7 +29,7 @@ class FinanceController extends Controller
     {
         // A single persisted snapshot for presentation; routes and writes reauthorize.
         $account = AdminAccess::account(auth()->user());
-        $financeAllows = fn (string $permission): bool => $account && ($account->isSuperAdmin() || in_array($permission, $account->permissions ?? [], true));
+        $financeAllows = fn (string $permission): bool => $account && ($account->hasFullAccess() || in_array($permission, $account->permissions ?? [], true));
 
         return view($name, $data + ['financeAllows' => $financeAllows]);
     }

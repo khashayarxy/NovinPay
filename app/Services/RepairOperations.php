@@ -39,7 +39,7 @@ final class RepairOperations
     {
         $account = AdminAccess::account($user);
 
-        return $account && ($account->isSuperAdmin() || in_array('repairs.inspect', $account->permissions ?? [], true) || in_array('repairs.work', $account->permissions ?? [], true));
+        return $account && ($account->hasFullAccess() || in_array('repairs.inspect', $account->permissions ?? [], true) || in_array('repairs.work', $account->permissions ?? [], true));
     }
 
     public function intake(User $actor, array $data): RepairCase

@@ -18,58 +18,76 @@ final class StaffAdministration
     {
         return DB::transaction(function () use ($actor, $data, $target): AdminAccount {
             $owner = AdminAccount::query()->where('user_id', $actor->id)->lockForUpdate()->first();
-            abort_unless($owner?->isSuperAdmin() && $owner->is_active, 403);
+            abort_unless($owner?->hasFullAccess() && $owner->is_active, 403);
             $persistedActor = User::query()->findOrFail($actor->id);
             if (! Hash::check($data['current_password'], $persistedActor->password)) {
                 throw ValidationException::withMessages(['current_password' => 'رمز عبور فعلی مدیر کل صحیح نیست.']);
             }
-            $permissions = array_values($data['permissions'] ?? []);
-            foreach ($permissions as $permission) {
-                if (! is_string($permission) || AdminPermission::tryFrom($permission) === null) {
-                    throw ValidationException::withMessages(['permissions' => 'مجوز انتخاب‌شده معتبر نیست.']);
+            $accessLevel = ($data['access_level'] ?? 'staff') === 'manager' ? 'manager' : 'staff';
+            if ($accessLevel === 'manager') {
+                $permissions = array_map(fn (AdminPermission $permission): string => $permission->value, AdminPermission::cases());
+            } else {
+                $permissions = array_values($data['permissions'] ?? []);
+                foreach ($permissions as $permission) {
+                    if (! is_string($permission) || AdminPermission::tryFrom($permission) === null) {
+                        throw ValidationException::withMessages(['permissions' => 'مجوز انتخاب‌شده معتبر نیست.']);
+                    }
                 }
-            }
-            foreach ([[AdminPermission::ProductsManage, AdminPermission::ProductsView], [AdminPermission::RepairsCustomerData, AdminPermission::RepairsView]] as [$extra, $base]) {
-                if (in_array($extra->value, $permissions, true) && ! in_array($base->value, $permissions, true)) {
-                    throw ValidationException::withMessages(['permissions' => 'مجوز «'.$extra->label().'» به «'.$base->label().'» نیاز دارد.']);
+                foreach ([[AdminPermission::ProductsManage, AdminPermission::ProductsView], [AdminPermission::RepairsCustomerData, AdminPermission::RepairsView]] as [$extra, $base]) {
+                    if (in_array($extra->value, $permissions, true) && ! in_array($base->value, $permissions, true)) {
+                        throw ValidationException::withMessages(['permissions' => 'مجوز «'.$extra->label().'» به «'.$base->label().'» نیاز دارد.']);
+                    }
                 }
-            }
-            foreach (AdminPermission::cases() as $permission) {
-                if (str_starts_with($permission->value, 'repairs.') && in_array($permission->value, $permissions, true) && $permission !== AdminPermission::RepairsView) {
-                    if (! in_array(AdminPermission::RepairsView->value, $permissions, true) || (! in_array($permission, [AdminPermission::RepairsAssign, AdminPermission::RepairsManage, AdminPermission::RepairsCustomerData], true) && ! in_array(AdminPermission::RepairsCustomerData->value, $permissions, true))) {
-                        throw ValidationException::withMessages(['permissions' => 'عملیات تعمیر به مشاهدهٔ پرونده و برای اطلاعات حساس به مجوز اطلاعات مشتری نیاز دارد.']);
+                foreach (AdminPermission::cases() as $permission) {
+                    if (str_starts_with($permission->value, 'repairs.') && in_array($permission->value, $permissions, true) && $permission !== AdminPermission::RepairsView) {
+                        if (! in_array(AdminPermission::RepairsView->value, $permissions, true) || (! in_array($permission, [AdminPermission::RepairsAssign, AdminPermission::RepairsManage, AdminPermission::RepairsCustomerData], true) && ! in_array(AdminPermission::RepairsCustomerData->value, $permissions, true))) {
+                            throw ValidationException::withMessages(['permissions' => 'عملیات تعمیر به مشاهدهٔ پرونده و برای اطلاعات حساس به مجوز اطلاعات مشتری نیاز دارد.']);
+                        }
+                    }
+                }
+                foreach ($permissions as $permission) {
+                    $dependencies = match ($permission) {
+                        'support.manage' => ['support.view'],
+                        'articles.manage', 'articles.publish' => ['articles.view'],
+                        'finance.details', 'finance.charge' => ['finance.view'],
+                        'finance.receive', 'finance.expenses', 'finance.correct' => ['finance.view', 'finance.details'],
+                        'finance.balances' => ['finance.view', 'customers.view'],
+                        'inventory.configure', 'inventory.receive', 'inventory.adjust' => ['inventory.view'],
+                        'orders.create' => ['orders.view', 'inventory.view', 'orders.customer_data', 'customers.view', 'customers.contact'],
+                        'orders.reserve', 'orders.confirm' => ['orders.view'],
+                        'orders.fulfill' => ['orders.view', 'orders.customer_data', 'customers.view', 'customers.contact'],
+                        'orders.customer_data' => ['orders.view', 'customers.view', 'customers.contact'],
+                        'customers.contact' => ['customers.view'],
+                        'customers.manage', 'customers.link', 'customers.notes' => ['customers.view', 'customers.contact'],
+                        'customers.reconcile' => ['customers.view', 'customers.contact', 'customers.manage', 'customers.link', 'customers.notes'],
+                        'consultations.contact', 'consultations.manage' => ['consultations.view'],
+                        'consultations.history' => ['consultations.view', 'consultations.contact'],
+                        default => [],
+                    };
+                    if (array_diff($dependencies, $permissions)) {
+                        throw ValidationException::withMessages(['permissions' => 'مجوز انتخاب‌شده به مجوزهای پایهٔ مشاهده یا اطلاعات خصوصی نیاز دارد.']);
                     }
                 }
             }
             $creating = $target === null;
-            foreach ($permissions as $permission) {
-                $dependencies = match ($permission) {
-                    'support.manage' => ['support.view'],
-                    'articles.manage', 'articles.publish' => ['articles.view'],
-                    'finance.details', 'finance.charge' => ['finance.view'],
-                    'finance.receive', 'finance.expenses', 'finance.correct' => ['finance.view', 'finance.details'],
-                    'finance.balances' => ['finance.view', 'customers.view'],
-                    'inventory.configure', 'inventory.receive', 'inventory.adjust' => ['inventory.view'],
-                    'orders.create' => ['orders.view', 'inventory.view', 'orders.customer_data', 'customers.view', 'customers.contact'],
-                    'orders.reserve', 'orders.confirm' => ['orders.view'],
-                    'orders.fulfill' => ['orders.view', 'orders.customer_data', 'customers.view', 'customers.contact'],
-                    'orders.customer_data' => ['orders.view', 'customers.view', 'customers.contact'],
-                    'customers.contact' => ['customers.view'],
-                    'customers.manage', 'customers.link', 'customers.notes' => ['customers.view', 'customers.contact'],
-                    'customers.reconcile' => ['customers.view', 'customers.contact', 'customers.manage', 'customers.link', 'customers.notes'],
-                    'consultations.contact', 'consultations.manage' => ['consultations.view'],
-                    'consultations.history' => ['consultations.view', 'consultations.contact'],
-                    default => [],
-                };
-                if (array_diff($dependencies, $permissions)) {
-                    throw ValidationException::withMessages(['permissions' => 'مجوز انتخاب‌شده به مجوزهای پایهٔ مشاهده یا اطلاعات خصوصی نیاز دارد.']);
-                }
-            }
             $account = $creating ? new AdminAccount : AdminAccount::query()->lockForUpdate()->findOrFail($target->id);
             // Owner/self accounts cannot be updated, demoted, replaced or deactivated here.
-            abort_if(! $creating && ($account->role !== 'staff' || $account->owner_slot !== null || $account->user_id === $actor->id), 403);
+            abort_if(! $creating && (! in_array($account->role, ['staff', 'manager'], true) || $account->owner_slot !== null || $account->user_id === $actor->id), 403);
+            if (! $creating && $account->isManager() && $account->is_active && ($accessLevel !== 'manager' || ! (bool) $data['is_active'])) {
+                $otherActiveManagers = AdminAccount::query()
+                    ->where('id', '!=', $account->id)
+                    ->where('is_active', true)
+                    ->where(function ($query): void {
+                        $query->where(fn ($q) => $q->where('role', 'super_admin')->where('owner_slot', 1))
+                            ->orWhere(fn ($q) => $q->where('role', 'manager')->whereNull('owner_slot'));
+                    })->count();
+                if ($otherActiveManagers < 1) {
+                    throw ValidationException::withMessages(['access_level' => 'حداقل یک مدیر فعال باید در سامانه باقی بماند.']);
+                }
+            }
             $user = $creating ? new User : User::query()->lockForUpdate()->findOrFail($account->user_id);
             $beforePermissions = $account->permissions ?? [];
+            $beforeRole = $account->role;
             $beforeActive = $account->is_active;
             $user->name = $data['name'];
             $user->email = $data['email'];
@@ -80,14 +98,14 @@ final class StaffAdministration
             $user->remember_token = Str::random(60);
             $user->save();
             $account->user_id = $user->id;
-            $account->role = 'staff';
+            $account->role = $accessLevel;
             $account->owner_slot = null;
             $account->is_active = (bool) $data['is_active'];
             $account->permissions = $permissions;
             $account->session_version = $creating ? 1 : $account->session_version + 1;
             $account->save();
             AdminHistory::record($creating ? AdminAction::StaffCreated : AdminAction::StaffUpdated, 'user', $user->id, $actor->id);
-            if (! $creating && $permissions !== $beforePermissions) {
+            if (! $creating && ($permissions !== $beforePermissions || $account->role !== $beforeRole)) {
                 AdminHistory::record(AdminAction::PermissionsChanged, 'user', $user->id, $actor->id);
             }
             if ($creating || $beforeActive !== $account->is_active) {

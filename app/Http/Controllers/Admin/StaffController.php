@@ -31,7 +31,7 @@ class StaffController extends Controller
 
     public function edit(AdminAccount $staff): View
     {
-        abort_unless($staff->role === 'staff' && $staff->owner_slot === null, 403);
+        abort_unless(in_array($staff->role, ['staff', 'manager'], true) && $staff->owner_slot === null && $staff->user_id !== auth()->id(), 403);
 
         return view('admin.staff.form', ['staff' => $staff->load('user'), 'permissions' => AdminPermission::cases()]);
     }

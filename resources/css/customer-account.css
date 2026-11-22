@@ -130,10 +130,16 @@
 .np-account-card h2 { font-size: 1.23rem; font-weight: 800; }
 .np-account-card__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem 1rem; }
 .np-account-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
-.np-account-stats a { display: grid; padding: clamp(.65rem, 2vw, 1.25rem); }
+.np-account-stats a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem;
+    padding: clamp(.85rem, 2.2vw, 1.35rem); text-align: center;
+}
 .np-account-stats a:hover { background: var(--account-wash); }
-.np-account-stats strong { color: var(--account-blue); font-size: clamp(1.35rem, 4vw, 2rem); line-height: 1.3; }
-.np-account-stats span { font-size: .88rem; }
+.np-account-stats strong {
+    color: var(--account-blue); font-size: clamp(1.75rem, 3.2vw, 2.25rem);
+    font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums;
+}
+.np-account-stats span { font-size: .88rem; color: var(--account-muted); font-weight: 600; }
 .np-account-shortcuts { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .75rem; }
 .np-account-shortcuts a { display: inline-flex; align-items: center; min-height: 44px; padding: .4rem .85rem; border-radius: .65rem; background: var(--account-wash); color: var(--account-blue); font-weight: 700; }
 .np-account-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem .8rem; padding: .7rem 0; border-bottom: 1px solid var(--account-line); }
@@ -158,12 +164,31 @@ a.np-account-row:hover { color: var(--account-blue); }
 .np-timeline small { display: block; color: var(--account-muted); }
 @keyframes np-account-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
+@media (max-width: 850px) {
+    .np-account { padding-bottom: 5.5rem; }
+    .np-account-form :is(input, button, select, textarea) { scroll-margin-bottom: 6.5rem; }
+}
+
 @media (max-width: 720px) {
     .np-auth { display: block; min-height: 0; margin-block: 1.25rem; }
     .np-auth__aside { display: none; }
     .np-account-layout { grid-template-columns: minmax(0, 1fr); }
-    .np-account-nav { display: flex; flex-wrap: wrap; gap: .15rem; }
-    .np-account-nav a { padding-inline: .6rem; font-size: .88rem; }
+    .np-account-nav {
+        display: flex; flex-wrap: nowrap; gap: .35rem;
+        overflow-x: auto; overscroll-behavior-x: contain;
+        scrollbar-width: none; -webkit-overflow-scrolling: touch;
+        padding: .45rem;
+    }
+    .np-account-nav::-webkit-scrollbar { display: none; }
+    .np-account-nav a {
+        flex: 0 0 auto; white-space: nowrap;
+        padding-inline: .85rem; font-size: .86rem;
+        border: 1px solid transparent;
+    }
+    .np-account-nav [aria-current=page] {
+        border-color: #b7d7f6;
+        box-shadow: inset 0 -2px 0 var(--account-blue);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
