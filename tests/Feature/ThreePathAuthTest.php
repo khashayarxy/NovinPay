@@ -313,4 +313,47 @@ class ThreePathAuthTest extends TestCase
 
         $this->assertAuthenticatedAs($googleAccount, 'customer');
     }
+
+    public function test_address_validation_preserves_old_input_and_renders_persian_inline_errors_with_iran_locations(): void
+    {
+        $account = new CustomerAccount;
+        $account->forceFill([
+            'public_id' => (string) Str::uuid(),
+            'name' => 'مشتری آدرس',
+            'phone' => '09123334455',
+            'phone_digest' => RepairIdentity::digest('customer-account-phone', '09123334455'),
+            'verified_at' => now(),
+            'is_active' => true,
+            'session_version' => 1,
+        ])->save();
+
+        $this->actingAs($account, 'customer')
+            ->withSession(['customer_session_version' => 1])
+            ->post(route('account.address'), [
+                'address_form_key' => 'new',
+                'recipient' => 'رضا محمدی',
+                'phone' => '09123334455',
+                'province' => 'تهران',
+                'city' => 'شهریار',
+                'address' => 'کوتاه',
+                'postal_code' => '1234567890',
+            ])
+            ->assertRedirect(route('account.index', ['section' => 'addresses']))
+            ->assertSessionHasErrors('address')
+            ->assertSessionHasInput('recipient', 'رضا محمدی')
+            ->assertSessionHasInput('province', 'تهران')
+            ->assertSessionHasInput('city', 'شهریار');
+
+        $response = $this->actingAs($account, 'customer')
+            ->withSession(['customer_session_version' => 1])
+            ->get(route('account.index', ['section' => 'addresses']));
+
+        $response->assertOk()
+            ->assertSee('رضا محمدی')
+            ->assertSee('تهران')
+            ->assertSee('شهریار')
+            ->assertSee('آدرس کامل')
+            ->assertDontSee('address نباید کمتر از')
+            ->assertSee('id="iran-locations-data"', false);
+    }
 }
