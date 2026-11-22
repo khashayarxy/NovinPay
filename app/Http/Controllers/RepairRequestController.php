@@ -12,6 +12,7 @@ use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Services\CustomerLogin;
 use App\Services\CustomerNotifications;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\CustomerTimeline;
 use App\Support\RepairIdentity;
 use App\Support\RepairTracking;
@@ -79,6 +80,7 @@ class RepairRequestController extends Controller
         }
 
         $request->session()->forget('repair_submission_token');
+        app(UnifiedNotifier::class)->repairRequestSubmitted($repair);
 
         return redirect()->route('repair.confirmation')
             ->with('repair_reference', $repair->tracking_reference);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\Chat\ChatAssets;
 use App\Support\Chat\ChatBridge;
 use App\Support\Chat\LegacyResponse;
@@ -178,6 +179,19 @@ class SupportChatController extends Controller
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         // Public duration only: no SQL, filenames, identities or request values.
         $response->headers->set('Server-Timing', 'chat;dur='.round((hrtime(true) - $started) / 1_000_000, 2));
+
+        if ($path === 'api.php'
+            && $request->isMethod('POST')
+            && $request->has('send_message')
+            && $status === 200
+            && is_array($payload)
+            && ($payload['status'] ?? null) === 'success'
+            && empty($payload['duplicate'])) {
+            $conversationId = (string) ($payload['conversation_id'] ?? $request->input('user_id', ''));
+            $messageText = (string) $request->input('message', '');
+            $senderName = auth('customer')->user()?->name;
+            app(UnifiedNotifier::class)->supportChatMessage($conversationId, $messageText, is_string($senderName) ? $senderName : null);
+        }
 
         return $response;
     }

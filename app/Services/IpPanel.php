@@ -63,6 +63,57 @@ final class IpPanel
         return $this->sendOutcome($phone, $code) === 'accepted';
     }
 
+    /**
+     * Send a general IPPanel pattern SMS for operational or customer notifications.
+     *
+     * @param  array<string, scalar>  $params
+     */
+    public function sendPattern(string $phone, string $patternCode, array $params): string
+    {
+        $sender = (string) config('customer.ippanel.sender', '');
+        if (! config('customer.ippanel.enabled')
+            || ! $this->hasKey()
+            || preg_match('/\A\+98[1-9][0-9]{5,11}\z/D', $sender) !== 1
+            || preg_match('/\A[A-Za-z0-9]{1,80}\z/D', $patternCode) !== 1
+            || preg_match('/\A09[0-9]{9}\z/D', $phone) !== 1
+            || $params === []) {
+            return 'rejected';
+        }
+
+        $cleanParams = [];
+        foreach ($params as $key => $value) {
+            if (! is_string($key) || preg_match('/\A[A-Za-z][A-Za-z0-9_]{0,39}\z/D', $key) !== 1) {
+                return 'rejected';
+            }
+            $cleanParams[$key] = (string) $value;
+        }
+
+        $started = hrtime(true);
+        try {
+            $response = $this->client()->post(self::BASE.'/send', [
+                'sending_type' => 'pattern',
+                'from_number' => $sender,
+                'code' => $patternCode,
+                'recipients' => ['+98'.substr($phone, 1)],
+                'params' => $cleanParams,
+            ]);
+            if ($this->accepted($response)) {
+                $this->record('accepted', $started, ['channel' => 'pattern_notification']);
+
+                return 'accepted';
+            }
+            $category = $this->failure($response);
+            $this->record($category, $started, ['channel' => 'pattern_notification', 'http_status' => $response->status()]);
+
+            return in_array($response->status(), [400, 401, 402, 403, 404, 422, 429], true)
+                || ($response->successful() && $response->json('meta.status') === false) ? 'rejected' : 'uncertain';
+        } catch (\Throwable) {
+            $this->record('transport_or_response', $started, ['channel' => 'pattern_notification']);
+        }
+
+        return 'uncertain';
+    }
+
     public function sendOutcome(string $phone, string $code): string
     {
         if (! config('customer.ippanel.enabled') || ! $this->configured()
