@@ -29,7 +29,7 @@ class PublicWebsiteTest extends TestCase
         $xpath = new DOMXPath($document);
         $this->assertSame(1, $xpath->query('//h1')->length);
         $expected = in_array($uri, ['/terms', '/privacy'], true) ? 0 : 1;
-        $this->assertSame($expected, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a[@aria-current="page"]')->length);
+        $this->assertSame($expected, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a[@aria-current="page"] | //header//nav[@aria-label="ناوبری اصلی"]/div[@data-desktop-shop-dropdown]/a[@aria-current="page"]')->length);
     }
 
     public function test_retired_general_pages_are_not_redirected_or_linked(): void

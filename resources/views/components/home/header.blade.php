@@ -5,6 +5,7 @@
     request()->attributes->set('customer_header_rendered', true);
     $customerAccount = app(\App\Services\CustomerLogin::class)->authenticatedAccount(request());
     $activeCategory = request()->routeIs('products.index') ? request()->query('category') : null;
+    $shopCategories = \App\Enums\ProductCategory::storefrontCases();
     $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما'], ['articles.index', 'articles.*', 'مقاله‌ها']];
 @endphp
 
@@ -13,7 +14,32 @@
         <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
         <nav aria-label="ناوبری اصلی" class="np-nav">
             @foreach ($navigation as [$route, $active, $label])
-                <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
+                @if ($route === 'products.index')
+                    <div class="np-nav__item np-nav__item--dropdown" data-desktop-shop-dropdown>
+                        <a href="{{ route($route) }}" class="np-nav__trigger" @if (request()->routeIs($active)) aria-current="page" @endif>
+                            <span>{{ $label }}</span>
+                            <x-storefront.icon name="chevron-down" class="np-nav__chevron" />
+                        </a>
+                        <div class="np-nav__dropdown" role="region" aria-label="دسته‌بندی‌های فروشگاه">
+                            <div class="np-nav__dropdown-list">
+                                @foreach ($shopCategories as $category)
+                                    <a href="{{ route('products.index', ['category' => $category->value]) }}" @if ($activeCategory === $category->value) aria-current="page" @endif>
+                                        <span>{{ $category->label() }}</span>
+                                        <x-storefront.icon name="arrow" class="np-nav__dropdown-arrow" />
+                                    </a>
+                                @endforeach
+                            </div>
+                            <div class="np-nav__dropdown-footer">
+                                <a href="{{ route('products.index') }}" class="np-nav__dropdown-all" @if (request()->routeIs('products.*') && ! $activeCategory) aria-current="page" @endif>
+                                    <span>مشاهده همه محصولات</span>
+                                    <x-storefront.icon name="arrow" class="np-nav__dropdown-arrow" />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
+                @endif
             @endforeach
         </nav>
         <div class="np-header__actions">
