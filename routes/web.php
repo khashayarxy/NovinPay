@@ -20,6 +20,7 @@ use App\Http\Controllers\ArticleController as PublicArticleController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\CustomerAccountController;
+use App\Http\Controllers\CustomerThreePathAuthController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PageController;
@@ -95,6 +96,15 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
     Route::post('otp', [$controller, 'send'])->block(20, 15)->middleware('throttle:customer-otp')->name('otp');
     Route::post('verify', [$controller, 'verify'])->block(20, 15)->middleware('throttle:customer-verify')->name('verify');
     Route::post('password-login', [$controller, 'passwordLogin'])->block(20, 15)->middleware('throttle:customer-password')->name('password.login');
+
+    $threePath = CustomerThreePathAuthController::class;
+    Route::post('email/start', [$threePath, 'emailStart'])->block(20, 15)->middleware('throttle:customer-otp')->name('email.start');
+    Route::post('email/otp', [$threePath, 'emailResend'])->block(20, 15)->middleware('throttle:customer-otp')->name('email.otp');
+    Route::post('email/restart', [$threePath, 'emailRestart'])->block(20, 15)->name('email.restart');
+    Route::post('email/verify', [$threePath, 'emailVerify'])->block(20, 15)->middleware('throttle:customer-verify')->name('email.verify');
+    Route::post('email/password-login', [$threePath, 'emailPasswordLogin'])->block(20, 15)->middleware('throttle:customer-password')->name('email.password.login');
+    Route::get('google/redirect', [$threePath, 'googleRedirect'])->middleware('throttle:30,1')->name('google.redirect');
+    Route::get('google/callback', [$threePath, 'googleCallback'])->middleware('throttle:30,1')->name('google.callback');
     Route::middleware(EnsureCustomerSession::class)->group(function () use ($controller): void {
         Route::get('/', [$controller, 'index'])->name('index');
         Route::get('/repairs/requests/{record}', [$controller, 'repairRequest'])->where('record', '[A-Za-z0-9-]{1,35}')->name('repairs.request');

@@ -11,7 +11,9 @@ use App\Models\FinancialDocument;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
+use App\Services\CustomerEmailLogin;
 use App\Services\CustomerLogin;
+use App\Services\GoogleAuthService;
 use App\Services\LegacyCartHold;
 use App\Services\TestCustomerReset;
 use App\Support\CrmAccess;
@@ -65,6 +67,11 @@ class CustomerAccountController extends Controller
         $state = $phone ? $login->challengeState($phone, $pending) : null;
         $active = $state !== null;
 
+        $email = $request->session()->get('customer_login_email');
+        $emailPending = is_string($email) ? $request->session()->get('customer_email_challenge') : null;
+        $emailState = is_string($email) ? app(CustomerEmailLogin::class)->challengeState($email, $emailPending) : null;
+        $emailChannel = $request->query('channel') === 'email' && (bool) config('customer.email_auth_enabled', true);
+
         return response()->view('account.login', [
             'phone' => $phone,
             'flow' => CustomerLoginFlow::token($request),
@@ -75,6 +82,12 @@ class CustomerAccountController extends Controller
             'resendAt' => $phone ? (int) $request->session()->get('customer_resend_at', 0) : 0,
             'retryUntil' => $request->session()->get('customer_retry_until', []),
             'retryReason' => $request->session()->get('customer_retry_reason', []),
+            'channel' => $emailChannel ? 'email' : 'phone',
+            'emailAuthEnabled' => (bool) config('customer.email_auth_enabled', true),
+            'loginEmail' => is_string($email) ? $email : null,
+            'emailChallengeId' => $emailState ? $emailPending : null,
+            'emailChallenge' => $emailState !== null,
+            'googleEnabled' => app(GoogleAuthService::class)->configured(),
         ]);
     }
 
