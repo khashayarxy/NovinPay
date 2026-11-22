@@ -9,14 +9,12 @@ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=docu
 const frame=document.createElement('iframe');frame.title='پشتیبانی';frame.src=new URL('support-widget.php',root);frame.hidden=true;frame.setAttribute('allow','clipboard-write');
 frame.id='supportWidgetFrame';frame.dataset.supportFrame='';frame.dataset.state='closed';frame.inert=true;button.setAttribute('aria-controls',frame.id);
 const overlays=window.StorefrontOverlays;
+const isMobile=()=>matchMedia('(max-width:700px)').matches;
 const dialog=overlays&&typeof window.HTMLDialogElement?.prototype.showModal==='function'?document.createElement('dialog'):null;
 if(dialog){
  dialog.id='support-chat-dialog';
  dialog.className='storefront-support-dialog';
  dialog.setAttribute('aria-label','گفت‌وگو با پشتیبانی');
- button.setAttribute('aria-haspopup','dialog');
- button.setAttribute('aria-controls',dialog.id);
- dialog.append(frame);
 }
 const badge=document.createElement('span');badge.hidden=true;badge.className='support-launcher-badge';button.append(badge);
 let sourcePaths=[],open=false,transition=0,closingTimer=null;const visibility=()=>frame.contentWindow.postMessage({type:'support-widget-visibility',visible:open,source_path:sourcePaths.includes(location.pathname)?location.pathname:null},location.origin);
@@ -28,22 +26,36 @@ const close=(immediate=false)=>{++transition;open=false;frame.inert=true;frame.d
 const attention=()=>{frame.contentWindow.postMessage({type:'support-widget-attention'},location.origin);if(!open)button.focus({preventScroll:true});};
 let fitFrame=0;const fit=()=>{if(fitFrame)return;fitFrame=requestAnimationFrame(()=>{fitFrame=0;applyFit();});};const applyFit=()=>{const v=window.visualViewport;if(innerWidth>599||!v||Math.abs(v.scale-1)>.01){frame.style.removeProperty('top');frame.style.removeProperty('height');frame.style.removeProperty('bottom');return;}frame.style.top=(v.offsetTop+4)+'px';frame.style.bottom='auto';frame.style.height=Math.max(1,v.height-8)+'px';};
 window.visualViewport?.addEventListener('resize',fit);window.visualViewport?.addEventListener('scroll',fit);addEventListener('resize',fit);fit();addEventListener('focus',fit);addEventListener('pageshow',fit);frame.addEventListener('load',()=>{try{frame.contentDocument.addEventListener('focusin',fit);frame.contentDocument.addEventListener('focusout',fit);}catch{}});
-const requestClose=()=>dialog?overlays.close():close();
-button.onclick=()=>open?requestClose():dialog?overlays.open(dialog,button):show();
+const requestClose=()=>(dialog&&dialog.open)?overlays.close():close();
+const openWidget=()=>{
+ if(dialog&&isMobile()){
+  if(frame.parentNode!==dialog)dialog.append(frame);
+  button.setAttribute('aria-haspopup','dialog');
+  button.setAttribute('aria-controls',dialog.id);
+  overlays.open(dialog,button);
+ }else{
+  if(frame.parentNode!==document.body)document.body.append(frame);
+  button.removeAttribute?.('aria-haspopup');
+  button.setAttribute('aria-controls',frame.id);
+  show();
+ }
+};
+button.onclick=()=>open?requestClose():openWidget();
+const closeFromFrame=event=>{
+ if(event.key!=='Escape'||event.defaultPrevented||event.isComposing)return;
+ event.preventDefault();requestClose();
+};
+frame.addEventListener('load',()=>{try{frame.contentDocument?.addEventListener('keydown',closeFromFrame);}catch{}});
 if(dialog){
  overlays.register(dialog,{show,hide:()=>close(true),surface:frame});
- const closeFromFrame=event=>{
-  if(event.key!=='Escape'||event.defaultPrevented||event.isComposing)return;
-  event.preventDefault();requestClose();
- };
- frame.addEventListener('load',()=>frame.contentDocument?.addEventListener('keydown',closeFromFrame));
 }
 // The iframe remains the theme authority; accept only its same-origin resolution.
 addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow||event.data?.type!=='support-widget-theme'||!['light','dark'].includes(event.data.resolved))return;frame.dataset.theme=event.data.resolved;});
 frame.addEventListener('load',visibility);
 addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow)return;if(event.data?.type==='support-customer-open')attention();if(event.data?.type==='support-widget-ready')visibility();if(event.data?.type==='support-unread'&&Number.isSafeInteger(event.data.count)&&event.data.count>=0){badge.hidden=event.data.count===0;badge.textContent=event.data.count>999?'۹۹۹+':event.data.count.toLocaleString('fa-IR');button.setAttribute('aria-label',event.data.count?`پشتیبانی، ${event.data.count} پیام خوانده‌نشده`:'پشتیبانی');}});
 addEventListener('message',event=>{if(open&&event.origin===location.origin&&event.source===frame.contentWindow&&event.data==='support-widget-close')requestClose();});
-document.body.append(button,dialog||frame);
+document.body.append(button,frame);
+if(dialog)document.body.append(dialog);
 const accentVisibility=()=>button.dataset.accentPaused=String(document.hidden);document.addEventListener('visibilitychange',accentVisibility);accentVisibility();
 fetch(new URL('api.php?widget_config=1',root),{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(c=>{sourcePaths=Array.isArray(c.source_paths)?c.source_paths:[];visibility();if(c.customer_v2===true||c.local_v2===true){button.style.background='#0866ff';button.dataset.supportV2Launcher='1';frame.dataset.supportV2Frame='1';}else if(/^#[a-f0-9]{6}$/i.test(c.color))button.style.background=c.color;button.title='پشتیبانی '+c.name;}).catch(()=>{});
 
