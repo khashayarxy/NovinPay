@@ -8,21 +8,12 @@
 
 /*
 |-------------------------------------------------------------------------------
-| IRANYekanX — Farsi-numeral web font (Variable Font with Dots-3 + static 400/500/700 fallback)
+| IRANYekanX — static Farsi-numeral web font (Regular 400, Medium 500, Bold 700)
 |-------------------------------------------------------------------------------
 | Commercial WOFF2 binaries live under public/fonts/iranyekanx/ (gitignored).
-| Static IRANYekanX (400/500/700) and static Vazirmatn (OFL, bundled from npm)
-| remain as graceful fallbacks when variable fonts or local binaries are absent.
+| Static Vazirmatn (OFL, bundled from npm) remains as the graceful fallback
+| whenever local commercial fonts are not present.
 */
-@font-face {
-    font-family: 'IRANYekanXVF';
-    src: url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2-variations'),
-        url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2');
-    font-weight: 100 1000;
-    font-style: normal;
-    font-display: swap;
-}
-
 @font-face {
     font-family: 'IRANYekanX';
     src: url('/fonts/iranyekanx/IRANYekanXFaNum-Regular.woff2') format('woff2');
@@ -92,16 +83,6 @@
     --site-font-fallback: 'Vazirmatn', Tahoma, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --site-font-family: 'IRANYekanX', var(--site-font-fallback);
-}
-
-@supports (font-variation-settings: normal) {
-    :root {
-        --site-font-family: 'IRANYekanXVF', 'IRANYekanX', var(--site-font-fallback);
-    }
-
-    html {
-        font-variation-settings: 'dots' 3;
-    }
 }
 
 @theme static {
