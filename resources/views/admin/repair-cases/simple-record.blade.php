@@ -34,7 +34,7 @@
 </header>
 <x-admin.errors />
 @if($customer)
-<section class="admin-panel mb-3" aria-labelledby="repair-device-context">
+<section class="admin-panel repair-hero-card mb-4" aria-labelledby="repair-device-context">
     <div class="admin-panel-heading">
         <h2 id="repair-device-context">اطلاعات پذیرش</h2>
         @can('customers.view')
@@ -48,11 +48,11 @@
     <dl class="admin-record-facts repair-intake-facts">
         <div>
             <dt>مشتری</dt>
-            <dd><strong>{{ $case->customer_name }}</strong></dd>
+            <dd><strong class="repair-hero-name">{{ $case->customer_name }}</strong></dd>
         </div>
         <div>
             <dt>شماره موبایل</dt>
-            <dd><a class="repair-phone-link" href="tel:{{ $case->contact_phone }}" dir="ltr"><bdi>{{ \App\Support\FaNumber::digits($case->contact_phone) }}</bdi></a></dd>
+            <dd><a class="repair-phone-chip" href="tel:{{ $case->contact_phone }}" dir="ltr"><bdi>{{ \App\Support\FaNumber::digits($case->contact_phone) }}</bdi></a></dd>
         </div>
         <div>
             <dt>برند و مدل دستگاه</dt>
@@ -61,14 +61,14 @@
         @if($case->device_serial)
         <div>
             <dt>شماره سریال</dt>
-            <dd><bdi dir="ltr">{{ $case->device_serial }}</bdi></dd>
+            <dd><bdi dir="ltr" class="repair-code-chip">{{ $case->device_serial }}</bdi></dd>
         </div>
         @endif
-        <div class="repair-fact--full">
+        <div class="repair-fact--full repair-callout">
             <dt>شرح مشکل دستگاه</dt>
             <dd class="whitespace-pre-line">{{ $case->issue }}</dd>
         </div>
-        <div class="repair-fact--full">
+        <div class="repair-fact--full repair-callout">
             <dt>وضعیت ظاهری</dt>
             <dd class="whitespace-pre-line">{{ $case->physical_condition }}</dd>
         </div>

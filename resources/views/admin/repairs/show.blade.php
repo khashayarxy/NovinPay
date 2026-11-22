@@ -36,15 +36,17 @@
         </dl>
         <p class="admin-hint">سوابق هزینه، تعمیر و تحویل در پروندهٔ فیزیکی جداگانه نگهداری می‌شوند.</p>
     </section>
-    <section class="admin-panel" aria-labelledby="customer-data-title">
+    <section class="admin-panel repair-hero-card" aria-labelledby="customer-data-title">
         @if($showCustomerData)
-            <h2 id="customer-data-title">اطلاعات مشتری و دستگاه</h2>
+            <div class="admin-panel-heading">
+                <h2 id="customer-data-title">اطلاعات مشتری و دستگاه</h2>
+            </div>
             <dl class="admin-record-facts repair-intake-facts">
-                <div><dt>نام مشتری</dt><dd><strong>{{ $repair->customer_name }}</strong></dd></div>
-                <div><dt>شماره موبایل</dt><dd><a class="repair-phone-link" href="tel:{{ $repair->contact_phone }}" dir="ltr"><bdi>{{ \App\Support\FaNumber::digits($repair->contact_phone) }}</bdi></a></dd></div>
+                <div><dt>نام مشتری</dt><dd><strong class="repair-hero-name">{{ $repair->customer_name }}</strong></dd></div>
+                <div><dt>شماره موبایل</dt><dd><a class="repair-phone-chip" href="tel:{{ $repair->contact_phone }}" dir="ltr"><bdi>{{ \App\Support\FaNumber::digits($repair->contact_phone) }}</bdi></a></dd></div>
                 <div><dt>برند</dt><dd><bdi dir="ltr">{{ $repair->device_brand->value }}</bdi></dd></div>
                 <div><dt>مدل اعلام‌شده</dt><dd><bdi dir="auto">{{ $repair->device_model }}</bdi></dd></div>
-                <div class="repair-fact--full"><dt>شرح مشکل دستگاه</dt><dd class="whitespace-pre-line">{{ $repair->issue }}</dd></div>
+                <div class="repair-fact--full repair-callout"><dt>شرح مشکل دستگاه</dt><dd class="whitespace-pre-line">{{ $repair->issue }}</dd></div>
             </dl>
             <p class="admin-hint">مشاهدهٔ این اطلاعات در تاریخچهٔ فعالیت ثبت می‌شود.</p>
         @else
