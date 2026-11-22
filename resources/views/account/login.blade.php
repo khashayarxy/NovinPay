@@ -28,10 +28,12 @@
         default => null,
     };
 @endphp
-<div class="np-auth-shell">
+<div class="np-auth-shell" data-auth-shell>
     <div class="np-auth-backdrop" aria-hidden="true"></div>
-    <div class="np-auth">
-        <section class="np-auth__card" aria-labelledby="auth-title">
+    <div class="np-auth-split">
+        <div class="np-auth-form-pane">
+            <div class="np-auth">
+                <section class="np-auth__card" aria-labelledby="auth-title">
             <a href="{{ route('home') }}" class="np-auth__logo" aria-label="صفحه اصلی نوین‌پی"><x-home.wordmark /></a>
             <div class="np-account-enter">
                 <h1 id="auth-title">{{ $heading }}</h1>
@@ -192,8 +194,110 @@
                     </div>
                 @endif
             </div>
-        </section>
+                </section>
+            </div>
+        </div>
+
+        <aside class="np-auth-showcase" aria-hidden="true">
+            <div class="np-auth-showcase__glow"></div>
+            <div class="np-auth-showcase__visual">
+                <img src="{{ asset('images/home/novinpay-terminal-clean-640.webp') }}" alt="" width="420" height="420" decoding="async" class="np-auth-showcase__img">
+            </div>
+            <div class="np-auth-glass">
+                <span class="np-auth-glass__eyebrow">سامانه مشتریان نوین‌پی</span>
+                <h2>فروش، پشتیبانی و تعمیرات تخصصی کارتخوان</h2>
+                <p>مدیریت یکپارچه سفارش‌ها، پیگیری لحظه‌ای وضعیت تعمیر دستگاه و ارتباط مستقیم با کارشناسان فنی در یک پنل امن.</p>
+                <div class="np-auth-glass__pills">
+                    <span>پیگیری آنلاین تعمیرات</span>
+                    <span>تضمین اصالت و گارانتی</span>
+                    <span>پشتیبانی تخصصی</span>
+                </div>
+            </div>
+        </aside>
     </div>
+
+    @if(app()->environment('local'))
+        <style>
+            @font-face {
+                font-family: 'DanaVF';
+                src: url('/fonts/DanaVF.woff2') format('woff2-variations'), url('/fonts/DanaVF.woff2') format('woff2');
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: 'IRANSansXVF';
+                src: url('/fonts/IRANSansXVFaNum.woff2') format('woff2-variations'), url('/fonts/IRANSansXFaNum-Regular.woff2') format('woff2');
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: 'IRANYekanXVF';
+                src: url('/fonts/IRANYekanXVFaNumVF.woff2') format('woff2-variations'), url('/fonts/IRANYekanXVFaNumVF.woff2') format('woff2');
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: swap;
+            }
+            [data-auth-shell][data-local-font="dana"],
+            [data-auth-shell][data-local-font="dana"] :is(h1, h2, p, label, input, button, a, span, small) { font-family: 'DanaVF', sans-serif !important; font-feature-settings: "ss02" 1; }
+            [data-auth-shell][data-local-font="iransansx"],
+            [data-auth-shell][data-local-font="iransansx"] :is(h1, h2, p, label, input, button, a, span, small) { font-family: 'IRANSansXVF', sans-serif !important; }
+            [data-auth-shell][data-local-font="iranyekanx"],
+            [data-auth-shell][data-local-font="iranyekanx"] :is(h1, h2, p, label, input, button, a, span, small) { font-family: 'IRANYekanXVF', sans-serif !important; }
+            .np-local-font-bar {
+                position: fixed;
+                inset-block-end: 14px;
+                inset-inline-start: 14px;
+                z-index: 40;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 8px;
+                border-radius: 999px;
+                background: rgb(11 25 46 / 88%);
+                border: 1px solid rgb(255 255 255 / 16%);
+                backdrop-filter: blur(10px);
+                box-shadow: 0 10px 28px rgb(0 0 0 / 28%);
+            }
+            .np-local-font-bar button {
+                border: 0;
+                border-radius: 999px;
+                padding: 5px 11px;
+                background: transparent;
+                color: #cbd5e1;
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: background-color 140ms ease, color 140ms ease;
+            }
+            .np-local-font-bar button.is-active { background: #1d6bf3; color: #fff; }
+        </style>
+        <div class="np-local-font-bar" data-local-font-switcher aria-label="تست فونت محلی">
+            <button type="button" data-font-choice="default" class="is-active">Vazirmatn</button>
+            <button type="button" data-font-choice="dana">Dana VF</button>
+            <button type="button" data-font-choice="iransansx">IRANSansX</button>
+            <button type="button" data-font-choice="iranyekanx">IRANYekanX VF</button>
+        </div>
+        <script>
+            (function () {
+                var shell = document.querySelector('[data-auth-shell]');
+                var bar = document.querySelector('[data-local-font-switcher]');
+                if (!shell || !bar) return;
+                var buttons = bar.querySelectorAll('button[data-font-choice]');
+                function apply(choice) {
+                    if (choice && choice !== 'default') { shell.setAttribute('data-local-font', choice); }
+                    else { shell.removeAttribute('data-local-font'); }
+                    buttons.forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-font-choice') === (choice || 'default')); });
+                    try { window.localStorage.setItem('novinpay_local_auth_font', choice || 'default'); } catch (e) {}
+                }
+                try { apply(window.localStorage.getItem('novinpay_local_auth_font') || 'default'); } catch (e) {}
+                buttons.forEach(function (b) {
+                    b.addEventListener('click', function () { apply(b.getAttribute('data-font-choice')); });
+                });
+            })();
+        </script>
+    @endif
 </div>
 <script src="{{ asset('js/customer-otp.js?v=6') }}" defer></script>
 @endsection
