@@ -1,6 +1,6 @@
 @props(['account'])
 @php
-    $allows = fn ($abilities) => collect((array) $abilities)->every(fn ($ability) => $account->isSuperAdmin()
+    $allows = fn ($abilities) => collect((array) $abilities)->every(fn ($ability) => $account->hasFullAccess()
         || (\App\Enums\AdminPermission::tryFrom($ability) !== null && in_array($ability, $account->permissions ?? [], true)));
     $canViewProducts = $allows('products.view');
     $groups = $account->must_change_password ? [] : [

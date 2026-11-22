@@ -13,7 +13,7 @@ final class AdminAccess
         // Query persisted grants every time; never trust a cached relation or email.
         return $user->exists ? AdminAccount::query()->where('user_id', $user->getKey())
             ->where('is_active', true)->where(function ($query): void {
-                $query->where(fn ($staff) => $staff->where('role', 'staff')->whereNull('owner_slot'))
+                $query->where(fn ($staff) => $staff->whereIn('role', ['staff', 'manager'])->whereNull('owner_slot'))
                     ->orWhere(fn ($owner) => $owner->where('role', 'super_admin')->where('owner_slot', 1));
             })->first() : null;
     }
@@ -22,7 +22,7 @@ final class AdminAccess
     {
         $account = self::account($user);
 
-        return $account && ($account->isSuperAdmin() || in_array($permission->value, $account->permissions ?? [], true));
+        return $account && ($account->hasFullAccess() || in_array($permission->value, $account->permissions ?? [], true));
     }
 
     public static function landingUrl(User $user): string

@@ -58,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
         Gate::define('access-admin', fn (User $user): bool => AdminAccess::account($user) !== null);
-        Gate::define('staff.manage', fn (User $user): bool => AdminAccess::account($user)?->isSuperAdmin() ?? false);
+        Gate::define('staff.manage', fn (User $user): bool => AdminAccess::account($user)?->hasFullAccess() ?? false);
         foreach (AdminPermission::cases() as $permission) {
             Gate::define($permission->value, fn (User $user): bool => AdminAccess::allows($user, $permission));
         }

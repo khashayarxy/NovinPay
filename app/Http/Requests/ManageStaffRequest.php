@@ -22,6 +22,7 @@ class ManageStaffRequest extends FormRequest
             'password' => [$this->isMethod('post') ? 'required' : 'nullable', 'string', 'max:255', 'confirmed', Password::min(12)->mixedCase()->numbers()],
             'current_password' => ['required', 'string', 'max:255', 'current_password'],
             'is_active' => ['required', 'boolean'],
+            'access_level' => ['nullable', 'string', Rule::in(['staff', 'manager'])],
             'permissions' => ['nullable', 'array', 'max:'.count(AdminPermission::cases())],
             'permissions.*' => ['required', 'string', 'distinct', Rule::enum(AdminPermission::class)],
             'role' => ['prohibited'], 'owner_slot' => ['prohibited'], 'user_id' => ['prohibited'],

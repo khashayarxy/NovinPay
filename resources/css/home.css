@@ -48,7 +48,7 @@
 .np-service h3 { font-size: 12px; font-weight: 700; line-height: 1.7; }
 .np-service p { color: #52678b; font-size: 10px; line-height: 1.8; margin-top: 3px; }
 .np-brands { align-self: center; text-align: center; }
-.np-brands__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.np-brands__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
 .np-brand { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 1px solid #e3ecf8; border-radius: 13px; min-height: 104px; padding: 12px 6px; }
 .np-brand:hover { background: #f8fbff; border-color: #c2d9f3; }
 .np-brand > span:first-child { font-family: Arial, sans-serif; font-size: clamp(20px, calc(var(--storefront-unlocked-viewport, 100vw) * 0.023), 30px); font-weight: 700; color: #151b48; letter-spacing: -.8px; }
@@ -155,10 +155,10 @@
 .public-site .np-location address { max-width: 480px; font-size: 13px; line-height: 2.1; margin-block: 12px; }
 .np-location__directions { display: flex; align-items: stretch; background: #f5faff; min-width: 0; padding: 0; text-align: center; }
 .np-location__map { display: block; width: 100%; border: 0; }
-.np-map-preview { position: relative; flex: 1; min-height: 280px; overflow: hidden; background: #edf5fc; touch-action: pan-y pinch-zoom; }
+.np-map-preview { position: relative; flex: 1; min-height: 280px; overflow: hidden; background: #edf5fc; color-scheme: light; touch-action: pan-y pinch-zoom; }
 /* A translucent surface keeps provider streets readable without backdrop filters. */
 .np-map-overlay { position: absolute; inset: 0; z-index: 1; background: rgba(255, 255, 255, .45); }
-.np-map-frame { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; }
+.np-map-frame { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; border: 0; background: #edf5fc; color-scheme: light; pointer-events: none; }
 [data-map-active="true"] .np-map-frame { pointer-events: auto; }
 [data-map-active="true"] .np-map-preview { touch-action: auto; }
 .np-map-overlay[hidden] { display: none; }
@@ -227,7 +227,7 @@
 .homepage .np-trust__item :is(h2, p) { text-wrap: balance; }
 .homepage .np-services { padding-block: 30px 36px; }
 .homepage .np-brands { padding-bottom: 36px; }
-.homepage .np-brands__grid { max-width: 780px; margin-inline: auto; margin-top: 20px; gap: 20px; }
+.homepage .np-brands__grid { max-width: 960px; margin-inline: auto; margin-top: 20px; gap: 18px; }
 .homepage .np-brand { min-height: 104px; box-shadow: none; }
 .np-customer-header { position: relative; justify-self: end; margin-inline-start: auto; flex: 0 0 auto; }
 .np-customer-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 6px 9px; border: 1px solid #d1e5f7; border-radius: 10px; background: #fff; color: #174c80; font-size: 12px; font-weight: 600; line-height: 1.7; white-space: nowrap; cursor: pointer; list-style: none; }

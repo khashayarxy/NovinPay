@@ -3,11 +3,13 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\AdminAction;
+use App\Enums\AdminPermission;
 use App\Models\AdminAccount;
 use App\Models\AdminActivity;
 use App\Models\Product;
 use App\Models\RepairRequest;
 use App\Models\User;
+use App\Services\StaffAdministration;
 use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -402,5 +404,126 @@ class AdminFoundationTest extends TestCase
         $this->assertDatabaseCount('users', 1);
         $this->assertDatabaseCount('admin_accounts', 1);
         $this->assertDatabaseCount('admin_activities', 0);
+    }
+
+    public function test_colleague_can_be_created_and_updated_as_full_manager_with_safety_guards(): void
+    {
+        $owner = $this->owner();
+
+        $this->actingAs($owner)->post('/admin/staff', $this->payload([
+            'name' => 'مدیر جدید',
+            'email' => 'manager@novinpay.test',
+            'access_level' => 'manager',
+            'permissions' => [],
+        ]))->assertRedirect(route('admin.staff.index'));
+
+        $managerUser = User::query()->where('email', 'manager@novinpay.test')->firstOrFail();
+        $managerAccount = $this->grant($managerUser);
+        $this->assertSame('manager', $managerAccount->role);
+        $this->assertNull($managerAccount->owner_slot);
+        $this->assertTrue($managerAccount->isManager());
+        $this->assertTrue($managerAccount->hasFullAccess());
+        $this->assertCount(count(AdminPermission::cases()), $managerAccount->permissions);
+
+        $this->actingAs($owner)->get('/admin/staff')
+            ->assertOk()
+            ->assertSee('مدیر جدید')
+            ->assertSee('دسترسی کامل');
+
+        // Clear forced password change so the manager can operate admin routes.
+        $managerAccount->must_change_password = false;
+        $managerAccount->save();
+
+        // Manager has full access and can view /admin/staff, but cannot edit self or protected super_admin.
+        $this->actingAs($managerUser)->get('/admin/staff')->assertOk();
+        $this->actingAs($managerUser)->get('/admin/staff/'.$managerAccount->id.'/edit')->assertForbidden();
+        $this->actingAs($managerUser)->put('/admin/staff/'.$managerAccount->id, $this->payload([
+            'email' => $managerUser->email,
+            'access_level' => 'staff',
+            'permissions' => ['products.view'],
+            'current_password' => self::STAFF_PASSWORD,
+        ]))->assertForbidden();
+        $this->actingAs($managerUser)->get('/admin/staff/'.$this->grant($owner)->id.'/edit')->assertForbidden();
+
+        // Owner can demote manager to staff with custom permissions, then promote back to manager.
+        $this->actingAs($owner)->put('/admin/staff/'.$managerAccount->id, $this->payload([
+            'name' => 'همکار محدود',
+            'email' => $managerUser->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'access_level' => 'staff',
+            'permissions' => ['products.view'],
+        ]))->assertRedirect(route('admin.staff.index'));
+
+        $managerAccount->refresh();
+        $this->assertSame('staff', $managerAccount->role);
+        $this->assertSame(['products.view'], $managerAccount->permissions);
+
+        $this->actingAs($owner)->put('/admin/staff/'.$managerAccount->id, $this->payload([
+            'name' => 'مدیر مجدد',
+            'email' => $managerUser->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'access_level' => 'manager',
+            'permissions' => [],
+        ]))->assertRedirect(route('admin.staff.index'));
+
+        $managerAccount->refresh();
+        $this->assertSame('manager', $managerAccount->role);
+        $this->assertCount(count(AdminPermission::cases()), $managerAccount->permissions);
+    }
+
+    public function test_last_active_manager_cannot_be_demoted_or_deactivated_if_owner_is_inactive(): void
+    {
+        $owner = $this->owner();
+        $ownerAccount = $this->grant($owner);
+
+        $manager1 = User::factory()->create(['email' => 'm1@novinpay.test', 'password' => 'ManagerPass1234']);
+        $m1Account = new AdminAccount;
+        $m1Account->user_id = $manager1->id;
+        $m1Account->role = 'manager';
+        $m1Account->owner_slot = null;
+        $m1Account->is_active = true;
+        $m1Account->must_change_password = false;
+        $m1Account->permissions = array_map(fn (AdminPermission $p): string => $p->value, AdminPermission::cases());
+        $m1Account->session_version = 1;
+        $m1Account->save();
+
+        // Simulate owner inactive so $m1Account is the sole active manager; service layer must block demotion.
+        $ownerAccount->is_active = false;
+        $ownerAccount->save();
+
+        $service = app(StaffAdministration::class);
+        $manager2 = User::factory()->create(['email' => 'm2@novinpay.test', 'password' => 'ManagerPass1234']);
+        $m2Account = new AdminAccount;
+        $m2Account->user_id = $manager2->id;
+        $m2Account->role = 'manager';
+        $m2Account->owner_slot = null;
+        $m2Account->is_active = true;
+        $m2Account->must_change_password = false;
+        $m2Account->permissions = array_map(fn (AdminPermission $p): string => $p->value, AdminPermission::cases());
+        $m2Account->session_version = 1;
+        $m2Account->save();
+
+        // Demoting m1 while m2 is active succeeds.
+        $service->save($manager2, [
+            'name' => $manager1->name,
+            'email' => $manager1->email,
+            'is_active' => true,
+            'access_level' => 'staff',
+            'permissions' => ['products.view'],
+            'current_password' => 'ManagerPass1234',
+        ], $m1Account);
+        $this->assertSame('staff', $m1Account->fresh()->role);
+
+        // Now m2 is the sole active manager; m2 attempting to demote or deactivate self is blocked with 403.
+        $this->actingAs($manager2)->put('/admin/staff/'.$m2Account->id, $this->payload([
+            'email' => $manager2->email,
+            'access_level' => 'staff',
+            'permissions' => ['products.view'],
+            'current_password' => 'ManagerPass1234',
+        ]))->assertForbidden();
+        $this->assertSame('manager', $m2Account->fresh()->role);
+        $this->assertTrue($m2Account->fresh()->is_active);
     }
 }

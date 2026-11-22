@@ -38,6 +38,6 @@ class RepairCasePolicy
             return false;
         }
 
-        return ! in_array($operation, ['inspect', 'work', 'start'], true) || AdminAccess::account($user)?->isSuperAdmin() || $repairCase->assigned_to === $user->id;
+        return ! in_array($operation, ['inspect', 'work', 'start'], true) || AdminAccess::account($user)?->hasFullAccess() || $repairCase->assigned_to === $user->id;
     }
 }

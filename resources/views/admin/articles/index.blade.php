@@ -12,6 +12,6 @@
 </form></section>
 <div class="article-card-list mt-4">
 @forelse($articles as $article)<article class="admin-panel"><div class="admin-panel-heading"><h2>{{ $article->draftVersion->title }}</h2><span class="repair-stage">{{ $article->published_version_id ? 'دارای نسخهٔ منتشرشده' : 'بدون انتشار' }}</span></div><p>{{ $article->draftVersion->category->name }} · نسخهٔ پیش‌نویس {{ \App\Support\FaNumber::digits($article->draftVersion->revision) }}</p>@if($article->published_version_id && $article->published_version_id!==$article->draft_version_id)<p class="admin-hint">تغییرات پیش‌نویس هنوز منتشر نشده‌اند.</p>@endif<p class="crm-code">{{ $article->slug }}</p><div class="admin-actions mt-4"><a class="btn btn-secondary" href="{{ route('admin.articles.preview',$article) }}">بازبینی و انتشار</a>@if($articleAllows('articles.manage'))<a class="btn btn-secondary" href="{{ route('admin.articles.edit',$article) }}">ویرایش پیش‌نویس</a>@endif</div></article>
-@empty<section class="admin-panel admin-empty"><h2>مقاله‌ای با این شرایط وجود ندارد</h2><p>برای شروع، دستهٔ فعال و سپس پیش‌نویس بسازید.</p></section>@endforelse
+@empty<x-admin.empty-state title="مقاله‌ای با این شرایط وجود ندارد" icon="photo" class="admin-panel">برای شروع، دستهٔ فعال و سپس پیش‌نویس بسازید.</x-admin.empty-state>@endforelse
 </div>{{ $articles->links() }}
 @endsection

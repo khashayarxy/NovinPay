@@ -12,12 +12,29 @@
     $staffEmail = old('email', $staff?->user->email);
     $staffEmail = is_string($staffEmail) ? $staffEmail : '';
     $activeChecked = in_array(old('is_active', $staff?->is_active ?? true), [true, 1, '1'], true);
+    $accessLevel = old('access_level', $staff?->isManager() ? 'manager' : 'staff');
+    $accessLevel = $accessLevel === 'manager' ? 'manager' : 'staff';
 @endphp
-<form method="post" action="{{ $staff ? route('admin.staff.update', $staff) : route('admin.staff.store') }}" class="admin-form admin-panel">
+<form method="post" action="{{ $staff ? route('admin.staff.update', $staff) : route('admin.staff.store') }}" class="admin-form admin-panel" data-staff-role-form>
     @csrf @if($staff) @method('PUT') @endif
     <div class="admin-form-grid"><div><label class="label" for="name">نام همکار</label><input class="input" id="name" name="name" value="{{ $staffName }}" required maxlength="100" autocomplete="off"></div><div><label class="label" for="staff-email">ایمیل ورود</label><input class="input" id="staff-email" name="email" type="email" dir="ltr" value="{{ $staffEmail }}" required maxlength="255" autocomplete="section-staff username"></div></div>
     <fieldset><legend>{{ $staff ? 'بازنشانی رمز عبور (اختیاری)' : 'رمز عبور اولیهٔ همکار' }}</legend><p class="admin-hint">حداقل ۱۲ کاراکتر شامل حروف بزرگ و کوچک لاتین و عدد. {{ $staff ? 'برای حفظ رمز عبور فعلی خالی بگذارید.' : 'رمز عبور را از مسیر امن به همکار بدهید؛ در اولین ورود باید آن را تغییر دهد.' }}</p><div class="admin-form-grid"><div><label class="label" for="password">رمز عبور همکار</label><input class="input" id="password" name="password" type="password" autocomplete="section-staff new-password" minlength="12" maxlength="255" @required(!$staff)></div><div><label class="label" for="password_confirmation">تکرار رمز عبور</label><input class="input" id="password_confirmation" name="password_confirmation" type="password" autocomplete="section-staff new-password" minlength="12" maxlength="255" @required(!$staff)></div></div></fieldset>
-    <fieldset><legend>مجوزهای دسترسی</legend><p class="admin-hint">ویرایش محصولات به مشاهدهٔ محصولات و دسترسی به اطلاعات مشتری به مشاهدهٔ درخواست‌ها نیاز دارد.</p><div class="admin-permissions">@foreach($permissions as $permission)<label><input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked(in_array($permission->value, $selectedPermissions, true))><span>{{ $permission->label() }}</span></label>@endforeach</div></fieldset>
+    <fieldset class="admin-role-fieldset">
+        <legend>نقش همکار</legend>
+        <div class="admin-segmented" role="radiogroup" aria-label="نقش همکار">
+            <label class="admin-segmented__option"><input type="radio" name="access_level" value="staff" @checked($accessLevel === 'staff')><span>کارمند</span></label>
+            <label class="admin-segmented__option"><input type="radio" name="access_level" value="manager" @checked($accessLevel === 'manager')><span>مدیر</span></label>
+        </div>
+        <p class="admin-manager-note" data-staff-manager-note @if($accessLevel !== 'manager') hidden @endif>دسترسی کامل به تمام بخش‌های پنل</p>
+    </fieldset>
+    <fieldset data-staff-permissions-panel @if($accessLevel === 'manager') hidden @endif>
+        <div class="admin-permissions-header">
+            <legend>مجوزهای دسترسی</legend>
+            <button type="button" class="admin-permissions-toggle" data-staff-toggle-all>انتخاب همه</button>
+        </div>
+        <p class="admin-hint">ویرایش محصولات به مشاهدهٔ محصولات و دسترسی به اطلاعات مشتری به مشاهدهٔ درخواست‌ها نیاز دارد.</p>
+        <div class="admin-permissions">@foreach($permissions as $permission)<label><input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked(in_array($permission->value, $selectedPermissions, true))><span>{{ $permission->label() }}</span></label>@endforeach</div>
+    </fieldset>
     <input type="hidden" name="is_active" value="0"><label class="admin-checkbox"><input type="checkbox" name="is_active" value="1" @checked($activeChecked)> حساب فعال باشد</label>
     <div class="admin-notice"><h2>تأیید مدیر کل</h2><p>ثبت تغییر، نشست‌های قبلی همکار را لغو می‌کند.</p><label class="label" for="current_password">رمز عبور فعلی مدیر کل</label><input class="input" id="current_password" name="current_password" type="password" autocomplete="section-owner current-password" required maxlength="255"></div>
     <div class="admin-actions"><button class="btn btn-primary" type="submit">{{ $staff ? 'ذخیرهٔ تغییرات' : 'ایجاد حساب همکار' }}</button><a class="btn btn-secondary" href="{{ route('admin.staff.index') }}">انصراف</a></div>

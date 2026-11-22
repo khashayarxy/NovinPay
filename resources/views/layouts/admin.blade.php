@@ -35,7 +35,7 @@
                         <span class="admin-topbar-divider" aria-hidden="true"></span>
                         <strong>@yield('title', 'داشبورد مدیریت')</strong>
                     </div>
-                    <div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : 'کارمند' }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج <x-home.icon name="arrow-left" /></button></form></div>
+                    <div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : ($adminAccount->isManager() ? 'مدیر' : 'کارمند') }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج <x-home.icon name="arrow-left" /></button></form></div>
                 </header>
                 <main id="main-content" class="admin-main" tabindex="-1">
                     @if(session('success'))<div class="admin-notice admin-notice--success" role="status"><x-home.icon name="check" />{{ session('success') }}</div>@endif
