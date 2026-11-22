@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'google' => [
+        'enabled' => (bool) env('GOOGLE_OAUTH_ENABLED', false),
+        'client_id' => (string) env('GOOGLE_CLIENT_ID', ''),
+        'client_secret' => (string) env('GOOGLE_CLIENT_SECRET', ''),
+        'redirect' => (string) env('GOOGLE_REDIRECT_URI', ''),
+    ],
+
 ];

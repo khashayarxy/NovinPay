@@ -35,18 +35,20 @@ class CustomerLogin
 
         return $account && $account->is_active
             && $account->session_version === $request->session()->get('customer_session_version')
-            && ($account->verified_at || $this->testAllowed($account->phone)) ? $account : null;
+            && ($account->verified_at || $account->email_verified_at || $this->testAllowed($account->phone)) ? $account : null;
     }
 
-    public function testAllowed(string $phone): bool
+    public function testAllowed(?string $phone): bool
     {
-        return in_array($phone, $this->testPhones(), true);
+        return is_string($phone) && $phone !== '' && in_array($phone, $this->testPhones(), true);
     }
 
     public function isTestAccount(CustomerAccount $account): bool
     {
-        return $account->verified_at === null && $this->testAllowed($account->phone)
-            && hash_equals($this->testDigest($account->phone), $account->phone_digest);
+        return $account->verified_at === null && $account->email_verified_at === null
+            && $this->testAllowed($account->phone)
+            && is_string($account->phone_digest)
+            && hash_equals($this->testDigest((string) $account->phone), $account->phone_digest);
     }
 
     public function testUsesSms(string $phone): bool
