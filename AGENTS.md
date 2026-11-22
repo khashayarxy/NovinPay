@@ -7,6 +7,12 @@
 - Use targeted `rg` searches. Read only the documents and code needed for the task; reuse existing runners and conventions instead of creating another framework. Do not repeat completed setup or tests without a changed input or unresolved failure.
 - Verify claims against current code, locks and CI. `docs/TASK.md` has older phase numbering; README setup snippets and dated release reports are historical, not the current roadmap or permission to run commands.
 
+## Execution ownership rule
+
+- The agent (Antigravity) is strictly responsible for performing all file edits, host uploads/transfers, deployment file syncing, and database creation/migrations.
+- Never instruct the user to manually upload files/zips via File Manager, manually edit files, or manually create databases when any automated, CLI, API, cPanel UAPI (using the authenticated DPAPI token in `C:\Users\Khashayar\AppData\Local\NovinPay-SecureAccess\cpanel-token.dpapi`), or MCP method can be used.
+- Only ask the user for explicit approval, cPanel Terminal execution when cPanel UAPI does not expose shell execution, or one-time credentials/access setup when direct execution is technically blocked.
+
 ## Authoritative project references
 
 For a new agent/session, start with [AI project handoff](docs/AI-PROJECT-HANDOFF.md) and [working preferences](docs/AI-WORKING-PREFERENCES.md). They distinguish dated evidence from open work; verify current Git/host state before relying on it. `CLAUDE.md` points to the same rules for Claude Code.
