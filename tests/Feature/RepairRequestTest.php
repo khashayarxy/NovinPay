@@ -279,4 +279,50 @@ class RepairRequestTest extends TestCase
         $this->post('/repair/track', [])->assertStatus(419);
         $this->assertDatabaseCount('repair_requests', 0);
     }
+
+    public function test_repair_page_renders_three_step_stepper_and_targets_first_error_step(): void
+    {
+        $this->get('/repair')
+            ->assertOk()
+            ->assertSee('data-repair-stepper', false)
+            ->assertSee('data-initial-step="1"', false)
+            ->assertSee('مشخصات دستگاه')
+            ->assertSee('نوع خرابی')
+            ->assertSee('اطلاعات تماس و ثبت')
+            ->assertSee('data-step="1"', false)
+            ->assertSee('data-step="2"', false)
+            ->assertSee('data-step="3"', false)
+            ->assertSee('چاپگر و رول کاغذ')
+            ->assertSee('TOPWISE');
+
+        $invalidIssue = $this->payload(['issue' => 'کوتاه']);
+        $this->followingRedirects()->post('/repair', $invalidIssue)
+            ->assertOk()
+            ->assertSee('data-initial-step="2"', false);
+
+        $invalidName = $this->payload(['customer_name' => 'ا']);
+        $this->followingRedirects()->post('/repair', $invalidName)
+            ->assertOk()
+            ->assertSee('data-initial-step="3"', false);
+    }
+
+    public function test_repair_stepper_submission_succeeds_with_new_brand_and_shows_copyable_confirmation(): void
+    {
+        $data = $this->payload([
+            'device_brand' => 'TOPWISE',
+            'device_model' => 'T1',
+            'issue' => 'مشکل چاپگر، کمرنگی چاپ یا گیر کردن رول کاغذ',
+        ]);
+
+        $this->post('/repair', $data)->assertRedirect(route('repair.confirmation'));
+        $repair = RepairRequest::query()->sole();
+        $this->assertSame('TOPWISE', $repair->device_brand->value);
+        $this->assertSame('T1', $repair->device_model);
+
+        $this->get('/repair/confirmation')
+            ->assertOk()
+            ->assertSee($repair->tracking_reference)
+            ->assertSee('repair-confirmation-code', false)
+            ->assertSee('کپی کد پیگیری');
+    }
 }

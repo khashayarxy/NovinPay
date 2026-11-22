@@ -47,6 +47,119 @@ document.addEventListener('DOMContentLoaded', () => {
         syncRole();
         syncToggleLabel();
     }
+    const repairStepper = document.querySelector('[data-repair-stepper]');
+    if (repairStepper instanceof HTMLFormElement) {
+        const steps = [...repairStepper.querySelectorAll('[data-step]')];
+        const indicators = [...repairStepper.querySelectorAll('[data-step-indicator]')];
+        const alertBox = repairStepper.querySelector('[data-step-alert]');
+        const brandRadios = [...repairStepper.querySelectorAll('input[name="device_brand"]')];
+        const modelInput = repairStepper.querySelector('#device_model');
+        const issueInput = repairStepper.querySelector('#issue');
+        const nameInput = repairStepper.querySelector('#customer_name');
+        const presetButtons = [...repairStepper.querySelectorAll('[data-issue-preset]')];
+        const summaryDevice = repairStepper.querySelector('[data-summary-device]');
+        const summaryIssue = repairStepper.querySelector('[data-summary-issue]');
+        let currentStep = Math.min(3, Math.max(1, Number(repairStepper.dataset.initialStep || 1)));
+
+        const showAlert = (message) => {
+            if (!alertBox) return;
+            alertBox.textContent = message;
+            alertBox.hidden = !message;
+        };
+
+        const syncSummary = () => {
+            const brand = brandRadios.find((r) => r.checked)?.value || '';
+            const model = (modelInput?.value || '').trim();
+            const issue = (issueInput?.value || '').trim();
+            if (summaryDevice) summaryDevice.textContent = [brand, model].filter(Boolean).join(' — ') || '—';
+            if (summaryIssue) summaryIssue.textContent = issue.length > 90 ? `${issue.slice(0, 90)}…` : (issue || '—');
+        };
+
+        const goToStep = (step) => {
+            currentStep = step;
+            showAlert('');
+            steps.forEach((panel) => {
+                panel.hidden = Number(panel.dataset.step) !== currentStep;
+            });
+            indicators.forEach((item) => {
+                const idx = Number(item.dataset.stepIndicator);
+                item.setAttribute('aria-current', idx === currentStep ? 'step' : 'false');
+                item.toggleAttribute('data-step-done', idx < currentStep);
+            });
+            if (currentStep === 3) syncSummary();
+        };
+
+        const validateStep = (step) => {
+            if (step === 1) {
+                const brand = brandRadios.find((r) => r.checked);
+                if (!brand) {
+                    showAlert('لطفاً برند دستگاه را انتخاب کنید.');
+                    brandRadios[0]?.focus();
+                    return false;
+                }
+                const model = (modelInput?.value || '').trim();
+                if (!model) {
+                    showAlert('لطفاً مدل دستگاه را وارد کنید.');
+                    modelInput?.focus();
+                    return false;
+                }
+            } else if (step === 2) {
+                const issue = (issueInput?.value || '').trim();
+                if (issue.length < 10) {
+                    showAlert('شرح مشکل دستگاه باید دست‌کم ۱۰ کاراکتر باشد.');
+                    issueInput?.focus();
+                    return false;
+                }
+            } else if (step === 3) {
+                const name = (nameInput?.value || '').trim();
+                if (name.length < 2) {
+                    showAlert('لطفاً نام و نام خانوادگی را وارد کنید.');
+                    nameInput?.focus();
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        presetButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                presetButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+                const presetText = button.dataset.issuePreset || '';
+                if (issueInput) {
+                    if (presetText) {
+                        issueInput.value = presetText;
+                    } else {
+                        issueInput.value = '';
+                        issueInput.focus();
+                    }
+                }
+                showAlert('');
+            });
+        });
+
+        repairStepper.querySelectorAll('[data-step-next]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                if (validateStep(currentStep)) goToStep(Math.min(3, currentStep + 1));
+            });
+        });
+
+        repairStepper.querySelectorAll('[data-step-prev]').forEach((btn) => {
+            btn.addEventListener('click', () => goToStep(Math.max(1, currentStep - 1)));
+        });
+
+        repairStepper.addEventListener('submit', (event) => {
+            for (const step of [1, 2, 3]) {
+                if (!validateStep(step)) {
+                    event.preventDefault();
+                    goToStep(step);
+                    validateStep(step);
+                    return;
+                }
+            }
+        });
+
+        goToStep(currentStep);
+    }
     const adminNavigation = document.querySelector('[data-admin-navigation]');
     if (adminNavigation instanceof HTMLDetailsElement) {
         const desktop = window.matchMedia('(min-width: 801px)');
