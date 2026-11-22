@@ -555,3 +555,114 @@ document.querySelectorAll('[data-desktop-shop-dropdown]').forEach((dropdown) => 
     dropdown.addEventListener('mouseleave', () => dropdown.classList.remove('is-dismissed'));
     dropdown.addEventListener('focusin', () => dropdown.classList.remove('is-dismissed'));
 });
+
+// Multi-step fintech checkout stepper & live Zibal submit label sync
+document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
+    const form = stepper.querySelector('[data-store-checkout]');
+    if (!(form instanceof HTMLFormElement)) return;
+    const panels = Array.from(stepper.querySelectorAll('[data-checkout-step]'));
+    const indicators = Array.from(stepper.querySelectorAll('[data-step-indicator]'));
+    if (panels.length < 3) return;
+
+    const submitBtn = form.querySelector('[data-checkout-submit]');
+    const step1Error = form.querySelector('[data-step1-error]');
+    const confirmDelivery = form.querySelector('[data-confirm-delivery]');
+    const confirmAddressRow = form.querySelector('[data-confirm-address-row]');
+    const confirmAddress = form.querySelector('[data-confirm-address]');
+    const confirmPayment = form.querySelector('[data-confirm-payment]');
+
+    const deliveryLabels = {
+        pickup: 'تحویل حضوری در فروشگاه',
+        tipax: 'ارسال با تیپاکس (پس‌کرایه)',
+        courier: 'ارسال با پیک',
+    };
+
+    const syncSummary = () => {
+        const methodInput = form.querySelector('input[name="method"]:checked');
+        const method = methodInput ? methodInput.value : 'pickup';
+        if (confirmDelivery) {
+            confirmDelivery.textContent = deliveryLabels[method] || method;
+        }
+        const addressSelect = form.querySelector('select[name="address"]');
+        if (confirmAddressRow && confirmAddress) {
+            if (method !== 'pickup' && addressSelect instanceof HTMLSelectElement && addressSelect.value) {
+                confirmAddressRow.hidden = false;
+                confirmAddress.textContent = addressSelect.options[addressSelect.selectedIndex]?.text || '—';
+            } else {
+                confirmAddressRow.hidden = true;
+            }
+        }
+        const paymentInput = form.querySelector('input[name="payment_method"]:checked');
+        const payment = paymentInput ? paymentInput.value : 'request';
+        if (confirmPayment) {
+            confirmPayment.textContent = paymentInput?.dataset.paymentLabel || (payment === 'zibal' ? 'پرداخت آنلاین با درگاه زیبال' : 'ثبت درخواست سفارش');
+        }
+        if (submitBtn instanceof HTMLButtonElement) {
+            submitBtn.textContent = payment === 'zibal'
+                ? (submitBtn.dataset.labelZibal || 'پرداخت آنلاین با زیبال')
+                : (submitBtn.dataset.labelRequest || 'ثبت درخواست سفارش');
+        }
+    };
+
+    const goToStep = (stepNumber) => {
+        const target = Math.max(1, Math.min(3, stepNumber));
+        syncSummary();
+        panels.forEach((panel) => {
+            const num = Number(panel.dataset.checkoutStep);
+            panel.classList.toggle('is-active', num === target);
+        });
+        indicators.forEach((ind) => {
+            const num = Number(ind.dataset.stepIndicator);
+            ind.classList.toggle('is-active', num === target);
+            ind.classList.toggle('is-done', num < target);
+            if (num === target) {
+                ind.setAttribute('aria-current', 'step');
+            } else {
+                ind.removeAttribute('aria-current');
+            }
+        });
+    };
+
+    const validateStep1 = () => {
+        if (step1Error) {
+            step1Error.hidden = true;
+            step1Error.textContent = '';
+        }
+        const methodInput = form.querySelector('input[name="method"]:checked');
+        if (!methodInput) {
+            if (step1Error) {
+                step1Error.textContent = 'لطفاً روش تحویل را انتخاب کنید.';
+                step1Error.hidden = false;
+            }
+            return false;
+        }
+        if (methodInput.value !== 'pickup') {
+            const addressSelect = form.querySelector('select[name="address"]');
+            if (!(addressSelect instanceof HTMLSelectElement) || !addressSelect.value) {
+                if (step1Error) {
+                    step1Error.textContent = 'برای ارسال، انتخاب نشانی تحویل الزامی است.';
+                    step1Error.hidden = false;
+                }
+                addressSelect?.focus();
+                return false;
+            }
+        }
+        return true;
+    };
+
+    stepper.classList.add('is-stepped');
+    const errorPanel = panels.find((p) => p.querySelector('.commerce-field-error:not([hidden])'));
+    goToStep(errorPanel ? Number(errorPanel.dataset.checkoutStep) : 1);
+
+    form.addEventListener('change', syncSummary);
+    stepper.querySelectorAll('[data-checkout-next]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const next = Number(btn.dataset.checkoutNext);
+            if (next === 2 && !validateStep1()) return;
+            goToStep(next);
+        });
+    });
+    stepper.querySelectorAll('[data-checkout-prev]').forEach((btn) => {
+        btn.addEventListener('click', () => goToStep(Number(btn.dataset.checkoutPrev)));
+    });
+});
