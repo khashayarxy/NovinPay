@@ -26,7 +26,7 @@
         $recovery => 'کد تأیید ارسال‌شده را برای انتخاب رمز جدید وارد کنید.',
         $inEmailOtp => 'کد شش‌رقمی ارسال‌شده به نشانی ایمیل زیر را وارد کنید.',
         $inPhoneOtp => 'کد شش‌رقمی ارسال‌شده به شماره موبایل زیر را وارد کنید.',
-        default => 'برای ورود یا ایجاد حساب کاربری، شماره موبایل یا ایمیل خود را وارد کنید.',
+        default => null,
     };
 @endphp
 <div class="np-auth-shell">
@@ -36,7 +36,7 @@
             <a href="{{ route('home') }}" class="np-auth__logo" aria-label="صفحه اصلی نوین‌پی"><x-home.wordmark /></a>
             <div class="np-account-enter">
                 <h1 id="auth-title">{{ $heading }}</h1>
-                <p class="np-auth__subtitle">{{ $subtitle }}</p>
+                @if($subtitle)<p class="np-auth__subtitle">{{ $subtitle }}</p>@endif
 
                 @if($inPhoneOtp)
                     <div class="np-auth__destination">
