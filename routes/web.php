@@ -26,6 +26,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Payments\PaymentController;
 use App\Http\Controllers\Payments\ReceiptController;
+use App\Http\Controllers\Payments\RepairPaymentLinkController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductFeedbackController;
 use App\Http\Controllers\ProductMediaController;
@@ -132,6 +133,12 @@ Route::withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::cl
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $payment = PaymentController::class;
     Route::get('/payments/zibal/callback', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.callback');
+    Route::middleware(['signed', 'throttle:60,1'])->prefix('pay/repair')->name('payments.repair.link')->group(function (): void {
+        Route::get('/{repair}', [RepairPaymentLinkController::class, 'show'])->whereUuid('repair');
+        Route::post('/{repair}/start', [RepairPaymentLinkController::class, 'start'])->whereUuid('repair')->middleware('throttle:10,1')->name('.start');
+        Route::get('/{repair}/connect/{payment}', [RepairPaymentLinkController::class, 'connect'])->whereUuid(['repair', 'payment'])->name('.connect');
+        Route::get('/{repair}/result/{payment}', [RepairPaymentLinkController::class, 'result'])->whereUuid(['repair', 'payment'])->name('.result');
+    });
     Route::middleware(EnsureCustomerSession::class)->prefix('payments')->name('payments.')->group(function () use ($payment): void {
         Route::post('/documents/{document}/zibal', [$payment, 'start'])->whereUuid('document')->middleware('throttle:10,1,cart-checkout:')->name('start');
         Route::get('/{payment}/connect', [$payment, 'connect'])->whereUuid('payment')->middleware('throttle:60,1')->name('connect');
@@ -352,6 +359,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
                 Route::post('repairs/{repairCase}/'.$operation, [RepairCaseController::class, 'update'])->defaults('operation', $operation)->middleware('throttle:30,1')->name('repair-cases.'.$operation);
             }
             Route::get('repairs/{repairCase}/documents/{document}', [RepairCaseController::class, 'document'])->name('repair-cases.document');
+            Route::post('repairs/{repairCase}/payment-link', [RepairCaseController::class, 'generatePaymentLink'])->middleware('throttle:20,1')->name('repair-cases.payment-link');
         });
     });
 });

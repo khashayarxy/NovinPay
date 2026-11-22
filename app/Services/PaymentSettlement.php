@@ -3,10 +3,14 @@
 namespace App\Services;
 
 use App\Enums\AdminAction;
+use App\Events\OrderPaid;
+use App\Events\RepairPaid;
 use App\Models\CustomerAccount;
 use App\Models\FinancialDocument;
 use App\Models\FinancialEntry;
 use App\Models\PaymentTransaction;
+use App\Models\RepairCase;
+use App\Models\SalesOrder;
 use App\Support\AdminHistory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -62,6 +66,16 @@ class PaymentSettlement
         // Same transaction-bound observation convention as finance.after-write.
         Event::dispatch('payment.after-write', [$transaction]);
         app(ShoppingCart::class)->consume($document);
+
+        if ($allocation > 0 && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor) {
+            DB::afterCommit(function () use ($document, $transaction): void {
+                if ($document->sales_order_id && ($order = SalesOrder::query()->find($document->sales_order_id))) {
+                    OrderPaid::dispatch($order, $document, $transaction);
+                } elseif ($document->repair_case_id && ($repairCase = RepairCase::query()->find($document->repair_case_id))) {
+                    RepairPaid::dispatch($repairCase, $document, $transaction);
+                }
+            });
+        }
 
         return $transaction;
     }

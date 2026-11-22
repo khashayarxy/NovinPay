@@ -16,6 +16,7 @@ use App\Support\OrderMoney;
 use App\Support\PaymentDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class PaymentController extends Controller
@@ -39,6 +40,22 @@ class PaymentController extends Controller
         abort_if($order !== null && (! is_string($order) || $order !== $attempt->public_id), 404);
         // Browser success/cancellation flags are not proof of payment or failure.
         $payments->verify($attempt);
+
+        if (! Auth::guard('customer')->check()) {
+            $document = FinancialDocument::query()->find($attempt->financial_document_id);
+            if ($document?->repair_case_id) {
+                $repairPublicId = RepairCase::query()->whereKey($document->repair_case_id)->value('public_id');
+                if ($repairPublicId) {
+                    return redirect()->to(
+                        URL::temporarySignedRoute('payments.repair.link.result', now()->addHours(24), [
+                            'repair' => $repairPublicId,
+                            'payment' => $attempt->public_id,
+                        ]),
+                        303
+                    );
+                }
+            }
+        }
 
         return redirect()->route('payments.result', $attempt->public_id, 303);
     }
@@ -77,14 +94,28 @@ class PaymentController extends Controller
     public function result(string $payment, ZibalPayments $payments, ZibalGateway $gateway)
     {
         [$attempt, $document] = $this->paymentContext($payment, $payments);
-        $source = $document->sales_order_id
-            ? SalesOrder::query()->whereKey($document->sales_order_id)->value('public_id')
-            : RepairCase::query()->whereKey($document->repair_case_id)->value('public_id');
-        $destination = $document->sales_order_id ? 'payments.order' : 'payments.repair';
+        $isOrder = (bool) $document->sales_order_id;
+        $order = $isOrder ? SalesOrder::query()->whereKey($document->sales_order_id)->first(['public_id']) : null;
+        $repair = ! $isOrder && $document->repair_case_id ? RepairCase::query()->whereKey($document->repair_case_id)->first(['public_id', 'tracking_reference']) : null;
+        $source = $order?->public_id ?? $repair?->public_id;
+        $sourceCode = $isOrder
+            ? ($order ? strtoupper(substr($order->public_id, 0, 8)) : strtoupper(substr($document->public_id, 0, 8)))
+            : ($repair?->tracking_reference ?? strtoupper(substr($document->public_id, 0, 8)));
+        $destination = $isOrder ? 'payments.order' : 'payments.repair';
+        $backUrl = $source ? route($destination, $source) : route('payments.document', $document->public_id);
+        $canContinue = $this->canContinue($attempt, $payments, $gateway);
 
-        return view('payments.result', ['attempt' => $attempt, 'document' => $document,
-            'backUrl' => $source ? route($destination, $source) : route('payments.document', $document->public_id),
-            'canContinue' => $this->canContinue($attempt, $payments, $gateway)]);
+        return view('payments.result', [
+            'attempt' => $attempt,
+            'document' => $document,
+            'isOrder' => $isOrder,
+            'sourceCode' => $sourceCode,
+            'backUrl' => $backUrl,
+            'retryUrl' => $backUrl,
+            'accountUrl' => route('account.index', ['section' => $isOrder ? 'orders' : 'repairs']),
+            'canContinue' => $canContinue,
+            'continueUrl' => $canContinue ? route('payments.connect', $attempt->public_id) : null,
+        ]);
     }
 
     public function paymentStatus(string $payment, ZibalPayments $payments)
