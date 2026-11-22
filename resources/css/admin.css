@@ -179,7 +179,9 @@
 .admin-segmented__option:has(input:focus-visible) { outline: 2px solid #075fa8; outline-offset: 2px; }
 .admin-manager-note { margin: 10px 0 0; font-size: 13px; color: #475e73; line-height: 1.8; }
 .admin-manager-note[hidden], [data-staff-permissions-panel][hidden] { display: none; }
-.admin-permissions label, .admin-checkbox { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 7px 9px; border: 1px solid #e0e9f4; border-radius: 10px; font-size: 12px; cursor: pointer; }
+.admin-permissions label, .admin-checkbox { display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 8px 12px; border: 1px solid var(--admin-line); border-radius: 10px; background: #fff; font-size: 12.5px; font-weight: 550; cursor: pointer; transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease; }
+.admin-permissions label:hover, .admin-checkbox:hover { border-color: #93c5fd; background: #f8fbff; }
+.admin-permissions label:has(input:checked), .admin-checkbox:has(input:checked) { border-color: #60a5fa; background: #edf5ff; color: #0f172a; box-shadow: 0 1px 2px rgb(21 91 192 / 8%); }
 .admin-site input[type=checkbox] { accent-color: #0674cf; width: 18px; height: 18px; flex: 0 0 auto; }
 .admin-password-form { max-width: 600px; }
 .admin-detail-grid { display:grid; gap:16px; align-items:start; }
@@ -431,13 +433,24 @@
 .repair-case-header__sub { display:flex; flex-wrap:wrap; gap:6px 10px; margin-top:6px; font-size:12.5px; color:var(--admin-muted); }
 .repair-hero-card { border-top:3px solid var(--admin-blue); }
 .repair-hero-name { font-size:15px; font-weight:750; color:#0f172a; }
+.repair-hero-meta { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:14px 20px; padding-block:14px 4px; }
+.repair-hero-meta > div { min-width:0; }
+.repair-hero-meta dt { font-size:11.5px; font-weight:600; color:var(--admin-muted); margin-bottom:4px; }
+.repair-hero-meta dd { font-size:14px; color:var(--admin-ink); overflow-wrap:anywhere; }
+.repair-callout-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; margin-top:14px; }
+.repair-summary-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px; align-items:stretch; }
+.repair-summary-grid > .admin-panel { height:100%; }
+.repair-management-layout { grid-template-columns:minmax(0, 1.45fr) minmax(320px, 1fr); gap:18px; }
 .repair-phone-link { color:var(--admin-blue-deep); font-weight:700; font-variant-numeric:tabular-nums; }
 .repair-phone-link:hover { text-decoration:underline; }
-.repair-phone-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:8px; background:#edf4ff; color:var(--admin-blue-deep); font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; transition:background-color .14s ease; }
-.repair-phone-chip:hover { background:#dceaff; text-decoration:none; }
-.repair-callout { margin-top:10px; padding:12px 16px !important; border:1px solid #e2e8f0 !important; border-radius:12px; background:#f8fafc; }
-.repair-callout dt { font-weight:700; color:#334155; margin-bottom:4px; }
-.repair-callout dd { color:#0f172a; line-height:1.9; }
+.repair-phone-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:8px; background:#edf4ff; color:var(--admin-blue-deep); font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; transition:background-color .16s ease, transform .14s ease; }
+.repair-phone-chip:hover { background:#dceaff; text-decoration:none; transform:translateY(-1px); }
+.repair-callout { margin-top:0; padding:14px 16px !important; border:1px solid #e2e8f0 !important; border-radius:12px; background:#f8fafc; }
+.repair-callout dt { font-size:12px; font-weight:700; color:#334155; margin-bottom:5px; }
+.repair-callout dd { font-size:13.5px; color:#0f172a; line-height:1.9; }
+.repair-history { list-style:none; margin:0; padding:4px 18px 0 0; border-inline-start:2px solid #dbeafe; display:grid; gap:14px; }
+.repair-history > li { position:relative; font-size:13px; line-height:1.85; color:#334155; }
+.repair-history > li::before { content:''; position:absolute; inset-inline-start:-24px; top:8px; width:10px; height:10px; border-radius:50%; background:var(--admin-blue); border:2px solid #fff; box-shadow:0 0 0 2px #bfdbfe; }
 .repair-settlement-state { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:4px; }
 .repair-documents-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
 .repair-documents-bar h2 { margin:0; font-size:15px; font-weight:700; }
@@ -517,6 +530,8 @@
 @media (max-width:720px) {
     .admin-record-layout { grid-template-columns:minmax(0,1fr); }
     .admin-record-layout > * { grid-column:auto; grid-row:auto; }
+    .repair-hero-meta { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .repair-callout-grid, .repair-summary-grid { grid-template-columns:minmax(0, 1fr); }
     .admin-record-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .admin-record-facts > div:last-child { border-block-end:1px solid var(--admin-line); }
     .admin-compact-table { min-width:0; display:block; }
@@ -543,10 +558,17 @@
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
 }
+@keyframes adminReveal {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 .admin-main > .admin-panel,
 .admin-main > .admin-record-layout,
+.admin-main > .repair-summary-grid,
 .admin-main > .admin-detail-grid { animation: adminFadeIn .18s ease-out both; }
-.admin-clickable-row { transition: background-color .16s ease, box-shadow .16s ease, border-color .16s ease; }
+.admin-advanced-details[open] > :not(summary),
+.repair-history-details[open] > :not(summary) { animation: adminReveal .16s ease-out both; }
+.admin-clickable-row { transition: background-color .16s ease, box-shadow .16s ease, border-color .16s ease, transform .15s ease; }
 .admin-advanced-details > summary,
 .repair-history-details > summary { transition: color .16s ease; }
 .admin-advanced-details > summary:hover,
@@ -554,11 +576,17 @@
 @media (prefers-reduced-motion:reduce) {
     .admin-main > .admin-panel,
     .admin-main > .admin-record-layout,
-    .admin-main > .admin-detail-grid { animation:none; }
+    .admin-main > .repair-summary-grid,
+    .admin-main > .admin-detail-grid,
+    .admin-advanced-details[open] > :not(summary),
+    .repair-history-details[open] > :not(summary) { animation:none; }
     .admin-nav-chevron,
     .admin-nav :is(a,summary),
     .admin-task,
     .admin-clickable-row,
+    .admin-checkbox,
+    .admin-permissions label,
+    .repair-phone-chip,
     .admin-site .input,
     .admin-site .btn { transition:none; }
 }

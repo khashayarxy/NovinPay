@@ -10,6 +10,7 @@
     $shipping = $case->delivery_method === 'shipping';
     $canEditCost = auth()->user()->can('repairs.estimate') && !$hasRepairDocument;
     $showMoney = auth()->user()->can('finance.view') || auth()->user()->can('repairs.estimate');
+    $hasWorkForm = !$case->status->closed() && auth()->user()->can('repairs.transition');
     $rawRef = $customer ? (string) $case->tracking_reference : (string) $case->case_number;
     $displayRef = preg_match('/\A[0-9]+\z/', $rawRef)
         ? \App\Support\FaNumber::digits($rawRef)
@@ -45,7 +46,7 @@
             @endif
         @endcan
     </div>
-    <dl class="admin-record-facts repair-intake-facts">
+    <dl class="repair-hero-meta">
         <div>
             <dt>مشتری</dt>
             <dd><strong class="repair-hero-name">{{ $case->customer_name }}</strong></dd>
@@ -64,6 +65,8 @@
             <dd><bdi dir="ltr" class="repair-code-chip">{{ $case->device_serial }}</bdi></dd>
         </div>
         @endif
+    </dl>
+    <dl class="repair-callout-grid">
         <div class="repair-fact--full repair-callout">
             <dt>شرح مشکل دستگاه</dt>
             <dd class="whitespace-pre-line">{{ $case->issue }}</dd>
@@ -75,10 +78,9 @@
     </dl>
 </section>
 
-<div class="admin-record-layout repair-management-layout">
+<div @class(['admin-record-layout repair-management-layout' => $hasWorkForm, 'repair-summary-grid' => !$hasWorkForm])>
+    @if($hasWorkForm)
     <div class="admin-record-work">
-        @unless($case->status->closed())
-        @can('repairs.transition')
         <form method="post" action="{{ route('admin.repair-cases.record', $case) }}" class="admin-panel admin-form" data-simple-repair>
             @csrf
             <input type="hidden" name="version" value="{{ $case->version }}">
@@ -121,14 +123,13 @@
             </fieldset>
             <div class="admin-form-footer"><button class="btn btn-primary" type="submit">ذخیره تغییرات</button></div>
         </form>
-        @endcan
-        @endunless
     </div>
+    @endif
 
-    <aside class="admin-record-context">
+    <aside @class(['admin-record-context' => $hasWorkForm, 'contents' => !$hasWorkForm])>
         @if($showMoney)
-        <section class="admin-panel mb-3" aria-labelledby="repair-finance">
-            <h2 id="repair-finance">هزینه و تسویه</h2>
+        <section @class(['admin-panel', 'mb-3' => $hasWorkForm]) aria-labelledby="repair-finance">
+            <div class="admin-panel-heading"><h2 id="repair-finance">هزینه و تسویه</h2></div>
             <dl class="admin-record-facts">
                 <div><dt>هزینه تعمیر</dt><dd><strong>{{ \App\Support\AdminRepairMoney::display($price) }}</strong></dd></div>
                 @if($price === null && $case->currentEstimate)<div><dt>برآورد قبلی</dt><dd>{{ \App\Support\AdminRepairMoney::display($case->currentEstimate->total()) }}</dd></div>@endif
@@ -171,9 +172,9 @@
         </section>
         @endif
 
-        <section class="admin-panel mb-3" aria-labelledby="repair-handover">
-            <h2 id="repair-handover">تحویل دستگاه</h2>
-            <p class="mt-2">{{ $shipping ? 'ارسال' : ($case->delivery_method === 'in_person' ? 'حضوری' : 'روش تحویل مشخص نشده است.') }}
+        <section @class(['admin-panel', 'mb-3' => $hasWorkForm]) aria-labelledby="repair-handover">
+            <div class="admin-panel-heading"><h2 id="repair-handover">تحویل دستگاه</h2></div>
+            <p class="mt-3">{{ $shipping ? 'ارسال' : ($case->delivery_method === 'in_person' ? 'حضوری' : 'روش تحویل مشخص نشده است.') }}
                 @if($shipping && isset($carriers[$case->delivery_carrier])) · {{ $carriers[$case->delivery_carrier] }} @endif
             </p>
             @if($case->delivery)
@@ -218,7 +219,7 @@
 </section>
 
 <details class="admin-panel mt-3 repair-history-details">
-    <summary>سوابق پرونده <span class="admin-muted">({{ \App\Support\FaNumber::digits($events->total()) }} مورد)</span></summary>
+    <summary><span>سوابق پرونده <span class="admin-muted">({{ \App\Support\FaNumber::digits($events->total()) }} مورد)</span></span></summary>
     <ol class="repair-history">
     @forelse($events as $event)
         @php
