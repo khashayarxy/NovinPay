@@ -116,9 +116,13 @@
                         @csrf
                         <label for="profile-name">نام و نام خانوادگی</label>
                         <input id="profile-name" name="name" value="{{ $account->name }}" autocomplete="name" minlength="2" maxlength="100" required>
+                        @if($account->email)
+                            <label for="profile-email">نشانی ایمیل</label>
+                            <input id="profile-email" type="email" value="{{ $account->email }}" dir="ltr" readonly>
+                        @endif
                         <label for="profile-mobile">شماره موبایل</label>
-                        <input id="profile-mobile" type="tel" value="{{ \App\Support\FaNumber::digits($account->phone) }}" dir="ltr" readonly>
-                        <small>تغییر شماره به تأیید دوباره مالکیت آن نیاز دارد.</small>
+                        <input id="profile-mobile" type="tel" value="{{ $account->phone ? \App\Support\FaNumber::digits($account->phone) : '' }}" placeholder="ثبت نشده" dir="ltr" readonly>
+                        <small>{{ $account->phone ? 'تغییر شماره به تأیید دوباره مالکیت آن نیاز دارد.' : 'شماره موبایلی برای این حساب ثبت نشده است.' }}</small>
                         <button class="np-account-primary">ذخیره اطلاعات</button>
                     </form>
                 </section>
@@ -148,10 +152,10 @@
             @if($section === 'security')
                 <section class="np-account-card">
                     <h2>{{ $account->password ? 'تغییر رمز عبور' : 'انتخاب رمز عبور' }}</h2>
-                    @if($recentOtp || $account->password)
+                    @if(($canSetInitialPassword ?? false) || $recentOtp || $account->password)
                         <form method="post" class="np-account-form" action="{{ route('account.password.update') }}">
                             @csrf
-                            @if(!$recentOtp)
+                            @if($account->password && !$recentOtp)
                                 <label for="current-password">رمز عبور فعلی</label>
                                 <x-account.password id="current-password" name="current_password" autocomplete="current-password" />
                             @endif
