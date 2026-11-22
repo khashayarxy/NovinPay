@@ -26,6 +26,17 @@
     @endisset
     <x-public-seo :canonical="$canonical ?? null" :content-seo="$contentSeo ?? null" :public-robots="$publicRobots ?? null" :product="$product ?? null" :product-sale="$sale ?? null" :product-rating="$productRating ?? null" :article="$article ?? null" :version="$version ?? null" />
     <x-brand-head />
+    <script>
+        (function () {
+            try {
+                var allowed = ['peyda', 'dana', 'iranyekanx'];
+                var saved = window.localStorage.getItem('novinpay_site_font');
+                document.documentElement.dataset.siteFont = allowed.indexOf(saved) !== -1 ? saved : 'peyda';
+            } catch (e) {
+                document.documentElement.dataset.siteFont = 'peyda';
+            }
+        })();
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <script src="{{ asset('js/storefront-scroll-lock.js?v=1') }}" defer></script>
@@ -65,5 +76,10 @@
         <script src="{{ app(\App\Support\Chat\ChatAssets::class)->url('support-widget.js') }}" defer></script>
     @endif
 @endif
+    <div class="np-site-font-switcher" data-site-font-switcher role="group" aria-label="انتخاب فونت سایت">
+        <button type="button" data-site-font-choice="peyda" class="is-active">Peyda</button>
+        <button type="button" data-site-font-choice="dana">Dana</button>
+        <button type="button" data-site-font-choice="iranyekanx">IRANYekanX</button>
+    </div>
 </body>
 </html>

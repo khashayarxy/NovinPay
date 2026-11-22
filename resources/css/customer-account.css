@@ -155,19 +155,20 @@
     .np-auth-glass__eyebrow {
         display: inline-block;
         font-size: .78rem;
-        font-weight: 650;
+        font-weight: 500;
         color: #93c5fd;
         margin-bottom: .45rem;
     }
     .np-auth-glass h2 {
         font-size: 1.22rem;
-        font-weight: 750;
+        font-weight: 700;
         line-height: 1.5;
         color: #fff;
         margin: 0 0 .5rem;
     }
     .np-auth-glass p {
         font-size: .86rem;
+        font-weight: 400;
         line-height: 1.85;
         color: #cbd5e1;
         margin: 0 0 1rem;
@@ -183,7 +184,7 @@
         background: rgb(255 255 255 / 10%);
         border: 1px solid rgb(255 255 255 / 14%);
         font-size: .76rem;
-        font-weight: 600;
+        font-weight: 500;
         color: #e2e8f0;
     }
 }
@@ -208,30 +209,30 @@
 .np-auth__logo { display: flex; align-items: center; justify-content: center; min-height: 44px; max-width: 9rem; margin: 0 auto 1.65rem; }
 .np-auth h1 { font-size: 1.28rem; font-weight: 700; color: #0f172a; letter-spacing: -.015em; line-height: 1.45; text-align: start; margin: 0 0 1.25rem; overflow-wrap: anywhere; }
 .np-auth h1:has(+ .np-auth__subtitle) { margin-bottom: .35rem; }
-.np-auth__subtitle { text-align: start; color: #64748b; font-size: .84rem; font-weight: 450; line-height: 1.75; margin: 0 0 1.2rem !important; }
-.np-auth .np-account-form label { text-align: start; font-size: .82rem; font-weight: 550; color: #475569; }
-.np-account h1 { font-size: clamp(1.55rem, 4vw, 2.15rem); font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
+.np-auth__subtitle { text-align: start; color: #64748b; font-size: .84rem; font-weight: 400; line-height: 1.75; margin: 0 0 1.2rem !important; }
+.np-auth .np-account-form label { text-align: start; font-size: .82rem; font-weight: 500; color: #475569; }
+.np-account h1 { font-size: clamp(1.55rem, 4vw, 2.15rem); font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 .np-auth p, .np-account-card p { margin-block: .55rem; }
 .np-auth__destination { display: flex; gap: .75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-block: 0 1rem; padding: .55rem .85rem; border-radius: .8rem; background: #f4f8fd; border: 1px solid #dde8f5; }
 .np-auth__destination bdi { font-variant-numeric: tabular-nums; font-weight: 700; font-size: .92rem; color: var(--account-ink); }
-.np-auth__edit { background: transparent; border: 0; padding: .2rem .4rem; color: var(--account-blue); font-size: .82rem; font-weight: 650; cursor: pointer; }
+.np-auth__edit { background: transparent; border: 0; padding: .2rem .4rem; color: var(--account-blue); font-size: .82rem; font-weight: 500; cursor: pointer; }
 .np-auth__edit:hover { text-decoration: underline; text-underline-offset: 3px; }
 .np-auth__label-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
-.np-auth__forgot { font-size: .78rem; font-weight: 600; color: var(--account-blue); text-decoration: none; }
+.np-auth__forgot { font-size: .78rem; font-weight: 500; color: var(--account-blue); text-decoration: none; }
 .np-auth__forgot:hover { text-decoration: underline; text-underline-offset: 3px; }
 .np-auth__secondary-center { display: flex; justify-content: center; margin-top: .95rem; }
-.np-auth__secondary-center .np-account-link { font-size: .86rem; font-weight: 600; }
+.np-auth__secondary-center .np-account-link { font-size: .86rem; font-weight: 500; }
 .np-auth__footer-links { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .4rem 1rem; margin-top: .9rem; }
 .np-auth__back-row { display: flex; justify-content: center; margin-top: .9rem; padding-top: .85rem; border-top: 1px solid #edf2f8; }
-.np-auth__back-link { background: transparent; border: 0; padding: .25rem .4rem; color: #64748b; font-size: .82rem; font-weight: 550; cursor: pointer; }
+.np-auth__back-link { background: transparent; border: 0; padding: .25rem .4rem; color: #64748b; font-size: .82rem; font-weight: 500; cursor: pointer; }
 .np-auth__back-link:hover { color: var(--account-ink); text-decoration: underline; text-underline-offset: 3px; }
-.np-auth__hint { display: block; text-align: start; color: #64748b; font-size: .78rem; margin-top: .25rem; }
-.np-auth__legal { color: #94a3b8; font-size: .74rem; font-weight: 450; line-height: 1.75; text-align: center; margin-top: 1.25rem !important; }
+.np-auth__hint { display: block; text-align: start; color: #64748b; font-size: .78rem; font-weight: 400; margin-top: .25rem; }
+.np-auth__legal { color: #94a3b8; font-size: .74rem; font-weight: 400; line-height: 1.75; text-align: center; margin-top: 1.25rem !important; }
 .np-auth__legal a { color: #64748b; text-decoration: underline; text-underline-offset: 3px; }
 .np-auth__legal a:hover { color: var(--account-blue); }
 .np-auth__divider { display: flex; align-items: center; gap: .75rem; margin: 1.1rem 0 .9rem; color: #94a3b8; font-size: .75rem; font-weight: 500; }
 .np-auth__divider::before, .np-auth__divider::after { content: ''; flex: 1; height: 1px; background: var(--account-line); }
-.np-auth__google { display: flex; align-items: center; justify-content: center; gap: .6rem; width: 100%; min-height: 46px; padding: .55rem 1rem; border-radius: .85rem; border: 1px solid #cbd9e8; background: #fff; color: var(--account-ink); font-size: .92rem; font-weight: 650; text-decoration: none; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 140ms ease; }
+.np-auth__google { display: flex; align-items: center; justify-content: center; gap: .6rem; width: 100%; min-height: 46px; padding: .55rem 1rem; border-radius: .85rem; border: 1px solid #cbd9e8; background: #fff; color: var(--account-ink); font-size: .92rem; font-weight: 700; text-decoration: none; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 140ms ease; }
 .np-auth__google:hover { background: #f8fbff; border-color: #93b7e0; box-shadow: 0 3px 10px rgb(20 43 77 / 8%); transform: translateY(-1px); }
 .np-otp-boxes { width: 100%; }
 .np-otp-boxes.is-enhanced .np-otp-boxes__hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); border: 0; }
@@ -245,7 +246,7 @@
     background: #fcfdff;
     text-align: center;
     font-size: 1.3rem;
-    font-weight: 800;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
     color: var(--account-ink);
     transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
@@ -275,7 +276,7 @@
 @media (prefers-reduced-motion: reduce) { .np-otp__slots span { transition: none; } }
 
 .np-account-form { display: grid; gap: .4rem; max-width: 34rem; margin-block: 1rem; }
-.np-account-form label { font-weight: 700; margin-top: .35rem; }
+.np-account-form label { font-weight: 500; margin-top: .35rem; }
 .np-account-form input, .np-account-form textarea {
     width: 100%;
     min-height: 48px;
@@ -285,6 +286,7 @@
     color: var(--account-ink);
     background: #fcfdff;
     font: inherit;
+    font-weight: 400;
 }
 .np-account-form input[dir=ltr] { text-align: left; }
 .np-account-form input[readonly] { background: var(--account-wash); }
@@ -344,13 +346,13 @@
 .np-account-nav { display: grid; gap: .15rem; padding: .55rem; }
 .np-account-nav a { display: flex; align-items: center; min-height: 44px; border-radius: .65rem; padding: .45rem .75rem; }
 .np-account-nav a:hover, .np-account-nav [aria-current=page] { color: var(--account-blue); background: var(--account-wash); }
-.np-account-nav [aria-current=page] { font-weight: 800; }
+.np-account-nav [aria-current=page] { font-weight: 700; }
 .np-account-content, .np-account-detail { display: grid; gap: 1rem; }
 .np-account-content { min-width: 0; }
 .np-account-detail { max-width: 58rem; }
 .np-account-detail > a { justify-self: start; }
 .np-account-card { padding: clamp(1rem, 3vw, 1.65rem); }
-.np-account-card h2 { font-size: 1.23rem; font-weight: 800; }
+.np-account-card h2 { font-size: 1.23rem; font-weight: 700; }
 .np-account-card__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem 1rem; }
 .np-account-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
 .np-account-stats a {
@@ -360,9 +362,9 @@
 .np-account-stats a:hover { background: var(--account-wash); }
 .np-account-stats strong {
     color: var(--account-blue); font-size: clamp(1.75rem, 3.2vw, 2.25rem);
-    font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums;
+    font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums;
 }
-.np-account-stats span { font-size: .88rem; color: var(--account-muted); font-weight: 600; }
+.np-account-stats span { font-size: .88rem; color: var(--account-muted); font-weight: 500; }
 .np-account-shortcuts { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .75rem; }
 .np-account-shortcuts a { display: inline-flex; align-items: center; min-height: 44px; padding: .4rem .85rem; border-radius: .65rem; background: var(--account-wash); color: var(--account-blue); font-weight: 700; }
 .np-account-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem .8rem; padding: .7rem 0; border-bottom: 1px solid var(--account-line); }
