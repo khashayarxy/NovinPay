@@ -8,12 +8,45 @@
 
 /*
 |-------------------------------------------------------------------------------
-| Dana — static Farsi-numeral web font (Regular 400, Medium 500, Bold 700)
+| Fintech Font Pairing: IRANYekanXVF (Headings, 'dots' 1) + Dana (Body/UI)
 |-------------------------------------------------------------------------------
-| Commercial WOFF2 binaries live under public/fonts/dana/ (gitignored).
-| Static Vazirmatn (OFL, bundled from npm) remains as the graceful fallback
-| whenever local commercial fonts are not present.
+| Commercial WOFF2 binaries live under public/fonts/ (gitignored).
+| Static IRANYekanX (400/500/700) and static Vazirmatn (OFL, bundled from npm)
+| remain as graceful fallbacks when variable fonts or local binaries are absent.
 */
+@font-face {
+    font-family: 'IRANYekanXVF';
+    src: url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2-variations'),
+        url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2');
+    font-weight: 100 1000;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'IRANYekanX';
+    src: url('/fonts/iranyekanx/IRANYekanXFaNum-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'IRANYekanX';
+    src: url('/fonts/iranyekanx/IRANYekanXFaNum-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'IRANYekanX';
+    src: url('/fonts/iranyekanx/IRANYekanXFaNum-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 @font-face {
     font-family: 'Dana';
     src: url('/fonts/dana/DanaFaNum-Regular.woff2') format('woff2');
@@ -74,7 +107,7 @@
 
 /*
 |-------------------------------------------------------------------------------
-| Brand tokens & Dana typography calibration
+| Brand tokens & font pairing calibration
 |-------------------------------------------------------------------------------
 | Official brand-500 is preserved exactly. Darker action/text shades provide
 | readable contrast against white without recolouring the supplied logo.
@@ -83,8 +116,15 @@
     --site-font-fallback: 'Vazirmatn', Tahoma, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --site-font-family: 'Dana', var(--site-font-fallback);
+    --site-heading-font: 'IRANYekanX', 'Dana', var(--site-font-fallback);
     --site-font-scale: 98%;
     --site-line-height: 1.85;
+}
+
+@supports (font-variation-settings: normal) {
+    :root {
+        --site-heading-font: 'IRANYekanXVF', 'IRANYekanX', 'Dana', var(--site-font-fallback);
+    }
 }
 
 @theme static {
@@ -160,10 +200,18 @@
     h1,
     h2 {
         @apply text-slate-900;
+        font-family: var(--site-heading-font);
         font-weight: 700;
+        font-variation-settings: 'dots' 1;
     }
 
-    h3,
+    h3 {
+        @apply text-slate-900;
+        font-family: var(--site-heading-font);
+        font-weight: 500;
+        font-variation-settings: 'dots' 1;
+    }
+
     h4 {
         @apply text-slate-900;
         font-weight: 500;
@@ -199,6 +247,8 @@
 
     .section-title {
         @apply text-2xl font-bold tracking-tight sm:text-3xl;
+        font-family: var(--site-heading-font);
+        font-variation-settings: 'dots' 1;
     }
 
     .section-lead {
