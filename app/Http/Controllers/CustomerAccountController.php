@@ -299,7 +299,7 @@ class CustomerAccountController extends Controller
         $account = is_string($phone) && strlen($password) <= 72 && ! str_contains($password, "\0")
             ? $login->passwordAccount($phone, $password) : null;
         if (! $account) {
-            $params = $request->has('flow') && is_string($phone)
+            $params = is_string($phone)
                 ? CustomerLoginFlow::parameters($request, 'password')
                 : ['method' => 'password'];
 
