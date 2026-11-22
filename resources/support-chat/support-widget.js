@@ -35,7 +35,7 @@ const openWidget=()=>{
   overlays.open(dialog,button);
  }else{
   if(frame.parentNode!==document.body)document.body.append(frame);
-  button.removeAttribute('aria-haspopup');
+  button.removeAttribute?.('aria-haspopup');
   button.setAttribute('aria-controls',frame.id);
   show();
  }
