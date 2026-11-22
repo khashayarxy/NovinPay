@@ -369,8 +369,9 @@ class CustomerAccountController extends Controller
             abort_unless($account->is_active && $account->session_version === $request->session()->get('customer_session_version'), 403);
             $verifiedAt = (int) $request->session()->get('customer_otp_at', 0);
             $recent = $verifiedAt > 0 && $verifiedAt <= now()->timestamp && $verifiedAt >= now()->subMinutes(5)->timestamp;
+            $canSetInitial = ! $account->password && ($recent || $account->google_id_digest !== null || $account->email_verified_at !== null || $account->verified_at !== null);
             $current = $data['current_password'] ?? '';
-            if (! $recent && (! $account->password || strlen($current) > 72 || str_contains($current, "\0") || ! Hash::check($current, $account->password))) {
+            if (! $recent && ! $canSetInitial && (! $account->password || strlen($current) > 72 || str_contains($current, "\0") || ! Hash::check($current, $account->password))) {
                 throw ValidationException::withMessages(['current_password' => 'رمز فعلی را بررسی کنید یا دوباره با کد تأیید وارد شوید.']);
             }
             $account->password = Hash::make($data['password']);
@@ -430,7 +431,8 @@ class CustomerAccountController extends Controller
             'documents' => in_array($section, ['payments', 'delivery'], true) ? $this->listing($documents, $section, 'page') : [],
             'addresses' => $section === 'addresses' ? CustomerAddress::query()->where('customer_account_id', $account->id)->latest('id')->get() : [],
             'complete' => $section === 'overview' && $account->name && CustomerAddress::query()->where('customer_account_id', $account->id)->exists(),
-            'recentOtp' => (int) $request->session()->get('customer_otp_at', 0) >= now()->subMinutes(5)->timestamp,
+            'recentOtp' => ($recentOtp = (int) $request->session()->get('customer_otp_at', 0) >= now()->subMinutes(5)->timestamp),
+            'canSetInitialPassword' => ! $account->password && ($recentOtp || $account->google_id_digest !== null || $account->email_verified_at !== null || $account->verified_at !== null),
         ]);
     }
 
@@ -495,14 +497,16 @@ class CustomerAccountController extends Controller
             $account = CustomerAccount::query()->lockForUpdate()->findOrFail(Auth::guard('customer')->id());
             abort_unless($account->is_active && $account->session_version === $request->session()->get('customer_session_version'), 403);
             $account->name = $data['name'];
-            $phoneDigest = RepairIdentity::digest('customer-phone', $account->phone);
-            if ($account->verified_at && ! $account->customer_id && ! Customer::query()->where('phone_digest', $phoneDigest)->exists()) {
-                $customer = new Customer;
-                foreach (['public_id' => (string) Str::uuid(), 'name' => $data['name'], 'contact_phone' => $account->phone, 'phone_digest' => $phoneDigest, 'name_digest' => RepairIdentity::digest('customer-name', CrmAccess::name($data['name'])), 'identity_digest' => RepairIdentity::digest('customer-identity', CrmAccess::name($data['name']).':'.$account->phone), 'is_active' => true, 'version' => 1] as $key => $value) {
-                    $customer->$key = $value;
+            if (is_string($account->phone) && $account->phone !== '') {
+                $phoneDigest = RepairIdentity::digest('customer-phone', $account->phone);
+                if ($account->verified_at && ! $account->customer_id && ! Customer::query()->where('phone_digest', $phoneDigest)->exists()) {
+                    $customer = new Customer;
+                    foreach (['public_id' => (string) Str::uuid(), 'name' => $data['name'], 'contact_phone' => $account->phone, 'phone_digest' => $phoneDigest, 'name_digest' => RepairIdentity::digest('customer-name', CrmAccess::name($data['name'])), 'identity_digest' => RepairIdentity::digest('customer-identity', CrmAccess::name($data['name']).':'.$account->phone), 'is_active' => true, 'version' => 1] as $key => $value) {
+                        $customer->$key = $value;
+                    }
+                    $customer->save();
+                    $account->customer_id = $customer->id;
                 }
-                $customer->save();
-                $account->customer_id = $customer->id;
             }
             $account->save();
         }, 3);

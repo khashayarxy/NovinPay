@@ -229,4 +229,88 @@ class ThreePathAuthTest extends TestCase
         $this->assertSame('mobile-owner@gmail.com', $mobileAccount->email);
         $this->assertNotNull($mobileAccount->google_id_digest);
     }
+
+    public function test_google_authenticated_customer_without_phone_can_view_update_profile_and_set_initial_password(): void
+    {
+        $googleAccount = new CustomerAccount;
+        $googleAccount->forceFill([
+            'public_id' => (string) Str::uuid(),
+            'name' => 'کاربر گوگل',
+            'phone' => null,
+            'phone_digest' => null,
+            'email' => 'google.profile@example.com',
+            'email_digest' => RepairIdentity::digest('customer-account-email', 'google.profile@example.com'),
+            'email_verified_at' => now(),
+            'google_id_digest' => RepairIdentity::digest('customer-account-google', 'google-sub-profile-500'),
+            'verified_at' => now(),
+            'is_active' => true,
+            'session_version' => 1,
+            'password' => null,
+        ])->save();
+
+        foreach (['overview', 'repairs', 'orders', 'payments', 'delivery', 'profile', 'addresses', 'security'] as $section) {
+            $this->actingAs($googleAccount, 'customer')
+                ->withSession(['customer_session_version' => 1])
+                ->get(route('account.index', ['section' => $section]))
+                ->assertOk();
+        }
+
+        $this->actingAs($googleAccount, 'customer')
+            ->withSession(['customer_session_version' => 1])
+            ->get(route('account.index', ['section' => 'profile']))
+            ->assertOk()
+            ->assertSee('کاربر گوگل')
+            ->assertSee('google.profile@example.com');
+
+        $this->actingAs($googleAccount, 'customer')
+            ->withSession(['customer_session_version' => 1])
+            ->post(route('account.profile'), ['name' => 'نام جدید گوگل'])
+            ->assertRedirect(route('account.index', ['section' => 'profile']))
+            ->assertSessionHas('success');
+
+        $googleAccount->refresh();
+        $this->assertSame('نام جدید گوگل', $googleAccount->name);
+
+        $this->actingAs($googleAccount, 'customer')
+            ->withSession(['customer_session_version' => 1])
+            ->get(route('account.index', ['section' => 'security']))
+            ->assertOk()
+            ->assertSee('انتخاب رمز عبور')
+            ->assertDontSee('برای انتخاب رمز، از حساب خارج شوید')
+            ->assertDontSee('name="current_password"', false);
+
+        $newPassword = 'GoogleInitialPass#2026';
+
+        $this->actingAs($googleAccount, 'customer')
+            ->withSession(['customer_session_version' => 1])
+            ->post(route('account.password.update'), [
+                'password' => $newPassword,
+                'password_confirmation' => $newPassword,
+            ])
+            ->assertRedirect(route('account.index', ['section' => 'security']))
+            ->assertSessionHas('success');
+
+        $googleAccount->refresh();
+        $this->assertNotNull($googleAccount->password);
+        $this->assertSame(2, $googleAccount->session_version);
+
+        // Once a password exists, changing it without current_password must be rejected.
+        $this->actingAs($googleAccount, 'customer')
+            ->withSession(['customer_session_version' => $googleAccount->session_version])
+            ->post(route('account.password.update'), [
+                'password' => 'AnotherPassword#2026',
+                'password_confirmation' => 'AnotherPassword#2026',
+            ])
+            ->assertSessionHasErrors('current_password');
+
+        // Logout and verify password login works with the Google account's email.
+        $this->post(route('account.logout'))->assertRedirect(route('account.login'));
+
+        $this->post(route('account.password.login'), [
+            'identifier' => 'google.profile@example.com',
+            'password' => $newPassword,
+        ])->assertRedirect(route('account.index'));
+
+        $this->assertAuthenticatedAs($googleAccount, 'customer');
+    }
 }
