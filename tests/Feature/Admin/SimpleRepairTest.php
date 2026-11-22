@@ -132,7 +132,14 @@ class SimpleRepairTest extends TestCase
         $this->assertStringNotContainsString('یادداشت خصوصی', DB::table('repair_record_revisions')->value('payload'));
         $this->post('/repair/track', ['tracking_reference' => $case->tracking_reference, 'contact_phone' => '09000000000'])
             ->assertOk()->assertSee($case->status->label())->assertDontSee('یادداشت خصوصی')->assertDontSee('300000');
-        $this->get(route('admin.repair-cases.show', $case))->assertOk()->assertSee('تسویه شد')->assertDontSee('technician_id')->assertDontSee('name="service_cost"', false);
+        $this->get(route('admin.repair-cases.show', $case))
+            ->assertOk()
+            ->assertSee('وضعیت تسویه')
+            ->assertSee('سند مالی صادر نشده')
+            ->assertDontSee('تسویه شد')
+            ->assertDontSee('repair-history-details" open', false)
+            ->assertDontSee('technician_id')
+            ->assertDontSee('name="service_cost"', false);
     }
 
     public function test_settlement_checkbox_cannot_create_or_fake_a_payment(): void
@@ -177,6 +184,7 @@ class SimpleRepairTest extends TestCase
         $id = $finance->execute($actor, 'receipt', $receipt);
         $this->assertSame($id, $finance->execute($actor, 'receipt', $receipt));
         $this->assertSame(2500000, $document->fresh()->paid_minor);
+        $this->get(route('admin.repair-cases.show', $case))->assertOk()->assertSee('تسویه شد');
         $this->post($url, $handover)->assertRedirect()->assertSessionHasNoErrors();
         $this->post($url, $handover)->assertConflict();
         $this->assertSame('delivered', $case->fresh()->status->value);
