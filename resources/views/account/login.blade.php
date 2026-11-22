@@ -80,7 +80,7 @@
                                 <input type="hidden" name="request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                                 <p class="np-account-notice" role="status" data-send-status hidden></p>
                                 <label for="account-phone">شماره موبایل یا ایمیل</label>
-                                <input id="account-phone" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" placeholder="۰۹۱۲۳۴۵۶۷۸۹ یا name@example.com" value="{{ old('identifier') }}" required>
+                                <input id="account-phone" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" value="{{ old('identifier') }}" required>
                                 <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ارسال کد تأیید</button>
                             </form>
 
@@ -104,7 +104,7 @@
                                 <input type="hidden" name="recover" value="1">
                                 <p class="np-account-notice" role="status" data-send-status hidden></p>
                                 <label for="account-forgot-identifier">شماره موبایل یا ایمیل</label>
-                                <input id="account-forgot-identifier" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" placeholder="۰۹۱۲۳۴۵۶۷۸۹ یا name@example.com" value="{{ old('identifier', $phone ?? $loginEmail ?? '') }}" required>
+                                <input id="account-forgot-identifier" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" value="{{ old('identifier', $phone ?? $loginEmail ?? '') }}" required>
                                 <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ارسال کد بازیابی</button>
                             </form>
                             <div class="np-auth__back-row">
@@ -118,7 +118,7 @@
                                     <input type="hidden" name="flow" value="{{ $flow }}">
                                 @endif
                                 <label for="account-pw-identifier">شماره موبایل یا ایمیل</label>
-                                <input id="account-pw-identifier" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" maxlength="254" placeholder="۰۹۱۲۳۴۵۶۷۸۹ یا name@example.com" value="{{ old('identifier', $phone ?? $loginEmail ?? '') }}" required>
+                                <input id="account-pw-identifier" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" maxlength="254" value="{{ old('identifier', $phone ?? $loginEmail ?? '') }}" required>
 
                                 <div class="np-auth__label-row">
                                     <label for="account-password">رمز عبور</label>
