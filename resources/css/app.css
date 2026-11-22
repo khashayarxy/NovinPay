@@ -117,7 +117,7 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
     --site-font-family: 'Dana', var(--site-font-fallback);
     --site-heading-font: 'IRANYekanX', 'Dana', var(--site-font-fallback);
-    --site-font-scale: 98%;
+    --site-font-scale: 100%;
     --site-line-height: 1.85;
 }
 
@@ -183,6 +183,35 @@
     footer {
         line-height: 1.85;
         letter-spacing: 0;
+    }
+
+    bdi,
+    time,
+    .badge,
+    .np-footer__phone,
+    .np-footer__phones,
+    .np-footer__bottom,
+    .np-location__hours,
+    .np-location address,
+    .store-cart-count,
+    [data-store-cart-count],
+    .np-account-stats strong,
+    .np-account-tag,
+    .np-account-total,
+    .commerce-summary__amounts dd,
+    [class*='price'] {
+        font-variant-numeric: tabular-nums;
+    }
+
+    @media (min-width: 900px) {
+        .np-location__hours,
+        .np-location address,
+        .np-location__notice,
+        .np-footer__bottom,
+        .np-auth__legal,
+        .np-auth__hint {
+            font-size: 0.8125rem;
+        }
     }
 
     input,

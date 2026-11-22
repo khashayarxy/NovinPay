@@ -59,8 +59,8 @@
 .np-location__copy { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; border: 1px solid #dfe9f4; border-radius: 16px; padding: 14px 22px; text-align: center; }
 .np-location h2 { display: flex; gap: 8px; align-items: center; font-size: 19px; }
 .np-location h2 .np-icon { color: var(--color-brand-600); }
-.np-location address { font-size: 12px; line-height: 1.9; font-style: normal; max-width: 370px; margin-block: 5px; color: #415475; }
-.np-location__hours { font-size: 10px; color: #52678b; }
+.np-location address { font-size: 13px; line-height: 1.9; font-style: normal; max-width: 370px; margin-block: 5px; color: #415475; font-variant-numeric: tabular-nums; }
+.np-location__hours { font-size: 13px; color: #52678b; font-variant-numeric: tabular-nums; }
 .np-location__maps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 11px; }
 .np-location__maps a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; border: 1px solid #d5e4f7; border-radius: 9px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--color-brand-700); }
 .np-location__maps a:hover { background: #eff7ff; }
@@ -394,7 +394,7 @@
 .np-footer__phone { font-size: 15px; font-weight: 600; }
 .np-footer nav a:hover, .np-footer__phone:hover { color: var(--color-brand-800); text-decoration: underline; text-underline-offset: .2em; }
 .np-footer a:focus-visible { outline: 2px solid var(--color-brand-700); outline-offset: 3px; border-radius: 3px; }
-.np-footer__bottom { border-block-start: 1px solid var(--footer-divider); padding-block: 12px; text-align: center; font-size: 12px; }
+.np-footer__bottom { border-block-start: 1px solid var(--footer-divider); padding-block: 12px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
 @media (max-width: 850px) {
     .np-footer__grid { grid-template-columns: 1fr 1fr; gap: 18px 24px; padding-block-end: 20px; }
     .np-footer__brand { grid-column: 1 / -1; padding-block-end: 16px; border-block-end: 1px solid var(--footer-divider); }
