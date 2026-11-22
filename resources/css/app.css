@@ -8,11 +8,13 @@
 
 /*
 |-------------------------------------------------------------------------------
-| IRANYekanX — Farsi-numeral web font (Variable Font with Dots-1 joined dots + static 400/500/700 fallback)
+| Site-wide Typography Comparison Set (400 Regular / 500 Medium / 700 Bold)
 |-------------------------------------------------------------------------------
-| Commercial WOFF2 binaries live under public/fonts/iranyekanx/ (gitignored).
-| Static IRANYekanX (400/500/700) and static Vazirmatn (OFL, bundled from npm)
-| remain as graceful fallbacks when variable fonts or local binaries are absent.
+| 1. IRANYekanX: Variable font with 'dots' 1 (joined horizontal dots) + static fallback
+| 2. Dana: Static Farsi-numeral WOFF2 (400 / 500 / 700)
+| 3. Peyda: Static Farsi-numeral WOFF2 (400 / 500 / 700)
+| 4. Google Sans Flex: Loaded via Google Fonts CSS2 with static Vazirmatn fallback
+| Commercial WOFF2 binaries live under public/fonts/ (gitignored).
 */
 @font-face {
     font-family: 'IRANYekanXVF';
@@ -42,6 +44,54 @@
 @font-face {
     font-family: 'IRANYekanX';
     src: url('/fonts/iranyekanx/IRANYekanXFaNum-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Dana';
+    src: url('/fonts/dana/DanaFaNum-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Dana';
+    src: url('/fonts/dana/DanaFaNum-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Dana';
+    src: url('/fonts/dana/DanaFaNum-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Peyda';
+    src: url('/fonts/peyda/PeydaFaNumWeb-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Peyda';
+    src: url('/fonts/peyda/PeydaFaNumWeb-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Peyda';
+    src: url('/fonts/peyda/PeydaFaNumWeb-Bold.woff2') format('woff2');
     font-weight: 700;
     font-style: normal;
     font-display: swap;
@@ -83,7 +133,7 @@
 
 /*
 |-------------------------------------------------------------------------------
-| Brand tokens
+| Brand tokens & per-font optical calibration
 |-------------------------------------------------------------------------------
 | Official brand-500 is preserved exactly. Darker action/text shades provide
 | readable contrast against white without recolouring the supplied logo.
@@ -92,16 +142,39 @@
     --site-font-fallback: 'Vazirmatn', Tahoma, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --site-font-family: 'IRANYekanX', var(--site-font-fallback);
+    --site-font-scale: 100%;
+    --site-line-height: 1.85;
 }
 
 @supports (font-variation-settings: normal) {
-    :root {
+    :root,
+    html[data-site-font='iranyekanx'] {
         --site-font-family: 'IRANYekanXVF', 'IRANYekanX', var(--site-font-fallback);
-    }
-
-    html {
+        --site-font-scale: 100%;
+        --site-line-height: 1.85;
         font-variation-settings: 'dots' 1;
     }
+}
+
+html[data-site-font='dana'] {
+    --site-font-family: 'Dana', var(--site-font-fallback);
+    --site-font-scale: 97%;
+    --site-line-height: 1.85;
+    font-variation-settings: normal;
+}
+
+html[data-site-font='peyda'] {
+    --site-font-family: 'Peyda', var(--site-font-fallback);
+    --site-font-scale: 98%;
+    --site-line-height: 1.9;
+    font-variation-settings: normal;
+}
+
+html[data-site-font='google-sans-flex'] {
+    --site-font-family: 'Google Sans Flex', var(--site-font-fallback);
+    --site-font-scale: 100%;
+    --site-line-height: 1.85;
+    font-variation-settings: normal;
 }
 
 @theme static {
@@ -122,6 +195,7 @@
 @layer base {
     html {
         font-family: var(--site-font-family);
+        font-size: var(--site-font-scale, 100%);
     }
 
     * {
@@ -151,6 +225,7 @@
         @apply bg-slate-50 text-slate-800 antialiased;
         font-family: var(--site-font-family);
         font-weight: 400;
+        line-height: var(--site-line-height, 1.85);
     }
 
     input,
@@ -604,6 +679,56 @@
         .repair-step-actions > * {
             flex: 1 1 auto;
             justify-content: center;
+        }
+    }
+
+    /* Temporary site-wide typography comparison switcher */
+    .np-site-font-switcher {
+        position: fixed;
+        inset-inline-start: 14px;
+        bottom: 14px;
+        z-index: 60;
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+        max-width: calc(100vw - 28px);
+        padding: 4px;
+        border-radius: 999px;
+        background: rgb(15 23 42 / 90%);
+        border: 1px solid rgb(255 255 255 / 16%);
+        box-shadow: 0 10px 26px rgb(2 6 23 / 28%);
+        backdrop-filter: blur(10px);
+        direction: ltr;
+    }
+
+    .np-site-font-switcher button {
+        border: 0;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 11.5px;
+        font-weight: 500;
+        line-height: 1.4;
+        color: #cbd5e1;
+        background: transparent;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background-color 140ms ease, color 140ms ease;
+    }
+
+    .np-site-font-switcher button:hover {
+        color: #fff;
+    }
+
+    .np-site-font-switcher button.is-active {
+        background: #075da6;
+        color: #fff;
+        font-weight: 700;
+    }
+
+    @media (max-width: 850px) {
+        body:has(.global-store-nav) .np-site-font-switcher {
+            bottom: calc(var(--store-nav-edge, 14px) + var(--store-nav-active-height, 64px) + 12px + var(--store-purchase-space, 0px));
         }
     }
 }
