@@ -279,6 +279,52 @@ document.addEventListener('DOMContentLoaded', () => {
         boxes[0]?.focus();
     });
 
+    const authShowcase = document.querySelector('[data-auth-showcase]');
+    if (authShowcase instanceof HTMLElement) {
+        const slides = [...authShowcase.querySelectorAll('[data-showcase-slide]')];
+        const dots = [...authShowcase.querySelectorAll('[data-showcase-dot]')];
+        if (slides.length > 1) {
+            let current = 0;
+            let timer = null;
+            const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const showSlide = (index) => {
+                current = (index + slides.length) % slides.length;
+                slides.forEach((slide, i) => {
+                    const active = i === current;
+                    slide.hidden = !active;
+                    slide.classList.toggle('is-active', active);
+                });
+                dots.forEach((dot, i) => {
+                    const active = i === current;
+                    dot.classList.toggle('is-active', active);
+                    dot.setAttribute('aria-selected', String(active));
+                });
+            };
+            const start = () => {
+                if (reduced || timer !== null) return;
+                timer = window.setInterval(() => showSlide(current + 1), 5500);
+            };
+            const stop = () => {
+                if (timer !== null) {
+                    window.clearInterval(timer);
+                    timer = null;
+                }
+            };
+            dots.forEach((dot, i) => {
+                dot.addEventListener('click', () => {
+                    stop();
+                    showSlide(i);
+                    start();
+                });
+            });
+            authShowcase.addEventListener('mouseenter', stop);
+            authShowcase.addEventListener('mouseleave', start);
+            authShowcase.addEventListener('focusin', stop);
+            authShowcase.addEventListener('focusout', start);
+            start();
+        }
+    }
+
     document.querySelectorAll('[data-account-password]').forEach((button) => {
         const input = document.getElementById(button.dataset.accountPassword);
         if (!(input instanceof HTMLInputElement)) return;

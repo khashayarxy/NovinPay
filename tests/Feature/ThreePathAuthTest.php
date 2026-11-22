@@ -32,6 +32,13 @@ class ThreePathAuthTest extends TestCase
             ->assertSee('فراموشی رمز عبور')
             ->assertSee('ورود به پنل کاربری')
             ->assertSee('ورود با رمز یکبار مصرف');
+
+        $this->get('/login?method=forgot')
+            ->assertOk()
+            ->assertSee('فراموشی رمز عبور')
+            ->assertSee('شماره موبایل یا ایمیل')
+            ->assertSee('ارسال کد بازیابی')
+            ->assertSee('بازگشت به صفحه ورود | ثبت‌نام');
     }
 
     public function test_unified_start_endpoint_auto_detects_email_and_sends_email_otp(): void

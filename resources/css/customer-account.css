@@ -87,20 +87,59 @@
         background: radial-gradient(circle at 50% 35%, rgb(59 130 246 / 32%), transparent 68%);
         pointer-events: none;
     }
-    .np-auth-showcase__visual {
+    .np-auth-showcase__slides {
         position: relative;
         z-index: 1;
         flex: 1;
         display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .np-auth-slide {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 2rem;
+        animation: npAuthSlideIn 220ms ease-out both;
+    }
+    .np-auth-slide[hidden] { display: none; }
+    .np-auth-slide__art {
+        display: flex;
         align-items: center;
         justify-content: center;
-        padding-block: 1rem 2rem;
+        padding-block: .5rem;
     }
-    .np-auth-showcase__img {
-        width: min(350px, 72%);
+    .np-auth-slide__art svg {
+        width: min(290px, 78%);
         height: auto;
-        object-fit: contain;
-        filter: drop-shadow(0 28px 46px rgb(4 12 28 / 55%));
+        filter: drop-shadow(0 24px 38px rgb(4 12 28 / 45%));
+    }
+    .np-auth-showcase__dots {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 1.5rem;
+    }
+    .np-auth-showcase__dots button {
+        width: 8px;
+        height: 8px;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        background: rgb(255 255 255 / 26%);
+        cursor: pointer;
+        transition: width 180ms ease, background-color 180ms ease;
+    }
+    .np-auth-showcase__dots button.is-active {
+        width: 26px;
+        background: #60a5fa;
+    }
+    @keyframes npAuthSlideIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     .np-auth-glass {
         position: relative;
