@@ -540,3 +540,18 @@ document.addEventListener('click', async (event) => {
         if (status) status.textContent = 'کپی نشد؛ شماره را انتخاب و کپی کنید.';
     }
 });
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const dropdown = document.querySelector('[data-desktop-shop-dropdown]:is(:hover, :focus-within)');
+    if (!dropdown) return;
+    dropdown.classList.add('is-dismissed');
+    if (document.activeElement instanceof HTMLElement && dropdown.contains(document.activeElement)) {
+        document.activeElement.blur();
+    }
+});
+
+document.querySelectorAll('[data-desktop-shop-dropdown]').forEach((dropdown) => {
+    dropdown.addEventListener('mouseleave', () => dropdown.classList.remove('is-dismissed'));
+    dropdown.addEventListener('focusin', () => dropdown.classList.remove('is-dismissed'));
+});

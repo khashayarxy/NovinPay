@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use DOMDocument;
 use DOMXPath;
@@ -34,7 +35,7 @@ class HomePageTest extends TestCase
             $this->assertCount(0, $xpath->query('//footer//img[contains(@src,"Shaparak.svg")]'));
             $this->assertCount(0, $xpath->query('//script[contains(@src,"zibal-trust")]'));
 
-            $zibalLinks = $xpath->query('//footer//a[@href="https://gateway.zibal.ir/trustMe/novinpaypos.com" and img[@src="'.asset('images/zibal-trust.png').'"]]');
+            $zibalLinks = $xpath->query('//footer//a[@href="https://gateway.zibal.ir/trustMe/novinpaypos.com" and img[@src="'.asset('images/zibal-trust-light.svg').'"]]');
             $this->assertCount(1, $zibalLinks);
             $this->assertSame('_blank', $zibalLinks->item(0)->getAttribute('target'));
             $this->assertSame('noopener noreferrer nofollow', $zibalLinks->item(0)->getAttribute('rel'));
@@ -230,10 +231,22 @@ class HomePageTest extends TestCase
         $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
-        $this->assertSame(5, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a')->length);
+        $this->assertSame(5, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a | //header//nav[@aria-label="ناوبری اصلی"]/div[@data-desktop-shop-dropdown]/a')->length);
         $this->assertSame(5, $xpath->query('//dialog[@id="mobile-drawer"]//nav[@aria-label="ناوبری موبایل"]/a')->length);
         $desktop = $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]')->item(0);
-        $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($xpath->query('./a', $desktop))));
+        $this->assertSame(
+            ['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'],
+            array_map(fn ($link) => trim(preg_replace('/\s+/', ' ', $link->textContent)), iterator_to_array($xpath->query('./a | ./div[@data-desktop-shop-dropdown]/a', $desktop))),
+        );
+        $dropdownLinks = $xpath->query('//header//div[@data-desktop-shop-dropdown]//div[contains(@class,"np-nav__dropdown")]//a');
+        $expectedCategories = array_map(fn ($c) => $c->label(), ProductCategory::storefrontCases());
+        $this->assertSame(
+            [...$expectedCategories, 'مشاهده همه محصولات'],
+            array_map(fn ($link) => trim(preg_replace('/\s+/', ' ', $link->textContent)), iterator_to_array($dropdownLinks)),
+        );
+        $this->assertSame(1, $xpath->query('//footer//img[@src="'.asset('images/zibal-trust-light.svg').'"]')->length);
+        $this->assertFileExists(public_path('images/zibal-trust-light.svg'));
+        $this->assertFileDoesNotExist(public_path('images/zibal-trust.png'));
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
         $this->assertSame(4, $xpath->query('//main/section')->length);
         $this->assertSame(1, $xpath->query('//section[contains(@class,"np-location")]')->length);
