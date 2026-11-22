@@ -3,7 +3,8 @@
     $allows = fn ($abilities) => collect((array) $abilities)->every(fn ($ability) => $account->hasFullAccess()
         || (\App\Enums\AdminPermission::tryFrom($ability) !== null && in_array($ability, $account->permissions ?? [], true)));
     $canViewProducts = $allows('products.view');
-    $groups = $account->must_change_password ? [] : [
+
+    $dailyGroups = $account->must_change_password ? [] : [
         'تعمیرات' => ['tool', [
             ['repairs.view', 'admin.repair-cases.index', 'admin.repair-cases.*', 'پرونده‌های تعمیر'],
             ['repairs.view', 'admin.repairs.index', 'admin.repairs.*', 'درخواست‌های آنلاین'],
@@ -16,18 +17,19 @@
             ['customers.view', 'admin.customers.index', 'admin.customers.*', 'لیست مشتریان'],
             ['consultations.view', 'admin.consultations.index', 'admin.consultations.*', 'لیست مشاوره‌ها'],
         ]],
-        'پرداخت‌ها و مالی' => ['building-bank', [
+        'مالی و ارسال' => ['building-bank', [
             ['finance.view', 'admin.payments.index', 'admin.payments.*', 'پرداختی‌ها'],
             ['finance.view', 'admin.finance.index', 'admin.finance.*', 'تراکنش‌ها و گزارش‌ها'],
+            [['finance.view', 'finance.details'], 'admin.deliveries.index', 'admin.deliveries.*', 'ارسال و تحویل'],
         ]],
-        'ارسال و تحویل' => ['truck', [
-            [['finance.view', 'finance.details'], 'admin.deliveries.index', 'admin.deliveries.*', 'مدیریت ارسال و تحویل'],
-        ]],
+    ];
+
+    $systemGroups = $account->must_change_password ? [] : [
         'مقالات' => ['photo', [
             ['articles.view', 'admin.articles.index', 'admin.articles.*', 'لیست مقالات'],
             ['article_categories.manage', 'admin.article-categories.index', 'admin.article-categories.*', 'دسته‌بندی مقالات'],
         ]],
-        'مدیریت سایت' => ['world', [
+        'وضعیت و نگهداری سایت' => ['world', [
             ['maintenance.view', 'admin.maintenance.index', 'admin.maintenance.*', 'وضعیت و نگهداری سایت'],
         ]],
         'دسترسی و سوابق' => ['shield-check', [
@@ -36,26 +38,53 @@
             ['activity.view', 'admin.activities.index', 'admin.activities.*', 'سوابق فعالیت'],
         ]],
     ];
-    $groups['حساب من'] = ['settings', [[null, 'admin.password.edit', 'admin.password.*', 'امنیت حساب من']]];
+    $systemGroups['امنیت حساب من'] = ['settings', [[null, 'admin.password.edit', 'admin.password.*', 'امنیت حساب من']]];
+
+    $tiers = [
+        ['عملیات روزانه', $dailyGroups, true],
+        ['محتوا و تنظیمات', $systemGroups, false],
+    ];
 @endphp
 <nav aria-label="ناوبری مدیریت" class="admin-nav">
     @if(!$account->must_change_password && $allows('dashboard.view'))
-        <a href="{{ route('admin.dashboard') }}" @if(request()->routeIs('admin.dashboard')) aria-current="page" @endif><x-home.icon name="layout-dashboard" />داشبورد مدیریت</a>
+        <a class="admin-nav-direct" href="{{ route('admin.dashboard') }}" @if(request()->routeIs('admin.dashboard')) aria-current="page" @endif>
+            <x-home.icon name="layout-dashboard" /><span>داشبورد مدیریت</span>
+        </a>
     @endif
-    @foreach($groups as $label => [$icon, $links])
-        @php($visible = array_values(array_filter($links, fn ($link) => $link[0] === null || $allows($link[0]))))
-        @continue(!$visible)
-        @php($current = collect($visible)->contains(fn ($link) => request()->routeIs(...(array) $link[2])))
-        <div @class(['admin-nav-section', 'admin-nav-current' => $current])>
-            <a class="admin-nav-category" href="{{ route($visible[0][1]) }}" data-admin-category><x-home.icon :name="$icon" /><span>{{ $label }}</span></a>
-            <details class="admin-nav-group" name="admin-module" @if($current) open @endif>
-                <summary aria-label="باز یا بسته کردن {{ $label }}"><span class="admin-nav-chevron" aria-hidden="true"></span></summary>
-                <div class="admin-nav-children">
-                    @foreach($visible as [$ability, $route, $active, $text])
-                        <a href="{{ route($route) }}" @if(request()->routeIs(...(array) $active)) aria-current="page" @endif>{{ $text }}</a>
-                    @endforeach
-                </div>
-            </details>
+
+    @foreach($tiers as [$tierLabel, $groups, $isPrimary])
+        @php
+            $renderedGroups = [];
+            foreach ($groups as $label => [$icon, $links]) {
+                $visible = array_values(array_filter($links, fn ($link) => $link[0] === null || $allows($link[0])));
+                if ($visible) {
+                    $renderedGroups[$label] = [$icon, $visible];
+                }
+            }
+        @endphp
+        @continue(!$renderedGroups)
+        <div @class(['admin-nav-tier', 'admin-nav-tier--secondary' => !$isPrimary])>
+            <p class="admin-nav-tier-label">{{ $tierLabel }}</p>
+            @foreach($renderedGroups as $label => [$icon, $visible])
+                @php($current = collect($visible)->contains(fn ($link) => request()->routeIs(...(array) $link[2])))
+                @if(count($visible) === 1)
+                    <a class="admin-nav-direct" href="{{ route($visible[0][1]) }}" data-admin-category @if($current) aria-current="page" @endif>
+                        <x-home.icon :name="$icon" /><span>{{ $visible[0][3] }}</span>
+                    </a>
+                @else
+                    <div @class(['admin-nav-section', 'admin-nav-current' => $current])>
+                        <a class="admin-nav-category" href="{{ route($visible[0][1]) }}" data-admin-category><x-home.icon :name="$icon" /><span>{{ $label }}</span></a>
+                        <details class="admin-nav-group" name="admin-module" @if($current) open @endif>
+                            <summary aria-label="باز یا بسته کردن {{ $label }}"><span class="admin-nav-chevron" aria-hidden="true"></span></summary>
+                            <div class="admin-nav-children">
+                                @foreach($visible as [$ability, $route, $active, $text])
+                                    <a href="{{ route($route) }}" @if(request()->routeIs(...(array) $active)) aria-current="page" @endif>{{ $text }}</a>
+                                @endforeach
+                            </div>
+                        </details>
+                    </div>
+                @endif
+            @endforeach
         </div>
     @endforeach
 </nav>

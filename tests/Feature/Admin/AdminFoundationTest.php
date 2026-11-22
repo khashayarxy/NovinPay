@@ -104,16 +104,16 @@ class AdminFoundationTest extends TestCase
     {
         $this->actingAs($this->owner())->get('/admin')->assertOk()
             ->assertSee('href="'.route('home').'" target="_blank" rel="nofollow noopener noreferrer" aria-label="مشاهده وب‌سایت" title="مشاهده وب‌سایت"', false)
-            ->assertSeeInOrder(['داشبورد مدیریت', 'تعمیرات', 'سفارش‌ها و کالاها', 'مشتریان', 'پرداخت‌ها و مالی', 'ارسال و تحویل', 'مقالات', 'مدیریت سایت', 'دسترسی و سوابق', 'حساب من'])
+            ->assertSeeInOrder(['داشبورد مدیریت', 'عملیات روزانه', 'تعمیرات', 'سفارش‌ها و کالاها', 'مشتریان', 'مالی و ارسال', 'محتوا و تنظیمات', 'مقالات', 'وضعیت و نگهداری سایت', 'دسترسی و سوابق', 'امنیت حساب من'])
             ->assertSee('href="'.route('admin.orders.index').'" data-admin-category', false)
             ->assertSee('href="'.route('admin.payments.index').'" data-admin-category', false)
-            ->assertSee('href="'.route('admin.deliveries.index').'" data-admin-category', false);
+            ->assertSee('href="'.route('admin.deliveries.index').'"', false);
 
         $staff = User::factory()->staff(['dashboard.view', 'inventory.view', 'consultations.view', 'finance.view'])->create();
         $this->actingAs($staff)->get('/admin/inventory')->assertOk()
             ->assertSee('href="'.route('admin.inventory.index').'" data-admin-category', false)
             ->assertSee('href="'.route('admin.consultations.index').'" data-admin-category', false)
-            ->assertSee('href="'.route('admin.inventory.index').'"  aria-current="page"', false)
+            ->assertSee('href="'.route('admin.inventory.index').'" data-admin-category  aria-current="page"', false)
             ->assertDontSee(route('admin.orders.index'), false)
             ->assertDontSee(route('admin.products.index'), false)
             ->assertDontSee(route('admin.customers.index'), false)
