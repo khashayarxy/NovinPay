@@ -2,11 +2,16 @@
 
 namespace App\Services;
 
+use App\Models\AdminAccount;
 use App\Models\CustomerAccount;
 use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
+use App\Models\FinancialEntry;
 use App\Models\PaymentAttempt;
 use App\Models\RepairCase;
+use App\Models\SalesOrder;
+use App\Models\User;
+use App\Support\OrderMoney;
 use App\Support\RepairIdentity;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -81,6 +86,171 @@ class ZibalPayments
                 $current->state = 'failed';
             } else {
                 // Request may have reached the gateway. Never blindly recreate it.
+                $current->state = 'uncertain';
+            }
+            $current->retry_at = now()->addMinutes(2);
+            $current->save();
+            $this->event($current, $current->state === 'failed' ? 'request_rejected_'.$response['result'] : $current->state);
+
+            return $current;
+        }, 3);
+    }
+
+    public function startForOrderCheckout(
+        CustomerAccount $account,
+        SalesOrder $order,
+        string $method,
+        ?string $addressPublicId,
+        string $operation
+    ): PaymentAttempt {
+        abort_unless($this->gateway->available(), 503, 'پرداخت آنلاین هنوز فعال نشده است.');
+        abort_unless(Str::isUuid($operation), 422);
+
+        $amountMinor = OrderMoney::minor((string) $order->total);
+        abort_unless($amountMinor > 0 && $amountMinor % 10 === 0, 422, 'مبلغ سفارش قابل تبدیل به ریال نیست.');
+        $rial = intdiv($amountMinor, 10);
+        abort_unless($rial >= config('payments.zibal.min_rial') && $rial <= config('payments.zibal.max_rial'), 422, 'مبلغ سفارش خارج از محدوده مجاز درگاه است.');
+
+        [$attempt, $created] = DB::transaction(function () use ($account, $order, $method, $addressPublicId, $operation, $amountMinor, $rial): array {
+            $freshAccount = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
+            abort_unless($freshAccount->is_active && $freshAccount->session_version === $account->session_version, 403);
+
+            $lockedOrder = SalesOrder::query()->lockForUpdate()->findOrFail($order->id);
+            abort_unless($lockedOrder->customer_account_id === $freshAccount->id, 403);
+
+            $prior = PaymentAttempt::query()->where('operation_key', $operation)->first();
+            if ($prior) {
+                abort_unless($prior->customer_account_id === $freshAccount->id && $prior->amount_minor === $amountMinor, 409);
+
+                return [$prior, false];
+            }
+
+            if ($lockedOrder->status === 'draft') {
+                $lockedOrder->status = 'confirmed';
+                $lockedOrder->version++;
+                $lockedOrder->save();
+            }
+
+            $document = FinancialDocument::query()->where('sales_order_id', $lockedOrder->id)->lockForUpdate()->first();
+            if (! $document) {
+                $actorId = AdminAccount::query()
+                    ->where('is_active', true)
+                    ->orderByRaw("CASE WHEN role = 'owner' THEN 0 ELSE 1 END")
+                    ->orderBy('id')
+                    ->value('user_id') ?? User::query()->orderBy('id')->value('id');
+                abort_unless($actorId !== null, 503, 'حساب سیستمی برای صدور سند مالی یافت نشد.');
+
+                $document = new FinancialDocument;
+                foreach ([
+                    'public_id' => (string) Str::uuid(),
+                    'customer_id' => $lockedOrder->customer_id,
+                    'sales_order_id' => $lockedOrder->id,
+                    'source_version' => $lockedOrder->version,
+                    'source_amount_minor' => $amountMinor,
+                    'charged_minor' => $amountMinor,
+                    'paid_minor' => 0,
+                    'version' => 1,
+                    'created_by' => $actorId,
+                    'created_at' => now(),
+                ] as $key => $value) {
+                    $document->$key = $value;
+                }
+                $document->save();
+
+                $opId = DB::table('financial_operations')->insertGetId([
+                    'operation_key' => (string) Str::uuid(),
+                    'actor_id' => $actorId,
+                    'action' => 'issue',
+                    'payload_digest' => hash_hmac('sha256', json_encode(['checkout_issue', $lockedOrder->id, $amountMinor], JSON_THROW_ON_ERROR), config('app.key')),
+                    'created_at' => now(),
+                ]);
+
+                $entry = new FinancialEntry;
+                foreach ([
+                    'public_id' => (string) Str::uuid(),
+                    'financial_operation_id' => $opId,
+                    'financial_document_id' => $document->id,
+                    'actor_id' => $actorId,
+                    'kind' => 'charge',
+                    'category' => 'sales',
+                    'charge_delta' => $amountMinor,
+                    'receipt_delta' => 0,
+                    'expense_delta' => 0,
+                    'note' => 'صدور خودکار سند سفارش برای پرداخت آنلاین زیبال',
+                    'created_at' => now(),
+                ] as $key => $value) {
+                    $entry->$key = $value;
+                }
+                $entry->save();
+                DB::table('financial_operations')->where('id', $opId)->update(['result_id' => $entry->id]);
+            }
+
+            if (! DeliveryPlan::query()->where('financial_document_id', $document->id)->exists()) {
+                $addressSnapshot = app(DeliveryManagement::class)->checkoutAddress($freshAccount, $method === 'pickup' ? null : $addressPublicId, $method);
+                $plan = new DeliveryPlan;
+                foreach ([
+                    'public_id' => (string) Str::uuid(),
+                    'financial_document_id' => $document->id,
+                    'customer_account_id' => $freshAccount->id,
+                    'method' => $method === 'courier' ? 'tipax' : $method,
+                    'requested_method' => $method === 'courier' ? 'courier' : null,
+                    'shipping_minor' => 0,
+                    'address_snapshot' => $addressSnapshot,
+                    'version' => 1,
+                ] as $key => $value) {
+                    $plan->$key = $value;
+                }
+                $plan->save();
+            }
+
+            $balance = $document->charged_minor - $document->paid_minor;
+            abort_unless($balance >= $amountMinor, 409, 'مبلغ از ماندهٔ سند بیشتر است.');
+            abort_if(
+                PaymentAttempt::query()->where('financial_document_id', $document->id)->whereNotIn('state', ['settled', 'failed'])->exists(),
+                409,
+                'پرداخت قبلی هنوز تعیین تکلیف نشده است؛ دوباره پرداخت نکنید.'
+            );
+
+            $attempt = new PaymentAttempt;
+            foreach ([
+                'public_id' => (string) Str::uuid(),
+                'financial_document_id' => $document->id,
+                'customer_account_id' => $freshAccount->id,
+                'operation_key' => $operation,
+                'amount_minor' => $amountMinor,
+                'amount_rial' => $rial,
+                'document_version' => $document->version,
+                'merchant_digest' => $this->merchantDigest(),
+                'state' => 'requesting',
+            ] as $key => $value) {
+                $attempt->$key = $value;
+            }
+            $attempt->save();
+            $this->event($attempt, 'request_started');
+
+            return [$attempt, true];
+        }, 3);
+
+        if (! $created) {
+            return $attempt;
+        }
+
+        $response = $this->gateway->call('request', [
+            'amount' => $rial,
+            'orderId' => $attempt->public_id,
+            'callbackUrl' => config('payments.zibal.callback_url'),
+            'description' => 'پرداخت سفارش نوین‌پی',
+        ]);
+
+        return DB::transaction(function () use ($attempt, $response): PaymentAttempt {
+            $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
+            $track = ZibalGateway::trackNumber($response['trackId'] ?? null);
+            if (($response['result'] ?? null) === 100 && $track !== null) {
+                $current->track_id = (string) $track;
+                $current->state = 'pending';
+            } elseif (in_array($response['result'] ?? null, self::REQUEST_REJECTIONS, true)) {
+                $current->state = 'failed';
+            } else {
                 $current->state = 'uncertain';
             }
             $current->retry_at = now()->addMinutes(2);

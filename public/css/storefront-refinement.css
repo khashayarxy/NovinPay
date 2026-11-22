@@ -564,3 +564,146 @@ button[data-loading="true"] {
     body.public-site .store-cart-drawer[open]::backdrop,
     body.public-site .store-cart-drawer[open].is-closing::backdrop { animation: none; }
 }
+
+/* Multi-Step Fintech Checkout & Active Zibal Gateway Selection */
+.checkout-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px 20px;
+    margin-block-end: 20px;
+}
+.checkout-header h1 { margin: 0; }
+.checkout-steps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    flex-wrap: wrap;
+}
+.checkout-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #dce7f2;
+    background: #fff;
+    color: #5b7288;
+    font-size: 13px;
+    font-weight: 500;
+    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+.checkout-step__num {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #edf4fb;
+    color: #36526d;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.checkout-step.is-active {
+    border-color: #098cf7;
+    background: #eff7ff;
+    color: #075da6;
+    font-weight: 700;
+}
+.checkout-step.is-active .checkout-step__num {
+    background: #098cf7;
+    color: #fff;
+}
+.checkout-step.is-done {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #15803d;
+}
+.checkout-step.is-done .checkout-step__num {
+    background: #16a34a;
+    color: #fff;
+}
+[data-checkout-stepper].is-stepped .checkout-step-panel:not(.is-active) {
+    display: none;
+}
+.checkout-step-panel {
+    display: grid;
+    gap: 16px;
+}
+.checkout-step-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-block-start: 16px;
+    padding-block-start: 14px;
+    border-block-start: 1px solid #e7eff7;
+}
+.checkout-gateway-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid #dce7f2;
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+.checkout-gateway-card:has(input:checked) {
+    border-color: #098cf7;
+    background: #f5faff;
+    box-shadow: 0 0 0 3px rgb(9 140 247 / 12%);
+}
+.checkout-gateway-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+.checkout-gateway-card__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.checkout-gateway-card__logo {
+    width: auto;
+    height: 26px;
+    object-fit: contain;
+    flex: none;
+}
+.checkout-gateway-card__body small {
+    color: #536d88;
+    font-size: 13px;
+    line-height: 1.7;
+}
+.checkout-confirm-list {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0 0;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #f8fbff;
+    border: 1px solid #dce7f2;
+}
+.checkout-confirm-list > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+.checkout-confirm-list dt { color: #536d88; font-size: 13px; }
+.checkout-confirm-list dd { margin: 0; font-weight: 600; color: #122940; font-size: 14px; }
+.checkout-confirm-total { color: #0674cf !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+    .checkout-step { padding: 5px 10px; font-size: 12px; }
+    .checkout-step-actions { flex-direction: column-reverse; align-items: stretch; }
+    .checkout-step-actions .commerce-action { width: 100%; justify-content: center; }
+}

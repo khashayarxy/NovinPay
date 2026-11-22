@@ -8,6 +8,8 @@ use App\Services\CustomerLogin;
 use App\Services\DeliveryManagement;
 use App\Services\LegacyCartHold;
 use App\Services\ShoppingCart;
+use App\Services\ZibalGateway;
+use App\Services\ZibalPayments;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -19,7 +21,7 @@ class CartController extends Controller
         return view('account.cart', $this->details($request, $cart));
     }
 
-    public function review(Request $request, ShoppingCart $cart, CustomerLogin $login)
+    public function review(Request $request, ShoppingCart $cart, CustomerLogin $login, ZibalGateway $gateway)
     {
         $account = $login->authenticatedAccount($request);
         $data = $this->details($request, $cart);
@@ -32,6 +34,7 @@ class CartController extends Controller
             'account' => $account,
             'addresses' => CustomerAddress::query()->where('customer_account_id', $account->id)->latest('id')->get(),
             'operation' => (string) Str::uuid(),
+            'zibalAvailable' => $gateway->available(),
         ]);
     }
 
@@ -61,16 +64,32 @@ class CartController extends Controller
         return $this->changed($request, $cart->importLegacy($request, $legacy));
     }
 
-    public function checkout(Request $request, ShoppingCart $cart)
+    public function checkout(Request $request, ShoppingCart $cart, CustomerLogin $login, ZibalGateway $gateway, ZibalPayments $payments)
     {
         $data = $request->validate([
             'operation_key' => ['required', 'uuid'],
             'quote' => ['required', 'string', 'size:64'],
             'method' => ['required', Rule::in(array_keys(DeliveryManagement::CHECKOUT_METHODS))],
             'address' => ['nullable', 'required_unless:method,pickup', 'uuid'],
+            'payment_method' => ['nullable', Rule::in(['zibal', 'request'])],
         ]);
 
-        $cart->place($request, $data['operation_key'], $data['quote'], $data['method'], $data['address'] ?? null);
+        $order = $cart->place($request, $data['operation_key'], $data['quote'], $data['method'], $data['address'] ?? null);
+
+        $paymentMethod = $data['payment_method'] ?? 'request';
+        if ($paymentMethod === 'zibal' && $gateway->available()) {
+            $account = $login->authenticatedAccount($request);
+            $attempt = $payments->startForOrderCheckout(
+                $account,
+                $order,
+                $data['method'],
+                $data['address'] ?? null,
+                $data['operation_key']
+            );
+            $destination = $attempt->state === 'pending' && $attempt->track_id ? 'payments.connect' : 'payments.result';
+
+            return redirect()->route($destination, $attempt->public_id, 303);
+        }
 
         return redirect()->route('account.index', ['section' => 'orders'])->with('success', 'درخواست سفارش ثبت شد. پس از تأیید موجودی، صورت‌حساب و روش تحویل در حساب شما نمایش داده می‌شود.');
     }
