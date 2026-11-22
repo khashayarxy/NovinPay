@@ -12,6 +12,7 @@ use App\Models\RepairDelivery;
 use App\Models\RepairEvent;
 use App\Models\RepairRecordRevision;
 use App\Models\User;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\AdminHistory;
 use App\Support\AdminRepairMoney;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,9 @@ final class SimpleRepairRecords
 {
     public function save(User $actor, RepairCase $target, array $data): RepairCase
     {
-        return DB::transaction(function () use ($actor, $target, $data): RepairCase {
+        $notifyPayload = null;
+
+        $saved = DB::transaction(function () use ($actor, $target, $data, &$notifyPayload): RepairCase {
             AdminAccount::query()->where('user_id', $actor->id)->lockForUpdate()->firstOrFail();
             $intent = $data['intent'] ?? 'save';
             foreach (['repairs.view', 'repairs.customer_data', $intent === 'handover' ? 'repairs.deliver' : 'repairs.transition'] as $permission) {
@@ -32,6 +35,7 @@ final class SimpleRepairRecords
             abort_unless($case->simple_workflow, 409, 'این پرونده در گردش کار کامل است؛ از عملیات کامل تعمیر استفاده کنید.');
             abort_if($case->status->closed(), 409, 'پرونده تحویل شده است؛ اصلاحات مالی را در سند مالی ثبت کنید.');
             $before = $case->status;
+            $beforePrice = $case->repair_price_toman;
             $beforeRecord = $case->only(['repair_price_toman', 'repair_notes', 'delivery_method', 'delivery_carrier', 'settlement_method']);
             $beforeRecord['status'] = $before->value;
             $action = AdminAction::RepairTransition;
@@ -66,8 +70,29 @@ final class SimpleRepairRecords
             $event->save();
             AdminHistory::record($action, 'repair_case', $case->id, $actor->id);
 
+            $statusChanged = $before !== $case->status;
+            $costUpdatedOnReady = $case->status === RepairStage::Ready && $beforePrice !== $case->repair_price_toman;
+            if (($statusChanged && in_array($case->status, [RepairStage::Ready, RepairStage::Delivered, RepairStage::Returned], true)) || $costUpdatedOnReady) {
+                $notifyPayload = [
+                    'status_label' => $case->status->label(),
+                    'cost' => $case->repair_price_toman,
+                    'tracking' => is_string($data['shipment_tracking'] ?? null) ? $data['shipment_tracking'] : null,
+                ];
+            }
+
             return $case;
         }, 3);
+
+        if ($notifyPayload !== null) {
+            app(UnifiedNotifier::class)->repairStatusUpdated(
+                $saved,
+                $notifyPayload['status_label'],
+                $notifyPayload['cost'],
+                $notifyPayload['tracking'],
+            );
+        }
+
+        return $saved;
     }
 
     private function document(RepairCase $case): ?FinancialDocument

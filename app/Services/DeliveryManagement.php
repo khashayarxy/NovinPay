@@ -9,6 +9,7 @@ use App\Models\FinancialDocument;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\User;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\FinanceAccess;
 use App\Support\OrderMoney;
 use App\Support\RepairTime;
@@ -180,6 +181,16 @@ class DeliveryManagement
         $this->event($plan, $plan->state, $actor->id);
         if ($plan->state === 'dispatched') {
             app(CustomerNotifications::class)->record($plan->customer_account_id, 'device_shipped', $plan->public_id.':'.$plan->version, '/account/documents/'.$document->public_id.'/delivery');
+            if ($document->sales_order_id) {
+                $orderId = $document->sales_order_id;
+                $tracking = $plan->tracking;
+                DB::afterCommit(static function () use ($orderId, $tracking): void {
+                    $order = SalesOrder::query()->find($orderId);
+                    if ($order) {
+                        app(UnifiedNotifier::class)->orderShipped($order, $tracking);
+                    }
+                });
+            }
         }
     }
 

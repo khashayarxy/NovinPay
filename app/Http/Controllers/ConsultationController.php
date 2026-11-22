@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreConsultation;
 use App\Models\Consultation;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\RepairIdentity;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -40,6 +41,7 @@ class ConsultationController extends Controller
             return $this->duplicate($request);
         }
         $request->session()->forget('consultation_token');
+        app(UnifiedNotifier::class)->consultationSubmitted($consultation);
 
         return redirect()->route('consultation.confirmation')->with('consultation_received', true);
     }

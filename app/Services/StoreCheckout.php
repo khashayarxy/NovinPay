@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderEvent;
 use App\Models\SalesOrderLine;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\OrderMoney;
 use App\Support\ProductSale;
 use Illuminate\Support\Collection;
@@ -59,7 +60,9 @@ class StoreCheckout
         abort_unless(Str::isUuid($key) && count($cart) <= 30, 422);
         ksort($cart);
 
-        return DB::transaction(function () use ($account, $cart, $key, $quote): SalesOrder {
+        $created = false;
+
+        $order = DB::transaction(function () use ($account, $cart, $key, $quote, &$created): SalesOrder {
             $digest = hash_hmac('sha256', json_encode($cart, JSON_THROW_ON_ERROR), config('app.key'));
             $fresh = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
             abort_unless($fresh->is_active && $fresh->session_version === $account->session_version && $fresh->customer_id, 403, 'ابتدا پروفایل و اتصال حساب خود را تکمیل کنید.');
@@ -103,8 +106,15 @@ class StoreCheckout
                 $event->$field = $value;
             }
             $event->save();
+            $created = true;
 
             return $order;
         }, 3);
+
+        if ($created) {
+            app(UnifiedNotifier::class)->orderPlaced($order);
+        }
+
+        return $order;
     }
 }
