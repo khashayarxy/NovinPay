@@ -68,7 +68,7 @@
             @foreach($renderedGroups as $label => [$icon, $visible])
                 @php($current = collect($visible)->contains(fn ($link) => request()->routeIs(...(array) $link[2])))
                 @if(count($visible) === 1)
-                    <a class="admin-nav-direct" href="{{ route($visible[0][1]) }}" @if($current) aria-current="page" @endif>
+                    <a class="admin-nav-direct" href="{{ route($visible[0][1]) }}" data-admin-category @if($current) aria-current="page" @endif>
                         <x-home.icon :name="$icon" /><span>{{ $visible[0][3] }}</span>
                     </a>
                 @else
