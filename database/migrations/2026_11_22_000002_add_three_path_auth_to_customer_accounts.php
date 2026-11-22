@@ -11,10 +11,15 @@ return new class extends Migration
         Schema::table('customer_accounts', function (Blueprint $table): void {
             $table->string('phone_digest', 64)->nullable()->change();
             $table->text('phone')->nullable()->change();
-            $table->char('email_digest', 64)->nullable()->unique()->after('phone');
+        });
+
+        Schema::table('customer_accounts', function (Blueprint $table): void {
+            $table->char('email_digest', 64)->nullable()->after('phone');
             $table->text('email')->nullable()->after('email_digest');
             $table->timestamp('email_verified_at')->nullable()->after('verified_at');
-            $table->char('google_id_digest', 64)->nullable()->unique()->after('email');
+            $table->char('google_id_digest', 64)->nullable()->after('email');
+            $table->unique('email_digest', 'customer_accounts_email_digest_unique');
+            $table->unique('google_id_digest', 'customer_accounts_google_id_digest_unique');
         });
 
         Schema::create('customer_email_challenges', function (Blueprint $table): void {
@@ -33,10 +38,25 @@ return new class extends Migration
     {
         Schema::dropIfExists('customer_email_challenges');
 
-        Schema::table('customer_accounts', function (Blueprint $table): void {
-            $table->dropUnique(['email_digest']);
-            $table->dropUnique(['google_id_digest']);
-            $table->dropColumn(['email_digest', 'email', 'email_verified_at', 'google_id_digest']);
+        if (! Schema::hasTable('customer_accounts')) {
+            return;
+        }
+
+        $columns = array_values(array_filter(
+            ['email_digest', 'email', 'email_verified_at', 'google_id_digest'],
+            static fn (string $column): bool => Schema::hasColumn('customer_accounts', $column),
+        ));
+
+        Schema::table('customer_accounts', function (Blueprint $table) use ($columns): void {
+            if (Schema::hasIndex('customer_accounts', 'customer_accounts_email_digest_unique')) {
+                $table->dropUnique('customer_accounts_email_digest_unique');
+            }
+            if (Schema::hasIndex('customer_accounts', 'customer_accounts_google_id_digest_unique')) {
+                $table->dropUnique('customer_accounts_google_id_digest_unique');
+            }
+            if ($columns !== []) {
+                $table->dropColumn($columns);
+            }
         });
     }
 };
