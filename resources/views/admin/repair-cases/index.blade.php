@@ -16,7 +16,7 @@
     </x-admin.empty-state>
 @else
     <div class="admin-table-wrap" role="region" aria-label="پرونده‌های تعمیر" tabindex="0">
-        <table class="admin-table admin-compact-table" role="table">
+        <table class="admin-table admin-compact-table repair-list-table" role="table">
             <thead role="rowgroup"><tr role="row">
                 <th scope="col" role="columnheader">کد پیگیری</th>
                 <th scope="col" role="columnheader">مشتری</th>
@@ -25,11 +25,31 @@
             </tr></thead>
             <tbody role="rowgroup">
                 @foreach($cases as $case)
+                    @php
+                        $rawRef = $canReadCustomer ? (string) $case->tracking_reference : (string) $case->case_number;
+                        $shortRef = preg_match('/\A[0-9]+\z/', $rawRef)
+                            ? \App\Support\FaNumber::digits($rawRef)
+                            : (strlen($rawRef) > 12 ? substr($rawRef, 0, 10).'…' : $rawRef);
+                    @endphp
                     <tr role="row">
-                        <td role="cell"><a class="admin-text-link" href="{{ route('admin.repair-cases.show', $case) }}"><span class="sr-only">پروندهٔ </span><bdi>{{ \App\Support\FaNumber::digits($case->tracking_reference) }}</bdi><x-home.icon name="arrow-left" /></a></td>
-                        <td role="cell"><span class="admin-mobile-cell-label" aria-hidden="true">مشتری</span>{{ $canReadCustomer ? $case->customer_name : '—' }}</td>
-                        <td role="cell"><span class="admin-mobile-cell-label" aria-hidden="true">دستگاه</span>{{ $canReadCustomer ? $case->device_model : '—' }}</td>
-                        <td role="cell"><x-admin.status :tone="match($case->status->value) { 'delivered', 'ready' => 'success', 'repairing' => 'info', 'return_pending', 'returned' => 'warning', default => 'neutral' }">{{ $case->status->label() }}</x-admin.status></td>
+                        <td role="cell" class="repair-list-code">
+                            <a class="admin-text-link" href="{{ route('admin.repair-cases.show', $case) }}" title="{{ $rawRef }}">
+                                <span class="sr-only">پروندهٔ </span>
+                                <bdi dir="ltr" class="repair-code-chip">{{ $shortRef }}</bdi>
+                                <x-home.icon name="arrow-left" />
+                            </a>
+                        </td>
+                        <td role="cell" class="repair-list-customer">
+                            <span class="admin-mobile-cell-label" aria-hidden="true">مشتری</span>
+                            <strong>{{ $canReadCustomer ? $case->customer_name : '—' }}</strong>
+                        </td>
+                        <td role="cell" class="repair-list-device">
+                            <span class="admin-mobile-cell-label" aria-hidden="true">دستگاه</span>
+                            <span>{{ $canReadCustomer ? trim(($case->device_brand?->value ? $case->device_brand->value.' · ' : '').$case->device_model) : '—' }}</span>
+                        </td>
+                        <td role="cell" class="repair-list-status">
+                            <x-admin.status :tone="match($case->status->value) { 'delivered', 'ready' => 'success', 'repairing' => 'info', 'return_pending', 'returned' => 'warning', default => 'neutral' }">{{ $case->status->label() }}</x-admin.status>
+                        </td>
                     </tr>
                 @endforeach
             </tbody>
