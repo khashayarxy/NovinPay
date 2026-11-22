@@ -17,30 +17,39 @@ class ThreePathAuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_login_page_shows_mobile_and_email_tabs_and_optional_google_button(): void
+    public function test_login_page_shows_unified_identifier_input_password_link_and_google_button(): void
     {
-        config(['customer.email_auth_enabled' => true, 'services.google.enabled' => false]);
-
         $this->get('/login')
             ->assertOk()
-            ->assertSee('شماره موبایل')
-            ->assertSee('ایمیل')
-            ->assertDontSee('ورود با حساب گوگل');
-
-        config([
-            'services.google.enabled' => true,
-            'services.google.client_id' => 'google-client-id',
-            'services.google.client_secret' => 'google-client-secret',
-        ]);
-
-        $this->get('/login')
-            ->assertOk()
+            ->assertSee('شماره موبایل یا ایمیل')
+            ->assertSee('ارسال کد تأیید')
+            ->assertSee('ورود با رمز عبور')
             ->assertSee('ورود با حساب گوگل');
 
-        $this->get('/login?channel=email')
+        $this->get('/login?method=password')
             ->assertOk()
-            ->assertSee('نشانی ایمیل')
-            ->assertSee('ارسال کد تأیید');
+            ->assertSee('شماره موبایل یا ایمیل')
+            ->assertSee('فراموشی رمز عبور')
+            ->assertSee('ورود به پنل کاربری')
+            ->assertSee('ورود با رمز یکبار مصرف');
+
+        $this->get('/login?method=forgot')
+            ->assertOk()
+            ->assertSee('فراموشی رمز عبور')
+            ->assertSee('شماره موبایل یا ایمیل')
+            ->assertSee('ارسال کد بازیابی')
+            ->assertSee('بازگشت به صفحه ورود | ثبت‌نام');
+    }
+
+    public function test_unified_start_endpoint_auto_detects_email_and_sends_email_otp(): void
+    {
+        Mail::fake();
+        config(['customer.email_auth_enabled' => true]);
+
+        $this->post('/account/start', ['identifier' => 'unified@example.com'])
+            ->assertRedirect(route('account.login', ['channel' => 'email']));
+
+        Mail::assertSent(UnifiedNotificationMail::class, fn (UnifiedNotificationMail $mail) => $mail->hasTo('unified@example.com'));
     }
 
     public function test_email_otp_registration_and_login_flow(): void

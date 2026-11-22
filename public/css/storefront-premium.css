@@ -17,7 +17,9 @@ body.premium-storefront {
     margin: 0;
     background: #f3f6fa;
     color: var(--ink);
-    font: 15px/1.9 Vazirmatn,Tahoma,sans-serif;
+    font-size: 15px;
+    line-height: 1.9;
+    font-family: var(--site-font-family, 'IRANYekanX', 'Vazirmatn', Tahoma, sans-serif);
 }
 .premium-storefront h1,.premium-storefront h2,.premium-storefront h3,.premium-storefront p,.premium-storefront dl,.premium-storefront dd,.premium-storefront ul {
     margin: 0;
@@ -2078,7 +2080,7 @@ html:has(body.premium-storefront) {
     }
 }
 body.premium-storefront {
-    font-family: 'Vazirmatn Variable','Vazirmatn',Tahoma,sans-serif;
+    font-family: var(--site-font-family, 'IRANYekanX', 'Vazirmatn', Tahoma, sans-serif);
     --p-ink: #122940;
     --p-muted: #475e73;
     --p-sky: #eff6fc;
