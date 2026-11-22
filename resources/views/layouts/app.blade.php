@@ -26,20 +26,6 @@
     @endisset
     <x-public-seo :canonical="$canonical ?? null" :content-seo="$contentSeo ?? null" :public-robots="$publicRobots ?? null" :product="$product ?? null" :product-sale="$sale ?? null" :product-rating="$productRating ?? null" :article="$article ?? null" :version="$version ?? null" />
     <x-brand-head />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&display=swap">
-    <script>
-        (function () {
-            try {
-                var allowed = ['iranyekanx', 'dana', 'peyda', 'google-sans-flex'];
-                var saved = window.localStorage.getItem('novinpay_site_font');
-                document.documentElement.dataset.siteFont = allowed.indexOf(saved) !== -1 ? saved : 'iranyekanx';
-            } catch (e) {
-                document.documentElement.dataset.siteFont = 'iranyekanx';
-            }
-        })();
-    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <script src="{{ asset('js/storefront-scroll-lock.js?v=1') }}" defer></script>
@@ -79,11 +65,5 @@
         <script src="{{ app(\App\Support\Chat\ChatAssets::class)->url('support-widget.js') }}" defer></script>
     @endif
 @endif
-    <div class="np-site-font-switcher" data-site-font-switcher role="group" aria-label="مقایسه فونت سایت">
-        <button type="button" data-site-font-choice="iranyekanx" class="is-active">IRANYekanX</button>
-        <button type="button" data-site-font-choice="dana">Dana</button>
-        <button type="button" data-site-font-choice="peyda">Peyda</button>
-        <button type="button" data-site-font-choice="google-sans-flex">Google Sans Flex</button>
-    </div>
 </body>
 </html>
