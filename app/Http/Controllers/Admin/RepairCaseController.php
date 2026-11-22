@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\AdminAction;
+use App\Events\RepairPaymentLinkGenerated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RepairOperationRequest;
 use App\Http\Requests\SimpleRepairRequest;
@@ -21,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 
 class RepairCaseController extends Controller
@@ -181,5 +183,25 @@ class RepairCaseController extends Controller
         }
 
         return view('admin.repair-cases.document', ['case' => $repairCase, 'document' => $document]);
+    }
+
+    public function generatePaymentLink(Request $request, RepairCase $repairCase): RedirectResponse
+    {
+        Gate::authorize('view', $repairCase);
+        abort_unless(Gate::allows('finance.view') || Gate::allows('repairs.estimate'), 403);
+
+        $document = FinancialDocument::query()->where('repair_case_id', $repairCase->id)->first();
+        abort_unless($document && ($document->charged_minor - $document->paid_minor) > 0, 409, 'ابتدا سند مالی با مانده قابل پرداخت برای این تعمیر صادر کنید.');
+
+        $url = URL::temporarySignedRoute('payments.repair.link', now()->addDays(14), [
+            'repair' => $repairCase->public_id,
+        ]);
+
+        RepairPaymentLinkGenerated::dispatch($repairCase, $document, $url, $request->user());
+
+        return redirect()
+            ->route('admin.repair-cases.show', $repairCase)
+            ->with('repair_payment_link', $url)
+            ->with('success', 'لینک پرداخت آنلاین زیبال ساخته شد.');
     }
 }

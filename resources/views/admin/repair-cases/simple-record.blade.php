@@ -170,6 +170,7 @@
             @endcan
             @endcan
         </section>
+        @include('admin.repair-cases._payment-link-card')
         @endif
 
         <section @class(['admin-panel', 'mb-3' => $hasWorkForm]) aria-labelledby="repair-handover">

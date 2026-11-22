@@ -29,9 +29,13 @@ class ZibalGateway
     public function canVerify(): bool
     {
         $merchant = (string) config('payments.zibal.merchant');
+        $sandboxAllowed = app()->environment(['local', 'testing'])
+            && (bool) config('payments.zibal.sandbox', false)
+            && strcasecmp($merchant, 'zibal') === 0;
 
         return config('payments.zibal.live_requests')
-            && $merchant !== '' && trim($merchant) === $merchant && strcasecmp($merchant, 'zibal') !== 0
+            && $merchant !== '' && trim($merchant) === $merchant
+            && ($sandboxAllowed || strcasecmp($merchant, 'zibal') !== 0)
             && ! preg_match('/replace|placeholder|example/i', $merchant)
             && config('payments.zibal.api_base_url') === 'https://gateway.zibal.ir'
             && str_starts_with(config('app.url'), 'https://');

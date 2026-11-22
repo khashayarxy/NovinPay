@@ -5,7 +5,9 @@ return [
         'enabled' => (bool) env('ZIBAL_ENABLED', false),
         // Separate release switch: development never authorizes real provider requests.
         'live_requests' => (bool) env('ZIBAL_LIVE_REQUESTS', false),
-        'merchant' => env('ZIBAL_MERCHANT_ID', ''),
+        // Sandbox mode is only honored in local/testing environments and never on production.
+        'sandbox' => (bool) env('ZIBAL_SANDBOX', false),
+        'merchant' => env('ZIBAL_MERCHANT_ID', env('ZIBAL_MERCHANT', '')),
         'callback_url' => env('ZIBAL_CALLBACK_URL', ''),
         'api_base_url' => env('ZIBAL_API_BASE_URL', 'https://gateway.zibal.ir'),
         'min_rial' => 1000,
