@@ -204,8 +204,11 @@ try {
             && is_string($testPhone) && $login->testUsesSms($testPhone) && $login->privateTestCode($testPhone) === null, 'runtime_ippanel_preserved');
     }
     gate($app->environment('production') && config('app.url') === 'https://novinpaypos.com', 'production_environment');
-    foreach (['payments.zibal.enabled', 'payments.zibal.live_requests', 'postex.enabled', 'postex.independent_postage_verified'] as $flag) {
+    foreach (['postex.enabled', 'postex.independent_postage_verified'] as $flag) {
         gate(config($flag) === false, 'provider_flag');
+    }
+    foreach (['payments.zibal.enabled', 'payments.zibal.live_requests'] as $flag) {
+        gate(is_bool(config($flag)), 'zibal_provider_flag');
     }
     foreach (['operations.scheduled_payments'] as $flag) {
         gate(config($flag, false) === false, 'scheduled_provider_flag');
@@ -214,7 +217,11 @@ try {
         $callbackPath = ZibalGateway::CALLBACK_PATH;
         gate(Route::has('payments.legacy.callback')
             && route('payments.callback', [], false) === $callbackPath, 'payment_callback_routes');
-        gate(in_array(config('payments.zibal.callback_url'), ['', config('app.url').$callbackPath], true), 'payment_callback_config');
+        $zibalActive = config('payments.zibal.enabled') === true || config('payments.zibal.live_requests') === true;
+        $expectedCallback = config('app.url').$callbackPath;
+        gate($zibalActive
+            ? config('payments.zibal.callback_url') === $expectedCallback
+            : in_array(config('payments.zibal.callback_url'), ['', $expectedCallback], true), 'payment_callback_config');
     }
     $pdo = DB::connection()->getPdo();
     $identity = $pdo->query('SELECT DATABASE(),CURRENT_USER(),VERSION()')->fetch(PDO::FETCH_NUM);
