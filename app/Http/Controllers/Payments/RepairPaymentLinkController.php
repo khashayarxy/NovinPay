@@ -82,17 +82,34 @@ class RepairPaymentLinkController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ir' => $isIran]);
         }
-        if ($isIran !== false) {
+        if ($isIran !== false && ($request->boolean('direct') || $request->headers->get('Sec-Fetch-Mode') !== 'navigate')) {
             return response()->view('payments.forward', [
                 'gatewayUrl' => ZibalGateway::START_URL.$attempt->track_id,
                 'payment' => $attempt->public_id,
             ], headers: ['Referrer-Policy' => 'origin']);
         }
 
-        return response()->view('payments.forward', [
-            'gatewayUrl' => ZibalGateway::START_URL.$attempt->track_id,
+        $checkUrl = URL::temporarySignedRoute('payments.repair.link.connect', now()->addHours(2), [
+            'repair' => $case->public_id,
             'payment' => $attempt->public_id,
-        ], headers: ['Referrer-Policy' => 'origin']);
+        ]);
+        $gatewayRouteUrl = URL::temporarySignedRoute('payments.repair.link.connect', now()->addHours(2), [
+            'repair' => $case->public_id,
+            'payment' => $attempt->public_id,
+            'direct' => 1,
+        ]);
+        $resultUrl = URL::temporarySignedRoute('payments.repair.link.result', now()->addHours(24), [
+            'repair' => $case->public_id,
+            'payment' => $attempt->public_id,
+        ]);
+
+        return response()->view('payments.connect', [
+            'payment' => $attempt->public_id,
+            'checkUrl' => $checkUrl,
+            'gatewayRouteUrl' => $gatewayRouteUrl,
+            'resultUrl' => $resultUrl,
+            'verifySplitVpn' => $isIran !== false,
+        ], 200, ['Referrer-Policy' => 'no-referrer']);
     }
 
     public function result(string $repair, string $payment, ZibalPayments $payments, ZibalGateway $gateway)

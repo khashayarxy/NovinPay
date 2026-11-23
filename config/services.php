@@ -42,4 +42,8 @@ return [
         'redirect' => (string) env('GOOGLE_REDIRECT_URI', ''),
     ],
 
+    'neshan' => [
+        'web_key' => (string) env('NESHAN_WEB_KEY', ''),
+    ],
+
 ];

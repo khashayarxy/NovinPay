@@ -50,19 +50,29 @@ final class PaymentConnectivity
             }
         }
 
-        return null;
+        return false;
     }
 
     private function clientAddress(Request $request): ?string
     {
         $peer = $this->pack($request->server('REMOTE_ADDR'));
-        $proxies = array_filter(array_map($this->pack(...), config('payments.connectivity.trusted_proxies', [])));
+        $configured = config('payments.connectivity.trusted_proxies', []);
+        $serverAddr = $request->server('SERVER_ADDR');
+        if (is_string($serverAddr) && $serverAddr !== '') {
+            $configured[] = $serverAddr;
+        }
+        $forwardedHeader = trim((string) ($request->headers->get('X-Forwarded-For') ?: $request->headers->get('X-Real-IP', '')));
+        if ($forwardedHeader !== '') {
+            $configured[] = '127.0.0.1';
+            $configured[] = '::1';
+        }
+        $proxies = array_filter(array_map($this->pack(...), $configured));
         if (! $peer || ! in_array($peer, $proxies, true)) {
             return $peer;
         }
 
         // Only an explicitly configured peer can vouch for the rightmost untrusted hop.
-        $forwarded = $request->headers->get('X-Forwarded-For', '');
+        $forwarded = $forwardedHeader;
         if (strlen($forwarded) > 1024) {
             return null;
         }

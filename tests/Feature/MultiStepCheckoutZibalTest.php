@@ -18,6 +18,7 @@ use App\Services\ShoppingCart;
 use App\Support\CustomerTimeline;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -115,6 +116,8 @@ class MultiStepCheckoutZibalTest extends TestCase
     {
         $this->seedCartItem();
 
+        config(['services.neshan.web_key' => 'web.synthetic_neshan_key_123']);
+
         $response = $this->get('https://novinpaypos.test/cart/checkout')->assertOk();
         $html = $response->getContent();
         $response->assertSee('novalidate', false)
@@ -123,7 +126,10 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->assertSee('data-checkout-step="3"', false)
             ->assertSee('data-checkout-step="4"', false)
             ->assertSee('data-checkout-map', false)
-            ->assertSee('تحویل حضوری در فروشگاه نوینپِی')
+            ->assertSee('data-neshan-key="web.synthetic_neshan_key_123"', false)
+            ->assertSee('© نقشه نشان')
+            ->assertSee('تحویل حضوری در فروشگاه نوین پی')
+            ->assertDontSee('نوینپِی')
             ->assertSee('پست')
             ->assertSee('تیپاکس')
             ->assertSee('پیک')
@@ -131,6 +137,11 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->assertSee('name="payment_method" value="zibal"', false)
             ->assertSee('images/zibal-trust-light.svg')
             ->assertSee('پرداخت آنلاین با زیبال');
+
+        $appJs = (string) file_get_contents(resource_path('js/app.js'));
+        $this->assertStringNotContainsString('tile.openstreetmap.org', $appJs);
+        $this->assertStringContainsString('basemaps.cartocdn.com/rastertiles/voyager', $appJs);
+        $this->assertStringContainsString('static.neshan.org/sdk/leaflet', $appJs);
 
         // Confirm submit button is ONLY inside Step 4 and NOT in the left-side order summary aside.
         $doc = new \DOMDocument;
@@ -337,7 +348,11 @@ class MultiStepCheckoutZibalTest extends TestCase
 
         $this->get('https://novinpaypos.test/payments/'.$attempt->public_id.'/result')
             ->assertOk()
+            ->assertSee('class="t-red"', false)
+            ->assertSee('pay/assets/vpn-warning.css?v=', false)
             ->assertSee('پرداخت انجام نشد')
+            ->assertSee('۴٬۵۰۰٬۰۰۰ تومان')
+            ->assertDontSee('.۰۰')
             ->assertSee('تلاش مجدد برای پرداخت');
 
         $order = SalesOrder::query()->sole();
@@ -346,6 +361,66 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->assertOk()
             ->assertSee('لغو شده / پرداخت ناموفق')
             ->assertDontSee('تأییدشده');
+    }
+
+    public function test_vpn_warning_renders_for_non_iran_ip_and_browser_navigations_while_iran_ip_forwards(): void
+    {
+        $data = json_decode((string) file_get_contents(config('payments.connectivity.ranges_path')), true, 512, JSON_THROW_ON_ERROR);
+        $this->travelTo(Carbon::parse($data['month'].'-15'));
+
+        [$proof, $revision, $quote] = $this->seedCartItem();
+
+        Http::fake([
+            'https://gateway.zibal.ir/v1/request' => Http::response(['result' => 100, 'trackId' => 777888999], 200),
+        ]);
+
+        $this->post('https://novinpaypos.test/cart/checkout', [
+            'cart_context' => $proof,
+            'cart_revision' => $revision,
+            'operation_key' => (string) Str::uuid(),
+            'quote' => $quote,
+            'method' => 'pickup',
+            'payment_method' => 'zibal',
+        ])->assertRedirect();
+
+        $attempt = PaymentAttempt::query()->sole();
+        $connectUrl = 'https://novinpaypos.test/payments/'.$attempt->public_id.'/connect';
+
+        // 1. Direct foreign VPN IP (e.g. 193.46.81.204) shows the custom VPN warning page
+        $this->withServerVariables(['REMOTE_ADDR' => '193.46.81.204'])
+            ->get($connectUrl)
+            ->assertOk()
+            ->assertSee('وی‌پی‌ان شما روشن است.')
+            ->assertSee('وی‌پی‌ان رو خاموش کردم')
+            ->assertSee('data-verify-split="0"', false);
+
+        // 2. Reverse-proxied foreign VPN IP via SERVER_ADDR + X-Forwarded-For shows the VPN warning page
+        $this->withServerVariables([
+            'REMOTE_ADDR' => '93.126.6.137',
+            'SERVER_ADDR' => '93.126.6.137',
+            'HTTP_X_FORWARDED_FOR' => '193.46.81.204',
+        ])
+            ->get($connectUrl)
+            ->assertOk()
+            ->assertSee('وی‌پی‌ان شما روشن است.')
+            ->assertSee('وی‌پی‌ان رو خاموش کردم')
+            ->assertSee('data-verify-split="0"', false);
+
+        // 3. Real browser top-level navigation (Sec-Fetch-Mode: navigate) on Iran IP renders connect shell with split-tunnel verification enabled
+        $this->flushHeaders()
+            ->withServerVariables(['REMOTE_ADDR' => '5.160.0.1', 'SERVER_ADDR' => '', 'HTTP_X_FORWARDED_FOR' => ''])
+            ->withHeaders(['Sec-Fetch-Mode' => 'navigate'])
+            ->get($connectUrl)
+            ->assertOk()
+            ->assertSee('data-verify-split="1"', false)
+            ->assertSee('وی‌پی‌ان رو خاموش کردم');
+
+        // 4. Direct non-navigation Iran IP check forwards cleanly to Zibal
+        $this->flushHeaders()
+            ->withServerVariables(['REMOTE_ADDR' => '5.160.0.1', 'SERVER_ADDR' => '', 'HTTP_X_FORWARDED_FOR' => ''])
+            ->get($connectUrl)
+            ->assertOk()
+            ->assertSee('0;url=https://gateway.zibal.ir/start/777888999');
     }
 
     public function test_unified_cart_hides_internal_scopes_allows_authenticated_quantity_increase_and_returns_ajax_html(): void
