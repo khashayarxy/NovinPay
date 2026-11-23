@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\AdminAction;
 use App\Events\OrderPaid;
 use App\Events\RepairPaid;
+use App\Models\AdminAccount;
 use App\Models\CustomerAccount;
 use App\Models\FinancialDocument;
 use App\Models\FinancialEntry;
@@ -111,7 +112,7 @@ class PaymentSettlement
             ->keyBy('id');
 
         $opActorId = $actor
-            ?? User::query()->where('is_active', true)->orderBy('id')->value('id')
+            ?? AdminAccount::query()->where('is_active', true)->orderBy('id')->value('user_id')
             ?? User::query()->orderBy('id')->value('id');
         $operationId = null;
 
