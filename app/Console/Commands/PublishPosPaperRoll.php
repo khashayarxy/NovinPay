@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\AdminAction;
 use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
@@ -9,6 +10,7 @@ use App\Models\AdminAccount;
 use App\Models\InventoryItem;
 use App\Models\Product;
 use App\Services\CommerceManagement;
+use App\Support\AdminHistory;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -73,6 +75,8 @@ final class PublishPosPaperRoll extends Command
                 'is_published' => true,
                 'online_purchasing_enabled' => true,
             ]);
+            AdminHistory::record(AdminAction::ProductCreated, 'product', $product->id, $owner->user_id);
+            AdminHistory::record(AdminAction::ProductPriceChanged, 'product', $product->id, $owner->user_id);
             $item = InventoryItem::query()->findOrFail($commerce->execute($owner->user, 'item.create', [
                 'operation_key' => self::CREATE_OPERATION,
                 'sku' => self::SKU,

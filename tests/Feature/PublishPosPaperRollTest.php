@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Console\Commands\PublishPosPaperRoll;
+use App\Enums\AdminAction;
 use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
@@ -42,6 +43,10 @@ class PublishPosPaperRollTest extends TestCase
 
         $this->assertDatabaseHas('stock_movements', [
             'inventory_item_id' => $item->id, 'actor_id' => $owner->id, 'kind' => 'receive', 'on_hand_delta' => 100,
+        ]);
+        $this->assertDatabaseHas('admin_activities', [
+            'actor_id' => $owner->id, 'action' => AdminAction::ProductCreated->value,
+            'target_type' => 'product', 'target_id' => $product->id,
         ]);
         $this->get(route('products.index', ['category' => 'consumable']))
             ->assertOk()->assertSee('رول کاغذ کارتخوان');
