@@ -16,15 +16,35 @@ use App\Support\RepairTime;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class DeliveryManagement
 {
     public const CHECKOUT_METHODS = [
-        'pickup' => ['تحویل حضوری در فروشگاه نوین پی', 'مراجعه حضوری و تحویل مستقیم دستگاه از فروشگاه'],
+        'pickup' => ['تحویل حضوری', 'مراجعه حضوری و تحویل مستقیم دستگاه از فروشگاه'],
         'post' => ['پست', 'ارسال از طریق پست پیشتاز به سراسر کشور'],
         'tipax' => ['تیپاکس', 'هزینه هنگام تحویل به شرکت حمل پرداخت می‌شود.'],
         'courier' => ['پیک', 'ارسال سریع با پیک پس از هماهنگی نشانی'],
     ];
+
+    public static function courierAvailable(?string $province, ?string $city): bool
+    {
+        $normalize = static fn (?string $value): string => preg_replace('/[\s\x{200c}]+/u', '', strtr($value ?? '', ['ي' => 'ی', 'ك' => 'ک'])) ?? '';
+        foreach (config('delivery.courier_zones', []) as $region => $cities) {
+            if ($normalize($region) === $normalize($province)) {
+                return in_array($normalize($city), array_map($normalize, $cities), true);
+            }
+        }
+
+        return false;
+    }
+
+    private function checkCourier(string $method, ?CustomerAddress $address): void
+    {
+        if ($method === 'courier' && ! self::courierAvailable($address?->province, $address?->city)) {
+            throw ValidationException::withMessages(['method' => 'برای این نشانی، پست یا تیپاکس را انتخاب کنید.']);
+        }
+    }
 
     public function checkoutAddress(CustomerAccount $account, ?string $addressId, string $method): ?array
     {
@@ -32,6 +52,8 @@ class DeliveryManagement
             return null;
         }
         $address = CustomerAddress::query()->where('public_id', $addressId)->where('customer_account_id', $account->id)->lockForUpdate()->firstOrFail();
+
+        $this->checkCourier($method, $address);
 
         return $this->addressSnapshot($address);
     }
@@ -76,6 +98,7 @@ class DeliveryManagement
             $plan->financial_document_id = $document->id;
             $plan->public_id ??= (string) Str::uuid();
             $plan->customer_account_id = $account->id;
+            $this->checkCourier($method, $address);
             $plan->requested_method = $method;
             $plan->requested_address = $address ? $this->addressSnapshot($address) : null;
             $plan->version = $plan->exists ? $plan->version + 1 : 1;

@@ -699,6 +699,15 @@ class SharedPaymentsTest extends TestCase
         }
         $address->save();
         $service = app(DeliveryManagement::class);
+        $this->assertTrue(DeliveryManagement::courierAvailable('تهران', 'شهر قدس'));
+        $this->assertTrue(DeliveryManagement::courierAvailable('البرز', 'کرج'));
+        $this->assertFalse(DeliveryManagement::courierAvailable('تهران', 'کرج'));
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $address->forceFill(['city' => 'تهران'])->save();
+        $this->post(route('delivery.request', $this->document->public_id), [
+            'choice' => 'shipping', 'carrier' => 'courier', 'address' => $address->public_id, 'version' => 1,
+        ])->assertSessionHasErrors('method');
+        $address->forceFill(['city' => 'شهریار'])->save();
         $plan = $service->request($this->account, $this->document->public_id, 'courier', $address->public_id, 1);
         $this->assertSame('tipax', $plan->method);
         $this->assertSame('courier', $plan->requested_method);

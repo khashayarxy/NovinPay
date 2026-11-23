@@ -93,7 +93,7 @@ class PremiumStorefrontTest extends TestCase
         $commerce->execute($owner, 'item.receive', ['operation_key' => (string) Str::uuid(),
             'version' => $item->version, 'quantity' => 2, 'reason' => 'Isolated UI validation'], $item);
         $this->get(route('products.show', $product))->assertOk()
-            ->assertSee('action="'.route('cart.add', $product).'"', false)->assertSee('افزودن به سبد خرید')
+            ->assertSee('action="'.route('cart.add', $product).'"', false)->assertSee('خرید محصول')
             ->assertSee('<bdi dir="ltr">UI-FIXTURE</bdi>', false);
         $this->withCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('a', 64));
         $fields = fn () => $this->get(route('cart.index'))->assertOk()->original->getData();

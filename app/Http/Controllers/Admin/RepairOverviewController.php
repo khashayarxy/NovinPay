@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\RepairRequest;
 use App\Support\AdminHistory;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class RepairOverviewController extends Controller
@@ -17,6 +18,17 @@ class RepairOverviewController extends Controller
             ->select(['id', 'tracking_reference', 'device_brand', 'status', 'created_at'])->withExists('physicalCase')->latest('id')->paginate(20)]);
     }
 
+    public function photo(RepairRequest $repairRequest)
+    {
+        Gate::authorize('viewCustomerData', $repairRequest);
+        $disk = Storage::disk('local');
+        $path = $repairRequest->photoPath();
+        abort_unless($disk->exists($path), 404);
+        AdminHistory::record(AdminAction::RepairCustomerViewed, 'repair_request', $repairRequest->id);
+
+        return $disk->download($path, 'repair-photo', ['Content-Type' => 'application/octet-stream', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
     public function show(RepairRequest $repairRequest): View
     {
         Gate::authorize('view', $repairRequest);
@@ -25,6 +37,6 @@ class RepairOverviewController extends Controller
             AdminHistory::record(AdminAction::RepairCustomerViewed, 'repair_request', $repairRequest->id);
         }
 
-        return view('admin.repairs.show', ['repair' => $repairRequest, 'showCustomerData' => $showCustomerData, 'physicalCase' => $repairRequest->physicalCase()->select('id', 'public_id')->first()]);
+        return view('admin.repairs.show', ['repair' => $repairRequest, 'showCustomerData' => $showCustomerData, 'hasPhoto' => $showCustomerData && Storage::disk('local')->exists($repairRequest->photoPath()), 'physicalCase' => $repairRequest->physicalCase()->select('id', 'public_id')->first()]);
     }
 }

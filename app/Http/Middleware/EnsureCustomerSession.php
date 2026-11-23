@@ -17,7 +17,8 @@ class EnsureCustomerSession
             $destination = match (true) {
                 $request->routeIs('cart.checkout', 'cart.review') => route('cart.review', [], false),
                 $request->routeIs('repair.start', 'repair.store') => route('repair', [], false),
-                $request->isMethod('GET') && $request->routeIs('account.*', 'payments.document', 'payments.order', 'payments.repair', 'payments.connect', 'payments.result', 'delivery.show') => '/'.$request->path(),
+                $request->routeIs('payments.order') => route('account.orders.show', ['record' => $request->route('order')], false),
+                $request->isMethod('GET') && $request->routeIs('account.*', 'payments.document', 'payments.repair', 'payments.connect', 'payments.result', 'delivery.show') => '/'.$request->path(),
                 default => null,
             };
             if ($destination !== null) {

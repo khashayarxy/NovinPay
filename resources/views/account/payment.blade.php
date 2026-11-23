@@ -1,7 +1,11 @@
 @extends('layouts.app')
 @section('title', 'پرداخت سند')
 @section('content')
-<div class="container py-8 space-y-6"><h1>پرداخت و پیگیری سند</h1><x-admin.errors /><a class="public-inline-link" href="{{ route('account.index') }}">بازگشت به حساب کاربری</a><section class="public-panel"><p>ماندهٔ سند: {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($document->charged_minor - $document->paid_minor)) }} تومان</p>@if($credit > 0)<p>طلب شما برای تعیین تکلیف یا بازپرداخت: {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($credit)) }} تومان</p>@endif
+<div class="np-container np-account np-account-detail max-w-3xl space-y-6 py-8">
+<header class="np-account-banner"><div><h1>{{ $document->sales_order_id ? 'پرداخت سفارش' : 'پرداخت تعمیر' }}</h1></div></header>
+<x-form-errors />
+<a class="public-inline-link" href="{{ route('account.index', ['section' => $document->sales_order_id ? 'orders' : 'repairs']) }}">بازگشت به پیگیری {{ $document->sales_order_id ? 'سفارش' : 'تعمیر' }}</a>
+<section class="public-panel"><p>ماندهٔ قابل پرداخت {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($document->charged_minor - $document->paid_minor)) }} تومان</p>@if($credit > 0)<p>طلب شما برای تعیین تکلیف یا بازپرداخت: {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($credit)) }} تومان</p>@endif
 <a class="btn btn-secondary mt-4" href="{{ route('delivery.show',$document->public_id) }}">انتخاب یا درخواست تغییر روش تحویل</a>
 @if(!$deliveryPlan || $deliveryPlan->requested_method)<p>ابتدا روش تحویل را انتخاب کنید؛ تأیید همکاران پیش از پرداخت لازم است.</p>@elseif($deliveryPlan->method === 'pickup')<p>تحویل حضوری هزینهٔ ارسال ندارد. مانده را هنگام مراجعه به فروشگاه تسویه کنید.</p>@endif
 @if($document->charged_minor > $document->paid_minor && $deliveryPlan && !$deliveryPlan->requested_method && $deliveryPlan->method !== 'pickup')

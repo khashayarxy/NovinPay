@@ -48,6 +48,7 @@
                 <div><dt>مدل اعلام‌شده</dt><dd><bdi dir="auto">{{ $repair->device_model }}</bdi></dd></div>
                 <div class="repair-fact--full repair-callout"><dt>شرح مشکل دستگاه</dt><dd class="whitespace-pre-line">{{ $repair->issue }}</dd></div>
             </dl>
+            @if ($hasPhoto)<a class="btn btn-secondary" href="{{ route('admin.repairs.photo', $repair) }}">دریافت عکس دستگاه</a>@endif
             <p class="admin-hint">مشاهدهٔ این اطلاعات در تاریخچهٔ فعالیت ثبت می‌شود.</p>
         @else
             <h2 id="customer-data-title">اطلاعات شخصی محدود است</h2>

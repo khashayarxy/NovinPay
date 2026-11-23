@@ -7,6 +7,16 @@ use Illuminate\Support\Str;
 
 final class CustomerLoginFlow
 {
+    public static function destination(Request $request): string
+    {
+        $destination = $request->session()->pull('customer_intended');
+        if (is_string($destination) && preg_match('~\A/shop/orders/([a-f0-9-]{36})/payment\z~iD', $destination, $parts)) {
+            return route('account.orders.show', ['record' => $parts[1]], false);
+        }
+
+        return $destination ?? route('account.index');
+    }
+
     public static function token(Request $request): string
     {
         $token = $request->session()->get('customer_login_flow');

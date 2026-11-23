@@ -267,31 +267,6 @@
             submitter.dataset.loading = 'true';
             if (originalLabel !== null) submitter.textContent = 'در حال افزودن…';
         }
-        const showCartToast = (text) => {
-            let toast = document.querySelector('.np-cart-toast');
-            if (!toast) {
-                toast = document.createElement('div');
-                toast.className = 'np-cart-toast';
-                toast.setAttribute('role', 'status');
-                toast.setAttribute('aria-live', 'polite');
-                document.body.append(toast);
-            }
-            toast.replaceChildren();
-            const labelSpan = document.createElement('span');
-            labelSpan.textContent = text;
-            const openBtn = document.createElement('button');
-            openBtn.type = 'button';
-            openBtn.className = 'np-cart-toast__action';
-            openBtn.textContent = 'مشاهده سبد';
-            openBtn.addEventListener('click', () => {
-                toast.classList.remove('is-visible');
-                if (cartDialog && active !== cartDialog) open(cartDialog, submitter);
-            });
-            toast.append(labelSpan, openBtn);
-            toast.classList.add('is-visible');
-            clearTimeout(toast._hideTimer);
-            toast._hideTimer = setTimeout(() => toast.classList.remove('is-visible'), 3400);
-        };
         const playFlyToCart = (sourceEl) => {
             if (!sourceEl || typeof sourceEl.getBoundingClientRect !== 'function') return;
             if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -371,7 +346,7 @@
             renderCartCount(count);
             if (!fromDrawer) {
                 playFlyToCart(submitter || form);
-                showCartToast('به سبد خرید اضافه شد ✓');
+
             }
             if (active === cartDialog) {
                 const focusInCart = cartDialog.querySelector('[data-live-cart]').contains(document.activeElement);
@@ -569,17 +544,10 @@
     if (filters) {
         const dialog = document.getElementById('catalog-filter-dialog');
         const sidebar = filters.parentElement;
-        const mobileFilters = matchMedia('(max-width: 850px)');
-        function placeFilters() {
-            if (!mobileFilters.matches && active === dialog) close();
-            (mobileFilters.matches ? dialog.querySelector('[data-filter-slot]') : sidebar).append(filters);
-            sidebar.hidden = mobileFilters.matches;
-        }
-        mobileFilters.addEventListener('change', placeFilters);
-        placeFilters();
+        dialog.querySelector('[data-filter-slot]').append(filters);
+        sidebar.hidden = true;
         document.body.classList.add('catalog-filter-ready');
-        const sort = document.querySelector('[data-catalog-sort]');
-        sort?.addEventListener('change', () => sort.form.requestSubmit());
+
     }
     window.addEventListener('popstate', restoreLayer);
     window.addEventListener('pagehide', () => finish(false));
@@ -690,7 +658,8 @@
             const show = mobile.matches && action.getClientRects().length > 0
                 && action.getBoundingClientRect().bottom <= headerEdge
                 && contentEdge > navEdge && !body.classList.contains('keyboard-open');
-            contact.hidden = !show;
+            contact.toggleAttribute('data-dock-visible', show);
+            contact.inert = !show;
         }
         const launcher = mobile.matches && document.querySelector('[data-support-launcher]');
         const bounds = launcher && launcher.getBoundingClientRect();

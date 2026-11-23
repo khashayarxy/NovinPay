@@ -45,7 +45,11 @@
                     @if ($kind === 'review')
                         <span class="review-author-icon"><x-storefront.icon name="account" /></span><strong>{{ $entry->verified_buyer ? 'خریدار تأییدشده' : 'دیدگاه کاربر' }}</strong>
                         @if ($entry->verified_buyer && $entry->rating)
-                            <span class="review-stars"><span aria-hidden="true">★</span> {{ \App\Support\FaNumber::digits($entry->rating) }} از ۵</span>
+                            <span class="rating-stars" dir="ltr" role="img" aria-label="{{ $entry->rating }} از ۵">
+                                @foreach (range(1, 5) as $number)
+                                    <span @class(['is-filled' => $number <= $entry->rating]) aria-hidden="true">★<small>{{ $number }}</small></span>
+                                @endforeach
+                            </span>
                         @endif
                     @else
                         <strong>پرسش</strong>
@@ -101,12 +105,15 @@
                 @if ($kind === 'review' && $canRate)
                     <fieldset class="rating-choice">
                         <legend>امتیاز شما (اختیاری)</legend>
-                        @foreach (range(0, 5) as $number)
-                            <label>
-                                <input type="radio" name="rating" value="{{ $number ?: '' }}" @checked((int) old('rating', $ownReview?->rating) === $number)>
-                                <span>{{ $number ? \App\Support\FaNumber::digits($number).' از ۵' : 'بدون امتیاز' }}</span>
-                            </label>
-                        @endforeach
+                        <div class="rating-stars" dir="ltr">
+                            @foreach (range(1, 5) as $number)
+                                <label @class(['is-filled' => $number <= (int) old('rating', $ownReview?->rating)])>
+                                    <input class="sr-only" type="radio" name="rating" value="{{ $number }}" @checked((int) old('rating', $ownReview?->rating) === $number)>
+                                    <span aria-hidden="true">★</span><small>{{ $number }}</small>
+                                </label>
+                            @endforeach
+                        </div>
+                        <label><input type="radio" name="rating" value="" @checked(! old('rating', $ownReview?->rating))> بدون امتیاز</label>
                     </fieldset>
                 @endif
                 <button type="submit" class="btn btn-primary">{{ $kind === 'review' ? 'ارسال دیدگاه' : 'ارسال پرسش' }}</button>

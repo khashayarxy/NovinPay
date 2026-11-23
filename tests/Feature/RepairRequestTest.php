@@ -5,11 +5,15 @@ namespace Tests\Feature;
 use App\Enums\RepairRequestStatus;
 use App\Models\CustomerAccount;
 use App\Models\RepairRequest;
+use App\Models\User;
+use App\Services\CustomerLogin;
 use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -191,6 +195,57 @@ class RepairRequestTest extends TestCase
         $this->assertDatabaseCount('repair_requests', 0);
     }
 
+    public function test_repair_submission_stores_device_details_and_private_photo(): void
+    {
+        Storage::fake('local');
+        $photo = UploadedFile::fake()->createWithContent(
+            'device.png',
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aK5sAAAAASUVORK5CYII='),
+        );
+        $this->post('/repair', $this->payload([
+            'device_serial' => 'TEST-123',
+            'accessories' => ['charger', 'sim'],
+            'device_photo' => $photo,
+        ]))->assertRedirect(route('repair.confirmation'));
+        $repair = RepairRequest::query()->sole();
+        $this->assertStringContainsString('TEST-123', $repair->issue);
+        $this->assertStringContainsString('شارژر، سیم‌کارت', $repair->issue);
+        Storage::disk('local')->assertExists($repair->photoPath());
+        $this->get(route('admin.repairs.photo', $repair))->assertRedirect();
+        $this->actingAs(User::factory()->superAdmin()->create(), 'web')
+            ->withSession(['admin_session_version' => 1]);
+        $this->get(route('admin.repairs.photo', $repair))->assertDownload('repair-photo')
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    public function test_recovery_only_exposes_codes_after_phone_verification(): void
+    {
+        $repair = $this->submit();
+        $account = auth('customer')->user();
+        auth('customer')->logout();
+        $recovery = route('repair.track.recovery');
+        $tracking = route('repair.track.recovered', ['reference' => $repair->tracking_reference]);
+        $this->get($tracking)->assertRedirect($recovery);
+        $this->get($recovery)->assertOk()->assertDontSee($repair->tracking_reference);
+        $login = $this->partialMock(CustomerLogin::class);
+        $login->shouldReceive('issue')->once()->with('09123456789', \Mockery::type('callable'))
+            ->andReturnUsing(function (string $phone, callable $reserve): string {
+                $reserve('fixture-challenge');
+
+                return 'fixture-challenge';
+            });
+        $login->shouldReceive('verify')->once()->with('fixture-challenge', '123456')->andReturn($account);
+
+        $this->post(route('repair.track.recovery.send'), ['contact_phone' => '09123456789'])->assertRedirect($recovery);
+        $this->get($recovery)->assertDontSee($repair->tracking_reference);
+        $this->post(route('repair.track.recovery.verify'), ['code' => '۱۲۳۴۵۶'])->assertRedirect($recovery);
+        $this->get($recovery)->assertSee($tracking);
+        $this->get($tracking)->assertSee('data-stage="current"', false)->assertDontSee($repair->contact_phone);
+        $this->assertGuest('customer');
+        $this->travel(16)->minutes();
+        $this->get($tracking)->assertRedirect($recovery);
+    }
+
     public function test_tracking_requires_both_credentials_and_returns_only_initial_status(): void
     {
         $repair = $this->submit();
@@ -287,7 +342,7 @@ class RepairRequestTest extends TestCase
             ->assertSee('data-repair-stepper', false)
             ->assertSee('data-initial-step="1"', false)
             ->assertSee('مشخصات دستگاه')
-            ->assertSee('نوع خرابی')
+            ->assertSee('شرح مشکل و عکس')
             ->assertSee('اطلاعات تماس و ثبت')
             ->assertSee('data-step="1"', false)
             ->assertSee('data-step="2"', false)

@@ -28,6 +28,11 @@ class ReceiptController extends Controller
     {
         $document = FinancialDocument::query()->whereIn('sales_order_id', SalesOrder::query()->where('public_id', $order)->select('id'))->firstOrFail();
 
+        $document = $payments->ownedDocument(Auth::guard('customer')->user(), $document->public_id);
+        if ($document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor) {
+            return redirect()->route('account.orders.show', ['record' => $order]);
+        }
+
         return $this->show($document->public_id, $payments);
     }
 

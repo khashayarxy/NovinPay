@@ -10,13 +10,7 @@
         <strong>{{ $product->is_sample ? $product->stock_status->label() : $sale->stockLabel($product) }}</strong>
         @if ($canAddToCart && isset($inventory) && $inventory->available > 0)
             <span class="stock-availability-note">
-                @if ($inventory->available === 1)
-                    · تنها ۱ عدد در انبار باقی مانده
-                @elseif ($inventory->available <= 5)
-                    · تنها {{ \App\Support\FaNumber::digits($inventory->available) }} عدد در انبار باقی مانده
-                @else
-                    · موجودی: {{ \App\Support\FaNumber::digits($inventory->available) }} عدد
-                @endif
+                {{ \App\Support\FaNumber::digits($inventory->available) }} عدد
             </span>
         @endif
     </div>
@@ -28,8 +22,8 @@
                 <label class="label" for="store-quantity">تعداد</label>
                 <input class="input" id="store-quantity" type="number" name="quantity" value="1" min="1" max="{{ min(10, $inventory->available) }}" required>
             </div>
-            <button class="primary" type="submit" data-product-primary-action>{{ $sale->label() }}</button>
-            <a class="text-link" href="{{ route('cart.index') }}">مشاهدهٔ سبد</a>
+            <button class="primary" type="submit" data-product-primary-action>خرید محصول</button>
+
         </form>
     @elseif ($inquiry)
         <a class="primary" href="{{ config('business.phone_uri') }}" data-product-primary-action><x-storefront.icon name="phone" />{{ $sale->label() }}</a>

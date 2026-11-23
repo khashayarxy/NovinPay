@@ -63,9 +63,14 @@ class ProductController extends Controller
                 'sort' => $sort,
             ]));
 
+        $stock = $products->getCollection()->mapWithKeys(fn (Product $product) => [$product->id => $checkout->confirmedInventory($product)?->available])->all();
+
         return view('products.index', [
             'products' => $products,
-            'sales' => $this->sales($products, $checkout),
+            'stock' => $stock,
+            'sales' => $products->getCollection()->mapWithKeys(fn (Product $product) => [
+                $product->id => ProductSale::resolve($product, isset($stock[$product->id]) ? $stock[$product->id] > 0 : null),
+            ])->all(),
             'sort' => $sort,
             'condition' => $condition,
             'term' => $term,
@@ -176,14 +181,29 @@ class ProductController extends Controller
         return $response;
     }
 
-    public function compare(Request $request, StoreCheckout $checkout): View
+    public function compare(Request $request): View
     {
         $data = $request->validate(['products' => ['sometimes', 'array', 'max:4'],
-            'products.*' => ['required', 'string', 'max:255', 'regex:/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/', 'distinct']]);
+            'products.*' => ['required', 'string', 'max:255', 'regex:/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/', 'distinct'],
+            'add' => ['nullable', 'string', 'max:255', 'regex:/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/']]);
+        $slugs = array_slice(array_unique(array_filter([...($data['products'] ?? []), $data['add'] ?? null])), 0, 4);
         $products = Product::query()->published()->where('is_sample', false)
-            ->whereIn('slug', $data['products'] ?? [])->with('inventoryItems')->get();
+            ->whereIn('slug', $slugs)->get()->keyBy('slug');
+        $products = collect($slugs)->map(fn ($slug) => $products->get($slug))->filter()->values();
+        $choices = Product::query()->published()->where('is_sample', false)
+            ->whereNotIn('slug', $slugs)->orderBy('name')->get(['slug', 'name']);
+        $specs = $products->mapWithKeys(function (Product $product) {
+            $rows = ['برند' => $product->brand, 'مدل' => $product->model, 'رنگ' => $product->color];
+            foreach (($product->product_details['groups'] ?? []) as $group) {
+                foreach (Product::specificationRows($group) as [$label, $value]) {
+                    $rows[$label] = $value;
+                }
+            }
 
-        return view('products.compare', ['products' => $products, 'sales' => $this->sales($products, $checkout),
+            return [$product->slug => $rows];
+        });
+
+        return view('products.compare', ['products' => $products, 'choices' => $choices, 'specs' => $specs,
             'publicRobots' => 'noindex, follow']);
     }
 

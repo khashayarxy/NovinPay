@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\RepairBrand;
+use App\Models\RepairRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
@@ -28,6 +29,10 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             'issue' => ['required', 'string', 'min:10', 'max:2000'],
             // Accept the older form while a customer may still have it open.
             'additional_description' => ['nullable', 'string', 'max:1000'],
+            'device_serial' => ['nullable', 'string', 'max:100'],
+            'accessories' => ['sometimes', 'array', 'max:3'],
+            'accessories.*' => ['required', 'string', 'distinct', Rule::in(array_keys(RepairRequest::ACCESSORIES))],
+            'device_photo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:4096'],
             'submission_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ];
     }
