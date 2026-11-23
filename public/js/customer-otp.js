@@ -63,11 +63,28 @@
         }
         return read(0);
     }
+    var dotsMarkup = '<span class="np-btn-dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="sr-only">در حال بررسی…</span>';
     document.querySelectorAll('[data-account-send]').forEach(function (sendForm) {
         if (!canRequest) return;
         var submit = sendForm.querySelector('button[type="submit"]'), status = sendForm.querySelector('[data-send-status]');
         var alive = true, job = null, uncertain = false, restart = false, locked = false, original = submit.textContent;
-        function notify(text) { if (status) { status.hidden = false; status.textContent = text; } }
+        var isPrimaryBtn = submit.classList.contains('np-account-primary');
+        function notify(text) {
+            if (!status) return;
+            if (!text) {
+                status.hidden = true;
+                status.textContent = '';
+                return;
+            }
+            status.hidden = false;
+            status.textContent = text;
+        }
+        function setLoadingState(loading) {
+            if (loading) {
+                notify('');
+                if (isPrimaryBtn) submit.innerHTML = dotsMarkup;
+            }
+        }
         function navigate(state) {
             if (state.state === 'authenticated' || state.state === 'challenge') {
                 window.location.assign(destination(state.redirect));
@@ -76,7 +93,7 @@
             return false;
         }
         function recover() {
-            notify('در حال بررسی وضعیت درخواست…');
+            setLoadingState(true);
             return reconcile(sendForm).then(function (state) {
                 if (!alive || navigate(state)) return;
                 uncertain = state.state !== 'idle';
@@ -89,7 +106,7 @@
             if (restart) { window.location.assign(destination('/login')); return; }
             var controller = new AbortController(); job = controller;
             sendForm.setAttribute('aria-busy', 'true'); submit.disabled = true;
-            notify('در حال بررسی درخواست…');
+            setLoadingState(true);
             var task = recoverOnly || uncertain ? recover() : boundedJSON(sendForm.action, {
                 method: 'POST', body: new FormData(sendForm), credentials: 'same-origin', headers: {Accept: 'application/json'}, redirect: 'error', signal: controller.signal
             }, 'send').then(function (result) {
@@ -97,7 +114,7 @@
                 if (typeof result.body.redirect === 'string' && (result.response.ok || result.body.state === 'challenge')) {
                     navigate({state: 'challenge', redirect: result.body.redirect}); return;
                 }
-                if (result.response.status === 422) { notify('شماره موبایل را بررسی کنید.'); return; }
+                if (result.response.status === 422) { notify('شماره موبایل یا ایمیل را بررسی کنید.'); return; }
                 if (result.response.status === 429) {
                     countdown(submit, function (waiting) { locked = waiting; submit.disabled = locked || !!job; })(Number(result.response.headers.get('Retry-After')) || Number(result.body.retry_after));
                     notify(typeof result.body.message === 'string' ? result.body.message : 'برای تلاش دوباره کمی صبر کنید.'); return;
@@ -160,10 +177,11 @@
     if (!form) return;
 
     var input = form.elements.code;
-    var field = form.querySelector('.np-otp');
-    var visual = field.querySelector('.np-otp__slots');
-    var slots = visual.children;
+    var field = form.querySelector('.np-otp, .np-otp-boxes');
+    var visual = field ? field.querySelector('.np-otp__slots, .np-otp-boxes__grid') : null;
+    var slots = visual ? visual.children : [];
     var button = form.querySelector('button[type="submit"]');
+    var originalVerifyText = button ? button.textContent : '';
     var pending = form.querySelector('[data-otp-pending]');
     var error = document.getElementById('account-otp-error');
     var credential = null;
@@ -194,9 +212,14 @@
     }
 
     function render() {
-        var cursor = Math.min(input.selectionStart, 5);
+        var cursor = Math.min(input.selectionStart || 0, 5);
         for (var i = 0; i < slots.length; i++) {
-            slots[i].textContent = input.value.charAt(i);
+            var ch = input.value.charAt(i);
+            if ('value' in slots[i]) {
+                if (slots[i].value !== ch) slots[i].value = ch;
+            } else {
+                slots[i].textContent = ch;
+            }
             if (document.activeElement === input && i === cursor) slots[i].setAttribute('data-otp-current', '');
             else slots[i].removeAttribute('data-otp-current');
         }
@@ -205,21 +228,33 @@
     function busy(value) {
         button.disabled = value || verifyLocked || otpExpired;
         input.readOnly = value;
-        pending.hidden = !value;
+        for (var i = 0; i < slots.length; i++) {
+            if ('readOnly' in slots[i]) slots[i].readOnly = value;
+        }
+        if (pending) pending.hidden = !value;
+        if (value) {
+            button.innerHTML = dotsMarkup;
+        } else if (!verifyLocked) {
+            button.textContent = originalVerifyText;
+        }
         form.setAttribute('aria-busy', String(value));
     }
 
     function clearError() {
-        error.hidden = true;
-        error.textContent = '';
-        field.removeAttribute('data-otp-error');
+        if (error) {
+            error.hidden = true;
+            error.textContent = '';
+        }
+        if (field) field.removeAttribute('data-otp-error');
         input.removeAttribute('aria-invalid');
     }
 
     function showError(message) {
-        error.textContent = message;
-        error.hidden = false;
-        field.setAttribute('data-otp-error', '');
+        if (error) {
+            error.textContent = message;
+            error.hidden = false;
+        }
+        if (field) field.setAttribute('data-otp-error', '');
         input.setAttribute('aria-invalid', 'true');
     }
 
@@ -324,7 +359,7 @@
         }
     }
 
-    if (window.CSS && CSS.supports('display', 'grid') && CSS.supports('aspect-ratio', '1')) {
+    if (visual && field && window.CSS && CSS.supports('display', 'grid') && CSS.supports('aspect-ratio', '1')) {
         visual.hidden = false;
         field.classList.add('is-enhanced');
     }
@@ -384,13 +419,20 @@
         onCodeChange();
     });
 
-    if (!document.getElementById('error-summary')) input.focus();
+    if (!document.getElementById('error-summary')) {
+        if (slots.length > 0 && 'focus' in slots[0] && field && field.classList.contains('np-otp-boxes')) {
+            slots[0].focus();
+        } else {
+            input.focus();
+        }
+    }
     onCodeChange();
 
     if (window.isSecureContext && window.OTPCredential && window.AbortController && navigator.credentials) {
         credential = new AbortController();
         navigator.credentials.get({otp: {transport: ['sms']}, signal: credential.signal}).then(function (result) {
-            if (active && !request && !navigating && result && typeof result.code === 'string' && !input.value
+            if (active && !request && !navigating && result && typeof result.code === 'string'
+                && (!input.value || input.value.length < 6)
                 && /^[0-9]{6}$/.test(digits(result.code))) {
                 input.value = digits(result.code);
                 onCodeChange();
