@@ -13,6 +13,7 @@ use App\Models\SalesOrderEvent;
 use App\Models\SalesOrderLine;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\AdminHistory;
 use App\Support\CommerceAccess;
 use App\Support\CommerceInput;
@@ -247,6 +248,11 @@ final class CommerceManagement
             $event->$key = $value;
         }
         $event->save();
+
+        if (in_array($action, ['order.confirm', 'order.cancel'], true)) {
+            $notification = $action === 'order.confirm' ? 'order_confirmed' : 'order_cancelled';
+            DB::afterCommit(fn () => app(UnifiedNotifier::class)->orderPattern($order, $notification));
+        }
 
         return $order->id;
     }

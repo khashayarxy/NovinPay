@@ -40,7 +40,10 @@ class DeliveryController extends Controller
             }
         })->select('id');
 
-        return view('admin.deliveries', ['plans' => DeliveryPlan::query()->whereIn('financial_document_id', $documents)->where('state', 'planned')->latest('id')->paginate(20)]);
+        $order = FinancialDocument::query()->select('sales_order_id')->whereColumn('financial_documents.id', 'delivery_plans.financial_document_id');
+
+        return view('admin.deliveries', ['plans' => DeliveryPlan::query()->addSelect(['sales_order_id' => $order])
+            ->whereIn('financial_document_id', $documents)->where('state', 'planned')->latest('id')->paginate(20)]);
     }
 
     public function confirm(Request $request, string $plan, DeliveryManagement $service)
@@ -57,5 +60,13 @@ class DeliveryController extends Controller
         $service->dispatch($request->user(), $data['password'], $plan, (int) $data['version'], $data['tracking'], $data['recipient']);
 
         return back()->with('success', 'تحویل واقعی ثبت شد؛ روش تحویل دیگر قابل تغییر نیست.');
+    }
+
+    public function announceOrderProgress(Request $request, string $plan, DeliveryManagement $service)
+    {
+        $data = $request->validate(['version' => ['required', 'integer', 'min:1'], 'password' => ['required', 'string', 'max:255'], 'progress' => ['required', 'in:preparing,pickup_ready']]);
+        $service->announceOrderProgress($request->user(), $data['password'], $plan, (int) $data['version'], $data['progress']);
+
+        return back()->with('success', 'وضعیت آماده‌سازی سفارش ثبت شد.');
     }
 }

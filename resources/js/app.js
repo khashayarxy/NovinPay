@@ -1231,12 +1231,28 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             }
         };
 
-        const reverseGeocodeToProvinceCity = (la, ln) => {
+        const streetInput = form.querySelector('[name="street_address"]');
+        let streetRevision = 0;
+        let lookupRevision = 0;
+        streetInput?.addEventListener('input', () => streetRevision++);
+        form.querySelectorAll('[name="address_mode"]').forEach((input) => {
+            input.addEventListener('change', () => lookupRevision++);
+        });
+
+        const reverseGeocode = (la, ln) => {
             if (reverseGeocodeTimer) window.clearTimeout(reverseGeocodeTimer);
+            const lookup = ++lookupRevision;
+            const street = streetRevision;
+            const current = () => lookup === lookupRevision && getAddressMode() === 'new';
+            const fallback = () => {
+                if (!current()) return;
+                const nearest = findNearestIranLocation(la, ln);
+                if (nearest.province) applyMapProvinceAndCity(nearest.province, nearest.city);
+            };
             reverseGeocodeTimer = window.setTimeout(() => {
+                if (!current()) return;
                 if (!reverseGeocodeUrl || !window.fetch) {
-                    const fallback = findNearestIranLocation(la, ln);
-                    if (fallback.province) applyMapProvinceAndCity(fallback.province, fallback.city);
+                    fallback();
                     return;
                 }
                 const url = new URL(reverseGeocodeUrl, window.location.origin);
@@ -1247,16 +1263,17 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json' },
                 }).then((res) => (res.ok ? res.json() : null)).then((data) => {
-                    if (data && data.ok && data.province) {
+                    if (!current()) return;
+                    if (data?.ok && data.province) {
                         applyMapProvinceAndCity(data.province, data.city || '');
                     } else {
-                        const fallback = findNearestIranLocation(la, ln);
-                        if (fallback.province) applyMapProvinceAndCity(fallback.province, fallback.city);
+                        fallback();
                     }
-                }).catch(() => {
-                    const fallback = findNearestIranLocation(la, ln);
-                    if (fallback.province) applyMapProvinceAndCity(fallback.province, fallback.city);
-                });
+                    if (streetInput && street === streetRevision && data?.ok && typeof data.address === 'string' && data.address.trim()) {
+                        streetInput.value = data.address.slice(0, streetInput.maxLength);
+                        streetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }).catch(fallback);
             }, 220);
         };
 
@@ -1278,7 +1295,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         const subdomains = ['a', 'b', 'c', 'd'];
         const renderMap = (saveInputs = false, shouldReverseGeocode = false) => {
             if (saveInputs) saveCoordinates(lat, lng);
-            if (shouldReverseGeocode) reverseGeocodeToProvinceCity(lat, lng);
+            if (shouldReverseGeocode) reverseGeocode(lat, lng);
             if (neshanMap) {
                 neshanMap.setView([lat, lng], zoom, { animate: true });
                 if (neshanMarker) neshanMarker.setLatLng([lat, lng]);
@@ -1375,7 +1392,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 lng = next.lng;
                 renderMap(true, true);
             } else {
-                reverseGeocodeToProvinceCity(lat, lng);
+                reverseGeocode(lat, lng);
             }
         });
 
@@ -1403,7 +1420,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 } else {
                     renderMap(true, false);
                 }
-                reverseGeocodeToProvinceCity(lat, lng);
+                reverseGeocode(lat, lng);
             });
         });
 
@@ -1442,7 +1459,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                             const pos = neshanMarker.getLatLng();
                             if (pos) {
                                 saveCoordinates(pos.lat, pos.lng);
-                                reverseGeocodeToProvinceCity(pos.lat, pos.lng);
+                                reverseGeocode(pos.lat, pos.lng);
                             }
                         });
                     }
@@ -1455,7 +1472,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                             if (neshanMarker) neshanMarker.setLatLng(ev.latlng);
                             saveCoordinates(ev.latlng.lat, ev.latlng.lng);
                             neshanMap.panTo(ev.latlng);
-                            reverseGeocodeToProvinceCity(ev.latlng.lat, ev.latlng.lng);
+                            reverseGeocode(ev.latlng.lat, ev.latlng.lng);
                         }
                     });
                     setTimeout(() => neshanMap?.invalidateSize(), 60);

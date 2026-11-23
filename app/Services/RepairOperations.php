@@ -16,6 +16,7 @@ use App\Models\RepairInspection;
 use App\Models\RepairRequest;
 use App\Models\RepairWorkEntry;
 use App\Models\User;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\AdminAccess;
 use App\Support\AdminHistory;
 use App\Support\FaNumber;
@@ -105,6 +106,7 @@ final class RepairOperations
                 $case->save();
                 $this->event($case, $actor, AdminAction::RepairIntake, null);
                 app(CustomerNotifications::class)->record($case->customer_account_id, 'device_received', $case->public_id);
+                DB::afterCommit(fn () => app(UnifiedNotifier::class)->repairCreatedPattern($case));
 
                 return $case;
             }, 3);
@@ -283,6 +285,9 @@ final class RepairOperations
             };
             if ($notice) {
                 app(CustomerNotifications::class)->record($case->customer_account_id, $notice, $case->public_id.':'.$case->version);
+            }
+            if ($before !== $case->status) {
+                DB::afterCommit(fn () => app(UnifiedNotifier::class)->repairStagePattern($case));
             }
 
             return $case;

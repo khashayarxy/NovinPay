@@ -532,9 +532,9 @@ class MultiStepCheckoutZibalTest extends TestCase
         config(['services.neshan.service_key' => '']);
         $this->getJson('https://novinpaypos.test/cart/checkout/reverse-geocode?lat=35.6597&lng=51.0592')
             ->assertOk()
-            ->assertExactJson(['ok' => false, 'province' => null, 'city' => null]);
+            ->assertExactJson(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
 
-        // 2. Reverse geocoding with NESHAN_SERVICE_KEY returns ONLY matching province and city (no street_address overwrite)
+        // Reverse geocoding suggests the editable street address along with the matched city.
         config(['services.neshan.service_key' => 'service.synthetic_neshan_key_456']);
         Http::fake([
             'https://api.neshan.org/v5/reverse*' => Http::response([
@@ -552,6 +552,7 @@ class MultiStepCheckoutZibalTest extends TestCase
                 'ok' => true,
                 'province' => 'تهران',
                 'city' => 'شهریار',
+                'address' => 'استان تهران، شهریار، بلوار ولیعصر',
             ]);
 
         // 3. Draft persistence endpoint saves personal details, address, and map coordinates immediately on step advance

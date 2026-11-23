@@ -95,9 +95,9 @@ class RepairRequestController extends Controller
             : redirect()->route('repair');
     }
 
-    public function tracking(): View
+    public function tracking(?string $code = null): View
     {
-        return view('pages.repair-tracking', ['matched' => null]);
+        return view('pages.repair-tracking', ['matched' => null, 'trackingCode' => $code]);
     }
 
     public function track(TrackRepairRequest $request): View
