@@ -26,16 +26,16 @@ return [
     ],
 
     'bale' => [
-        'enabled' => (bool) env('NOTIFICATIONS_BALE_ENABLED', false),
-        'bot_token' => (string) env('NOTIFICATIONS_BALE_BOT_TOKEN', ''),
-        'chat_id' => (string) env('NOTIFICATIONS_BALE_CHAT_ID', ''),
-        'api_base' => rtrim((string) env('NOTIFICATIONS_BALE_API_BASE', 'https://tapi.bale.ai'), '/'),
+        'enabled' => (bool) env('NOTIFICATIONS_BALE_ENABLED', env('BALE_BOT_TOKEN') && env('BALE_ADMIN_CHAT_ID')),
+        'bot_token' => (string) env('NOTIFICATIONS_BALE_BOT_TOKEN', env('BALE_BOT_TOKEN', '')),
+        'chat_id' => (string) env('NOTIFICATIONS_BALE_CHAT_ID', env('BALE_ADMIN_CHAT_ID', '')),
+        'api_base' => rtrim((string) env('NOTIFICATIONS_BALE_API_BASE', env('BALE_API_BASE_URL', 'https://tapi.bale.ai')), '/'),
     ],
 
     'telegram' => [
-        'enabled' => (bool) env('NOTIFICATIONS_TELEGRAM_ENABLED', false),
-        'bot_token' => (string) env('NOTIFICATIONS_TELEGRAM_BOT_TOKEN', ''),
-        'chat_id' => (string) env('NOTIFICATIONS_TELEGRAM_CHAT_ID', ''),
-        'api_base' => rtrim((string) env('NOTIFICATIONS_TELEGRAM_API_BASE', 'https://api.telegram.org'), '/'),
+        'enabled' => (bool) env('NOTIFICATIONS_TELEGRAM_ENABLED', env('TELEGRAM_BOT_TOKEN') && env('TELEGRAM_ADMIN_CHAT_ID')),
+        'bot_token' => (string) env('NOTIFICATIONS_TELEGRAM_BOT_TOKEN', env('TELEGRAM_BOT_TOKEN', '')),
+        'chat_id' => (string) env('NOTIFICATIONS_TELEGRAM_CHAT_ID', env('TELEGRAM_ADMIN_CHAT_ID', '')),
+        'api_base' => rtrim((string) env('NOTIFICATIONS_TELEGRAM_API_BASE', env('TELEGRAM_API_BASE_URL', 'https://api.telegram.org')), '/'),
     ],
 ];
