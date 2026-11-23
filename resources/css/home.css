@@ -19,7 +19,7 @@
 .np-hero { background: #f1f8ff; }
 .np-hero__grid { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 38px; align-items: center; min-height: 292px; padding-block: 16px; }
 .np-eyebrow { display: inline-flex; border: 1px solid #cfe4ff; border-radius: 99px; padding: 5px 13px; background: #fff; color: var(--color-brand-700); font-size: 11px; margin-bottom: 8px; }
-.np-hero h1 { font-size: clamp(36px, calc(var(--storefront-unlocked-viewport, 100vw) * 0.037000000000000005), 49px); font-weight: 700; line-height: 1.28; letter-spacing: -1.3px; }
+.np-hero h1 { font-size: clamp(36px, calc(var(--storefront-unlocked-viewport, 100vw) * 0.037000000000000005), 49px); font-weight: 700; line-height: 1.28; letter-spacing: 0; }
 .np-hero h1 span { color: var(--color-brand-500); }
 .np-hero__description { max-width: 530px; margin-block: 8px 16px; font-size: 14px; line-height: 2; }
 .np-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; }

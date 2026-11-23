@@ -6,7 +6,7 @@
     <div class="container-page section">
         <div class="mx-auto max-w-xl text-center">
             <p class="text-sm font-semibold text-brand-700">خطای ۵۰۰</p>
-            <h1 class="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+            <h1 class="mt-3 text-2xl font-bold sm:text-3xl">
                 خطایی در سرور رخ داد
             </h1>
             <p class="mt-4 text-sm leading-8 text-slate-600">
