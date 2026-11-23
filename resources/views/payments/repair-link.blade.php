@@ -27,12 +27,12 @@
         </div>
         <div style="display: flex; justify-content: space-between; gap: 1rem;">
             <dt style="color: #536d88;">مبلغ کل صورت‌حساب</dt>
-            <dd style="margin: 0; font-weight: 600; font-variant-numeric: tabular-nums;">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display($document->charged_minor)) }} تومان</dd>
+            <dd style="margin: 0; font-weight: 600; font-variant-numeric: tabular-nums;">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($document->charged_minor)) }} تومان</dd>
         </div>
         <div style="display: flex; justify-content: space-between; gap: 1rem; padding-top: .5rem; border-top: 1px solid #e2ecf5;">
             <dt style="color: #122940; font-weight: 700;">{{ $isPaid ? 'مبلغ پرداخت‌شده' : 'مبلغ قابل پرداخت' }}</dt>
             <dd style="margin: 0; color: #0674cf; font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums;">
-                {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display($isPaid ? $document->paid_minor : $balance)) }} تومان
+                {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($isPaid ? $document->paid_minor : $balance)) }} تومان
             </dd>
         </div>
     </dl>

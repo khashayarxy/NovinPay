@@ -65,6 +65,16 @@ class PaymentSettlement
         app(CustomerNotifications::class)->record($account, 'payment_confirmed', $transaction->public_id, '/account/documents/'.$document->public_id);
         // Same transaction-bound observation convention as finance.after-write.
         Event::dispatch('payment.after-write', [$transaction]);
+
+        if ($allocation > 0 && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor && $document->sales_order_id) {
+            $order = SalesOrder::query()->lockForUpdate()->find($document->sales_order_id);
+            if ($order && in_array($order->status, ['draft', 'reserved'], true)) {
+                $order->status = 'confirmed';
+                $order->version++;
+                $order->save();
+            }
+        }
+
         app(ShoppingCart::class)->consume($document);
 
         if ($allocation > 0 && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor) {

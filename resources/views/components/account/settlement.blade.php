@@ -4,7 +4,7 @@
     @if($document)
         <p>{{ ['cleared' => 'مبلغی برای پرداخت وجود ندارد.', 'settled' => 'سند تسویه شده است.', 'partial' => 'بخشی از مبلغ پرداخت شده است.', 'unpaid' => 'پرداختی برای این سند ثبت نشده است.'][$document->settlement()] }}</p>
         @if($document->charged_minor > $document->paid_minor)
-            <p>مانده <bdi>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display($document->charged_minor - $document->paid_minor)) }}</bdi> تومان</p>
+            <p>مانده <bdi>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($document->charged_minor - $document->paid_minor)) }}</bdi> تومان</p>
         @endif
         @if($plan?->method)
             <p>{{ ['pickup' => 'تحویل حضوری', 'tipax' => 'تیپاکس', 'courier' => 'پیک', 'post' => 'پست'][$plan->method] ?? 'روش تحویل ثبت شده است.' }}</p>

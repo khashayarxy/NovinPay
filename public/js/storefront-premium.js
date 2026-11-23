@@ -276,36 +276,118 @@
                 toast.setAttribute('aria-live', 'polite');
                 document.body.append(toast);
             }
-            toast.textContent = text;
+            toast.replaceChildren();
+            const labelSpan = document.createElement('span');
+            labelSpan.textContent = text;
+            const openBtn = document.createElement('button');
+            openBtn.type = 'button';
+            openBtn.className = 'np-cart-toast__action';
+            openBtn.textContent = 'مشاهده سبد';
+            openBtn.addEventListener('click', () => {
+                toast.classList.remove('is-visible');
+                if (cartDialog && active !== cartDialog) open(cartDialog, submitter);
+            });
+            toast.append(labelSpan, openBtn);
             toast.classList.add('is-visible');
             clearTimeout(toast._hideTimer);
-            toast._hideTimer = setTimeout(() => toast.classList.remove('is-visible'), 2600);
+            toast._hideTimer = setTimeout(() => toast.classList.remove('is-visible'), 3400);
+        };
+        const playFlyToCart = (sourceEl) => {
+            if (!sourceEl || typeof sourceEl.getBoundingClientRect !== 'function') return;
+            if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const cartTriggers = [...document.querySelectorAll('[data-storefront-open="cart-dialog"]')];
+            const targetEl = cartTriggers.find(el => {
+                const r = el.getBoundingClientRect();
+                return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+            });
+            if (!targetEl) return;
+            const productImg = document.querySelector('.gallery-stage img, .product-gallery img, .store-cart-image img');
+            const startRect = (productImg && productImg.getBoundingClientRect().width > 0 ? productImg : sourceEl).getBoundingClientRect();
+            const endRect = targetEl.getBoundingClientRect();
+            if (!startRect.width || !endRect.width) return;
+
+            const flyer = document.createElement('div');
+            flyer.className = 'np-cart-flyer';
+            flyer.setAttribute('aria-hidden', 'true');
+            if (productImg && productImg.src) {
+                const img = document.createElement('img');
+                img.src = productImg.src;
+                img.alt = '';
+                flyer.append(img);
+            } else {
+                flyer.textContent = '+۱';
+            }
+            const size = 44;
+            const startX = startRect.left + startRect.width / 2 - size / 2;
+            const startY = startRect.top + startRect.height / 2 - size / 2;
+            const endX = endRect.left + endRect.width / 2 - size / 2;
+            const endY = endRect.top + endRect.height / 2 - size / 2;
+            flyer.style.left = `${startX}px`;
+            flyer.style.top = `${startY}px`;
+            document.body.append(flyer);
+
+            const dx = endX - startX;
+            const dy = endY - startY;
+            const finishFly = () => {
+                flyer.remove();
+                targetEl.classList.remove('is-bouncing');
+                void targetEl.offsetWidth;
+                targetEl.classList.add('is-bouncing');
+                setTimeout(() => targetEl.classList.remove('is-bouncing'), 500);
+            };
+            if (typeof flyer.animate === 'function') {
+                const anim = flyer.animate([
+                    {transform: 'translate3d(0, 0, 0) scale(1)', opacity: 0.96},
+                    {transform: `translate3d(${dx * 0.55}px, ${Math.min(dy * 0.35, -48)}px, 0) scale(0.78)`, opacity: 0.92, offset: 0.45},
+                    {transform: `translate3d(${dx}px, ${dy}px, 0) scale(0.28)`, opacity: 0.2},
+                ], {duration: 540, easing: 'cubic-bezier(0.22, 1, 0.36, 1)'});
+                anim.onfinish = finishFly;
+                anim.oncancel = () => flyer.remove();
+            } else {
+                setTimeout(finishFly, 300);
+            }
         };
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
         try {
             const response = await fetch(endpoint, {method: 'POST', body: data,
                 credentials: 'same-origin', redirect: 'error', signal: controller.signal,
-                headers: {Accept: 'application/json'}});
+                headers: {Accept: 'application/json', 'X-Storefront-Cart-Html': '1'}});
             if (!response.ok) {
                 const message = response.status === 409 ? 'سبد یا موجودی تغییر کرده است. پیش از تلاش دوباره، سبد را بررسی کنید.'
                     : response.status === 422 ? 'تعداد را بین ۱ تا ۱۰ انتخاب کنید.'
                     : 'تغییر سبد انجام نشد. وضعیت سبد را بررسی کنید.';
                 throw new Error(message);
             }
-            const {count} = await response.json();
+            const payload = await response.json();
+            const {count, proof, html} = payload;
             if (!Number.isInteger(count) || count < 0) throw new Error();
+            if (typeof proof === 'string' && proof.length > 0) {
+                document.querySelectorAll('input[name="cart_context"]').forEach(input => { input.value = proof; });
+            }
             commerce?.postMessage('cart-change');
             if (epoch !== cartEpoch) return;
             cartSnapshot = null;
             renderCartCount(count);
-            if (!fromDrawer) showCartToast('به سبد خرید اضافه شد ✓');
+            if (!fromDrawer) {
+                playFlyToCart(submitter || form);
+                showCartToast('به سبد خرید اضافه شد ✓');
+            }
             if (active === cartDialog) {
                 const focusInCart = cartDialog.querySelector('[data-live-cart]').contains(document.activeElement);
                 if (focusInCart || fromDrawer) cartDialog.querySelector('[data-storefront-close]')?.focus({preventScroll: true});
                 await refreshCart(cartDialog, {supersede: true, focusKey});
             } else if (!active && !fromDrawer) {
-                open(cartDialog, submitter);
+                if (typeof html === 'string' && html.length > 0) {
+                    try {
+                        const doc = new DOMParser().parseFromString(html, 'text/html');
+                        applyCartDocument(cartDialog, doc, cartEpoch, html);
+                    } catch {
+                        preloadCart(cartDialog);
+                    }
+                } else {
+                    preloadCart(cartDialog);
+                }
             }
         } catch (failure) {
             if (epoch !== cartEpoch) return;

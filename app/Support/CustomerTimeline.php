@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Enums\RepairStage;
 use App\Models\DeliveryPlan;
+use App\Models\FinancialDocument;
+use App\Models\PaymentAttempt;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
@@ -23,8 +25,39 @@ final class CustomerTimeline
         if ($order->status === 'fulfilled' && $plan?->state === 'dispatched') {
             return 'ارسال به شرکت حمل ثبت شد';
         }
+        if ($order->status === 'fulfilled') {
+            return 'تحویل ثبت شد';
+        }
+        if ($order->status === 'cancelled') {
+            return SalesOrder::STATUSES['cancelled'];
+        }
 
-        return $order->status === 'fulfilled' ? 'تحویل ثبت شد' : SalesOrder::STATUSES[$order->status];
+        $document = $order->id
+            ? FinancialDocument::query()->where('sales_order_id', $order->id)->first()
+            : null;
+
+        if ($document && $document->charged_minor > 0) {
+            if ($document->paid_minor < $document->charged_minor) {
+                $latestAttempt = PaymentAttempt::query()
+                    ->where('financial_document_id', $document->id)
+                    ->latest('id')
+                    ->first();
+
+                if ($latestAttempt && $latestAttempt->state === 'failed') {
+                    return 'لغو شده / پرداخت ناموفق';
+                }
+
+                return 'در انتظار پرداخت';
+            }
+
+            return SalesOrder::STATUSES['confirmed'];
+        }
+
+        if ($order->status === 'draft') {
+            return 'در انتظار پرداخت';
+        }
+
+        return SalesOrder::STATUSES[$order->status];
     }
 
     public static function request(RepairRequest $request): array
@@ -84,6 +117,14 @@ final class CustomerTimeline
             }
         }
         $current = $order->status;
+        if (! in_array($current, ['cancelled', 'fulfilled'], true) && $order->id) {
+            $document = FinancialDocument::query()->where('sales_order_id', $order->id)->first();
+            if ($document && $document->charged_minor > 0 && $document->paid_minor < $document->charged_minor) {
+                $current = 'draft';
+                $labels['draft'] = self::orderStatus($order, $plan);
+                unset($recorded['confirmed']);
+            }
+        }
         if ($current === 'cancelled') {
             $labels = array_intersect_key($labels, $recorded) + ['cancelled' => 'سفارش لغو شد'];
         } elseif ($current === 'fulfilled') {

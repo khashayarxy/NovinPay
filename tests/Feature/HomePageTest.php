@@ -35,7 +35,7 @@ class HomePageTest extends TestCase
             $this->assertCount(0, $xpath->query('//footer//img[contains(@src,"Shaparak.svg")]'));
             $this->assertCount(0, $xpath->query('//script[contains(@src,"zibal-trust")]'));
 
-            $zibalLinks = $xpath->query('//footer//a[@href="https://gateway.zibal.ir/trustMe/novinpaypos.com" and img[@src="'.asset('images/zibal-trust-light.svg').'"]]');
+            $zibalLinks = $xpath->query('//footer//a[@href="https://gateway.zibal.ir/trustMe/novinpaypos.com" and img[@src="'.versioned_asset('images/zibal-trust-light.svg').'"]]');
             $this->assertCount(1, $zibalLinks);
             $this->assertSame('_blank', $zibalLinks->item(0)->getAttribute('target'));
             $this->assertSame('noopener noreferrer nofollow', $zibalLinks->item(0)->getAttribute('rel'));
@@ -244,7 +244,7 @@ class HomePageTest extends TestCase
             [...$expectedCategories, 'مشاهده همه محصولات'],
             array_map(fn ($link) => trim(preg_replace('/\s+/', ' ', $link->textContent)), iterator_to_array($dropdownLinks)),
         );
-        $this->assertSame(1, $xpath->query('//footer//img[@src="'.asset('images/zibal-trust-light.svg').'"]')->length);
+        $this->assertSame(1, $xpath->query('//footer//img[@src="'.versioned_asset('images/zibal-trust-light.svg').'"]')->length);
         $this->assertFileExists(public_path('images/zibal-trust-light.svg'));
         $this->assertFileDoesNotExist(public_path('images/zibal-trust.png'));
         $this->assertSame(0, $xpath->query('//header//a[contains(@class,"np-search") or contains(@class,"np-inquiry")]')->length);
@@ -258,10 +258,8 @@ class HomePageTest extends TestCase
         $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get('/')->assertOk()->getContent());
         $xpath = new DOMXPath($document);
-        $this->assertSame(3, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
-        $links = $xpath->query('//footer//nav/a');
-        $this->assertSame(['حساب کاربری', 'سبد خرید', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
-        $this->assertSame(array_map(fn ($name) => route($name), ['account.index', 'cart.index', 'products.index', 'repair', 'contact', 'articles.index']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
+        $this->assertSame(2, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
+        $this->assertSame(0, $xpath->query('//footer//nav')->length);
         $this->assertSame(0, $xpath->query('//footer//address')->length);
         $this->assertStringNotContainsString(config('business.address'), $xpath->query('//footer')->item(0)->textContent);
         $this->assertStringNotContainsString(config('business.hours.open'), $xpath->query('//footer')->item(0)->textContent);

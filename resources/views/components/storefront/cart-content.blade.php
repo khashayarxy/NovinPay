@@ -13,7 +13,7 @@
     'overLimit',
     'drawer' => false,
 ])
-<section @class(['store-cart', 'cart-sheet-content' => $drawer]) data-storefront-cart data-cart-count="{{ array_sum($quantity) }}" data-cart-empty="{{ $items === [] && $excluded === [] && $legacyStatus === null ? 'true' : 'false' }}">
+<section @class(['store-cart', 'cart-sheet-content' => $drawer]) data-storefront-cart data-cart-count="{{ array_sum($quantity) }}" data-cart-empty="{{ $items === [] && $legacyStatus === null ? 'true' : 'false' }}">
     @unless ($drawer)
         <h1>سبد خرید</h1>
         <x-admin.errors />
@@ -51,9 +51,6 @@
                             @else
                                 <p>قیمت واحد <x-storefront.money :amount="$product->price" /></p>
                             @endif
-                            @if ($separate)
-                                <p>این دستگاه {{ \App\Support\FaNumber::digits($item['device']['quantity'] ?? 0) }} عدد، این حساب {{ \App\Support\FaNumber::digits($item['account']['quantity'] ?? 0) }} عدد</p>
-                            @endif
                             <div class="store-cart-commands">
                                 @if ($product && $available[$slug] > 0)
                                     <x-storefront.cart-quantity :$product :quantity="$item['quantity']" :limit="$available[$slug]" :$proof :$revision />
@@ -65,31 +62,19 @@
                                     <x-storefront.cart-context :proof="$proof" :revision="$revision" />
                                     <button type="submit" class="commerce-action commerce-action--danger commerce-action--icon" name="scope"
                                         value="{{ $separate ? 'hide' : 'device' }}" data-cart-focus="{{ $slug }}-remove"
-                                        aria-label="{{ $separate ? 'حذف از نمای فعلی' : 'حذف از سبد' }}{{ $product ? '، '.$product->name : '' }}">
+                                        aria-label="حذف از سبد{{ $product ? '، '.$product->name : '' }}">
                                         <x-storefront.icon name="trash" />
                                     </button>
                                 </form>
                             </div>
-                            @if ($product && $available[$slug] > 0 && $item['quantity'] >= $available[$slug])
-                                <p class="commerce-stock-note">
-                                    {{ $separate ? 'حداکثر قابل انتخاب در این نما' : 'حداکثر قابل سفارش' }}
-                                    <bdi>{{ \App\Support\FaNumber::digits($available[$slug]) }}</bdi> عدد
-                                </p>
-                            @endif
-                            @if ($separate)
-                                <details class="commerce-sources">
-                                    <summary>مدیریت سبدهای جداگانه</summary>
-                                    <form method="post" action="{{ route('cart.remove', $slug) }}" data-cart-mutation>
-                                        @csrf
-                                        <x-storefront.cart-context :proof="$proof" :revision="$revision" />
-                                        @if ($item['device'])
-                                            <button type="submit" class="commerce-action commerce-action--compact commerce-action--danger" name="scope" value="device">حذف از سبد این دستگاه</button>
-                                        @endif
-                                        @if ($item['account'])
-                                            <button type="submit" class="commerce-action commerce-action--compact commerce-action--danger" name="scope" value="account">حذف از سبد حساب</button>
-                                        @endif
-                                    </form>
-                                </details>
+                            @if ($product && $available[$slug] > 0)
+                                @if ($available[$slug] === 1)
+                                    <p class="commerce-stock-note">تنها ۱ عدد در انبار باقی مانده (موجودی: ۱ عدد)</p>
+                                @elseif ($item['quantity'] >= $available[$slug])
+                                    <p class="commerce-stock-note">موجودی: <bdi>{{ \App\Support\FaNumber::digits($available[$slug]) }}</bdi> عدد در انبار (حداکثر موجودی انتخاب شده است)</p>
+                                @elseif ($available[$slug] <= 5)
+                                    <p class="commerce-stock-note">تنها <bdi>{{ \App\Support\FaNumber::digits($available[$slug]) }}</bdi> عدد در انبار باقی مانده</p>
+                                @endif
                             @endif
                         </div>
                         @unless($unavailableItem)
@@ -103,14 +88,6 @@
                         <a class="commerce-action commerce-action--secondary" href="{{ route('products.index') }}">مشاهدهٔ محصولات</a>
                     </div>
                 @endforelse
-                @foreach ($excluded as $slug)
-                    <form method="post" action="{{ route('cart.remove', $slug) }}" class="commerce-notice" data-cart-mutation>
-                        @csrf
-                        <x-storefront.cart-context :proof="$proof" :revision="$revision" />
-                        <p>یک کالا از نمای فعلی پنهان است.</p>
-                        <button type="submit" name="scope" value="restore" class="commerce-action commerce-action--secondary">بازگرداندن کالا</button>
-                    </form>
-                @endforeach
             </div>
         </div>
         @if ($items !== [])

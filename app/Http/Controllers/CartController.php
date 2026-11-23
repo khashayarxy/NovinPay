@@ -48,26 +48,26 @@ class CartController extends Controller
     {
         $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:10']]);
 
-        return $this->changed($request, $cart->change($request, $product->slug, 'add', (int) $data['quantity'], $product));
+        return $this->changed($request, $cart->change($request, $product->slug, 'add', (int) $data['quantity'], $product), $cart);
     }
 
     public function update(Request $request, Product $product, ShoppingCart $cart)
     {
         $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:10']]);
 
-        return $this->changed($request, $cart->change($request, $product->slug, 'quantity', (int) $data['quantity'], $product));
+        return $this->changed($request, $cart->change($request, $product->slug, 'quantity', (int) $data['quantity'], $product), $cart);
     }
 
     public function remove(Request $request, string $slug, ShoppingCart $cart)
     {
         $data = $request->validate(['scope' => ['required', Rule::in(['hide', 'account', 'device', 'restore'])]]);
 
-        return $this->changed($request, $cart->change($request, $slug, $data['scope']));
+        return $this->changed($request, $cart->change($request, $slug, $data['scope']), $cart);
     }
 
     public function claimLegacy(Request $request, ShoppingCart $cart, LegacyCartHold $legacy)
     {
-        return $this->changed($request, $cart->importLegacy($request, $legacy));
+        return $this->changed($request, $cart->importLegacy($request, $legacy), $cart);
     }
 
     public function checkout(Request $request, ShoppingCart $cart, CustomerLogin $login, ZibalGateway $gateway, ZibalPayments $payments)
@@ -223,10 +223,23 @@ class CartController extends Controller
         return $cart->viewData($request);
     }
 
-    private function changed(Request $request, int $count)
+    private function changed(Request $request, int $count, ?ShoppingCart $cart = null)
     {
-        return $request->expectsJson()
-            ? response()->json(['count' => $count])
-            : redirect()->route('cart.index');
+        if (! $request->expectsJson()) {
+            return redirect()->route('cart.index');
+        }
+
+        if ($cart && $request->headers->get('X-Storefront-Cart-Html') === '1') {
+            $viewData = $cart->viewData($request);
+
+            return response()->json([
+                'count' => $count,
+                'proof' => $viewData['proof'],
+                'revision' => $viewData['revision'],
+                'html' => view('components.storefront.cart-content', [...$viewData, 'drawer' => true])->render(),
+            ]);
+        }
+
+        return response()->json(['count' => $count]);
     }
 }

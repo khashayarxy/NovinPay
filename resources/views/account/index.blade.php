@@ -72,7 +72,7 @@
                     @forelse($orders as $order)
                         <a class="np-account-row" href="{{ route('account.orders.show', $order->public_id) }}">
                             <span><strong>{{ \App\Support\CustomerTimeline::orderStatus($order) }}</strong><small><x-finance-time :value="$order->created_at" /></small></span>
-                            <span class="np-account-tag">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display(\App\Support\OrderMoney::minor($order->total))) }} تومان</span>
+                            <span class="np-account-tag">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\OrderMoney::minor($order->total))) }} تومان</span>
                         </a>
                     @empty
                         <p>هنوز سفارشی ثبت نکرده‌اید. می‌توانید محصولات را در فروشگاه ببینید.</p>
@@ -93,19 +93,6 @@
                         <p>هنوز سندی برای نمایش ثبت نشده است.</p>
                     @endforelse
                     {{ $documents->links() }}
-                </section>
-            @endif
-
-            @if($section === 'overview')
-                <section class="np-account-card" aria-labelledby="account-support-title">
-                    <h2 id="account-support-title">پشتیبانی</h2>
-                    <details class="np-account-address">
-                        <summary>شناسه حساب</summary>
-                        <p>اگر پشتیبانی از شما شناسه حساب خواست، می‌توانید آن را کپی و ارسال کنید.</p>
-                        <p class="np-account-reference"><bdi id="account-support-id" dir="ltr">{{ $account->public_id }}</bdi></p>
-                        <button class="np-account-link" type="button" data-copy-account="account-support-id" aria-describedby="account-copy-status" hidden>کپی شناسه</button>
-                        <p id="account-copy-status" role="status"></p>
-                    </details>
                 </section>
             @endif
 
