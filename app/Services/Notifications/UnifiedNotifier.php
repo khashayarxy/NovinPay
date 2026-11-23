@@ -4,11 +4,16 @@ namespace App\Services\Notifications;
 
 use App\Mail\UnifiedNotificationMail;
 use App\Models\Consultation;
+use App\Models\DeliveryPlan;
+use App\Models\FinancialDocument;
+use App\Models\PaymentAttempt;
+use App\Models\PaymentTransaction;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
 use App\Services\IpPanel;
 use App\Support\FaNumber;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -196,6 +201,123 @@ final class UnifiedNotifier
                 ['موضوع' => $topic],
             );
         }, 'consultation_submitted');
+    }
+
+    public function orderPaid(SalesOrder $order, FinancialDocument $document, PaymentTransaction $transaction): void
+    {
+        $this->safe(function () use ($order, $document, $transaction): void {
+            $lockKey = 'novinpay:notify:order_paid:'.$transaction->public_id;
+            if (! Cache::add($lockKey, true, now()->addDays(7))) {
+                return;
+            }
+
+            $order->loadMissing(['customer', 'lines']);
+            $code = strtoupper(substr((string) $order->public_id, 0, 8));
+            $customerName = (string) ($order->customer?->name ?? 'مشتری');
+            $customerMobile = $this->normalizePhone($order->customer?->contact_phone) ?? 'ثبت نشده';
+            $amountToman = $this->formatIntegerToman($transaction->amount_minor);
+            $trackId = $this->resolveZibalTrackId($transaction);
+
+            $itemSummary = $order->lines->isNotEmpty()
+                ? $order->lines->map(fn ($line) => trim((string) $line->description).' × '.FaNumber::digits((int) $line->quantity))->implode('، ')
+                : '—';
+
+            $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->first();
+            $shippingMethodKey = (string) ($plan?->requested_method ?: $plan?->method ?: 'pickup');
+            $shippingLabel = match ($shippingMethodKey) {
+                'pickup' => 'تحویل حضوری در فروشگاه نوین پی',
+                'post' => 'پست',
+                'tipax' => 'تیپاکس',
+                'courier' => 'پیک',
+                default => $shippingMethodKey,
+            };
+
+            $adminUrl = route('admin.orders.show', $order);
+            $fields = [
+                'کد سفارش' => $code,
+                'مشتری' => $customerName,
+                'موبایل' => FaNumber::digits($customerMobile),
+                'اقلام سفارش' => $itemSummary,
+                'نحوه ارسال' => $shippingLabel,
+                'مبلغ پرداخت‌شده' => $amountToman,
+                'کد رهگیری زیبال' => $trackId !== '' ? FaNumber::digits($trackId) : '—',
+            ];
+
+            $botText = $this->formatBotMessage('✅ پرداخت آنلاین سفارش تأیید شد', $fields, $adminUrl);
+            $this->telegram->send($botText);
+            $this->bale->send($botText);
+        }, 'order_paid');
+    }
+
+    public function repairPaid(RepairCase $repairCase, FinancialDocument $document, PaymentTransaction $transaction): void
+    {
+        $this->safe(function () use ($repairCase, $transaction): void {
+            $lockKey = 'novinpay:notify:repair_paid:'.$transaction->public_id;
+            if (! Cache::add($lockKey, true, now()->addDays(7))) {
+                return;
+            }
+
+            $ref = (string) $repairCase->tracking_reference;
+            $customerName = (string) ($repairCase->customer_name ?: 'مشتری');
+            $customerMobile = $this->normalizePhone($repairCase->contact_phone) ?? 'ثبت نشده';
+            $device = trim(($repairCase->device_brand?->value ? $repairCase->device_brand->value.' · ' : '').(string) $repairCase->device_model);
+            $amountToman = $this->formatIntegerToman($transaction->amount_minor);
+            $trackId = $this->resolveZibalTrackId($transaction);
+            $adminUrl = route('admin.repair-cases.show', $repairCase);
+
+            $fields = [
+                'کد پیگیری تعمیر' => FaNumber::digits($ref),
+                'مشتری' => $customerName,
+                'موبایل' => FaNumber::digits($customerMobile),
+                'مدل دستگاه' => $device !== '' ? $device : '—',
+                'مبلغ پرداخت‌شده' => $amountToman,
+                'کد رهگیری زیبال' => $trackId !== '' ? FaNumber::digits($trackId) : '—',
+            ];
+
+            $botText = $this->formatBotMessage('✅ هزینه تعمیر آنلاین پرداخت شد', $fields, $adminUrl);
+            $this->telegram->send($botText);
+            $this->bale->send($botText);
+        }, 'repair_paid');
+    }
+
+    public function repairPaymentLinkGenerated(RepairCase $repairCase, FinancialDocument $document, string $paymentUrl): void
+    {
+        $this->safe(function () use ($repairCase, $document, $paymentUrl): void {
+            $ref = (string) $repairCase->tracking_reference;
+            $customerName = (string) ($repairCase->customer_name ?: 'مشتری');
+            $customerMobile = $this->normalizePhone($repairCase->contact_phone) ?? 'ثبت نشده';
+            $balanceMinor = max(0, (int) ($document->charged_minor - $document->paid_minor));
+            $amountToman = $this->formatIntegerToman($balanceMinor);
+
+            $fields = [
+                'کد پیگیری تعمیر' => FaNumber::digits($ref),
+                'مشتری' => $customerName,
+                'موبایل' => FaNumber::digits($customerMobile),
+                'مبلغ قابل پرداخت' => $amountToman,
+                'لینک پرداخت' => $paymentUrl,
+            ];
+
+            $botText = $this->formatBotMessage('🔗 لینک پرداخت آنلاین تعمیر ساخته شد', $fields);
+            $this->telegram->send($botText);
+            $this->bale->send($botText);
+        }, 'repair_payment_link_generated');
+    }
+
+    private function formatIntegerToman(int $minor): string
+    {
+        return FaNumber::digits(number_format(intdiv($minor, 100), 0, '.', '٬')).' تومان';
+    }
+
+    private function resolveZibalTrackId(PaymentTransaction $transaction): string
+    {
+        if ($transaction->payment_attempt_id) {
+            $track = PaymentAttempt::query()->whereKey($transaction->payment_attempt_id)->value('track_id');
+            if (is_string($track) && $track !== '') {
+                return $track;
+            }
+        }
+
+        return (string) ($transaction->reference ?? '');
     }
 
     public function supportChatMessage(string $conversationId, string $messagePreview, ?string $senderName = null): void

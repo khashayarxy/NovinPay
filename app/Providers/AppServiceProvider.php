@@ -3,8 +3,12 @@
 namespace App\Providers;
 
 use App\Enums\AdminPermission;
+use App\Events\OrderPaid;
+use App\Events\RepairPaid;
+use App\Events\RepairPaymentLinkGenerated;
 use App\Http\Middleware\PreviewAwareSession;
 use App\Models\User;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\AdminAccess;
 use App\Support\Chat\ChatBridge;
 use App\Support\CustomerAuthThrottle;
@@ -14,6 +18,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -72,5 +77,9 @@ class AppServiceProvider extends ServiceProvider
         if (str_starts_with((string) config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
+
+        Event::listen(OrderPaid::class, fn (OrderPaid $event) => app(UnifiedNotifier::class)->orderPaid($event->order, $event->document, $event->transaction));
+        Event::listen(RepairPaid::class, fn (RepairPaid $event) => app(UnifiedNotifier::class)->repairPaid($event->repairCase, $event->document, $event->transaction));
+        Event::listen(RepairPaymentLinkGenerated::class, fn (RepairPaymentLinkGenerated $event) => app(UnifiedNotifier::class)->repairPaymentLinkGenerated($event->repairCase, $event->document, $event->paymentUrl));
     }
 }
