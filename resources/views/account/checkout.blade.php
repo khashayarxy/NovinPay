@@ -208,7 +208,7 @@
                 {{-- Step 3: Shipping Method --}}
                 <div class="checkout-step-panel" data-checkout-step="3">
                     <fieldset class="commerce-panel">
-                        <legend>مرحله ۳ · نحوه ارسال</legend>
+                        <legend>مرحله ۳ · نحوه ارسال و روش تحویل</legend>
                         <div class="commerce-choices">
                             @foreach (\App\Services\DeliveryManagement::CHECKOUT_METHODS as $method => [$label, $description])
                                 <label class="commerce-choice checkout-shipping-card">
