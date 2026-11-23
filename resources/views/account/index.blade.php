@@ -2,7 +2,7 @@
 @section('title', 'حساب کاربری')
 @section('content')
 @php
-    $nav = ['overview' => 'نمای کلی', 'repairs' => 'تعمیرات', 'orders' => 'سفارش‌ها', 'payments' => 'اسناد و پرداخت‌ها', 'delivery' => 'ارسال و تحویل', 'profile' => 'اطلاعات شخصی', 'addresses' => 'آدرس‌ها', 'security' => 'امنیت حساب'];
+    $nav = ['overview' => 'نمای کلی', 'repairs' => 'تعمیرات', 'orders' => 'سفارش‌ها', 'profile' => 'اطلاعات شخصی', 'addresses' => 'آدرس‌ها', 'security' => 'امنیت حساب'];
 @endphp
 <div class="np-account np-container">
     <header class="np-account-banner">
@@ -71,28 +71,13 @@
                     </div>
                     @forelse($orders as $order)
                         <a class="np-account-row" href="{{ route('account.orders.show', $order->public_id) }}">
-                            <span><strong>{{ \App\Support\CustomerTimeline::orderStatus($order) }}</strong><small><x-finance-time :value="$order->created_at" /></small></span>
+                            <span><strong>کد سفارش <bdi dir="ltr">{{ strtoupper(substr($order->public_id, 0, 8)) }}</bdi> · {{ \App\Support\CustomerTimeline::orderStatus($order) }}</strong><small><x-finance-time :value="$order->created_at" /></small></span>
                             <span class="np-account-tag">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\OrderMoney::minor($order->total))) }} تومان</span>
                         </a>
                     @empty
-                        <p>هنوز سفارشی ثبت نکرده‌اید. می‌توانید محصولات را در فروشگاه ببینید.</p>
+                        <p>هنوز سفارش پرداخت‌شده‌ای ثبت نکرده‌اید. می‌توانید محصولات را در فروشگاه ببینید.</p>
                     @endforelse
                     @if($section === 'orders'){{ $orders->links() }}@endif
-                </section>
-            @endif
-
-            @if(in_array($section, ['payments', 'delivery'], true))
-                <section class="np-account-card">
-                    <h2>{{ $nav[$section] }}</h2>
-                    @forelse($documents as $document)
-                        <a class="np-account-row" href="{{ route($section === 'payments' ? 'payments.document' : 'delivery.show', $document->public_id) }}">
-                            <span><strong>{{ $document->sales_order_id ? 'سند سفارش' : 'سند تعمیر' }}</strong><small><x-finance-time :value="$document->created_at" /></small></span>
-                            <span class="np-account-tag">{{ $section === 'payments' ? 'مشاهده سند و رسیدها' : 'پیگیری تحویل' }}</span>
-                        </a>
-                    @empty
-                        <p>هنوز سندی برای نمایش ثبت نشده است.</p>
-                    @endforelse
-                    {{ $documents->links() }}
                 </section>
             @endif
 

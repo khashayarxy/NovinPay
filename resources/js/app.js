@@ -1529,7 +1529,28 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 script.id = 'neshan-leaflet-js';
                 script.src = 'https://static.neshan.org/sdk/leaflet/v1.9.4/neshan-sdk/v1.0.8/index.js';
                 script.async = true;
-                script.onload = mountNeshan;
+                let settled = false;
+                const fallbackTimer = window.setTimeout(() => {
+                    if (settled || neshanMap) return;
+                    settled = true;
+                    if (fallbackPin) fallbackPin.hidden = false;
+                    tilesEl.style.pointerEvents = 'none';
+                    renderMap(Boolean(latInput?.value), false);
+                }, 4000);
+                script.onload = () => {
+                    if (settled) return;
+                    settled = true;
+                    window.clearTimeout(fallbackTimer);
+                    mountNeshan();
+                };
+                script.onerror = () => {
+                    if (settled) return;
+                    settled = true;
+                    window.clearTimeout(fallbackTimer);
+                    if (fallbackPin) fallbackPin.hidden = false;
+                    tilesEl.style.pointerEvents = 'none';
+                    renderMap(Boolean(latInput?.value), false);
+                };
                 document.head.appendChild(script);
             }
         };
@@ -1544,6 +1565,30 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         };
 
         renderMap(Boolean(latInput?.value), false);
-        if (neshanKey) bootNeshanSdk();
+        const step2Panel = document.querySelector('[data-checkout-step="2"]');
+        if (neshanKey && (!step2Panel || !step2Panel.hidden)) {
+            bootNeshanSdk();
+        }
+    }
+
+    const recoveryResendBtn = document.querySelector('[data-recovery-resend-btn]');
+    const recoveryTimerEl = document.querySelector('[data-recovery-resend-timer]');
+    if (recoveryResendBtn instanceof HTMLButtonElement && recoveryTimerEl) {
+        const resendAt = Number(recoveryResendBtn.dataset.resendAt || 0);
+        const faDigits = (n) => String(n).replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
+        const tick = () => {
+            const left = Math.max(0, resendAt - Math.floor(Date.now() / 1000));
+            if (left > 0) {
+                recoveryResendBtn.disabled = true;
+                recoveryTimerEl.textContent = `(${faDigits(left)} ثانیه تا ارسال مجدد)`;
+                window.setTimeout(tick, 1000);
+            } else {
+                recoveryResendBtn.disabled = false;
+                recoveryTimerEl.textContent = '';
+            }
+        };
+        if (resendAt > Math.floor(Date.now() / 1000)) {
+            tick();
+        }
     }
 });

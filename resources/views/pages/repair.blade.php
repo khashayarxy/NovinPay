@@ -9,6 +9,8 @@
     $selectedModel = is_string($selectedModel) ? $selectedModel : '';
     $selectedIssue = old('issue', '');
     $selectedIssue = is_string($selectedIssue) ? $selectedIssue : '';
+    $selectedAccessories = old('accessories', []);
+    $selectedAccessories = is_array($selectedAccessories) ? $selectedAccessories : [];
     $customerName = old('customer_name', auth('customer')->user()?->name ?? '');
     $customerName = is_string($customerName) ? $customerName : '';
     $initialStep = 1;
@@ -80,13 +82,17 @@
                         <input id="device_model" name="device_model" value="{{ $selectedModel }}" class="input" placeholder="مثلاً S90، ME31 یا P10" required maxlength="100" aria-invalid="{{ $errors->has('device_model') ? 'true' : 'false' }}" aria-describedby="device_model-feedback">
                     </x-repair-field>
                     <x-repair-field name="device_serial" label="شماره سریال دستگاه" :required="false">
-                        <input id="device_serial" name="device_serial" class="input" dir="ltr" maxlength="100">
+                        <input id="device_serial" name="device_serial" value="{{ old('device_serial', '') }}" class="input" dir="ltr" maxlength="100" placeholder="مثال: S/N درج‌شده روی برچسب پشت دستگاه">
                     </x-repair-field>
-                    <fieldset>
-                        <legend>لوازم همراه دستگاه</legend>
-                        <div class="flex flex-wrap gap-3">
+                    <fieldset class="repair-choice-fieldset">
+                        <legend class="label">لوازم همراه دستگاه</legend>
+                        <div class="repair-accessory-grid" role="group" aria-label="لوازم همراه دستگاه">
                             @foreach (\App\Models\RepairRequest::ACCESSORIES as $key => $label)
-                                <label><input type="checkbox" name="accessories[]" value="{{ $key }}"> {{ $label }}</label>
+                                <label class="repair-choice-card repair-choice-card--accessory">
+                                    <input type="checkbox" name="accessories[]" value="{{ $key }}" @checked(in_array($key, $selectedAccessories, true))>
+                                    <span class="repair-choice-card__check" aria-hidden="true"><x-home.icon name="check" /></span>
+                                    <span class="repair-choice-card__title">{{ $label }}</span>
+                                </label>
                             @endforeach
                         </div>
                     </fieldset>
@@ -111,7 +117,7 @@
                         @endforeach
                     </div>
                     <x-repair-field name="issue" label="شرح مشکل دستگاه">
-                        <textarea id="issue" name="issue" class="input" rows="4" placeholder="مشکل دستگاه را کوتاه توضیح دهید (حداقل ۱۰ کاراکتر)؛ مثلاً روشن نمی‌شود یا کارت را نمی‌خواند." required minlength="10" maxlength="2000" aria-invalid="{{ $errors->hasAny(['issue', 'device_photo']) ? 'true' : 'false' }}" aria-describedby="issue-feedback">{{ $selectedIssue }}</textarea>
+                        <textarea id="issue" name="issue" class="input" rows="4" placeholder="مثال: دستگاه روشن نمی‌شود، باتری شارژ نگه نمی‌دارد یا چاپگر رسید را کمرنگ چاپ می‌کند (حداقل ۱۰ کاراکتر)" required minlength="10" maxlength="2000" aria-invalid="{{ $errors->hasAny(['issue', 'device_photo']) ? 'true' : 'false' }}" aria-describedby="issue-feedback">{{ $selectedIssue }}</textarea>
                     </x-repair-field>
                     <x-repair-field name="device_photo" label="عکس دستگاه یا مشکل" hint="اختیاری، حداکثر ۴ مگابایت" :required="false">
                         <input id="device_photo" name="device_photo" type="file" class="input" accept="image/jpeg,image/png,image/webp">

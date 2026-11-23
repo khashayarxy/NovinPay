@@ -22,6 +22,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -129,6 +130,21 @@ class RepairRequestController extends Controller
 
     public function recovery(Request $request): View
     {
+        if ($request->boolean('edit')) {
+            $request->session()->forget([
+                'repair_recovery_challenge',
+                'repair_recovery_phone_enc',
+                'repair_recovery_phone_masked',
+                'repair_recovery_resend_at',
+                'repair_recovery_expires_at',
+            ]);
+        }
+
+        $expiresAt = (int) $request->session()->get('repair_recovery_expires_at', 0);
+        if ($expiresAt > 0 && now()->timestamp > $expiresAt && $request->session()->has('repair_recovery_challenge')) {
+            $request->session()->forget(['repair_recovery_challenge', 'repair_recovery_expires_at']);
+        }
+
         $digest = $this->recoveredPhone($request);
         $codes = collect();
         if ($digest) {
@@ -136,13 +152,15 @@ class RepairRequestController extends Controller
             $physical = DB::table('repair_cases')->where('phone_digest', $digest)->select('tracking_reference', 'created_at');
             $codes = DB::query()->fromSub($online->unionAll($physical), 'repairs')
                 ->whereNotNull('tracking_reference')->orderByDesc('created_at')->orderBy('tracking_reference')
-                ->pluck('tracking_reference')->filter(fn ($code) => preg_match('/\A[A-Za-z0-9-]{1,35}\z/D', $code))->unique();
+                ->pluck('tracking_reference')->filter(fn ($code) => preg_match('/\A[A-Za-z0-9-]{1,35}\z/D', $code))->unique()->values();
         }
 
         return view('pages.repair-recovery', [
             'codes' => $codes,
             'verified' => $digest !== null,
             'challenge' => $request->session()->has('repair_recovery_challenge'),
+            'maskedPhone' => $request->session()->get('repair_recovery_phone_masked'),
+            'resendAt' => (int) $request->session()->get('repair_recovery_resend_at', 0),
         ]);
     }
 
@@ -155,14 +173,33 @@ class RepairRequestController extends Controller
 
     public function sendRecovery(Request $request, CustomerLogin $login): RedirectResponse
     {
-        $phone = RepairIdentity::phone($request->input('contact_phone'));
+        $rawPhone = $request->input('contact_phone');
+        if ((! is_string($rawPhone) || trim($rawPhone) === '') && is_string($enc = $request->session()->get('repair_recovery_phone_enc'))) {
+            try {
+                $rawPhone = Crypt::decryptString($enc);
+            } catch (\Throwable) {
+                $rawPhone = '';
+            }
+        }
+        $phone = RepairIdentity::phone($rawPhone);
         if (! preg_match('/\A09[0-9]{9}\z/D', $phone)) {
             return redirect()->route('repair.track.recovery')->withErrors(['contact_phone' => 'شماره موبایل معتبر وارد کنید.']);
         }
         $request->session()->forget('repair_recovery_phone');
         try {
             $login->issue($phone, fn ($challenge) => $request->session()->put('repair_recovery_challenge', $challenge));
+            $request->session()->put([
+                'repair_recovery_phone_enc' => Crypt::encryptString($phone),
+                'repair_recovery_phone_masked' => FaNumber::digits(substr($phone, 0, 4).'***'.substr($phone, -4)),
+                'repair_recovery_resend_at' => now()->addSeconds(CustomerLogin::RESEND_SECONDS)->timestamp,
+                'repair_recovery_expires_at' => now()->addMinutes(2)->timestamp,
+            ]);
         } catch (HttpException $error) {
+            $retryAfter = (int) ($error->getHeaders()['Retry-After'] ?? CustomerLogin::RESEND_SECONDS);
+            if ($error->getStatusCode() === 429) {
+                $request->session()->put('repair_recovery_resend_at', now()->addSeconds(max(1, $retryAfter))->timestamp);
+            }
+
             return redirect()->route('repair.track.recovery')->withErrors(['contact_phone' => $error->getStatusCode() === 429
                 ? 'کمی صبر کنید و دوباره کد بخواهید.' : 'ارسال کد ممکن نیست. کمی بعد دوباره تلاش کنید.']);
         }
@@ -170,10 +207,24 @@ class RepairRequestController extends Controller
         return redirect()->route('repair.track.recovery');
     }
 
+    public function resetRecovery(Request $request): RedirectResponse
+    {
+        $request->session()->forget([
+            'repair_recovery_challenge',
+            'repair_recovery_phone_enc',
+            'repair_recovery_phone_masked',
+            'repair_recovery_resend_at',
+            'repair_recovery_expires_at',
+        ]);
+
+        return redirect()->route('repair.track.recovery');
+    }
+
     public function verifyRecovery(Request $request, CustomerLogin $login): RedirectResponse
     {
         $input = $request->input('code');
-        $code = is_string($input) ? FaNumber::normalizeDigits(trim($input)) : '';
+        $normalized = is_string($input) ? FaNumber::normalizeDigits($input) : '';
+        $code = preg_replace('/\D+/', '', $normalized) ?? '';
         $challenge = $request->session()->get('repair_recovery_challenge');
         if (! is_string($challenge) || ! preg_match('/\A[0-9]{6}\z/D', $code)) {
             return redirect()->route('repair.track.recovery')->withErrors(['code' => 'کد تأیید شش‌رقمی را وارد کنید.']);
@@ -186,7 +237,13 @@ class RepairRequestController extends Controller
         }
 
         $request->session()->regenerate(true);
-        $request->session()->forget('repair_recovery_challenge');
+        $request->session()->forget([
+            'repair_recovery_challenge',
+            'repair_recovery_phone_enc',
+            'repair_recovery_phone_masked',
+            'repair_recovery_resend_at',
+            'repair_recovery_expires_at',
+        ]);
         $request->session()->put('repair_recovery_phone', [
             'digest' => RepairIdentity::digest('phone', $account->phone),
             'expires' => now()->addMinutes(15)->timestamp,

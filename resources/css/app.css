@@ -506,12 +506,50 @@
         height: 17px;
     }
 
-    .repair-choice-card input[type="radio"] {
+    .repair-choice-card input[type="radio"],
+    .repair-choice-card input[type="checkbox"] {
         position: absolute;
         opacity: 0;
         width: 1px;
         height: 1px;
         margin: 0;
+    }
+
+    .repair-accessory-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .repair-choice-card--accessory {
+        flex: 0 1 auto;
+        justify-content: flex-start;
+        padding-inline: 14px;
+        min-height: 46px;
+    }
+
+    .repair-choice-card__check {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 20px;
+        height: 20px;
+        border: 1.5px solid #bdd3e8;
+        border-radius: 6px;
+        background: #fff;
+        color: transparent;
+        transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+    }
+
+    .repair-choice-card__check .np-icon {
+        width: 13px;
+        height: 13px;
+    }
+
+    .repair-choice-card--accessory:has(input:checked) .repair-choice-card__check {
+        border-color: #075da6;
+        background: #075da6;
+        color: #fff;
     }
 
     .repair-choice-card:hover {
@@ -621,6 +659,158 @@
 
     .repair-confirmation-code__status:empty {
         display: none;
+    }
+
+    .repair-field-helper-link {
+        margin: 6px 0 0;
+        font-size: 13px;
+    }
+
+    .repair-track-actions {
+        justify-content: center;
+    }
+
+    .repair-confirm-card {
+        max-width: 560px;
+        margin-inline: auto;
+        text-align: center;
+    }
+
+    .repair-confirm-lead {
+        max-width: 44ch;
+        margin-inline: auto;
+        color: #46617c;
+        line-height: 1.85;
+    }
+
+    .repair-confirm-notice {
+        text-align: start;
+        margin-block: 16px;
+    }
+
+    .repair-confirm-steps {
+        margin: 10px 0 0;
+        padding-inline-start: 20px;
+        display: grid;
+        gap: 6px;
+        list-style: decimal;
+        font-size: 13.5px;
+        line-height: 1.8;
+        color: #2f4963;
+    }
+
+    .repair-confirm-actions {
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .repair-recovery-phone-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        border: 1px solid #d5e5f4;
+        border-radius: 12px;
+        background: #f5fafe;
+        font-size: 13.5px;
+        color: #1e3d5b;
+    }
+
+    .repair-recovery-edit-btn,
+    .repair-recovery-resend__btn {
+        background: none;
+        border: 0;
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .repair-recovery-resend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 14px;
+        font-size: 13px;
+    }
+
+    .repair-recovery-resend__btn:disabled {
+        opacity: .55;
+        cursor: not-allowed;
+        text-decoration: none;
+    }
+
+    .repair-recovery-resend__timer {
+        color: #546d85;
+    }
+
+    .repair-recovery-results__title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #122940;
+    }
+
+    .repair-recovery-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .repair-recovery-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 48px;
+        padding: 10px 14px;
+        border: 1.5px solid #d7e6f4;
+        border-radius: 12px;
+        background: #f8fbff;
+        text-decoration: none;
+        color: #122940;
+        transition: border-color 140ms ease, background-color 140ms ease;
+    }
+
+    .repair-recovery-item:hover {
+        border-color: #075da6;
+        background: #eef6ff;
+    }
+
+    .repair-recovery-item__code {
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: #075da6;
+    }
+
+    .repair-recovery-item__cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #075da6;
+    }
+
+    .repair-recovery-empty {
+        padding: 12px;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #46617c;
+        text-align: center;
+    }
+
+    .repair-recovery-back {
+        margin-top: 16px;
+        text-align: center;
+    }
+
+    body.public-site:not(.homepage) main#main-content {
+        padding-bottom: clamp(2.5rem, 5vw, 4rem);
     }
 
     @media (max-width: 640px) {

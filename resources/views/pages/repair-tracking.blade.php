@@ -22,18 +22,18 @@
             @endif
             <form method="post" action="{{ route('repair.track.store') }}" class="public-form">
                 @csrf
-                <x-repair-field name="tracking_reference" label="کد پیگیری"><input id="tracking_reference" name="tracking_reference" value="{{ old('tracking_reference', $trackingCode ?? '') }}" class="input public-code-input" dir="ltr" inputmode="numeric" autocomplete="off" spellcheck="false" required minlength="8" maxlength="8" placeholder="۱۲۳۴۵۶۷۸" aria-invalid="{{ $errors->has('tracking_reference') ? 'true' : 'false' }}" aria-describedby="tracking_reference-feedback"></x-repair-field>
-                <x-repair-field name="contact_phone" label="شماره موبایل"><input type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="tel" autocomplete="off" required maxlength="40" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback"></x-repair-field>
-                <div class="repair-entry-actions">
+                <x-repair-field name="tracking_reference" label="کد پیگیری">
+                    <input id="tracking_reference" name="tracking_reference" value="{{ old('tracking_reference', $trackingCode ?? '') }}" class="input public-code-input" dir="ltr" inputmode="numeric" autocomplete="off" spellcheck="false" required minlength="8" maxlength="8" placeholder="۱۲۳۴۵۶۷۸" aria-invalid="{{ $errors->has('tracking_reference') ? 'true' : 'false' }}" aria-describedby="tracking_reference-feedback">
+                    <p class="repair-field-helper-link"><a class="public-inline-link" href="{{ route('repair.track.recovery') }}">فراموشی کد پیگیری؟</a></p>
+                </x-repair-field>
+                <x-repair-field name="contact_phone" label="شماره موبایل">
+                    <input type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="tel" autocomplete="off" required maxlength="40" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
+                </x-repair-field>
+                <div class="repair-entry-actions repair-track-actions">
                     <button type="submit" class="np-button np-button--primary">بررسی وضعیت <x-home.icon name="arrow-left" /></button>
-
+                    <a class="np-button np-button--outline" href="{{ route('repair') }}">ثبت درخواست تعمیر</a>
                 </div>
             </form>
-            <nav class="repair-entry-actions mt-4" aria-label="راهنمای پیگیری">
-                <a class="public-inline-link" href="{{ route('repair.track.recovery') }}">بازیابی کد پیگیری</a>
-                <a class="public-inline-link" href="{{ route('repair') }}">ثبت اولین درخواست</a>
-            </nav>
-            <p class="repair-privacy-note"><x-home.icon name="shield-check" /><span>اطلاعات شخصی و جزئیات دستگاه در نتیجهٔ پیگیری نمایش داده نمی‌شود.</span></p>
         </section>
     </div>
 </div>

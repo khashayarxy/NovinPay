@@ -8,9 +8,13 @@ use App\Events\RepairPaid;
 use App\Models\CustomerAccount;
 use App\Models\FinancialDocument;
 use App\Models\FinancialEntry;
+use App\Models\InventoryItem;
+use App\Models\InventoryUnit;
 use App\Models\PaymentTransaction;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
+use App\Models\StockMovement;
+use App\Models\User;
 use App\Support\AdminHistory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -69,6 +73,7 @@ class PaymentSettlement
         if ($allocation > 0 && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor && $document->sales_order_id) {
             $order = SalesOrder::query()->lockForUpdate()->find($document->sales_order_id);
             if ($order && in_array($order->status, ['draft', 'reserved'], true)) {
+                $this->reserveStockForPaidOrder($order, $actor);
                 $order->status = 'confirmed';
                 $order->version++;
                 $order->save();
@@ -88,5 +93,118 @@ class PaymentSettlement
         }
 
         return $transaction;
+    }
+
+    /** Reserves unreserved order lines inside the settlement transaction so stock availability decrements upon payment. */
+    private function reserveStockForPaidOrder(SalesOrder $order, ?int $actor): void
+    {
+        $lines = $order->lines()->where('is_current', true)->orderBy('inventory_item_id')->get();
+        if ($lines->isEmpty()) {
+            return;
+        }
+
+        $items = InventoryItem::query()
+            ->whereIn('id', $lines->pluck('inventory_item_id')->unique()->sort()->values())
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        $opActorId = $actor
+            ?? User::query()->where('is_active', true)->orderBy('id')->value('id')
+            ?? User::query()->orderBy('id')->value('id');
+        $operationId = null;
+
+        foreach ($lines as $line) {
+            $item = $items->get($line->inventory_item_id);
+            if (! $item) {
+                continue;
+            }
+
+            $alreadyReserved = DB::table('stock_reservations')
+                ->where('sales_order_line_id', $line->id)
+                ->where('status', 'active')
+                ->exists();
+            if ($alreadyReserved) {
+                continue;
+            }
+
+            $free = max(0, (int) $item->on_hand - (int) $item->reserved);
+            $reserveQty = min((int) $line->quantity, $free);
+            if ($reserveQty <= 0) {
+                continue;
+            }
+
+            $unitIds = [];
+            if ($item->serialized) {
+                $units = $item->units()
+                    ->where('state', 'on_hand')
+                    ->orderBy('id')
+                    ->limit($reserveQty)
+                    ->lockForUpdate()
+                    ->get();
+                $unitIds = $units->modelKeys();
+                if ($unitIds === []) {
+                    continue;
+                }
+                $reserveQty = count($unitIds);
+                InventoryUnit::query()->whereIn('id', $unitIds)->update(['state' => 'reserved']);
+            }
+
+            $item->reserved += $reserveQty;
+            $item->is_low_stock = $item->available <= $item->low_stock_threshold;
+            $item->version++;
+            $item->save();
+
+            if ($opActorId === null) {
+                continue;
+            }
+
+            if ($operationId === null) {
+                $operationKey = (string) Str::uuid();
+                $digest = hash_hmac('sha256', json_encode(['settlement.reserve', $order->id, $operationKey], JSON_THROW_ON_ERROR), config('app.key'));
+                $operationId = (int) DB::table('commerce_operations')->insertGetId([
+                    'operation_key' => $operationKey,
+                    'actor_id' => $opActorId,
+                    'action' => 'order.reserve',
+                    'payload_digest' => $digest,
+                    'result_id' => $order->id,
+                    'created_at' => now(),
+                ]);
+            }
+
+            foreach ($unitIds ?: [null] as $unitId) {
+                DB::table('stock_reservations')->insert([
+                    'sales_order_line_id' => $line->id,
+                    'inventory_unit_id' => $unitId,
+                    'quantity' => $unitId === null ? $reserveQty : 1,
+                    'status' => 'active',
+                    'commerce_operation_id' => $operationId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $movement = new StockMovement;
+            foreach ([
+                'inventory_item_id' => $item->id,
+                'sales_order_id' => $order->id,
+                'commerce_operation_id' => $operationId,
+                'actor_id' => $opActorId,
+                'kind' => 'reserve',
+                'on_hand_delta' => 0,
+                'reserved_delta' => $reserveQty,
+                'dispatched_delta' => 0,
+                'on_hand_after' => $item->on_hand,
+                'reserved_after' => $item->reserved,
+                'dispatched_after' => $item->dispatched,
+                'reason' => 'رزرو خودکار موجودی پس از پرداخت موفق سفارش',
+                'unit_ids' => $unitIds,
+                'created_at' => now(),
+            ] as $key => $value) {
+                $movement->$key = $value;
+            }
+            $movement->save();
+        }
     }
 }

@@ -36,7 +36,7 @@
                 <li><span class="service-icon"><x-storefront.icon name="shield" /></span><strong>{{ $warranty }}@if ($warrantyProvider) {{ $warrantyProvider }}@endif</strong></li>
             @endif
             @foreach ($benefits as $benefit)
-                <li><span class="service-icon"><x-storefront.icon name="check" /></span><span>{{ $benefit }}</span></li>
+                <li><span class="service-icon"><x-storefront.icon name="check" /></span><strong>{{ $benefit }}</strong></li>
             @endforeach
         </ul>
     @endif

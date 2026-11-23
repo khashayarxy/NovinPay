@@ -163,6 +163,42 @@ class ProductExperienceTest extends TestCase
         $this->assertDatabaseCount('product_feedback_reports', 1);
     }
 
+    public function test_product_detail_renders_bold_benefits_single_review_cta_and_location_visibility(): void
+    {
+        $product = $this->product('bold-benefits-terminal', [
+            'price' => 15000000,
+            'warranty_months' => 6,
+            'product_details' => [
+                'content' => [
+                    'advantages' => "تحویل سریع\nتضمین اصالت کالا",
+                ],
+            ],
+        ]);
+
+        // Guest sees login review CTA, bold benefits, and NO location map card on product/catalog pages.
+        $this->get(route('products.show', $product))
+            ->assertOk()
+            ->assertSee('<strong>تحویل سریع</strong>', false)
+            ->assertSee('<strong>تضمین اصالت کالا</strong>', false)
+            ->assertSee('ورود و ثبت دیدگاه')
+            ->assertDontSee('np-location');
+        $this->get(route('products.index'))->assertOk()->assertDontSee('np-location');
+
+        // Authenticated customer sees the inline review form without a duplicate top CTA button.
+        $buyer = $this->account('09000000088');
+        $this->actingAs($buyer, 'customer')->withSession(['customer_session_version' => $buyer->session_version]);
+        $this->get(route('products.show', $product))
+            ->assertOk()
+            ->assertSee('id="submit-review"', false)
+            ->assertDontSee('href="#submit-review"', false)
+            ->assertDontSee('ورود و ثبت دیدگاه');
+
+        // Homepage, contact, and repair still render the location section.
+        foreach (['home', 'contact', 'repair'] as $routeName) {
+            $this->get(route($routeName))->assertOk()->assertSee('np-location');
+        }
+    }
+
     private function product(string $slug, array $attributes = []): Product
     {
         return Product::create($attributes + [

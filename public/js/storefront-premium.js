@@ -325,11 +325,34 @@
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
         try {
-            const response = await fetch(endpoint, {method: 'POST', body: data,
+            const sendRequest = () => fetch(endpoint, {method: 'POST', body: data,
                 credentials: 'same-origin', redirect: 'error', signal: controller.signal,
                 headers: {Accept: 'application/json', 'X-Storefront-Cart-Html': '1'}});
+            let response = await sendRequest();
+            if (response.status === 409 && !fromDrawer) {
+                const payload409 = await response.clone().json().catch(() => null);
+                const serverMessage = typeof payload409?.message === 'string' ? payload409.message : '';
+                if (!serverMessage.includes('موجودی')) {
+                    const targetCartUrl = cartDialog?.dataset.cartUrl || '/cart';
+                    const refreshed = await fetch(targetCartUrl, {credentials: 'same-origin', headers: {Accept: 'text/html'}})
+                        .then(r => (r.ok ? r.text() : ''))
+                        .catch(() => '');
+                    if (refreshed) {
+                        const freshDoc = new DOMParser().parseFromString(refreshed, 'text/html');
+                        const freshProof = freshDoc.querySelector('input[name="cart_context"]')?.value;
+                        if (freshProof) {
+                            data.set('cart_context', freshProof);
+                            document.querySelectorAll('input[name="cart_context"]').forEach(input => { input.value = freshProof; });
+                            response = await sendRequest();
+                        }
+                    }
+                }
+            }
             if (!response.ok) {
-                const message = response.status === 409 ? 'سبد یا موجودی تغییر کرده است. پیش از تلاش دوباره، سبد را بررسی کنید.'
+                const errPayload = await response.json().catch(() => null);
+                const message = typeof errPayload?.message === 'string' && errPayload.message.length > 0
+                    ? errPayload.message
+                    : response.status === 409 ? 'سبد یا موجودی تغییر کرده است. پیش از تلاش دوباره، سبد را بررسی کنید.'
                     : response.status === 422 ? 'تعداد را بین ۱ تا ۱۰ انتخاب کنید.'
                     : 'تغییر سبد انجام نشد. وضعیت سبد را بررسی کنید.';
                 throw new Error(message);
@@ -615,13 +638,6 @@
     const productHeader = contact && document.querySelector('.np-header');
     const navigation = document.querySelector('[data-mobile-bottom-nav]');
     const related = document.getElementById('product-related');
-    const clearTargets = [...document.querySelectorAll([
-        '.purchase :is(.price bdi, .price small, .stock strong, time, .product-cart-form, a.primary)',
-        '.gallery-arrow, .gallery-zoom-mark, .image-count, .thumbs button',
-        '.section-nav a, .key-mobile .text-link, .product-faq summary, .product-feedback :is(.btn, form)',
-        '.catalog-toolbar :is(button, select), .public-product-card a:not([tabindex="-1"]), .repair-entry :is(a, button)',
-        '.store-checkout :is(label, select, button, .commerce-action, .commerce-summary), .store-cart :is(.store-cart-commands, .store-cart-total a)',
-    ].join(', '))];
     const mobile = matchMedia('(max-width: 700px)');
     const floatingNavigation = matchMedia('(max-width: 850px)');
     let previousY = Math.max(0, scrollY);
@@ -661,13 +677,7 @@
             contact.toggleAttribute('data-dock-visible', show);
             contact.inert = !show;
         }
-        const launcher = mobile.matches && document.querySelector('[data-support-launcher]');
-        const bounds = launcher && launcher.getBoundingClientRect();
-        body.classList.toggle('floating-support-obstructs', !!bounds?.width && clearTargets.some(target => {
-            const rect = target.getBoundingClientRect();
-            return rect.width && rect.height && rect.left < bounds.right + 4 && rect.right > bounds.left - 4
-                && rect.top < bounds.bottom + 4 && rect.bottom > bounds.top - 4;
-        }));
+        body.classList.remove('floating-support-obstructs');
     }
     function schedule() { if (!frame) frame = requestAnimationFrame(render); }
     window.addEventListener('scroll', schedule, {passive: true});

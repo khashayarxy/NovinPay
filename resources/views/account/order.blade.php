@@ -5,10 +5,9 @@
     <a class="np-account-link" href="{{ route('account.index', ['section' => 'orders']) }}">بازگشت به سفارش‌ها</a>
     <header class="np-account-banner">
         <div>
-            <p>جزئیات سفارش</p>
+            <p>جزئیات سفارش · کد <bdi dir="ltr">{{ strtoupper(substr($order->public_id, 0, 8)) }}</bdi></p>
             <h1>{{ \App\Support\CustomerTimeline::orderStatus($order, $plan) }}</h1>
             <p><x-finance-time :value="$order->created_at" /></p>
-            <bdi class="np-account-reference" dir="ltr">{{ $order->public_id }}</bdi>
         </div>
     </header>
     <section class="np-account-card">
