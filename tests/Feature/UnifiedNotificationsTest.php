@@ -41,6 +41,7 @@ class UnifiedNotificationsTest extends TestCase
             'notifications.admin.phones' => ['09121112233'],
             'notifications.admin.emails' => ['admin@novinpaypos.test'],
             'notifications.sms.enabled' => true,
+            'notifications.pattern_sms.enabled' => false,
             'notifications.sms.patterns' => [
                 'admin_order_placed' => 'patAdminOrder',
                 'admin_repair_submitted' => 'patAdminRepair',

@@ -63,6 +63,21 @@ final class IpPanel
         return $this->sendOutcome($phone, $code) === 'accepted';
     }
 
+    public function patternConfigurationIssue(): ?string
+    {
+        $key = config('customer.ippanel.api_key');
+        $sender = (string) config('customer.ippanel.sender', '');
+
+        return match (true) {
+            ! config('customer.ippanel.enabled') => 'disabled',
+            ! is_string($key) || trim($key) === '' => 'missing_api_key',
+            ! $this->hasKey() => 'invalid_api_key',
+            $sender === '' => 'missing_sender',
+            preg_match('/\A\+98[1-9][0-9]{5,11}\z/D', $sender) !== 1 => 'invalid_sender',
+            default => null,
+        };
+    }
+
     /**
      * Send a general IPPanel pattern SMS for operational or customer notifications.
      *
@@ -71,9 +86,7 @@ final class IpPanel
     public function sendPattern(string $phone, string $patternCode, array $params): string
     {
         $sender = (string) config('customer.ippanel.sender', '');
-        if (! config('customer.ippanel.enabled')
-            || ! $this->hasKey()
-            || preg_match('/\A\+98[1-9][0-9]{5,11}\z/D', $sender) !== 1
+        if ($this->patternConfigurationIssue() !== null
             || preg_match('/\A[A-Za-z0-9]{1,80}\z/D', $patternCode) !== 1
             || preg_match('/\A09[0-9]{9}\z/D', $phone) !== 1
             || $params === []) {
@@ -153,7 +166,8 @@ final class IpPanel
     private function record(string $category, int $started, array $context = []): void
     {
         try {
-            Log::log($category === 'accepted' ? 'info' : 'warning', 'Customer OTP provider outcome', $context + [
+            $message = isset($context['channel']) ? 'IPPanel notification provider outcome' : 'Customer OTP provider outcome';
+            Log::log($category === 'accepted' ? 'info' : 'warning', $message, $context + [
                 'provider' => 'ippanel', 'category' => $category, 'request_ms' => (int) ((hrtime(true) - $started) / 1000000),
             ]);
         } catch (\Throwable) {

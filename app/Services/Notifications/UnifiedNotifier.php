@@ -27,7 +27,7 @@ final class UnifiedNotifier
         private readonly IpPanel $ipPanel,
         private readonly BaleNotifier $bale,
         private readonly TelegramNotifier $telegram,
-        private readonly PanelChi $panelChi,
+        private readonly PatternSms $patternSms,
     ) {}
 
     public function orderPlaced(SalesOrder $order, ?string $customerEmail = null): void
@@ -51,7 +51,7 @@ final class UnifiedNotifier
             $this->sendAdminSms('admin_order_placed', ['code' => $code, 'name' => $customerName, 'total' => $totalToman]);
             $this->sendAdminEmail('سفارش جدید #'.$code, 'ثبت سفارش خرید جدید', 'یک سفارش جدید در فروشگاه ثبت شد.', $adminFields, 'مشاهده سفارش در پنل', $adminUrl);
 
-            if ($customerPhone !== null && $this->panelChi->configurationIssue() !== null) {
+            if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_order_placed', ['code' => $code, 'total' => $totalToman]);
             }
             $this->sendCustomerEmail(
@@ -77,7 +77,7 @@ final class UnifiedNotifier
             if (trim((string) $tracking) !== '') {
                 $this->orderPattern($order, 'order_shipped', ['tracking_code' => trim($tracking)]);
             }
-            if ($customerPhone !== null && $this->panelChi->configurationIssue() !== null) {
+            if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_order_shipped', ['code' => $code, 'tracking' => $trackingText]);
             }
             $this->sendCustomerEmail(
@@ -110,7 +110,7 @@ final class UnifiedNotifier
                     $phone = $this->normalizePhone($account->phone);
                 }
             }
-            $this->panelChi->send($event, $order->public_id, $phone,
+            $this->patternSms->send($event, $order->public_id, $phone,
                 ['order_code' => strtoupper(substr($order->public_id, 0, 8))] + $variables);
         }, $event);
     }
@@ -119,7 +119,7 @@ final class UnifiedNotifier
     {
         $this->safe(function () use ($repair): void {
             $code = (string) $repair->tracking_reference;
-            $this->panelChi->send('repair_created', $code, $this->normalizePhone($repair->contact_phone), [
+            $this->patternSms->send('repair_created', $code, $this->normalizePhone($repair->contact_phone), [
                 'name' => (string) $repair->customer_name,
                 'repair_code' => $code,
             ]);
@@ -134,7 +134,7 @@ final class UnifiedNotifier
             if (! $cancelled) {
                 $variables['status'] = $case->status->label();
             }
-            $this->panelChi->send($cancelled ? 'repair_cancelled' : 'repair_status',
+            $this->patternSms->send($cancelled ? 'repair_cancelled' : 'repair_status',
                 $case->public_id.':'.$case->version, $this->normalizePhone($case->contact_phone), $variables);
         }, 'repair_stage_pattern');
     }
@@ -162,7 +162,7 @@ final class UnifiedNotifier
             $this->bale->send($botText);
             $this->telegram->send($botText);
 
-            if ($customerPhone !== null && $this->panelChi->configurationIssue() !== null) {
+            if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_repair_submitted', ['code' => (string) $repair->tracking_reference, 'device' => $device]);
             }
             $this->sendCustomerEmail(
@@ -190,7 +190,7 @@ final class UnifiedNotifier
             $customerPhone = $this->normalizePhone($case->contact_phone);
             $costText = $costToman !== null ? FaNumber::digits(number_format($costToman)).' تومان' : 'ثبت نشده';
 
-            if ($customerPhone !== null && $this->panelChi->configurationIssue() !== null) {
+            if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
                 $params = ['code' => $ref, 'status' => $statusLabel];
                 if ($costToman !== null) {
                     $params['cost'] = (string) $costToman;
@@ -349,7 +349,7 @@ final class UnifiedNotifier
             if ($expires <= now()->timestamp) {
                 return;
             }
-            $this->panelChi->send('repair_payment', $document->public_id.':'.$document->version,
+            $this->patternSms->send('repair_payment', $document->public_id.':'.$document->version,
                 $this->normalizePhone($repairCase->contact_phone), [
                     'repair_code' => (string) $repairCase->tracking_reference,
                     'pay_code' => RepairPaymentCode::issue($repairCase->public_id, $expires),
