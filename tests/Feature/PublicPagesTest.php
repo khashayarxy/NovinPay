@@ -59,8 +59,7 @@ class PublicPagesTest extends TestCase
         $response = $this->get('/repair');
 
         $response->assertOk();
-        $response->assertSee('دستگاه هنوز به ما تحویل داده نشده');
-        $response->assertSee('کد پیگیری');
+        $response->assertSeeInOrder(['پیش از مراجعه کد پیگیری بگیرید', 'دستگاه را حضوری تحویل دهید']);
         $response->assertDontSee('action="'.route('repair.store').'"', false);
         $response->assertSee('href="'.route('repair.start').'"', false)
             ->assertSee('برای ثبت درخواست، شماره موبایل خود را تأیید کنید.');

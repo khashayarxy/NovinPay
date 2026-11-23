@@ -101,13 +101,13 @@ class ProductExperienceTest extends TestCase
         $this->product('sample-terminal', ['is_sample' => true]);
         $this->get(route('products.show', $product))->assertOk()->assertSee('۱۰٬۵۰۰٬۰۰۰')
             ->assertSee('موجودی تأیید نشده')->assertDontSee('استعلام موجودی')->assertDontSee('استعلام قیمت')
-            ->assertDontSee('افزودن به سبد خرید')->assertSee('۶ ماه گارانتی')
+            ->assertDontSee('خرید محصول')->assertSee('۶ ماه گارانتی')
             ->assertSee('۵۸ میلی‌متر')->assertSee('other-terminal')
             ->assertDontSee('hidden-terminal')->assertDontSee('sample-terminal');
         $product->update(['price' => null]);
         $this->get(route('products.show', $product))->assertOk()->assertSee('استعلام قیمت');
         $product->update(['stock_status' => 'out_of_stock']);
-        $this->get(route('products.show', $product))->assertOk()->assertSee('ناموجود')->assertDontSee('افزودن به سبد خرید');
+        $this->get(route('products.show', $product))->assertOk()->assertSee('ناموجود')->assertDontSee('خرید محصول');
         $product->update(['price' => 10000, 'stock_status' => 'in_stock', 'online_purchasing_enabled' => false]);
         $this->assertSame(ProductSale::Offline, ProductSale::resolve($product, true));
         $product->update(['online_purchasing_enabled' => true]);

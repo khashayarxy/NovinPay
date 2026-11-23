@@ -76,7 +76,7 @@ class PublicPerformanceSeoTest extends TestCase
         $doc = new DOMDocument;
         $response = $this->get('/products/'.$product->slug)->assertOk()
             ->assertSee('۱۰٬۵۰۰٬۰۰۰')->assertSee('استوک')->assertSee('موجودی تأیید نشده')
-            ->assertDontSee('افزودن به سبد خرید');
+            ->assertDontSee('خرید محصول');
         @$doc->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($doc);
         $scripts = $xpath->query('//script[@type="application/ld+json"]');
