@@ -373,10 +373,8 @@ html.storefront-overlay-open { overscroll-behavior: none; }
 }
 
 @media (max-width: 700px) {
-    body.floating-support-obstructs button[data-support-launcher]:not(:focus-visible) {
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
+    body:has(.global-store-nav) button[data-support-launcher] {
+        will-change: transform;
     }
 }
 

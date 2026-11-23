@@ -7,6 +7,10 @@
         <img
             referrerpolicy="origin"
             src="{{ $useProviderImage ? 'https://trustseal.enamad.ir/logo.aspx?id=8644634&Code=bkoTwmLFJ1lp9goDGHf1cuve1Tgw8t6n' : asset('brand/trust/enamad-8644634.png') }}"
+            width="62"
+            height="62"
+            loading="lazy"
+            decoding="async"
             alt="نماد اعتماد الکترونیکی نوین‌پی"
             code="bkoTwmLFJ1lp9goDGHf1cuve1Tgw8t6n">
     </a>

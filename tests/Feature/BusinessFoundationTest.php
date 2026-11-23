@@ -28,12 +28,17 @@ class BusinessFoundationTest extends TestCase
         $response->assertSee('aria-label="ناوبری اصلی"', false);
         $response->assertSee('href="#main-content"', false);
 
-        $response->assertSee(config('business.address'));
-        $response->assertSee(config('business.hours.open'))->assertSee(config('business.hours.closed'));
-        foreach (['https://balad.ir/p/PtbHeIpomT37HO', 'https://nshn.ir/c4_bvYA0OxCadU', 'https://maps.app.goo.gl/RSY3QKrJAMNiqPEB8'] as $url) {
-            $response->assertSee('href="'.$url.'"', false);
+        if (in_array($uri, ['/', '/repair', '/contact', '/repair/track'], true)) {
+            $response->assertSee(config('business.address'));
+            $response->assertSee(config('business.hours.open'))->assertSee(config('business.hours.closed'));
+            foreach (['https://balad.ir/p/PtbHeIpomT37HO', 'https://nshn.ir/c4_bvYA0OxCadU', 'https://maps.app.goo.gl/RSY3QKrJAMNiqPEB8'] as $url) {
+                $response->assertSee('href="'.$url.'"', false);
+            }
+            $response->assertSee('rel="noopener noreferrer"', false);
+        } else {
+            $response->assertDontSee('np-location');
+            $response->assertSee('rel="noopener noreferrer', false);
         }
-        $response->assertSee('rel="noopener noreferrer"', false);
         $response->assertDontSee('اطلاعات تماس رسمی هنوز اعلام نشده است');
     }
 

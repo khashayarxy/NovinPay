@@ -143,6 +143,7 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
         ->where('reference', '[A-Za-z0-9-]{1,35}')->middleware('throttle:repair-track')->name('repair.track.recovered');
     Route::post('/repair/track/recovery/send', [RepairRequestController::class, 'sendRecovery'])->middleware('throttle:customer-otp')->name('repair.track.recovery.send');
     Route::post('/repair/track/recovery/verify', [RepairRequestController::class, 'verifyRecovery'])->middleware('throttle:customer-verify')->name('repair.track.recovery.verify');
+    Route::post('/repair/track/recovery/reset', [RepairRequestController::class, 'resetRecovery'])->middleware('throttle:30,1')->name('repair.track.recovery.reset');
     Route::get('/p/{code}', [RepairPaymentLinkController::class, 'short'])
         ->where('code', '[A-Za-z0-9_-]{48}')->middleware('throttle:60,1')->name('payments.repair.short');
     Route::get('/payments/zibal/callback', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.callback');

@@ -52,7 +52,9 @@
     @endunless
     <main id="main-content" class="flex-1" tabindex="-1">@yield('content')</main>
     @unless(View::hasSection('quiet-shell'))
-        <x-home.location />
+        @if(request()->routeIs('home', 'contact', 'repair*'))
+            <x-home.location />
+        @endif
         <x-home.footer :compact="View::hasSection('compact-footer')" />
     @endunless
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))

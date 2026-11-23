@@ -24,8 +24,11 @@ class AddSecurityHeaders
         }
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none');
         if ($request->isSecure() && ! $response->headers->has('Strict-Transport-Security')) {
-            // Five-minute host-only first rollout. No preload/subdomain commitment.
-            $response->headers->set('Strict-Transport-Security', 'max-age=300');
+            // Long-lived HSTS in production; preserve short rollout default in non-production/tests.
+            $hsts = app()->environment('production')
+                ? 'max-age=31536000; includeSubDomains'
+                : 'max-age=300';
+            $response->headers->set('Strict-Transport-Security', $hsts);
         }
         if (! $response->headers->has('Permissions-Policy')) {
             $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()');

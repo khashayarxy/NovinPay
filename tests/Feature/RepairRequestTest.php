@@ -380,4 +380,53 @@ class RepairRequestTest extends TestCase
             ->assertSee('repair-confirmation-code', false)
             ->assertSee('کپی کد پیگیری');
     }
+
+    public function test_repair_tracking_and_recovery_two_step_flow_work_cleanly_with_persian_digits(): void
+    {
+        $this->get('/repair')
+            ->assertOk()
+            ->assertSee('مثال: S/N درج‌شده روی برچسب پشت دستگاه')
+            ->assertSee('repair-accessory-grid', false);
+
+        $this->get('/repair/track')
+            ->assertOk()
+            ->assertSee('فراموشی کد پیگیری؟')
+            ->assertSee('ثبت درخواست تعمیر')
+            ->assertDontSee('اطلاعات شخصی و جزئیات دستگاه در نتیجهٔ پیگیری نمایش داده نمی‌شود.');
+
+        $first = $this->submit();
+        $this->travel(2)->seconds();
+        $this->post('/repair', $this->payload(['device_model' => 'S90']))->assertRedirect(route('repair.confirmation'));
+        $second = RepairRequest::query()->latest('id')->firstOrFail();
+        $account = auth('customer')->user();
+        auth('customer')->logout();
+
+        $recovery = route('repair.track.recovery');
+        $this->get($recovery)
+            ->assertOk()
+            ->assertSee('name="contact_phone"', false)
+            ->assertDontSee('name="code"', false);
+
+        $login = $this->partialMock(CustomerLogin::class);
+        $login->shouldReceive('issue')->once()->with('09123456789', \Mockery::type('callable'))
+            ->andReturnUsing(function (string $phone, callable $reserve): string {
+                $reserve('step2-challenge');
+
+                return 'step2-challenge';
+            });
+        $login->shouldReceive('verify')->once()->with('step2-challenge', '123456')->andReturn($account);
+
+        $this->post(route('repair.track.recovery.send'), ['contact_phone' => '۰۹۱۲۳۴۵۶۷۸۹'])->assertRedirect($recovery);
+        $this->get($recovery)
+            ->assertOk()
+            ->assertSee('name="code"', false)
+            ->assertSee('autocomplete="one-time-code"', false)
+            ->assertSee('اصلاح شماره موبایل')
+            ->assertDontSee('name="contact_phone"', false);
+
+        $this->post(route('repair.track.recovery.verify'), ['code' => ' ۱ ۲ ۳ ۴ ۵ ۶ '])->assertRedirect($recovery);
+        $this->get($recovery)
+            ->assertOk()
+            ->assertSeeInOrder([$second->tracking_reference, $first->tracking_reference]);
+    }
 }

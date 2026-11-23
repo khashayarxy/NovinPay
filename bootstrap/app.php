@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AddSecurityHeaders;
+use App\Http\Middleware\NormalizeNumericDigits;
 use App\Http\Middleware\PreviewAwareSession;
 use App\Http\Middleware\PublicSiteMaintenance;
 use App\Support\SafeDatabaseErrors;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(PublicSiteMaintenance::class);
+        $middleware->web(prepend: [NormalizeNumericDigits::class]);
         $middleware->web(replace: [StartSession::class => PreviewAwareSession::class]);
         $middleware->append(AddSecurityHeaders::class);
 

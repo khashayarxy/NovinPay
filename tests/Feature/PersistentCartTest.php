@@ -212,6 +212,42 @@ class PersistentCartTest extends TestCase
         $this->assertSame(['stepper-variant' => 2], $this->get(route('cart.index'))->assertOk()->viewData('quantity'));
     }
 
+    public function test_adding_with_persian_digits_and_replaced_inventory_item_succeeds_without_false_conflict(): void
+    {
+        $product = $this->stock('rebound-terminal');
+        $this->withCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('a', 64));
+        $cart = $this->get(route('cart.index'))->assertOk();
+        $this->postJson(route('cart.add', $product), $this->fields($cart) + ['quantity' => '۲'])
+            ->assertOk()->assertJsonPath('count', 2);
+
+        $oldItem = InventoryItem::query()->where('product_id', $product->id)->sole();
+        $owner = User::query()->firstOrFail();
+        $commerce = app(CommerceManagement::class);
+        $oldItem->forceFill(['condition' => 'new'])->save();
+        $newId = $commerce->execute($owner, 'item.create', [
+            'operation_key' => (string) Str::uuid(),
+            'sku' => 'CART-REBOUND-2',
+            'name' => 'Replacement stock',
+            'condition' => 'used',
+            'serialized' => false,
+            'product_id' => $product->id,
+            'low_stock_threshold' => 0,
+            'reason' => 'Replaced stock item',
+        ]);
+        $newItem = InventoryItem::findOrFail($newId);
+        $commerce->execute($owner, 'item.receive', [
+            'operation_key' => (string) Str::uuid(),
+            'version' => $newItem->version,
+            'quantity' => 5,
+            'reason' => 'Stock receipt',
+        ], $newItem);
+
+        $freshCart = $this->get(route('cart.index'))->assertOk();
+        $this->postJson(route('cart.add', $product), $this->fields($freshCart) + ['quantity' => '۱'])
+            ->assertOk()->assertJsonPath('count', 3);
+        $this->assertSame(['rebound-terminal' => 3], $this->get(route('cart.index'))->assertOk()->viewData('quantity'));
+    }
+
     private function fields($response): array
     {
         return ['cart_context' => $response->viewData('proof'), 'cart_revision' => $response->viewData('revision')];

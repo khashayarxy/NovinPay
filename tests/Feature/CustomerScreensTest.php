@@ -106,8 +106,8 @@ class CustomerScreensTest extends TestCase
         $plan = new DeliveryPlan;
         $plan->state = 'dispatched';
         $steps = CustomerTimeline::order($order, $plan);
-        $this->assertSame(['complete', 'unrecorded', 'complete', 'unrecorded', 'complete'], array_column($steps, 'state'));
-        $this->assertSame('ارسال به شرکت حمل ثبت شد', $steps[4]['label']);
+        $this->assertSame(['complete', 'complete', 'unrecorded', 'complete'], array_column($steps, 'state'));
+        $this->assertSame('ارسال به شرکت حمل ثبت شد', $steps[3]['label']);
 
         $order->status = 'cancelled';
         $steps = CustomerTimeline::order($order, null);

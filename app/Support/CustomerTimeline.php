@@ -115,7 +115,7 @@ final class CustomerTimeline
     public static function order(SalesOrder $order, ?DeliveryPlan $plan): array
     {
         $document = $order->id ? FinancialDocument::query()->where('sales_order_id', $order->id)->first() : null;
-        $labels = ['draft' => 'سفارش ثبت شد', 'reserved' => 'موجودی رزرو شد'];
+        $labels = ['draft' => 'سفارش ثبت شد'];
         if ($document && $document->charged_minor > 0) {
             $labels['payment'] = 'پرداخت سفارش';
         }
@@ -140,7 +140,7 @@ final class CustomerTimeline
                 $recorded[$stage] ??= Carbon::parse($event->created_at);
             }
         }
-        $current = $order->status;
+        $current = $order->status === 'reserved' ? 'draft' : $order->status;
         if (in_array($current, ['confirmed', 'fulfilled'], true)) {
             $recorded['confirmed'] ??= null;
         }

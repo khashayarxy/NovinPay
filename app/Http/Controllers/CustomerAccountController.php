@@ -414,12 +414,23 @@ class CustomerAccountController extends Controller
     {
         $account = Auth::guard('customer')->user();
         $section = $request->query('section');
-        $sections = ['overview', 'repairs', 'orders', 'payments', 'delivery', 'profile', 'addresses', 'security'];
-        $section = in_array($section, $sections, true) ? $section : 'overview';
+        $sections = ['overview', 'repairs', 'orders', 'profile', 'addresses', 'security'];
+        $section = in_array($section, ['payments', 'delivery'], true)
+            ? 'orders'
+            : (in_array($section, $sections, true) ? $section : 'overview');
         $repairs = RepairCase::query()->where($this->owned($account));
         $requests = RepairRequest::query()->where($this->owned($account));
-        $orders = SalesOrder::query()->where($this->owned($account));
-        $documents = FinancialDocument::query()->where('customer_id', $account->customer_id ?? 0);
+        $orders = SalesOrder::query()
+            ->where($this->owned($account))
+            ->where(function ($query): void {
+                $query->where('status', '!=', 'draft')
+                    ->orWhereExists(function ($sub): void {
+                        $sub->selectRaw('1')
+                            ->from('financial_documents')
+                            ->whereColumn('financial_documents.sales_order_id', 'sales_orders.id')
+                            ->where('financial_documents.paid_minor', '>', 0);
+                    });
+            });
 
         return view('account.index', [
             'account' => $account,
@@ -431,8 +442,8 @@ class CustomerAccountController extends Controller
             ] : [],
             'repairs' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($repairs, $section, 'repairs_page') : [],
             'requests' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($requests->whereDoesntHave('physicalCase'), $section, 'requests_page') : [],
-            'orders' => in_array($section, ['overview', 'orders'], true) ? $this->listing($orders, $section, 'orders_page') : [],
-            'documents' => in_array($section, ['payments', 'delivery'], true) ? $this->listing($documents, $section, 'page') : [],
+            'orders' => in_array($section, ['overview', 'orders'], true) ? $this->listing((clone $orders)->with('lines'), $section, 'orders_page') : [],
+            'documents' => [],
             'addresses' => $section === 'addresses' ? CustomerAddress::query()->where('customer_account_id', $account->id)->latest('id')->get() : [],
             'complete' => $section === 'overview' && $account->name && CustomerAddress::query()->where('customer_account_id', $account->id)->exists(),
             'recentOtp' => ($recentOtp = (int) $request->session()->get('customer_otp_at', 0) >= now()->subMinutes(5)->timestamp),

@@ -3,37 +3,70 @@
 @section('content')
 <div class="np-container public-section repair-track-page">
     <div class="repair-track-shell">
-        <header class="store-page-intro"><h1>بازیابی کد پیگیری</h1></header>
+        <header class="store-page-intro">
+            <h1>بازیابی کد پیگیری تعمیر</h1>
+            <p>
+                @if ($verified)
+                    کدهای پیگیری ثبت‌شده برای شماره موبایل شما به ترتیب جدیدترین درخواست نمایش داده شده است.
+                @elseif ($challenge)
+                    کد شش‌رقمی ارسال‌شده به شماره موبایل خود را وارد کنید.
+                @else
+                    شماره موبایلی که با آن درخواست تعمیر ثبت کرده‌اید را وارد کنید تا کد تأیید پیامکی ارسال شود.
+                @endif
+            </p>
+        </header>
         <section class="public-panel">
             <x-form-errors />
             @if ($verified)
-                <h2>کدهای پیگیری تعمیر</h2>
-                <ul class="mt-4 space-y-2">
-                    @forelse ($codes as $code)
-                        <li><a class="public-inline-link" href="{{ route('repair.track.recovered', ['reference' => $code]) }}">پیگیری تعمیر <bdi dir="ltr">{{ \App\Support\FaNumber::digits($code) }}</bdi></a></li>
-                    @empty
-                        <li>تعمیر یا درخواستی برای این شماره ثبت نشده است.</li>
-                    @endforelse
-                </ul>
-            @else
-                @if ($challenge)
-                    <form class="public-form" method="post" action="{{ route('repair.track.recovery.verify') }}">
+                <div class="repair-recovery-results">
+                    <h2 class="repair-recovery-results__title">کدهای پیگیری شما</h2>
+                    <ul class="repair-recovery-list">
+                        @forelse ($codes as $code)
+                            <li>
+                                <a class="repair-recovery-item" href="{{ route('repair.track.recovered', ['reference' => $code]) }}">
+                                    <span class="repair-recovery-item__code"><bdi dir="ltr">{{ \App\Support\FaNumber::digits($code) }}</bdi></span>
+                                    <span class="repair-recovery-item__cta">مشاهده وضعیت <x-home.icon name="arrow-left" /></span>
+                                </a>
+                            </li>
+                        @empty
+                            <li class="repair-recovery-empty">درخواستی برای این شماره موبایل ثبت نشده است.</li>
+                        @endforelse
+                    </ul>
+                </div>
+            @elseif ($challenge)
+                <div class="repair-recovery-phone-bar">
+                    <span>ارسال کد به شماره <bdi dir="ltr">{{ $maskedPhone ?: 'ثبت‌شده' }}</bdi></span>
+                    <form method="post" action="{{ route('repair.track.recovery.reset') }}">
                         @csrf
-                        <x-repair-field name="code" label="کد تأیید پیامکی">
-                            <input class="input" id="code" name="code" dir="ltr" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" required>
-                        </x-repair-field>
-                        <button class="np-button np-button--primary">تأیید و نمایش کدهای پیگیری</button>
+                        <button type="submit" class="public-inline-link repair-recovery-edit-btn">اصلاح شماره موبایل</button>
                     </form>
-                @endif
-                <form class="public-form mt-4" method="post" action="{{ route('repair.track.recovery.send') }}">
+                </div>
+                <form class="public-form" method="post" action="{{ route('repair.track.recovery.verify') }}">
+                    @csrf
+                    <x-repair-field name="code" label="کد تأیید پیامکی">
+                        <input class="input public-code-input" id="code" name="code" dir="ltr" inputmode="numeric" autocomplete="one-time-code" placeholder="••••••" minlength="6" maxlength="6" autofocus required>
+                    </x-repair-field>
+                    <div class="repair-entry-actions repair-track-actions">
+                        <button type="submit" class="np-button np-button--primary">تأیید و نمایش کدهای پیگیری <x-home.icon name="arrow-left" /></button>
+                    </div>
+                </form>
+                <form class="repair-recovery-resend" method="post" action="{{ route('repair.track.recovery.send') }}">
+                    @csrf
+                    <button type="submit" class="public-inline-link repair-recovery-resend__btn" data-recovery-resend-btn data-resend-at="{{ $resendAt ?? 0 }}">ارسال مجدد کد</button>
+                    <span class="repair-recovery-resend__timer" data-recovery-resend-timer data-resend-at="{{ $resendAt ?? 0 }}" aria-live="polite"></span>
+                </form>
+            @else
+                <form class="public-form" method="post" action="{{ route('repair.track.recovery.send') }}">
                     @csrf
                     <x-repair-field name="contact_phone" label="شماره موبایل">
-                        <input class="input" id="contact_phone" name="contact_phone" type="tel" dir="ltr" maxlength="40" autocomplete="tel" required>
+                        <input class="input" id="contact_phone" name="contact_phone" type="tel" dir="ltr" inputmode="tel" maxlength="40" autocomplete="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹" value="{{ old('contact_phone', '') }}" required>
                     </x-repair-field>
-                    <button class="np-button {{ $challenge ? 'np-button--outline' : 'np-button--primary' }}">{{ $challenge ? 'درخواست کد تازه' : 'دریافت کد تأیید' }}</button>
+                    <div class="repair-entry-actions repair-track-actions">
+                        <button type="submit" class="np-button np-button--primary">دریافت کد تأیید <x-home.icon name="arrow-left" /></button>
+                    </div>
                 </form>
             @endif
-            <a class="public-inline-link mt-4" href="{{ route('repair.track') }}">بازگشت به پیگیری تعمیر</a>
+            <p class="repair-recovery-back"><a class="public-inline-link" href="{{ route('repair.track') }}">بازگشت به پیگیری تعمیر</a></p>
         </section>
     </div>
 </div>

@@ -363,8 +363,14 @@ class MultiStepCheckoutZibalTest extends TestCase
         // Unpaid order creation & gateway redirect must NEVER send a Telegram order notification.
         Http::assertNotSent(fn ($req) => str_contains($req->url(), 'api.telegram.org'));
 
-        // Before payment verification, customer order list & detail page must NOT show «تأییدشده» or «.۰۰»
+        // Before payment verification, unpaid draft order must NOT clutter the customer's orders tab or show as confirmed,
+        // while direct order view still shows accurate pending payment status without .۰۰ decimals.
         $this->get('https://novinpaypos.test/account?section=orders')
+            ->assertOk()
+            ->assertDontSee('در انتظار پرداخت')
+            ->assertDontSee('تأییدشده')
+            ->assertDontSee('.۰۰');
+        $this->get(route('account.orders.show', $order->public_id))
             ->assertOk()
             ->assertSee('در انتظار پرداخت')
             ->assertDontSee('تأییدشده')
@@ -394,6 +400,17 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->assertSame('settled', $attempt->fresh()->state);
         $this->assertSame('confirmed', $order->fresh()->status);
         $this->assertSame('تأییدشده', CustomerTimeline::orderStatus($order->fresh()));
+        // Paid order settlement must automatically reserve/decrement available stock.
+        $inventory = InventoryItem::query()->where('product_id', $this->product->id)->sole();
+        $this->assertSame(1, $inventory->reserved);
+        $this->assertSame(4, $inventory->available);
+        $shortCode = strtoupper(substr($order->public_id, 0, 8));
+        $this->get('https://novinpaypos.test/account?section=orders')
+            ->assertOk()
+            ->assertSee($shortCode)
+            ->assertSee('تأییدشده')
+            ->assertDontSee('اسناد و پرداخت‌ها')
+            ->assertDontSee('ارسال و تحویل');
         $sms = Http::recorded(fn ($request) => $request->url() === 'https://edge.ippanel.com/v1/api/send')->sole()[0];
         $this->assertSame('mfae2yqje8msw9e', $sms['code']);
         $this->assertSame(['+989123334455'], $sms['recipients']);
@@ -405,6 +422,12 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->get(route('payments.result', $attempt->public_id))->assertOk()
             ->assertSee('پیگیری سفارش')->assertSee(route('account.orders.show', $order->public_id));
         $this->get(route('account.orders.show', $order->public_id))->assertOk()
+            ->assertSee('کد <bdi dir="ltr">'.$shortCode.'</bdi>', false)
+            ->assertDontSee($order->public_id)
+            ->assertDontSee('موجودی رزرو شد')
+            ->assertDontSee('مشاهده سند و رسیدها')
+            ->assertDontSee('جزئیات تحویل')
+            ->assertDontSee('np-location')
             ->assertSee('data-stage="complete"', false)
             ->assertSee('data-stage="current"', false)
             ->assertSee('aria-current="step"', false)
@@ -452,6 +475,10 @@ class MultiStepCheckoutZibalTest extends TestCase
         $order = SalesOrder::query()->sole();
         $this->assertSame('پرداخت ناموفق؛ در انتظار پرداخت', CustomerTimeline::orderStatus($order));
         $this->get('https://novinpaypos.test/account?section=orders')
+            ->assertOk()
+            ->assertDontSee('پرداخت ناموفق؛ در انتظار پرداخت')
+            ->assertDontSee('تأییدشده');
+        $this->get(route('account.orders.show', $order->public_id))
             ->assertOk()
             ->assertSee('پرداخت ناموفق؛ در انتظار پرداخت')
             ->assertDontSee('تأییدشده');

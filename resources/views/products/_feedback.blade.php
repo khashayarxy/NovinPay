@@ -9,8 +9,9 @@
                     <p>{{ \App\Support\FaNumber::digits($feedback[$kind]->total()) }} {{ $kind === 'review' ? 'دیدگاه منتشرشده' : 'پرسش منتشرشده' }}</p>
                 @endif
             </div>
-            <a class="btn btn-primary" href="{{ $feedbackAccount ? '#submit-'.$kind : route('account.login') }}">{{ $kind === 'review'
-                ? ($feedbackAccount && $ownReview ? 'ویرایش دیدگاه' : 'ثبت دیدگاه') : 'طرح پرسش' }}</a>
+            @unless ($feedbackAccount)
+                <a class="btn btn-primary" href="{{ route('account.login') }}">{{ $kind === 'review' ? 'ورود و ثبت دیدگاه' : 'طرح پرسش' }}</a>
+            @endunless
         </div>
         @if ($kind === 'review' && $productRating)
             <div class="product-rating-summary">
@@ -86,7 +87,7 @@
                 @endif
             </article>
         @empty
-            <div class="review-empty"><x-storefront.icon name="review" /><div><p class="product-feedback-empty">{{ $kind === 'review' ? 'هنوز دیدگاهی برای این محصول منتشر نشده است.' : 'هنوز پرسشی برای این محصول منتشر نشده است.' }}</p><small>تجربهٔ استفاده از این محصول را با دیگران در میان بگذارید.</small></div></div>
+            <div class="review-empty"><x-storefront.icon name="review" /><div><p class="product-feedback-empty">{{ $kind === 'review' ? 'هنوز دیدگاهی برای این محصول ثبت نشده است.' : 'هنوز پرسشی برای این محصول ثبت نشده است.' }}</p></div></div>
         @endforelse
         {{ $feedback[$kind]->links() }}
         @if ($feedbackAccount)
@@ -100,23 +101,23 @@
                 @elseif ($kind === 'review' && $ownReview?->status === 'rejected')
                     <p class="product-notice">دیدگاه قبلی منتشر نشد. می‌توانید آن را ویرایش و دوباره ارسال کنید.</p>
                 @endif
-                <p id="hint-{{ $kind }}">شماره تماس، اطلاعات سفارش یا اطلاعات شخصی را وارد نکنید. نوشته پس از بررسی منتشر می‌شود.</p>
-                <textarea class="input" id="body-{{ $kind }}" name="body" rows="4" minlength="5" maxlength="1500" aria-describedby="hint-{{ $kind }}" required>{{ old('kind') === $kind ? old('body') : ($kind === 'review' ? $ownReview?->body : '') }}</textarea>
                 @if ($kind === 'review' && $canRate)
                     <fieldset class="rating-choice">
                         <legend>امتیاز شما (اختیاری)</legend>
-                        <div class="rating-stars" dir="ltr">
+                        <div class="rating-stars rating-stars--input" dir="ltr">
                             @foreach (range(1, 5) as $number)
-                                <label @class(['is-filled' => $number <= (int) old('rating', $ownReview?->rating)])>
+                                <label title="{{ \App\Support\FaNumber::digits($number) }} ستاره">
                                     <input class="sr-only" type="radio" name="rating" value="{{ $number }}" @checked((int) old('rating', $ownReview?->rating) === $number)>
-                                    <span aria-hidden="true">★</span><small>{{ $number }}</small>
+                                    <span class="rating-star-glyph" aria-hidden="true">★</span>
+                                    <small>{{ \App\Support\FaNumber::digits($number) }}</small>
                                 </label>
                             @endforeach
                         </div>
-                        <label><input type="radio" name="rating" value="" @checked(! old('rating', $ownReview?->rating))> بدون امتیاز</label>
+                        <label class="rating-none-option"><input type="radio" name="rating" value="" @checked(! old('rating', $ownReview?->rating))> بدون امتیاز</label>
                     </fieldset>
                 @endif
-                <button type="submit" class="btn btn-primary">{{ $kind === 'review' ? 'ارسال دیدگاه' : 'ارسال پرسش' }}</button>
+                <textarea class="input" id="body-{{ $kind }}" name="body" rows="4" minlength="5" maxlength="1500" placeholder="تجربهٔ خود را از کارکرد و کیفیت محصول بنویسید (بدون شماره تماس یا اطلاعات شخصی)." required>{{ old('kind') === $kind ? old('body') : ($kind === 'review' ? $ownReview?->body : '') }}</textarea>
+                <button type="submit" class="btn btn-primary">{{ $kind === 'review' ? ($ownReview ? 'به‌روزرسانی دیدگاه' : 'ارسال دیدگاه') : 'ارسال پرسش' }}</button>
             </form>
         @endif
     </section>

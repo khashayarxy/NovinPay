@@ -17,10 +17,6 @@
         @elseif($plan?->state === 'dispatched')
             <p>کد رهگیری ارسال هنوز ثبت نشده است.</p>
         @endif
-        <div class="np-account-shortcuts">
-            <a href="{{ route('payments.document', $document->public_id) }}">مشاهده سند و رسیدها</a>
-            <a href="{{ route('delivery.show', $document->public_id) }}">جزئیات تحویل</a>
-        </div>
     @else
         <p>هنوز سند پرداخت یا جزئیات ارسال برای این مورد ثبت نشده است.</p>
     @endif
