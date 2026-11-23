@@ -172,6 +172,20 @@ class MultiStepCheckoutZibalTest extends TestCase
         $xpath = new \DOMXPath($doc);
         $this->assertSame(1, $xpath->query('//div[@data-checkout-step="4"]//button[@data-checkout-submit]')->length);
         $this->assertSame(0, $xpath->query('//aside[contains(@class,"commerce-summary")]//button[@data-checkout-submit]')->length);
+        $this->assertSame('مشخصات', trim((string) $xpath->query('//li[@data-step-indicator="1"]//span[contains(@class,"checkout-step__label")]')->item(0)?->textContent));
+        $this->assertSame('آدرس', trim((string) $xpath->query('//li[@data-step-indicator="2"]//span[contains(@class,"checkout-step__label")]')->item(0)?->textContent));
+        $this->assertSame('نحوه ارسال', trim((string) $xpath->query('//li[@data-step-indicator="3"]//span[contains(@class,"checkout-step__label")]')->item(0)?->textContent));
+        $this->assertSame('پرداخت', trim((string) $xpath->query('//li[@data-step-indicator="4"]//span[contains(@class,"checkout-step__label")]')->item(0)?->textContent));
+
+        // Map appears before province/city inputs inside Step 2
+        $this->assertLessThan(strpos($html, 'id="checkout-province"'), strpos($html, 'data-checkout-map'));
+
+        // #iran-locations-data contains valid raw JSON (not JSON.parse('...'))
+        $jsonScript = (string) $xpath->query('//script[@id="iran-locations-data"]')->item(0)?->textContent;
+        $decodedLocations = json_decode($jsonScript, true);
+        $this->assertIsArray($decodedLocations);
+        $this->assertArrayHasKey('تهران', $decodedLocations);
+        $this->assertContains('شهریار', $decodedLocations['تهران']);
 
         // When Zibal is disabled, online option is hidden and request mode is default.
         config(['payments.zibal.enabled' => false]);
@@ -476,6 +490,72 @@ class MultiStepCheckoutZibalTest extends TestCase
             'cart_revision' => $ajaxAdd->json('revision'),
             'quantity' => 2,
         ])->assertOk()->assertJsonPath('count', 2);
+    }
+
+    public function test_reverse_geocode_draft_persistence_and_login_otp_button_loader_and_webotp(): void
+    {
+        $this->seedCartItem();
+
+        // 1. Reverse geocoding degrades gracefully when NESHAN_SERVICE_KEY is empty
+        config(['services.neshan.service_key' => '']);
+        $this->getJson('https://novinpaypos.test/cart/checkout/reverse-geocode?lat=35.6597&lng=51.0592')
+            ->assertOk()
+            ->assertExactJson(['ok' => false, 'province' => null, 'city' => null]);
+
+        // 2. Reverse geocoding with NESHAN_SERVICE_KEY returns ONLY matching province and city (no street_address overwrite)
+        config(['services.neshan.service_key' => 'service.synthetic_neshan_key_456']);
+        Http::fake([
+            'https://api.neshan.org/v5/reverse*' => Http::response([
+                'status' => 'OK',
+                'state' => 'استان تهران',
+                'city' => 'شهریار',
+                'county' => 'شهرستان شهریار',
+                'formatted_address' => 'استان تهران، شهریار، بلوار ولیعصر',
+            ], 200),
+        ]);
+
+        $this->getJson('https://novinpaypos.test/cart/checkout/reverse-geocode?lat=35.6597&lng=51.0592')
+            ->assertOk()
+            ->assertExactJson([
+                'ok' => true,
+                'province' => 'تهران',
+                'city' => 'شهریار',
+            ]);
+
+        // 3. Draft persistence endpoint saves personal details, address, and map coordinates immediately on step advance
+        $draftRes = $this->postJson('https://novinpaypos.test/cart/checkout/draft', [
+            'full_name' => 'خریدار ذخیره خودکار',
+            'mobile' => '۰۹۱۲۳۳۳۴۴۵۵',
+            'national_code' => '۰۰۱۲۳۴۵۶۷۹',
+            'email' => 'saved-draft@example.com',
+            'address_mode' => 'new',
+            'province' => 'تهران',
+            'city' => 'شهریار',
+            'street_address' => 'شهریار، خیابان ولیعصر، کوچه گلستان، پلاک ۱۲',
+            'postal_code' => '۳۳۵۱۶۱۲۳۴۵',
+            'latitude' => '35.659700',
+            'longitude' => '51.059200',
+            'method' => 'tipax',
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $this->assertNotEmpty($draftRes->json('address_id'));
+        $this->assertSame('خریدار ذخیره خودکار', $this->account->fresh()->name);
+        $this->assertSame('0012345679', $this->account->fresh()->national_code);
+
+        // Returning to /cart/checkout automatically prefills saved details, province, city, street, postal code, and coordinates
+        $revisit = $this->get('https://novinpaypos.test/cart/checkout')->assertOk();
+        $revisit->assertSee('خریدار ذخیره خودکار')
+            ->assertSee('0012345679')
+            ->assertSee('شهریار، خیابان ولیعصر، کوچه گلستان، پلاک ۱۲')
+            ->assertSee('3351612345')
+            ->assertSee('35.659700');
+
+        // 4. Verify customer-otp.js uses inline 3-dot loader (no gray top status notification) and supports .np-otp-boxes + WebOTP
+        $otpJs = (string) file_get_contents(public_path('js/customer-otp.js'));
+        $this->assertStringContainsString('np-btn-dots', $otpJs);
+        $this->assertStringNotContainsString("notify('در حال بررسی درخواست…')", $otpJs);
+        $this->assertStringContainsString('.np-otp, .np-otp-boxes', $otpJs);
+        $this->assertStringContainsString("transport: ['sms']", $otpJs);
     }
 
     private function seedCartItem(): array

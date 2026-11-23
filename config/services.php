@@ -44,6 +44,7 @@ return [
 
     'neshan' => [
         'web_key' => (string) env('NESHAN_WEB_KEY', ''),
+        'service_key' => (string) env('NESHAN_SERVICE_KEY', ''),
     ],
 
 ];

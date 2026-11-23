@@ -595,7 +595,17 @@ button[data-loading="true"] {
     color: #5b7288;
     font-size: 13px;
     font-weight: 500;
-    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, transform 120ms ease;
+}
+.checkout-step:hover {
+    border-color: #93c5fd;
+    background: #f8fbff;
+}
+.checkout-step:focus-visible {
+    outline: 2px solid #098cf7;
+    outline-offset: 2px;
 }
 .checkout-step__num {
     display: inline-grid;
@@ -806,7 +816,7 @@ button[data-loading="true"] {
     font-size: 12.5px;
 }
 .checkout-map {
-    margin-block-start: 16px;
+    margin-block: 10px 16px;
     border: 1px solid #dce7f2;
     border-radius: 12px;
     overflow: hidden;
@@ -857,7 +867,7 @@ button[data-loading="true"] {
     inset: 0;
     pointer-events: none;
 }
-.checkout-map__tiles img {
+.checkout-map__tiles:not(.leaflet-container) img {
     position: absolute;
     width: 256px;
     height: 256px;
@@ -867,6 +877,7 @@ button[data-loading="true"] {
 }
 .checkout-map__pin {
     position: absolute;
+    z-index: 650;
     left: 50%;
     top: 50%;
     width: 26px;
@@ -878,6 +889,23 @@ button[data-loading="true"] {
     border-radius: 50% 50% 50% 0;
     box-shadow: 0 4px 12px rgb(15 23 42 / 30%);
     rotate: -45deg;
+}
+.checkout-map__pin[hidden] {
+    display: none !important;
+}
+.checkout-map__leaflet-pin {
+    background: transparent !important;
+    border: 0 !important;
+}
+.checkout-map__pin-svg {
+    display: block;
+    width: 30px;
+    height: 38px;
+    filter: drop-shadow(0 5px 10px rgb(15 23 42 / 34%));
+    cursor: grab;
+}
+.checkout-map__pin-svg:active {
+    cursor: grabbing;
 }
 .checkout-map__footer {
     display: flex;

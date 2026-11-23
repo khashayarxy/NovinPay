@@ -231,22 +231,29 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/[^0-9]/g, '');
 
         const form = container.closest('form');
+        const hasInlineOtpHandler = Boolean(form?.hasAttribute('data-account-otp'));
         const submitButton = form?.querySelector('button[type="submit"], button:not([type])');
         let autoSubmitted = false;
+        let syncingInternal = false;
 
         const sync = () => {
             const value = boxes.map((b) => normalizeDigits(b.value).slice(0, 1)).join('');
+            syncingInternal = true;
             hiddenInput.value = value;
             hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+            syncingInternal = false;
             if (value.length < 6) {
                 autoSubmitted = false;
+                return;
+            }
+            if (hasInlineOtpHandler) {
                 return;
             }
             if (!autoSubmitted && form instanceof HTMLFormElement) {
                 autoSubmitted = true;
                 if (submitButton instanceof HTMLButtonElement) {
                     if (!submitButton.dataset.origLabel) submitButton.dataset.origLabel = submitButton.textContent || '';
-                    submitButton.textContent = 'در حال بررسی…';
+                    submitButton.innerHTML = '<span class="np-btn-dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="sr-only">در حال بررسی…</span>';
                     submitButton.disabled = true;
                 }
                 window.setTimeout(() => {
@@ -261,6 +268,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        hiddenInput.addEventListener('input', () => {
+            if (syncingInternal) return;
+            const digits = normalizeDigits(hiddenInput.value).slice(0, 6);
+            boxes.forEach((b, i) => {
+                b.value = digits.charAt(i) || '';
+            });
+        });
+
         container.classList.add('is-enhanced');
         grid.hidden = false;
         hiddenInput.tabIndex = -1;
@@ -268,11 +283,16 @@ document.addEventListener('DOMContentLoaded', () => {
         boxes.forEach((box, idx) => {
             box.addEventListener('input', () => {
                 const digits = normalizeDigits(box.value);
-                if (digits.length > 1) {
+                if (digits.length >= 6) {
                     digits.slice(0, 6).split('').forEach((ch, i) => {
                         if (boxes[i]) boxes[i].value = ch;
                     });
-                    boxes[Math.min(5, digits.length - 1)]?.focus();
+                    boxes[5]?.focus();
+                } else if (digits.length > 1) {
+                    digits.split('').forEach((ch, offset) => {
+                        if (boxes[idx + offset]) boxes[idx + offset].value = ch;
+                    });
+                    boxes[Math.min(5, idx + digits.length)]?.focus();
                 } else {
                     box.value = digits;
                     if (digits && idx < 5) boxes[idx + 1]?.focus();
@@ -314,7 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (iranDataEl) {
         let iranLocations = {};
         try {
-            iranLocations = JSON.parse(iranDataEl.textContent || '{}') || {};
+            let rawText = (iranDataEl.textContent || '{}').trim();
+            const wrappedMatch = rawText.match(/^JSON\.parse\('([\s\S]*)'\)$/);
+            if (wrappedMatch) {
+                rawText = JSON.parse(`"${wrappedMatch[1].replace(/"/g, '\\"')}"`);
+            }
+            iranLocations = JSON.parse(rawText) || {};
         } catch {}
         document.querySelectorAll('[data-iran-address-form]').forEach((form) => {
             const provinceSelect = form.querySelector('[data-iran-province]');
@@ -336,7 +361,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (city === preserveCity) option.selected = true;
                     citySelect.append(option);
                 });
+                if (preserveCity) {
+                    citySelect.value = preserveCity;
+                    citySelect.dataset.selectedCity = preserveCity;
+                }
             };
+            form._populateIranCities = populateCities;
+            if (provinceSelect.value) {
+                populateCities(citySelect.dataset.selectedCity || citySelect.value || '');
+            }
             provinceSelect.addEventListener('change', () => populateCities(''));
         });
     }
@@ -749,18 +782,149 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         });
     };
 
+    const accountKey = (form.dataset.accountKey || 'default').trim();
+    const draftStorageKey = `novinpay_checkout_draft_${accountKey}`;
+    const draftUrl = (form.dataset.draftUrl || '').trim();
+    const reverseGeocodeUrl = (form.dataset.reverseGeocodeUrl || '').trim();
+
+    const collectDraftPayload = () => {
+        const payload = {
+            full_name: form.querySelector('[name="full_name"]')?.value.trim() || '',
+            mobile: toLatinDigits(form.querySelector('[name="mobile"]')?.value || '').replace(/\s+/g, ''),
+            national_code: toLatinDigits(form.querySelector('[name="national_code"]')?.value || '').replace(/\s+/g, ''),
+            email: form.querySelector('[name="email"]')?.value.trim() || '',
+            address_mode: getAddressMode(),
+            address: form.querySelector('select[name="address"]')?.value || '',
+            province: form.querySelector('[name="province"]')?.value || '',
+            city: form.querySelector('[name="city"]')?.value || '',
+            street_address: form.querySelector('[name="street_address"]')?.value.trim() || '',
+            postal_code: toLatinDigits(form.querySelector('[name="postal_code"]')?.value || '').replace(/\s+/g, ''),
+            latitude: form.querySelector('[data-map-lat]')?.value || '',
+            longitude: form.querySelector('[data-map-lng]')?.value || '',
+            method: form.querySelector('input[name="method"]:checked')?.value || 'pickup',
+            payment_method: form.querySelector('input[name="payment_method"]:checked')?.value || '',
+        };
+        return payload;
+    };
+
+    let draftTimer = null;
+    const persistCheckoutDraft = (immediateServer = false) => {
+        const payload = collectDraftPayload();
+        try {
+            window.localStorage?.setItem(draftStorageKey, JSON.stringify(payload));
+        } catch {}
+
+        if (!draftUrl || !window.fetch) return;
+        const sendToServer = () => {
+            const csrfToken = form.querySelector('input[name="_token"]')?.value || '';
+            window.fetch(draftUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify(payload),
+            }).then((res) => (res.ok ? res.json() : null)).then((data) => {
+                if (data && data.address_id) {
+                    const sel = form.querySelector('select[name="address"]');
+                    if (sel instanceof HTMLSelectElement && !sel.value) {
+                        const opt = sel.querySelector(`option[value="${data.address_id}"]`);
+                        if (opt) sel.value = data.address_id;
+                    }
+                }
+            }).catch(() => {});
+        };
+
+        if (draftTimer) window.clearTimeout(draftTimer);
+        if (immediateServer) {
+            sendToServer();
+        } else {
+            draftTimer = window.setTimeout(sendToServer, 450);
+        }
+    };
+
+    // Restore any missing fields from localStorage draft on revisit
+    try {
+        const savedRaw = window.localStorage?.getItem(draftStorageKey);
+        if (savedRaw) {
+            const saved = JSON.parse(savedRaw);
+            if (saved && typeof saved === 'object') {
+                ['full_name', 'mobile', 'national_code', 'email', 'street_address', 'postal_code'].forEach((name) => {
+                    const el = form.querySelector(`[name="${name}"]`);
+                    if (el && !el.value && saved[name]) {
+                        el.value = saved[name];
+                    }
+                });
+                const provinceSelect = form.querySelector('[data-iran-province]');
+                const citySelect = form.querySelector('[data-iran-city]');
+                if (provinceSelect instanceof HTMLSelectElement && !provinceSelect.value && saved.province) {
+                    provinceSelect.value = saved.province;
+                    if (typeof form._populateIranCities === 'function') {
+                        form._populateIranCities(saved.city || '');
+                    }
+                } else if (citySelect instanceof HTMLSelectElement && !citySelect.value && saved.city) {
+                    if (typeof form._populateIranCities === 'function') {
+                        form._populateIranCities(saved.city);
+                    }
+                }
+                const latEl = form.querySelector('[data-map-lat]');
+                const lngEl = form.querySelector('[data-map-lng]');
+                const mapEl = form.querySelector('[data-checkout-map]');
+                if (latEl && lngEl && !latEl.value && !lngEl.value && saved.latitude && saved.longitude) {
+                    latEl.value = saved.latitude;
+                    lngEl.value = saved.longitude;
+                    if (mapEl) {
+                        mapEl.dataset.defaultLat = saved.latitude;
+                        mapEl.dataset.defaultLng = saved.longitude;
+                    }
+                }
+            }
+        }
+    } catch {}
+
     let onStep2Visible = null;
+    let currentStep = 1;
+
+    const isStep1QuietlyValid = () => {
+        const fullName = form.querySelector('[name="full_name"]')?.value.trim() || '';
+        const mobile = toLatinDigits(form.querySelector('[name="mobile"]')?.value || '').replace(/\s+/g, '');
+        const nationalCode = toLatinDigits(form.querySelector('[name="national_code"]')?.value || '').replace(/\s+/g, '');
+        const email = form.querySelector('[name="email"]')?.value.trim() || '';
+        if (fullName.length < 2 || !/^09[0-9]{9}$/.test(mobile)) return false;
+        if (nationalCode !== '' && !isValidNationalCode(nationalCode)) return false;
+        if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
+        return true;
+    };
+
+    const isStep2QuietlyReady = () => {
+        const mode = getAddressMode();
+        if (mode === 'saved') {
+            const sel = form.querySelector('select[name="address"]');
+            return Boolean(sel && sel.value);
+        }
+        const province = form.querySelector('[name="province"]')?.value.trim() || '';
+        const city = form.querySelector('[name="city"]')?.value.trim() || '';
+        const street = form.querySelector('[name="street_address"]')?.value.trim() || '';
+        const postal = toLatinDigits(form.querySelector('[name="postal_code"]')?.value || '').replace(/\s+/g, '');
+        return Boolean(province && city && street.length >= 10 && /^[0-9]{10}$/.test(postal));
+    };
 
     const goToStep = (stepNumber) => {
         const target = Math.max(1, Math.min(4, stepNumber));
+        currentStep = target;
         syncSummary();
         panels.forEach((panel) => {
             panel.classList.toggle('is-active', Number(panel.dataset.checkoutStep) === target);
         });
+        const step1Done = isStep1QuietlyValid();
+        const step2Done = isStep2QuietlyReady();
         indicators.forEach((ind) => {
             const num = Number(ind.dataset.stepIndicator);
+            const done = num < target || (num === 1 && step1Done && target !== 1) || (num === 2 && step1Done && step2Done && target !== 2);
             ind.classList.toggle('is-active', num === target);
-            ind.classList.toggle('is-done', num < target);
+            ind.classList.toggle('is-done', done);
             if (num === target) ind.setAttribute('aria-current', 'step');
             else ind.removeAttribute('aria-current');
         });
@@ -768,6 +932,40 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             requestAnimationFrame(() => onStep2Visible());
         }
     };
+
+    const tryNavigateToStep = (targetStep) => {
+        if (targetStep === currentStep) return;
+        if (targetStep < currentStep) {
+            persistCheckoutDraft(false);
+            goToStep(targetStep);
+            return;
+        }
+        if (targetStep >= 2 && !validateStep1()) {
+            goToStep(1);
+            return;
+        }
+        if (targetStep >= 3 && !validateAddressIfShipping(false)) {
+            goToStep(2);
+            return;
+        }
+        if (targetStep >= 4 && !validateStep3()) {
+            goToStep(3);
+            return;
+        }
+        persistCheckoutDraft(true);
+        goToStep(targetStep);
+    };
+
+    indicators.forEach((ind) => {
+        const targetStep = Number(ind.dataset.stepIndicator);
+        ind.addEventListener('click', () => tryNavigateToStep(targetStep));
+        ind.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                tryNavigateToStep(targetStep);
+            }
+        });
+    });
 
     stepper.classList.add('is-stepped');
     syncAddressSections();
@@ -777,6 +975,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
     form.addEventListener('change', () => {
         syncAddressSections();
         syncSummary();
+        persistCheckoutDraft(false);
     });
     form.addEventListener('input', (e) => {
         const target = e.target;
@@ -788,14 +987,11 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
     stepper.querySelectorAll('[data-checkout-next]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const next = Number(btn.dataset.checkoutNext);
-            if (next === 2 && !validateStep1()) return;
-            if (next === 3 && !validateAddressIfShipping(false)) return;
-            if (next === 4 && !validateStep3()) return;
-            goToStep(next);
+            tryNavigateToStep(next);
         });
     });
     stepper.querySelectorAll('[data-checkout-prev]').forEach((btn) => {
-        btn.addEventListener('click', () => goToStep(Number(btn.dataset.checkoutPrev)));
+        btn.addEventListener('click', () => tryNavigateToStep(Number(btn.dataset.checkoutPrev)));
     });
 
     form.addEventListener('submit', (e) => {
@@ -807,23 +1003,191 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         if (!validateStep3()) {
             e.preventDefault();
             goToStep(3);
+            return;
         }
+        persistCheckoutDraft(false);
     });
+
+    // Coordinates dictionary for Iranian provinces & major cities (for two-way dropdown <-> map sync)
+    const IRAN_PROVINCE_COORDS = {
+        'آذربایجان شرقی': [38.0962, 46.2738],
+        'آذربایجان غربی': [37.5527, 45.0761],
+        'اردبیل': [38.2498, 48.2933],
+        'اصفهان': [32.6546, 51.6680],
+        'البرز': [35.8400, 50.9391],
+        'ایلام': [33.6374, 46.4227],
+        'بوشهر': [28.9234, 50.8203],
+        'تهران': [35.6892, 51.3890],
+        'چهارمحال و بختیاری': [32.3256, 50.8644],
+        'خراسان جنوبی': [32.8649, 59.2262],
+        'خراسان رضوی': [36.2605, 59.6168],
+        'خراسان شمالی': [37.4747, 57.3310],
+        'خوزستان': [31.3183, 48.6706],
+        'زنجان': [36.6764, 48.4963],
+        'سمنان': [35.5769, 53.3970],
+        'سیستان و بلوچستان': [29.4963, 60.8629],
+        'فارس': [29.5918, 52.5837],
+        'قزوین': [36.2688, 50.0041],
+        'قم': [34.6416, 50.8746],
+        'کردستان': [35.3219, 46.9862],
+        'کرمان': [30.2839, 57.0834],
+        'کرمانشاه': [34.3142, 47.0650],
+        'کهگیلویه و بویراحمد': [30.6682, 51.5880],
+        'گلستان': [36.8427, 54.4358],
+        'گیلان': [37.2808, 49.5832],
+        'لرستان': [33.4878, 48.3558],
+        'مازندران': [36.5659, 53.0586],
+        'مرکزی': [34.0917, 49.6892],
+        'هرمزگان': [27.1832, 56.2666],
+        'همدان': [34.7989, 48.5150],
+        'یزد': [31.8974, 54.3569],
+    };
+
+    const IRAN_CITY_COORDS = {
+        'تهران': [35.6892, 51.3890],
+        'شهریار': [35.6597, 51.0592],
+        'اندیشه': [35.6803, 51.0194],
+        'قدس': [35.7117, 51.1131],
+        'ملارد': [35.6659, 50.9767],
+        'اسلامشهر': [35.5466, 51.2352],
+        'رباط‌کریم': [35.4846, 51.0829],
+        'پرند': [35.4769, 50.9464],
+        'پردیس': [35.7417, 51.7777],
+        'دماوند': [35.7184, 52.0650],
+        'ورامین': [35.3242, 51.6457],
+        'پاکدشت': [35.4789, 51.6854],
+        'قرچک': [35.4394, 51.5719],
+        'ری': [35.5935, 51.4340],
+        'شمیرانات': [35.8047, 51.4328],
+        'بومهن': [35.7303, 51.8639],
+        'رودهن': [35.7369, 51.9094],
+        'کرج': [35.8400, 50.9391],
+        'فردیس': [35.7242, 50.9883],
+        'ساوجبلاغ': [35.9553, 50.7069],
+        'نظرآباد': [35.9542, 50.6075],
+        'هشتگرد': [35.9619, 50.6800],
+        'ماهدشت': [35.7278, 50.8136],
+        'محمدشهر': [35.7633, 50.9172],
+        'کمال‌شهر': [35.8644, 50.8717],
+        'مشهد': [36.2605, 59.6168],
+        'نیشابور': [36.2133, 58.7958],
+        'سبزوار': [36.2126, 57.6819],
+        'اصفهان': [32.6546, 51.6680],
+        'کاشان': [33.9850, 51.4100],
+        'خمینی‌شهر': [32.6856, 51.5361],
+        'نجف‌آباد': [32.6344, 51.3667],
+        'شاهین‌شهر': [32.8578, 51.5528],
+        'شیراز': [29.5918, 52.5837],
+        'مرودشت': [29.8742, 52.8025],
+        'تبریز': [38.0962, 46.2738],
+        'مراغه': [37.3892, 46.2375],
+        'مرند': [38.4328, 45.7747],
+        'ارومیه': [37.5527, 45.0761],
+        'خوی': [38.5503, 44.9522],
+        'مهاباد': [36.7631, 45.7222],
+        'اهواز': [31.3183, 48.6706],
+        'دزفول': [32.3811, 48.4058],
+        'آبادان': [30.3392, 48.3043],
+        'خرمشهر': [30.4408, 48.1664],
+        'قم': [34.6416, 50.8746],
+        'رشت': [37.2808, 49.5832],
+        'بندر انزلی': [37.4728, 49.4622],
+        'لاهیجان': [37.2072, 50.0039],
+        'ساری': [36.5659, 53.0586],
+        'بابل': [36.5513, 52.6789],
+        'آمل': [36.4697, 52.3508],
+        'قائم‌شهر': [36.4631, 52.8600],
+        'چالوس': [36.6550, 51.4203],
+        'تنکابن': [36.8164, 50.8739],
+        'رامسر': [36.9069, 50.6583],
+        'کرمان': [30.2839, 57.0834],
+        'رفسنجان': [30.4067, 55.9939],
+        'سیرجان': [29.4519, 55.6808],
+        'یزد': [31.8974, 54.3569],
+        'کرمانشاه': [34.3142, 47.0650],
+        'بندرعباس': [27.1832, 56.2666],
+        'کیش': [26.5325, 53.9800],
+        'قشم': [26.9581, 56.2719],
+        'همدان': [34.7989, 48.5150],
+        'ملایر': [34.2969, 48.8236],
+        'اراک': [34.0917, 49.6892],
+        'ساوه': [35.0213, 50.3566],
+        'قزوین': [36.2688, 50.0041],
+        'زنجان': [36.6764, 48.4963],
+        'سنندج': [35.3219, 46.9862],
+        'خرم‌آباد': [33.4878, 48.3558],
+        'بروجرد': [33.8972, 48.7517],
+        'گرگان': [36.8427, 54.4358],
+        'گنبد کاووس': [37.2500, 55.1672],
+        'اردبیل': [38.2498, 48.2933],
+        'بوشهر': [28.9234, 50.8203],
+        'بیرجند': [32.8649, 59.2262],
+        'زاهدان': [29.4963, 60.8629],
+        'چابهار': [25.2919, 60.6431],
+        'سمنان': [35.5769, 53.3970],
+        'شاهرود': [36.4181, 54.9764],
+        'شهرکرد': [32.3256, 50.8644],
+        'یاسوج': [30.6682, 51.5880],
+        'ایلام': [33.6374, 46.4227],
+        'بجنورد': [37.4747, 57.3310],
+    };
+
+    const findNearestIranLocation = (la, ln) => {
+        let bestProvince = null;
+        let bestProvDist = Infinity;
+        for (const [prov, [pLat, pLng]] of Object.entries(IRAN_PROVINCE_COORDS)) {
+            const d = (la - pLat) * (la - pLat) + (ln - pLng) * (ln - pLng);
+            if (d < bestProvDist) {
+                bestProvDist = d;
+                bestProvince = prov;
+            }
+        }
+        // Special check for Tehran vs Alborz boundary around Shahriar/Karaj
+        let bestCity = null;
+        let bestCityDist = Infinity;
+        for (const [city, [cLat, cLng]] of Object.entries(IRAN_CITY_COORDS)) {
+            const d = (la - cLat) * (la - cLat) + (ln - cLng) * (ln - cLng);
+            if (d < bestCityDist) {
+                bestCityDist = d;
+                bestCity = city;
+            }
+        }
+        const iranDataEl = document.getElementById('iran-locations-data');
+        let locs = {};
+        try {
+            locs = JSON.parse(iranDataEl?.textContent || '{}') || {};
+        } catch {}
+        if (bestCity) {
+            for (const [prov, cities] of Object.entries(locs)) {
+                if (Array.isArray(cities) && cities.includes(bestCity)) {
+                    bestProvince = prov;
+                    break;
+                }
+            }
+        }
+        return { province: bestProvince, city: bestCity };
+    };
 
     // Interactive Neshan Web Map (with non-blocked CartoDB Voyager tile fallback when NESHAN_WEB_KEY is empty)
     const mapBox = form.querySelector('[data-checkout-map]');
     if (mapBox) {
         const viewport = mapBox.querySelector('[data-map-viewport]');
         const tilesEl = mapBox.querySelector('[data-map-tiles]');
+        const fallbackPin = mapBox.querySelector('[data-map-fallback-pin]');
         const coordsEl = mapBox.querySelector('[data-map-coords]');
         const latInput = mapBox.querySelector('[data-map-lat]');
         const lngInput = mapBox.querySelector('[data-map-lng]');
         const neshanKey = (mapBox.dataset.neshanKey || '').trim();
+        const provinceSelect = form.querySelector('[data-iran-province]');
+        const citySelect = form.querySelector('[data-iran-city]');
 
-        let lat = parseFloat(mapBox.dataset.defaultLat || '35.6597') || 35.6597;
-        let lng = parseFloat(mapBox.dataset.defaultLng || '51.0592') || 51.0592;
+        let lat = parseFloat(latInput?.value || mapBox.dataset.defaultLat || '35.6597') || 35.6597;
+        let lng = parseFloat(lngInput?.value || mapBox.dataset.defaultLng || '51.0592') || 51.0592;
         let zoom = 14;
         let neshanMap = null;
+        let neshanMarker = null;
+        let isSyncingFromMap = false;
+        let reverseGeocodeTimer = null;
 
         const saveCoordinates = (la, ln) => {
             lat = Math.max(-85, Math.min(85, la));
@@ -833,6 +1197,67 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             if (latInput) latInput.value = fLat;
             if (lngInput) lngInput.value = fLng;
             if (coordsEl) coordsEl.textContent = `${fLat}, ${fLng}`;
+            if (neshanMarker && typeof neshanMarker.setLatLng === 'function') {
+                const cur = neshanMarker.getLatLng();
+                if (!cur || Math.abs(cur.lat - lat) > 0.000001 || Math.abs(cur.lng - lng) > 0.000001) {
+                    neshanMarker.setLatLng([lat, lng]);
+                }
+            }
+            persistCheckoutDraft(false);
+        };
+
+        const applyMapProvinceAndCity = (province, city) => {
+            if (!province || !(provinceSelect instanceof HTMLSelectElement)) return;
+            const hasOption = [...provinceSelect.options].some((o) => o.value === province);
+            if (!hasOption) return;
+            isSyncingFromMap = true;
+            try {
+                provinceSelect.value = province;
+                setFieldError('province', '');
+                if (typeof form._populateIranCities === 'function') {
+                    form._populateIranCities(city || '');
+                }
+                if (city && citySelect instanceof HTMLSelectElement) {
+                    const hasCity = [...citySelect.options].some((o) => o.value === city);
+                    if (hasCity) {
+                        citySelect.value = city;
+                        setFieldError('city', '');
+                    }
+                }
+                syncSummary();
+                persistCheckoutDraft(false);
+            } finally {
+                isSyncingFromMap = false;
+            }
+        };
+
+        const reverseGeocodeToProvinceCity = (la, ln) => {
+            if (reverseGeocodeTimer) window.clearTimeout(reverseGeocodeTimer);
+            reverseGeocodeTimer = window.setTimeout(() => {
+                if (!reverseGeocodeUrl || !window.fetch) {
+                    const fallback = findNearestIranLocation(la, ln);
+                    if (fallback.province) applyMapProvinceAndCity(fallback.province, fallback.city);
+                    return;
+                }
+                const url = new URL(reverseGeocodeUrl, window.location.origin);
+                url.searchParams.set('lat', la.toFixed(6));
+                url.searchParams.set('lng', ln.toFixed(6));
+                window.fetch(url.href, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json' },
+                }).then((res) => (res.ok ? res.json() : null)).then((data) => {
+                    if (data && data.ok && data.province) {
+                        applyMapProvinceAndCity(data.province, data.city || '');
+                    } else {
+                        const fallback = findNearestIranLocation(la, ln);
+                        if (fallback.province) applyMapProvinceAndCity(fallback.province, fallback.city);
+                    }
+                }).catch(() => {
+                    const fallback = findNearestIranLocation(la, ln);
+                    if (fallback.province) applyMapProvinceAndCity(fallback.province, fallback.city);
+                });
+            }, 220);
         };
 
         const latLngToWorld = (la, ln, z) => {
@@ -851,13 +1276,16 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         };
 
         const subdomains = ['a', 'b', 'c', 'd'];
-        const renderMap = (saveInputs = false) => {
+        const renderMap = (saveInputs = false, shouldReverseGeocode = false) => {
             if (saveInputs) saveCoordinates(lat, lng);
+            if (shouldReverseGeocode) reverseGeocodeToProvinceCity(lat, lng);
             if (neshanMap) {
-                neshanMap.setView([lat, lng], zoom, { animate: false });
+                neshanMap.setView([lat, lng], zoom, { animate: true });
+                if (neshanMarker) neshanMarker.setLatLng([lat, lng]);
                 return;
             }
             if (!viewport || !tilesEl) return;
+            if (fallbackPin) fallbackPin.hidden = false;
             const w = viewport.clientWidth || 420;
             const h = viewport.clientHeight || 230;
             const center = latLngToWorld(lat, lng, zoom);
@@ -884,6 +1312,35 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             }
         };
 
+        // Dropdown -> Map Sync when user selects a province or city
+        if (provinceSelect instanceof HTMLSelectElement) {
+            provinceSelect.addEventListener('change', () => {
+                if (isSyncingFromMap) return;
+                const prov = provinceSelect.value;
+                const coords = IRAN_PROVINCE_COORDS[prov];
+                if (coords) {
+                    lat = coords[0];
+                    lng = coords[1];
+                    zoom = 11;
+                    renderMap(true, false);
+                }
+            });
+        }
+        if (citySelect instanceof HTMLSelectElement) {
+            citySelect.addEventListener('change', () => {
+                if (isSyncingFromMap) return;
+                const city = citySelect.value;
+                const prov = provinceSelect instanceof HTMLSelectElement ? provinceSelect.value : '';
+                const coords = IRAN_CITY_COORDS[city] || IRAN_PROVINCE_COORDS[prov];
+                if (coords) {
+                    lat = coords[0];
+                    lng = coords[1];
+                    zoom = IRAN_CITY_COORDS[city] ? 14 : 12;
+                    renderMap(true, false);
+                }
+            });
+        }
+
         let dragging = false;
         let dragStart = null;
         let moved = false;
@@ -903,7 +1360,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             const next = worldToLatLng(dragStart.world.x - dx, dragStart.world.y - dy, zoom);
             lat = next.lat;
             lng = next.lng;
-            renderMap(true);
+            renderMap(true, false);
         });
         viewport?.addEventListener('pointerup', (e) => {
             if (neshanMap || !dragging) return;
@@ -916,7 +1373,9 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 const next = worldToLatLng(center.x + dx, center.y + dy, zoom);
                 lat = next.lat;
                 lng = next.lng;
-                renderMap(true);
+                renderMap(true, true);
+            } else {
+                reverseGeocodeToProvinceCity(lat, lng);
             }
         });
 
@@ -926,7 +1385,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 if (neshanMap) {
                     neshanMap.setZoom(zoom);
                 } else {
-                    renderMap(Boolean(latInput?.value));
+                    renderMap(Boolean(latInput?.value), false);
                 }
             });
         });
@@ -940,9 +1399,11 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 saveCoordinates(lat, lng);
                 if (neshanMap) {
                     neshanMap.setView([lat, lng], zoom);
+                    if (neshanMarker) neshanMarker.setLatLng([lat, lng]);
                 } else {
-                    renderMap(true);
+                    renderMap(true, false);
                 }
+                reverseGeocodeToProvinceCity(lat, lng);
             });
         });
 
@@ -963,24 +1424,47 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                         zoom,
                         zoomControl: false,
                     });
-                    neshanMap.on('move', () => {
-                        const c = neshanMap.getCenter();
-                        if (c) saveCoordinates(c.lat, c.lng);
-                    });
+
+                    if (typeof window.L.marker === 'function' && typeof window.L.divIcon === 'function') {
+                        const pinIcon = window.L.divIcon({
+                            className: 'checkout-map__leaflet-pin',
+                            html: '<span class="checkout-map__pin-svg"><svg viewBox="0 0 30 38" width="30" height="38" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 1.5C7.54 1.5 1.5 7.54 1.5 15c0 9.95 11.88 20.66 12.66 21.35a1.25 1.25 0 0 0 1.68 0C16.62 35.66 28.5 24.95 28.5 15 28.5 7.54 22.46 1.5 15 1.5Z" fill="#098CF7" stroke="#fff" stroke-width="2.2"/><circle cx="15" cy="15" r="5.2" fill="#fff"/></svg></span>',
+                            iconSize: [30, 38],
+                            iconAnchor: [15, 37],
+                        });
+                        neshanMarker = window.L.marker([lat, lng], {
+                            draggable: true,
+                            icon: pinIcon,
+                        }).addTo(neshanMap);
+                        if (fallbackPin) fallbackPin.hidden = true;
+
+                        neshanMarker.on('dragend', () => {
+                            const pos = neshanMarker.getLatLng();
+                            if (pos) {
+                                saveCoordinates(pos.lat, pos.lng);
+                                reverseGeocodeToProvinceCity(pos.lat, pos.lng);
+                            }
+                        });
+                    }
+
                     neshanMap.on('zoomend', () => {
                         zoom = neshanMap.getZoom() || zoom;
                     });
                     neshanMap.on('click', (ev) => {
                         if (ev && ev.latlng) {
+                            if (neshanMarker) neshanMarker.setLatLng(ev.latlng);
                             saveCoordinates(ev.latlng.lat, ev.latlng.lng);
                             neshanMap.panTo(ev.latlng);
+                            reverseGeocodeToProvinceCity(ev.latlng.lat, ev.latlng.lng);
                         }
                     });
                     setTimeout(() => neshanMap?.invalidateSize(), 60);
                 } catch {
                     neshanMap = null;
+                    neshanMarker = null;
+                    if (fallbackPin) fallbackPin.hidden = false;
                     tilesEl.style.pointerEvents = 'none';
-                    renderMap(Boolean(latInput?.value));
+                    renderMap(Boolean(latInput?.value), false);
                 }
             };
 
@@ -1009,12 +1493,12 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             if (neshanMap) {
                 neshanMap.invalidateSize();
             } else {
-                renderMap(Boolean(latInput?.value));
+                renderMap(Boolean(latInput?.value), false);
                 bootNeshanSdk();
             }
         };
 
-        renderMap(Boolean(latInput?.value));
+        renderMap(Boolean(latInput?.value), false);
         if (neshanKey) bootNeshanSdk();
     }
 });

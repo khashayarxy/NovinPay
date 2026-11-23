@@ -78,9 +78,9 @@
                                 @csrf
                                 <input type="hidden" name="flow" value="{{ $flow }}">
                                 <input type="hidden" name="request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-                                <p class="np-account-notice" role="status" data-send-status hidden></p>
                                 <label for="account-phone">شماره موبایل یا ایمیل</label>
                                 <input id="account-phone" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" value="{{ old('identifier') }}" required>
+                                <p class="np-field-error" role="status" data-send-status hidden></p>
                                 <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ارسال کد تأیید</button>
                             </form>
 
@@ -102,9 +102,9 @@
                                 <input type="hidden" name="flow" value="{{ $flow }}">
                                 <input type="hidden" name="request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                                 <input type="hidden" name="recover" value="1">
-                                <p class="np-account-notice" role="status" data-send-status hidden></p>
                                 <label for="account-forgot-identifier">شماره موبایل یا ایمیل</label>
                                 <input id="account-forgot-identifier" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" value="{{ old('identifier', $phone ?? $loginEmail ?? '') }}" required>
+                                <p class="np-field-error" role="status" data-send-status hidden></p>
                                 <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ارسال کد بازیابی</button>
                             </form>
                             <div class="np-auth__back-row">
@@ -142,7 +142,7 @@
                                         <input id="account-email-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" required>
                                         <div class="np-otp-boxes__grid" data-otp-grid>
                                             @for($slot = 0; $slot < 6; $slot++)
-                                                <input type="text" inputmode="numeric" maxlength="1" class="np-otp-box" aria-label="رقم {{ \App\Support\FaNumber::digits($slot + 1) }}" autocomplete="{{ $slot === 0 ? 'one-time-code' : 'off' }}">
+                                                <input type="text" inputmode="numeric" maxlength="6" class="np-otp-box" aria-label="رقم {{ \App\Support\FaNumber::digits($slot + 1) }}" autocomplete="{{ $slot === 0 ? 'one-time-code' : 'off' }}">
                                             @endfor
                                         </div>
                                     </div>
@@ -178,14 +178,14 @@
                                         <input id="account-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" aria-describedby="code-expiry account-otp-error" @if($errors->has('code')) aria-invalid="true" @endif required>
                                         <div class="np-otp-boxes__grid" data-otp-grid>
                                             @for($slot = 0; $slot < 6; $slot++)
-                                                <input type="text" inputmode="numeric" maxlength="1" class="np-otp-box" aria-label="رقم {{ \App\Support\FaNumber::digits($slot + 1) }}" autocomplete="{{ $slot === 0 ? 'one-time-code' : 'off' }}">
+                                                <input type="text" inputmode="numeric" maxlength="6" class="np-otp-box" aria-label="رقم {{ \App\Support\FaNumber::digits($slot + 1) }}" autocomplete="{{ $slot === 0 ? 'one-time-code' : 'off' }}">
                                             @endfor
                                         </div>
                                     </div>
                                     <small id="code-expiry" class="np-auth__hint">کد تا دو دقیقه معتبر است.</small>
                                     <p id="account-otp-error" class="np-account-otp-error" role="alert" hidden></p>
                                     <button type="submit" class="np-account-primary" data-verify-wait="{{ $wait('verify') }}">{{ $recovery ? 'تأیید و انتخاب رمز' : 'ورود به پنل کاربری' }}</button>
-                                    <small role="status" data-otp-pending hidden>در حال بررسی کد…</small>
+                                    <small class="sr-only" role="status" data-otp-pending hidden>در حال بررسی کد…</small>
                                 </form>
                             @elseif($challengeEnded)
                                 <p class="np-auth__hint">کد قبلی دیگر معتبر نیست. کد جدید درخواست کنید.</p>
