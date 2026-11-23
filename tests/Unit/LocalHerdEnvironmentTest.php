@@ -55,7 +55,7 @@ class LocalHerdEnvironmentTest extends TestCase
     {
         $load = require dirname(__DIR__, 2).'/scripts/local/herd-environment.php';
         $before = hash_file('sha256', $this->root.'/herd-environment.json');
-        $this->assertSame($this->settings, $load($this->root));
+        $this->assertSame($this->settings + ['NOTIFICATIONS_PANELCHI_ENABLED' => 'false'], $load($this->root));
         $this->assertSame($before, hash_file('sha256', $this->root.'/herd-environment.json'));
     }
 
@@ -63,7 +63,7 @@ class LocalHerdEnvironmentTest extends TestCase
     {
         $load = require dirname(__DIR__, 2).'/scripts/local/herd-environment.php';
         $original = $this->settings;
-        foreach (['DB_CONNECTION' => 'mysql', 'DB_DATABASE' => '/other/database.sqlite', 'DB_URL' => 'mysql://invalid', 'APP_ENV' => 'production', 'APP_URL' => 'https://novinpaypos.com', 'LARAVEL_STORAGE_PATH' => '/other/storage', 'CACHE_STORE' => 'database', 'IPPANEL_ENABLED' => 'true', 'OPERATIONS_SCHEDULED_PAYMENTS' => 'true', 'ZIBAL_LIVE_REQUESTS' => 'true', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'true'] as $key => $value) {
+        foreach (['DB_CONNECTION' => 'mysql', 'DB_DATABASE' => '/other/database.sqlite', 'DB_URL' => 'mysql://invalid', 'APP_ENV' => 'production', 'APP_URL' => 'https://novinpaypos.com', 'LARAVEL_STORAGE_PATH' => '/other/storage', 'CACHE_STORE' => 'database', 'IPPANEL_ENABLED' => 'true', 'NOTIFICATIONS_PANELCHI_ENABLED' => 'true', 'OPERATIONS_SCHEDULED_PAYMENTS' => 'true', 'ZIBAL_LIVE_REQUESTS' => 'true', 'POSTEX_INDEPENDENT_POSTAGE_VERIFIED' => 'true'] as $key => $value) {
             $this->settings = array_replace($original, [$key => $value]);
             $this->writeSettings();
             try {
