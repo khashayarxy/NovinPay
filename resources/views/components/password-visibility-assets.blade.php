@@ -1,2 +1,2 @@
-<link rel="stylesheet" href="{{ asset('css/password-visibility.css?v=1') }}">
-<script src="{{ asset('js/password-visibility.js?v=1') }}" defer></script>
+<link rel="stylesheet" href="{{ versioned_asset('css/password-visibility.css') }}">
+<script src="{{ versioned_asset('js/password-visibility.js') }}" defer></script>

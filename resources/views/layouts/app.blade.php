@@ -28,21 +28,21 @@
     <x-brand-head />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
-        <script src="{{ asset('js/storefront-scroll-lock.js?v=1') }}" defer></script>
-        <script src="{{ asset('js/storefront-premium.js?v=commerce-stage2-10') }}" defer></script>
+        <script src="{{ versioned_asset('js/storefront-scroll-lock.js') }}" defer></script>
+        <script src="{{ versioned_asset('js/storefront-premium.js') }}" defer></script>
     @endif
     @stack('page-head')
     @if ($hasStoreNavigation)
-        <link rel="stylesheet" href="{{ asset('css/store-navigation.css?v=commerce-stage2-7') }}">
+        <link rel="stylesheet" href="{{ versioned_asset('css/store-navigation.css') }}">
     @endif
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
-        <link rel="stylesheet" href="{{ asset('css/storefront-refinement.css?v=commerce-stage2-11') }}">
+        <link rel="stylesheet" href="{{ versioned_asset('css/storefront-refinement.css') }}">
     @endif
     @if(request()->routeIs('account.*'))
         <x-password-visibility-assets />
     @endif
     @if(request()->routeIs('account.*', 'repair*', 'consultation*', 'cart.*'))
-        <script src="{{ asset('js/mobile-digits.js?v=1') }}" defer></script>
+        <script src="{{ versioned_asset('js/mobile-digits.js') }}" defer></script>
     @endif
 </head>
 <body @class(['public-site flex min-h-screen flex-col', 'homepage' => request()->routeIs('home'), 'premium-storefront' => View::hasSection('premium-storefront')]) @if(View::hasSection('premium-storefront')) data-navigation="a" @endif>

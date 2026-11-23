@@ -1,0 +1,7 @@
+# Non-hashed static stylesheets: always revalidate so deployments take effect immediately
+# without requiring Ctrl+F5, while hashed /build/assets/* remain immutable.
+<IfModule mod_headers.c>
+    <FilesMatch "\.css$">
+        Header set Cache-Control "public, max-age=0, must-revalidate"
+    </FilesMatch>
+</IfModule>

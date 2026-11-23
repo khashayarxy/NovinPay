@@ -290,5 +290,5 @@
         </aside>
     </div>
 </div>
-<script src="{{ asset('js/customer-otp.js?v=6') }}" defer></script>
+<script src="{{ versioned_asset('js/customer-otp.js') }}" defer></script>
 @endsection

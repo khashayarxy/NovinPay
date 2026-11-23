@@ -7,7 +7,7 @@
     @yield('navigation')
     <title>@yield('title') | {{ config('business.name') }}</title>
     <x-brand-head />
-    <link rel="stylesheet" href="{{ asset('css/payment-flow.css?v=1') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('css/payment-flow.css') }}">
 </head>
 <body>
     <main class="payment-shell">

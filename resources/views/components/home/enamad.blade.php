@@ -15,4 +15,4 @@
        target="_blank"
        href="https://trustseal.enamad.ir/?id=8644634&Code=bkoTwmLFJ1lp9goDGHf1cuve1Tgw8t6n">استعلام نماد اعتماد الکترونیکی</a>
 </div>
-<script src="{{ asset('brand/trust/enamad-fallback.js') }}" defer></script>
+<script src="{{ versioned_asset('brand/trust/enamad-fallback.js') }}" defer></script>

@@ -31,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        require_once app_path('Support/helpers.php');
+
         $this->app->singleton(ChatBridge::class);
         $this->app->singleton(SiteMaintenanceState::class, fn () => new SiteMaintenanceState(storage_path('framework/site-maintenance')));
         $this->app->singleton(PreviewAwareSession::class, fn ($app) => new PreviewAwareSession(
