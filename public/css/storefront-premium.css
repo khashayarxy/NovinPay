@@ -94,7 +94,7 @@ body.premium-storefront {
 }
 .premium-storefront .header-main nav a[aria-current] {
     color: var(--blue);
-    font-weight: 750;
+    font-weight: 700;
 }
 .premium-storefront .header-contact {
     display: flex;
@@ -234,7 +234,7 @@ body.premium-storefront {
     border-radius: 6px;
     padding: 4px 12px;
     font-size: 12px;
-    font-weight: 750;
+    font-weight: 700;
     letter-spacing: .5px;
 }
 .premium-storefront .used {
@@ -243,7 +243,7 @@ body.premium-storefront {
     color: #805017;
     border-radius: 6px;
     padding: 3px 10px;
-    font-weight: 650;
+    font-weight: 500;
 }
 .premium-storefront .used.is-new {
     background: #eaf5ff;
@@ -255,7 +255,7 @@ body.premium-storefront {
 }
 .premium-storefront h1 {
     font-size: 24px;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.65;
     text-wrap: balance;
 }
@@ -336,7 +336,7 @@ body.premium-storefront {
     padding: 10px;
     border-radius: 7px;
     color: #536a80;
-    font-weight: 650;
+    font-weight: 500;
 }
 .premium-storefront .key-specs dd,.premium-storefront .key-mobile dd {
     background: #fff;
@@ -373,7 +373,7 @@ body.premium-storefront {
 }
 .premium-storefront .price {
     font-size: 29px;
-    font-weight: 850;
+    font-weight: 700;
     line-height: 1.7;
     color: var(--blue);
     font-variant-numeric: tabular-nums;
@@ -381,7 +381,7 @@ body.premium-storefront {
 }
 .premium-storefront .price small {
     font-size: 14px;
-    font-weight: 650;
+    font-weight: 500;
 }
 .premium-storefront .warranty {
     display: flex;
@@ -420,7 +420,7 @@ body.premium-storefront {
     border-radius: 9px;
     min-height: 50px;
     padding: 10px;
-    font-weight: 750;
+    font-weight: 700;
     font-size: 13px;
     box-shadow: 0 5px 14px #0878d11f;
 }
@@ -494,7 +494,7 @@ body.premium-storefront {
 .premium-storefront .section-nav a[aria-current] {
     background: #eef5fc;
     color: var(--ink);
-    font-weight: 750;
+    font-weight: 700;
     border-radius: 8px;
 }
 .premium-storefront .section-nav a[aria-current]:after {
@@ -514,12 +514,12 @@ body.premium-storefront {
 .premium-storefront .article h2,.premium-storefront .technical h2,.premium-storefront .faq h2,.premium-storefront .related h2 {
     font-size: 21px;
     line-height: 1.6;
-    font-weight: 800;
+    font-weight: 700;
     margin-bottom: 20px;
 }
 .premium-storefront .article h3 {
     font-size: 17px;
-    font-weight: 750;
+    font-weight: 700;
     margin: 24px 0 8px;
 }
 .premium-storefront .product-lines {
@@ -548,19 +548,19 @@ body.premium-storefront {
     color: #4c6279;
     padding: 12px;
     width: 38%;
-    font-weight: 650;
+    font-weight: 500;
 }
 .premium-storefront .product-spec-table td {
     background: #fcfdff;
     border: 1px solid var(--rule);
     border-radius: 8px;
     padding: 12px;
-    font-weight: 650;
+    font-weight: 500;
 }
 .premium-storefront .product-spec-category th {
     background: white!important;
     color: var(--ink);
-    font-weight: 800!important;
+    font-weight: 700!important;
     padding: 8px;
 }
 .premium-storefront .product-spec-source {
@@ -576,7 +576,7 @@ body.premium-storefront {
 .premium-storefront .faq summary {
     cursor: pointer;
     min-height: 44px;
-    font-weight: 650;
+    font-weight: 500;
     font-size: 14px;
 }
 .premium-storefront .product-faq-answer {
@@ -1103,7 +1103,7 @@ body.premium-storefront {
 }
 .premium-storefront .search-dialog label {
     font-size: 14px;
-    font-weight: 650;
+    font-weight: 500;
 }
 .premium-storefront .search-dialog input {
     font: inherit;
@@ -1124,7 +1124,7 @@ body.premium-storefront {
     background: #075da6;
     color: #fff;
     border: 0;
-    font-weight: 750;
+    font-weight: 700;
 }
 .premium-storefront .article .product-editorial-grid>div+div {
     border-top: 1px solid var(--rule);
@@ -1434,10 +1434,10 @@ body.premium-storefront {
         line-height: 1.8;
     }
     .premium-storefront .section-nav a {
-        font-weight: 600;
+        font-weight: 500;
     }
     .premium-storefront .section-nav a[aria-current] {
-        font-weight: 750;
+        font-weight: 700;
     }
 }
 @media(max-width:700px) {
@@ -1593,7 +1593,7 @@ html:has(body.premium-storefront) {
     padding: 10px 12px;
     border-radius: 11px;
     font-size: 14.5px;
-    font-weight: 600;
+    font-weight: 500;
     color: #163a61;
     list-style: none;
     transition: background-color 140ms ease, color 140ms ease;
@@ -1667,7 +1667,7 @@ html:has(body.premium-storefront) {
 .premium-storefront .category-sublist > a[aria-current="page"] {
     background: #e6f3ff;
     color: #075da6;
-    font-weight: 650;
+    font-weight: 500;
 }
 .premium-storefront .category-dialog .menu-chevron {
     margin-inline-start: auto;
@@ -1692,7 +1692,7 @@ html:has(body.premium-storefront) {
     width: 100%;
     min-height: 46px;
     font-size: 14px;
-    font-weight: 650;
+    font-weight: 500;
     padding: 10px 12px;
     border: 1px solid #d5e6f5;
     background: #f1f7fd;
@@ -1727,7 +1727,7 @@ html:has(body.premium-storefront) {
     background: #f8fbfe;
     color: #075da6;
     font-size: 12.5px;
-    font-weight: 650;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
     transition: background-color 140ms ease, border-color 140ms ease;
 }
@@ -2663,7 +2663,7 @@ html:has(body.premium-storefront) {
     padding-inline-end: 12px;
     font-weight: 500;
 }
-.premium-storefront .product-spec-table td { font-weight: 600; }
+.premium-storefront .product-spec-table td { font-weight: 500; }
 .premium-storefront .technical .product-spec-category th {
     padding: 15px 0 4px;
     font-size: 14px;
@@ -2685,9 +2685,9 @@ html:has(body.premium-storefront) {
     text-align: start;
     text-wrap: pretty;
 }
-.premium-storefront :is(.key-specs, .key-mobile) h2 { font-weight: 650; }
+.premium-storefront :is(.key-specs, .key-mobile) h2 { font-weight: 500; }
 .premium-storefront :is(.key-specs, .key-mobile) dt { font-weight: 500; }
-.premium-storefront :is(.key-specs, .key-mobile) dd { font-weight: 650; }
+.premium-storefront :is(.key-specs, .key-mobile) dd { font-weight: 500; }
 @media (min-width: 701px) {
     .premium-storefront :is(.key-specs, .key-mobile) dl > div { font-size: 13px; line-height: 1.7; }
 }
@@ -2742,7 +2742,7 @@ html:has(body.premium-storefront) {
     .premium-storefront .sticky-contact .price small {
         color: var(--muted);
         font-size: 11px;
-        font-weight: 550;
+        font-weight: 500;
     }
     .premium-storefront .sticky-contact .primary {
         min-height: 44px;
@@ -2861,7 +2861,7 @@ html:has(body.premium-storefront) {
     background: transparent; padding: 2px 0; border: 0;
 }
 .premium-storefront .product-overview .key-mobile dt { color: var(--muted); }
-.premium-storefront .product-overview .key-mobile dd { font-weight: 650; }
+.premium-storefront .product-overview .key-mobile dd { font-weight: 500; }
 .premium-storefront .spec-groups { display: grid; gap: 18px 24px; margin-top: 16px; }
 .premium-storefront .spec-groups section { min-width: 0; }
 .premium-storefront .spec-groups h3 {
@@ -2875,12 +2875,12 @@ html:has(body.premium-storefront) {
 }
 .premium-storefront .spec-groups dl > div:nth-child(odd) { background: #f2f6fa; }
 .premium-storefront .spec-groups dt { color: #455c71; }
-.premium-storefront .spec-groups dd { margin: 0; font-weight: 600; }
+.premium-storefront .spec-groups dd { margin: 0; font-weight: 500; }
 .premium-storefront .review-empty { display: flex; align-items: center; gap: 14px; padding: 16px; margin-top: 14px; background: #f3f7fb; border-radius: 12px; }
 .premium-storefront .review-empty > svg, .premium-storefront .review-author-icon {
     width: 38px; height: 38px; flex: none; padding: 9px; border-radius: 12px; color: #075da6; background: #e1effa;
 }
-.premium-storefront .review-empty .product-feedback-empty { margin: 0; padding: 0; font-weight: 650; color: var(--ink); }
+.premium-storefront .review-empty .product-feedback-empty { margin: 0; padding: 0; font-weight: 500; color: var(--ink); }
 .premium-storefront .review-empty small { color: var(--muted); }
 .premium-storefront .product-feedback-heading { max-inline-size: none; }
 .premium-storefront .product-entry { padding: 16px; border-radius: 12px; border-color: var(--rule); }
@@ -2932,7 +2932,7 @@ html:has(body.premium-storefront) {
 }
 .premium-storefront .product-feedback .btn-primary { background: #075da6; color: white; }
 .premium-storefront .rating-choice { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 4px; }
-.premium-storefront .rating-choice legend { margin-bottom: 6px; font-weight: 650; }
+.premium-storefront .rating-choice legend { margin-bottom: 6px; font-weight: 500; }
 .premium-storefront .rating-choice label { display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 8px; cursor: pointer; }
 .premium-storefront .rating-choice input { accent-color: #075da6; }
 .premium-storefront .rating-choice label:has(:checked) { background: #edf6ff; border-color: #3481bf; }
@@ -2956,7 +2956,7 @@ html:has(body.premium-storefront) {
 .premium-storefront .purchase-meta a { color: #075da6; text-underline-offset: 3px; }
 .premium-storefront .purchase-meta a:is(:hover,:focus-visible) { text-decoration: underline; }
 .premium-storefront .more-key-specs summary {
-    width: fit-content; padding-block: 10px; color: #075da6; cursor: pointer; font-weight: 600;
+    width: fit-content; padding-block: 10px; color: #075da6; cursor: pointer; font-weight: 500;
 }
 .premium-storefront .more-key-specs:not([open]) summary span:last-child,
 .premium-storefront .more-key-specs[open] summary span:first-child { display: none; }

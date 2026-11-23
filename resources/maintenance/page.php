@@ -14,7 +14,6 @@ $inlineFont = static function (string $relPath) use ($publicFonts): ?string {
 };
 $danaRegular = $inlineFont('dana/DanaFaNum-Regular.woff2');
 $danaBold = $inlineFont('dana/DanaFaNum-Bold.woff2');
-$iranYekanBold = $inlineFont('iranyekanx/IRANYekanXFaNum-Bold.woff2');
 ?>
 <!doctype html>
 <html lang="fa" dir="rtl">
@@ -25,8 +24,6 @@ $iranYekanBold = $inlineFont('iranyekanx/IRANYekanXFaNum-Bold.woff2');
 <meta name="theme-color" content="#ffffff">
 <title>در حال تعمیرات و به‌روزرسانی سایت نوین‌پی هستیم | <?= $escape($business['name']) ?></title>
 <style>
-<?php if ($iranYekanBold !== null) { ?>@font-face{font-family:'IRANYekanX';src:url('<?= $iranYekanBold ?>') format('woff2');font-style:normal;font-weight:700;font-display:swap}
-<?php } ?>
 <?php if ($danaRegular !== null) { ?>@font-face{font-family:'Dana';src:url('<?= $danaRegular ?>') format('woff2');font-style:normal;font-weight:400;font-display:swap}
 <?php } ?>
 <?php if ($danaBold !== null) { ?>@font-face{font-family:'Dana';src:url('<?= $danaBold ?>') format('woff2');font-style:normal;font-weight:700;font-display:swap}
@@ -42,7 +39,7 @@ body{margin:0;min-width:0;min-height:100svh;color:#516784;font-family:'Dana',Tah
 .hero{position:relative;isolation:isolate;display:grid;place-items:center;width:min(720px,89vw,62svh);margin:clamp(8px,1.5vh,18px) 0 0;flex:none}
 .hero::before{content:"";position:absolute;z-index:-1;inset:17% 9% 10%;border-radius:50%;background:radial-gradient(ellipse,#daefff 4%,#eef8ff 58%,transparent 75%)}
 .illustration{display:block;width:100%;height:auto;aspect-ratio:1100/733;object-fit:contain}
-h1{max-width:800px;margin:0;color:#071a3b;font-family:'IRANYekanX','Dana',Tahoma,sans-serif;font-feature-settings:'dots' 1;font-size:clamp(23px,3vw,42px);font-weight:700;line-height:1.65;text-wrap:balance}
+h1{max-width:800px;margin:0;color:#071a3b;font-family:'Dana',Tahoma,sans-serif;font-size:clamp(23px,3vw,42px);font-weight:700;line-height:1.65;text-wrap:balance}
 h1 span{color:#098cf7}
 .message{margin:8px 0 0;font-size:clamp(15px,1.35vw,19px);line-height:1.8;color:#526784}
 .contact{margin-top:clamp(12px,2vh,22px)}
