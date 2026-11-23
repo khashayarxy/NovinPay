@@ -21,7 +21,7 @@
     }
     $prefix = $address?->public_id ?? 'new-address';
 @endphp
-<form method="post" class="np-account-form" data-iran-address-form data-prevent-double-submit action="{{ $address ? route('account.address.update', $address->public_id) : route('account.address') }}">
+<form method="post" class="np-account-form" data-iran-address-form data-prevent-double-submit novalidate action="{{ $address ? route('account.address.update', $address->public_id) : route('account.address') }}">
     @csrf
     <input type="hidden" name="address_form_key" value="{{ $formKey }}">
 

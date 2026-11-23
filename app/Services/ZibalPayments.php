@@ -188,12 +188,13 @@ class ZibalPayments
             if (! DeliveryPlan::query()->where('financial_document_id', $document->id)->exists()) {
                 $addressSnapshot = app(DeliveryManagement::class)->checkoutAddress($freshAccount, $method === 'pickup' ? null : $addressPublicId, $method);
                 $plan = new DeliveryPlan;
+                $deferredMethod = in_array($method, ['courier', 'post'], true);
                 foreach ([
                     'public_id' => (string) Str::uuid(),
                     'financial_document_id' => $document->id,
                     'customer_account_id' => $freshAccount->id,
-                    'method' => $method === 'courier' ? 'tipax' : $method,
-                    'requested_method' => $method === 'courier' ? 'courier' : null,
+                    'method' => $deferredMethod ? 'tipax' : $method,
+                    'requested_method' => $deferredMethod ? $method : null,
                     'shipping_minor' => 0,
                     'address_snapshot' => $addressSnapshot,
                     'version' => 1,

@@ -110,18 +110,33 @@ class MultiStepCheckoutZibalTest extends TestCase
         ]);
     }
 
-    public function test_checkout_renders_three_steps_and_active_zibal_option_when_enabled(): void
+    public function test_checkout_renders_four_steps_interactive_map_and_step4_only_submit_button(): void
     {
         $this->seedCartItem();
 
         $response = $this->get('https://novinpaypos.test/cart/checkout')->assertOk();
-        $response->assertSee('data-checkout-step="1"', false)
+        $html = $response->getContent();
+        $response->assertSee('novalidate', false)
+            ->assertSee('data-checkout-step="1"', false)
             ->assertSee('data-checkout-step="2"', false)
             ->assertSee('data-checkout-step="3"', false)
+            ->assertSee('data-checkout-step="4"', false)
+            ->assertSee('data-checkout-map', false)
+            ->assertSee('تحویل حضوری در فروشگاه نوینپِی')
+            ->assertSee('پست')
+            ->assertSee('تیپاکس')
+            ->assertSee('پیک')
             ->assertSee('پرداخت آنلاین با درگاه زیبال')
             ->assertSee('name="payment_method" value="zibal"', false)
             ->assertSee('images/zibal-trust-light.svg')
             ->assertSee('پرداخت آنلاین با زیبال');
+
+        // Confirm submit button is ONLY inside Step 4 and NOT in the left-side order summary aside.
+        $doc = new \DOMDocument;
+        @$doc->loadHTML('<?xml encoding="UTF-8">'.$html);
+        $xpath = new \DOMXPath($doc);
+        $this->assertSame(1, $xpath->query('//div[@data-checkout-step="4"]//button[@data-checkout-submit]')->length);
+        $this->assertSame(0, $xpath->query('//aside[contains(@class,"commerce-summary")]//button[@data-checkout-submit]')->length);
 
         // When Zibal is disabled, online option is hidden and request mode is default.
         config(['payments.zibal.enabled' => false]);
@@ -129,6 +144,114 @@ class MultiStepCheckoutZibalTest extends TestCase
         $disabled->assertDontSee('name="payment_method" value="zibal"', false)
             ->assertSee('ثبت درخواست سفارش')
             ->assertSee('پرداخت آنلاین فعلاً در دسترس نیست');
+    }
+
+    public function test_unlinked_account_and_high_value_pos_checkout_with_inline_profile_and_map_succeeds_without_403(): void
+    {
+        Event::fake([OrderPaid::class]);
+
+        // Simulate a newly registered Google/OTP account with customer_id = null (previously caused HTTP 403).
+        $unlinkedAccount = CustomerAccount::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'customer_id' => null,
+            'phone_digest' => null,
+            'phone' => null,
+            'email_digest' => hash_hmac('sha256', 'google-user@example.com', config('app.key')),
+            'email' => 'google-user@example.com',
+            'name' => 'کاربر گوگل',
+            'verified_at' => now(),
+            'is_active' => true,
+            'session_version' => 1,
+        ]);
+
+        // High-value POS terminal: 10,500,000 Toman = 105,000,000 Rial
+        $this->product->price = 10500000;
+        $this->product->save();
+
+        $this->actingAs($unlinkedAccount, 'customer')
+            ->withSession(['customer_session_version' => 1])
+            ->withUnencryptedCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('b', 64));
+
+        $cart = $this->get('https://novinpaypos.test/cart')->assertOk();
+        $this->post('https://novinpaypos.test/cart/products/'.$this->product->slug, [
+            'cart_context' => $cart->viewData('proof'),
+            'cart_revision' => $cart->viewData('revision'),
+            'quantity' => 1,
+        ])->assertRedirect();
+
+        $checkout = $this->get('https://novinpaypos.test/cart/checkout')->assertOk();
+
+        Http::fake([
+            'https://gateway.zibal.ir/v1/request' => Http::response(['result' => 100, 'trackId' => 998877665], 200),
+        ]);
+
+        $res = $this->post('https://novinpaypos.test/cart/checkout', [
+            'cart_context' => $checkout->viewData('proof'),
+            'cart_revision' => $checkout->viewData('revision'),
+            'operation_key' => (string) Str::uuid(),
+            'quote' => $checkout->viewData('quote'),
+            'full_name' => 'مهدی کریمی',
+            'mobile' => '۰۹۱۲۹۸۷۶۵۴۳',
+            'national_code' => '۰۰۱۲۳۴۵۶۷۹',
+            'email' => 'google-user@example.com',
+            'address_mode' => 'new',
+            'province' => 'تهران',
+            'city' => 'شهریار',
+            'street_address' => 'خیابان ولیعصر، کوچه بهار، پلاک ۱۵، واحد ۲',
+            'postal_code' => '۳۳۵۱۶۱۲۳۴۵',
+            'latitude' => '35.659700',
+            'longitude' => '51.059200',
+            'method' => 'post',
+            'payment_method' => 'zibal',
+        ]);
+
+        $attempt = PaymentAttempt::query()->sole();
+        $this->assertSame(105000000, $attempt->amount_rial);
+        $this->assertSame('pending', $attempt->state);
+        $res->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/connect');
+
+        $unlinkedAccount->refresh();
+        $this->assertNotNull($unlinkedAccount->customer_id);
+        $this->assertSame('مهدی کریمی', $unlinkedAccount->name);
+        $this->assertSame('0012345679', $unlinkedAccount->national_code);
+
+        $savedAddr = CustomerAddress::query()->where('customer_account_id', $unlinkedAccount->id)->sole();
+        $this->assertEqualsWithDelta(35.6597, $savedAddr->latitude, 0.0001);
+        $this->assertEqualsWithDelta(51.0592, $savedAddr->longitude, 0.0001);
+    }
+
+    public function test_checkout_returns_fluent_persian_inline_validation_errors(): void
+    {
+        [$proof, $revision, $quote] = $this->seedCartItem();
+
+        $res = $this->from('https://novinpaypos.test/cart/checkout')
+            ->post('https://novinpaypos.test/cart/checkout', [
+                'cart_context' => $proof,
+                'cart_revision' => $revision,
+                'operation_key' => (string) Str::uuid(),
+                'quote' => $quote,
+                'full_name' => 'ع',
+                'mobile' => '09123',
+                'national_code' => '1111111111',
+                'address_mode' => 'new',
+                'province' => '',
+                'city' => '',
+                'street_address' => 'کوتاه',
+                'postal_code' => '1234',
+                'method' => 'tipax',
+                'payment_method' => 'zibal',
+            ]);
+
+        $res->assertRedirect('https://novinpaypos.test/cart/checkout')
+            ->assertSessionHasErrors([
+                'full_name' => 'نام و نام خانوادگی باید حداقل ۲ کاراکتر باشد.',
+                'mobile' => 'لطفاً شماره موبایل معتبر ۱۱ رقمی وارد کنید (مانند ۰۹۱۲۳۴۵۶۷۸۹).',
+                'national_code' => 'کد ملی واردشده معتبر نیست.',
+                'province' => 'لطفاً استان محل تحویل را انتخاب کنید.',
+                'city' => 'لطفاً شهر محل تحویل را انتخاب کنید.',
+                'street_address' => 'آدرس دقیق باید حداقل ۱۰ کاراکتر باشد.',
+                'postal_code' => 'کد پستی باید دقیقاً ۱۰ رقم بدون خط تیره باشد.',
+            ]);
     }
 
     public function test_checkout_with_zibal_initiates_gateway_redirect_and_settles_on_callback(): void

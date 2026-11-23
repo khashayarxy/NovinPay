@@ -7,6 +7,12 @@
     if ($defaultPayment === 'zibal' && ! $zibalAvailable) {
         $defaultPayment = 'request';
     }
+    $iranLocations = $iranLocations ?? config('iran_locations', []);
+    $selectedProvince = (string) old('province', '');
+    $selectedCity = (string) old('city', '');
+    $citiesForProvince = $iranLocations[$selectedProvince] ?? [];
+    $defaultAddressMode = old('address_mode', $addresses->isNotEmpty() ? 'saved' : 'new');
+    $defaultMethod = old('method', 'pickup');
     $methodLabels = array_map(fn (array $meta) => $meta[0], \App\Services\DeliveryManagement::CHECKOUT_METHODS);
 @endphp
 <div class="np-container commerce-page">
@@ -16,76 +22,196 @@
             <ol class="checkout-steps" aria-label="مراحل تکمیل سفارش">
                 <li class="checkout-step is-active" data-step-indicator="1" aria-current="step">
                     <span class="checkout-step__num">۱</span>
-                    <span class="checkout-step__label">تحویل و نشانی</span>
+                    <span class="checkout-step__label">مشخصات شخصی</span>
                 </li>
                 <li class="checkout-step" data-step-indicator="2">
                     <span class="checkout-step__num">۲</span>
-                    <span class="checkout-step__label">درگاه پرداخت</span>
+                    <span class="checkout-step__label">ارسال و نقشه</span>
                 </li>
                 <li class="checkout-step" data-step-indicator="3">
                     <span class="checkout-step__num">۳</span>
-                    <span class="checkout-step__label">تأیید و پرداخت</span>
+                    <span class="checkout-step__label">نحوه ارسال</span>
+                </li>
+                <li class="checkout-step" data-step-indicator="4">
+                    <span class="checkout-step__num">۴</span>
+                    <span class="checkout-step__label">پرداخت و تأیید</span>
                 </li>
             </ol>
         </div>
 
         <x-admin.errors />
 
-        <form action="{{ route('cart.checkout') }}" method="post" class="store-checkout commerce-columns" data-store-checkout data-zibal-available="{{ $zibalAvailable ? '1' : '0' }}">
+        <script type="application/json" id="iran-locations-data">@json($iranLocations, JSON_UNESCAPED_UNICODE)</script>
+
+        <form action="{{ route('cart.checkout') }}" method="post" class="store-checkout commerce-columns" data-store-checkout data-iran-address-form data-zibal-available="{{ $zibalAvailable ? '1' : '0' }}" novalidate>
             @csrf
             <x-storefront.cart-context :proof="$proof" :revision="$revision" />
             <input type="hidden" name="operation_key" value="{{ old('operation_key', $operation) }}">
             <input type="hidden" name="quote" value="{{ $quote }}">
 
             <div class="commerce-checkout-fields">
-                {{-- Step 1: Delivery & Address --}}
+                {{-- Step 1: Personal Details --}}
                 <div class="checkout-step-panel is-active" data-checkout-step="1">
                     <fieldset class="commerce-panel">
-                        <legend>روش تحویل</legend>
-                        <div class="commerce-choices">
-                            @foreach (\App\Services\DeliveryManagement::CHECKOUT_METHODS as $method => [$label, $description])
-                                <x-storefront.delivery-option :$method :$label :$description
-                                    :cost="match($method) { 'pickup' => 'بدون هزینهٔ ارسال', 'tipax' => 'پس‌کرایه', default => 'پس از بررسی' }"
-                                    :disabled="$method !== 'pickup' && $addresses->isEmpty()" />
-                            @endforeach
-                        </div>
-                        @error('method')<p class="commerce-field-error">{{ $message }}</p>@enderror
-                    </fieldset>
-
-                    <fieldset class="commerce-panel">
-                        <legend>گیرنده و نشانی تحویل</legend>
-                        @if ($account->name)
-                            <div class="commerce-recipient"><span>تحویل حضوری به نام</span> <strong>{{ $account->name }}</strong></div>
-                        @endif
-                        @if ($addresses->isNotEmpty())
-                            <div class="commerce-address-field">
-                                <label for="delivery-address">نشانی ذخیره‌شده برای ارسال</label>
-                                <div class="commerce-select">
-                                    <select id="delivery-address" name="address" @error('address') aria-invalid="true" aria-describedby="checkout-address-error" @enderror>
-                                        <option value="">انتخاب نشانی</option>
-                                        @foreach ($addresses as $address)
-                                            <option value="{{ $address->public_id }}" @selected(old('address') === $address->public_id)>{{ $address->recipient }} · {{ $address->city }} · {{ $address->address }}</option>
-                                        @endforeach
-                                    </select>
-                                    <x-storefront.icon name="chevron-down" />
-                                </div>
+                        <legend>مرحله ۱ · مشخصات شخصی</legend>
+                        <div class="checkout-form-grid">
+                            <div class="checkout-field">
+                                <label for="checkout-full-name">نام و نام خانوادگی</label>
+                                <input id="checkout-full-name" name="full_name" type="text" class="checkout-input @error('full_name') is-invalid @enderror" value="{{ old('full_name', $account->name) }}" autocomplete="name" maxlength="100" placeholder="مثلاً علی محمدی">
+                                <p class="checkout-field-error" data-error-for="full_name" @unless($errors->has('full_name')) hidden @endunless>@error('full_name'){{ $message }}@enderror</p>
                             </div>
-                        @else
-                            <p class="commerce-summary__note">برای ارسال، ابتدا نشانی و مشخصات گیرنده را در حساب خود ذخیره کنید.</p>
-                        @endif
-                        @error('address')<p class="commerce-field-error" id="checkout-address-error">{{ $message }}</p>@enderror
-                        <p class="commerce-field-error" data-step1-error hidden></p>
+                            <div class="checkout-field">
+                                <label for="checkout-mobile">شماره موبایل</label>
+                                <input id="checkout-mobile" name="mobile" type="tel" dir="ltr" inputmode="numeric" class="checkout-input @error('mobile') is-invalid @enderror" value="{{ old('mobile', $account->phone) }}" autocomplete="tel" maxlength="11" placeholder="09123456789">
+                                <p class="checkout-field-error" data-error-for="mobile" @unless($errors->has('mobile')) hidden @endunless>@error('mobile'){{ $message }}@enderror</p>
+                            </div>
+                            <div class="checkout-field">
+                                <label for="checkout-national-code">کد ملی (۱۰ رقمی)</label>
+                                <input id="checkout-national-code" name="national_code" type="text" dir="ltr" inputmode="numeric" class="checkout-input @error('national_code') is-invalid @enderror" value="{{ old('national_code', $account->national_code) }}" maxlength="10" placeholder="۰۰۱۲۳۴۵۶۷۸">
+                                <p class="checkout-field-error" data-error-for="national_code" @unless($errors->has('national_code')) hidden @endunless>@error('national_code'){{ $message }}@enderror</p>
+                            </div>
+                            <div class="checkout-field">
+                                <label for="checkout-email">ایمیل (اختیاری)</label>
+                                <input id="checkout-email" name="email" type="email" dir="ltr" class="checkout-input @error('email') is-invalid @enderror" value="{{ old('email', $account->email) }}" autocomplete="email" maxlength="150" placeholder="name@example.com">
+                                <p class="checkout-field-error" data-error-for="email" @unless($errors->has('email')) hidden @endunless>@error('email'){{ $message }}@enderror</p>
+                            </div>
+                        </div>
                         <div class="checkout-step-actions">
-                            <a href="{{ route('account.index', ['section' => 'addresses']) }}" class="commerce-action commerce-action--secondary">مدیریت نشانی‌ها</a>
-                            <button type="button" class="commerce-action commerce-action--primary" data-checkout-next="2">ادامه به انتخاب درگاه پرداخت</button>
+                            <a href="{{ route('cart.index') }}" class="commerce-action commerce-action--secondary">بازگشت به سبد خرید</a>
+                            <button type="button" class="commerce-action commerce-action--primary" data-checkout-next="2">ادامه به مشخصات ارسال و نقشه</button>
                         </div>
                     </fieldset>
                 </div>
 
-                {{-- Step 2: Payment Gateway Selection --}}
+                {{-- Step 2: Shipping Address & Interactive Map --}}
                 <div class="checkout-step-panel" data-checkout-step="2">
                     <fieldset class="commerce-panel">
-                        <legend>انتخاب روش پرداخت</legend>
+                        <legend>مرحله ۲ · مشخصات ارسال و نقشه تعاملی</legend>
+                        <p class="commerce-summary__note">اگر قصد تحویل حضوری در فروشگاه نوینپِی را دارید، می‌توانید بدون وارد کردن نشانی به مرحله بعد بروید.</p>
+
+                        @if ($addresses->isNotEmpty())
+                            <div class="checkout-mode-tabs" role="radiogroup" aria-label="انتخاب نوع نشانی">
+                                <label class="checkout-mode-tab">
+                                    <input type="radio" name="address_mode" value="saved" @checked($defaultAddressMode === 'saved')>
+                                    <span>انتخاب از نشانی‌های ذخیره‌شده</span>
+                                </label>
+                                <label class="checkout-mode-tab">
+                                    <input type="radio" name="address_mode" value="new" @checked($defaultAddressMode === 'new')>
+                                    <span>ثبت نشانی جدید روی نقشه</span>
+                                </label>
+                            </div>
+
+                            <div class="checkout-saved-address-box" data-address-section="saved" @if($defaultAddressMode !== 'saved') hidden @endif>
+                                <div class="checkout-field">
+                                    <label for="delivery-address">نشانی ذخیره‌شده</label>
+                                    <div class="commerce-select">
+                                        <select id="delivery-address" name="address" class="checkout-input @error('address') is-invalid @enderror">
+                                            <option value="">انتخاب نشانی</option>
+                                            @foreach ($addresses as $address)
+                                                <option value="{{ $address->public_id }}" @selected(old('address') === $address->public_id)>{{ $address->recipient }} · {{ $address->province }}، {{ $address->city }} · {{ $address->address }}</option>
+                                            @endforeach
+                                        </select>
+                                        <x-storefront.icon name="chevron-down" />
+                                    </div>
+                                    <p class="checkout-field-error" data-error-for="address" @unless($errors->has('address')) hidden @endunless>@error('address'){{ $message }}@enderror</p>
+                                </div>
+                            </div>
+                        @else
+                            <input type="hidden" name="address_mode" value="new">
+                        @endif
+
+                        <div class="checkout-new-address-box" data-address-section="new" @if($addresses->isNotEmpty() && $defaultAddressMode !== 'new') hidden @endif>
+                            <div class="checkout-form-grid">
+                                <div class="checkout-field">
+                                    <label for="checkout-province">استان</label>
+                                    <select id="checkout-province" name="province" class="checkout-input @error('province') is-invalid @enderror" data-iran-province>
+                                        <option value="">انتخاب استان</option>
+                                        @foreach (array_keys($iranLocations) as $provinceName)
+                                            <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
+                                        @endforeach
+                                    </select>
+                                    <p class="checkout-field-error" data-error-for="province" @unless($errors->has('province')) hidden @endunless>@error('province'){{ $message }}@enderror</p>
+                                </div>
+                                <div class="checkout-field">
+                                    <label for="checkout-city">شهر</label>
+                                    <select id="checkout-city" name="city" class="checkout-input @error('city') is-invalid @enderror" data-iran-city data-selected-city="{{ $selectedCity }}">
+                                        <option value="">ابتدا استان را انتخاب کنید</option>
+                                        @foreach ($citiesForProvince as $cityName)
+                                            <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>
+                                        @endforeach
+                                    </select>
+                                    <p class="checkout-field-error" data-error-for="city" @unless($errors->has('city')) hidden @endunless>@error('city'){{ $message }}@enderror</p>
+                                </div>
+                                <div class="checkout-field checkout-field--full">
+                                    <label for="checkout-street">آدرس دقیق</label>
+                                    <textarea id="checkout-street" name="street_address" rows="2" class="checkout-input @error('street_address') is-invalid @enderror" maxlength="400" placeholder="خیابان، کوچه، پلاک، واحد">{{ old('street_address') }}</textarea>
+                                    <p class="checkout-field-error" data-error-for="street_address" @unless($errors->has('street_address')) hidden @endunless>@error('street_address'){{ $message }}@enderror</p>
+                                </div>
+                                <div class="checkout-field">
+                                    <label for="checkout-postal-code">کد پستی (۱۰ رقمی)</label>
+                                    <input id="checkout-postal-code" name="postal_code" type="text" dir="ltr" inputmode="numeric" class="checkout-input @error('postal_code') is-invalid @enderror" value="{{ old('postal_code') }}" maxlength="10" placeholder="۳۳۵۱۶۱۲۳۴۵">
+                                    <p class="checkout-field-error" data-error-for="postal_code" @unless($errors->has('postal_code')) hidden @endunless>@error('postal_code'){{ $message }}@enderror</p>
+                                </div>
+                            </div>
+
+                            <div class="checkout-map" data-checkout-map data-default-lat="{{ old('latitude', '35.6597') }}" data-default-lng="{{ old('longitude', '51.0592') }}">
+                                <div class="checkout-map__header">
+                                    <span>موقعیت دقیق روی نقشه (برای ثبت پین کلیک یا نقشه را جابه‌جا کنید)</span>
+                                    <div class="checkout-map__controls">
+                                        <button type="button" class="checkout-map__btn" data-map-locate title="موقعیت فعلی من">موقعیت من</button>
+                                        <button type="button" class="checkout-map__btn" data-map-zoom="in" aria-label="بزرگ‌نمایی">+</button>
+                                        <button type="button" class="checkout-map__btn" data-map-zoom="out" aria-label="کوچک‌نمایی">−</button>
+                                    </div>
+                                </div>
+                                <div class="checkout-map__viewport" data-map-viewport tabindex="0" role="application" aria-label="نقشه انتخاب موقعیت تحویل">
+                                    <div class="checkout-map__tiles" data-map-tiles></div>
+                                    <div class="checkout-map__pin" aria-hidden="true"></div>
+                                </div>
+                                <div class="checkout-map__footer">
+                                    <span class="checkout-map__coords" data-map-coords dir="ltr">{{ old('latitude') && old('longitude') ? old('latitude').', '.old('longitude') : 'موقعیت انتخاب نشده (اختیاری)' }}</span>
+                                    <span class="checkout-map__attr">© OpenStreetMap</span>
+                                </div>
+                                <input type="hidden" name="latitude" value="{{ old('latitude') }}" data-map-lat>
+                                <input type="hidden" name="longitude" value="{{ old('longitude') }}" data-map-lng>
+                            </div>
+                        </div>
+
+                        <div class="checkout-step-actions">
+                            <button type="button" class="commerce-action commerce-action--secondary" data-checkout-prev="1">مرحله قبل</button>
+                            <button type="button" class="commerce-action commerce-action--primary" data-checkout-next="3">ادامه به نحوه ارسال</button>
+                        </div>
+                    </fieldset>
+                </div>
+
+                {{-- Step 3: Shipping Method --}}
+                <div class="checkout-step-panel" data-checkout-step="3">
+                    <fieldset class="commerce-panel">
+                        <legend>مرحله ۳ · نحوه ارسال و روش تحویل</legend>
+                        <div class="commerce-choices">
+                            @foreach (\App\Services\DeliveryManagement::CHECKOUT_METHODS as $method => [$label, $description])
+                                <label class="commerce-choice checkout-shipping-card">
+                                    <input type="radio" name="method" value="{{ $method }}" @checked($defaultMethod === $method) data-method-label="{{ $label }}">
+                                    <span class="checkout-shipping-card__body">
+                                        <strong>{{ $label }}</strong>
+                                        <small>{{ $description }}</small>
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+                        <p class="checkout-field-error" data-error-for="method" @unless($errors->has('method')) hidden @endunless>@error('method'){{ $message }}@enderror</p>
+                        <p class="checkout-field-error" data-step3-address-error hidden></p>
+
+                        <div class="checkout-step-actions">
+                            <button type="button" class="commerce-action commerce-action--secondary" data-checkout-prev="2">مرحله قبل</button>
+                            <button type="button" class="commerce-action commerce-action--primary" data-checkout-next="4">ادامه به نحوه پرداخت</button>
+                        </div>
+                    </fieldset>
+                </div>
+
+                {{-- Step 4: Payment Method & Final Confirmation (ONLY step with final submit button) --}}
+                <div class="checkout-step-panel" data-checkout-step="4">
+                    <fieldset class="commerce-panel">
+                        <legend>مرحله ۴ · نحوه پرداخت و تأیید نهایی</legend>
                         <div class="commerce-choices checkout-payment-choices">
                             @if ($zibalAvailable)
                                 <label class="commerce-choice checkout-gateway-card">
@@ -101,51 +227,49 @@
                             @endif
 
                             <label class="commerce-choice checkout-gateway-card">
-                                <input type="radio" name="payment_method" value="request" @checked($defaultPayment === 'request') data-payment-label="ثبت درخواست سفارش (پرداخت پس از بررسی)">
+                                <input type="radio" name="payment_method" value="request" @checked($defaultPayment === 'request') data-payment-label="ثبت سفارش (کارت‌به‌کارت / شماره شبا پس از تأیید)">
                                 <span class="checkout-gateway-card__body">
-                                    <strong>ثبت درخواست سفارش (پرداخت پس از بررسی)</strong>
-                                    <small>ثبت سفارش بدون پرداخت آنلاین؛ پس از تأیید موجودی، صورت‌حساب در حساب کاربری فعال می‌شود.</small>
+                                    <strong>ثبت درخواست سفارش (پرداخت پس از تأیید / کارت‌به‌کارت)</strong>
+                                    <small>ثبت سفارش بدون پرداخت آنلاین؛ پس از بررسی، امکان تسویه حضوری یا کارت‌به‌کارت / شبا فعال می‌شود.</small>
                                 </span>
                             </label>
                         </div>
                         @unless ($zibalAvailable)
                             <p class="commerce-notice mt-3">پرداخت آنلاین فعلاً در دسترس نیست. ثبت درخواست، پرداخت یا رزرو کالا ایجاد نمی‌کند.</p>
                         @endunless
-                        @error('payment_method')<p class="commerce-field-error">{{ $message }}</p>@enderror
+                        <p class="checkout-field-error" data-error-for="payment_method" @unless($errors->has('payment_method')) hidden @endunless>@error('payment_method'){{ $message }}@enderror</p>
 
-                        <div class="checkout-step-actions">
-                            <button type="button" class="commerce-action commerce-action--secondary" data-checkout-prev="1">بازگشت به مرحله قبل</button>
-                            <button type="button" class="commerce-action commerce-action--primary" data-checkout-next="3">ادامه به تأیید نهایی</button>
-                        </div>
-                    </fieldset>
-                </div>
-
-                {{-- Step 3: Confirmation & Redirect --}}
-                <div class="checkout-step-panel" data-checkout-step="3">
-                    <section class="commerce-panel checkout-confirm-panel" aria-labelledby="checkout-confirm-heading">
-                        <h2 id="checkout-confirm-heading">تأیید نهایی سفارش</h2>
                         <dl class="checkout-confirm-list">
                             <div>
-                                <dt>روش تحویل</dt>
-                                <dd data-confirm-delivery>{{ $methodLabels[old('method', 'pickup')] ?? 'تحویل حضوری' }}</dd>
+                                <dt>تحویل‌گیرنده</dt>
+                                <dd data-confirm-person>{{ old('full_name', $account->name ?: '—') }}</dd>
+                            </div>
+                            <div>
+                                <dt>نحوه ارسال</dt>
+                                <dd data-confirm-delivery>{{ $methodLabels[$defaultMethod] ?? 'تحویل حضوری در فروشگاه نوینپِی' }}</dd>
                             </div>
                             <div data-confirm-address-row hidden>
                                 <dt>نشانی ارسال</dt>
                                 <dd data-confirm-address>—</dd>
                             </div>
                             <div>
-                                <dt>روش پرداخت</dt>
-                                <dd data-confirm-payment>{{ $defaultPayment === 'zibal' ? 'پرداخت آنلاین با درگاه زیبال' : 'ثبت درخواست سفارش (پرداخت پس از بررسی)' }}</dd>
+                                <dt>نحوه پرداخت</dt>
+                                <dd data-confirm-payment>{{ $defaultPayment === 'zibal' ? 'پرداخت آنلاین با درگاه زیبال' : 'ثبت درخواست سفارش' }}</dd>
                             </div>
                             <div>
                                 <dt>مبلغ قابل پرداخت</dt>
                                 <dd class="checkout-confirm-total"><x-storefront.money :amount="$total" /></dd>
                             </div>
                         </dl>
+
                         <div class="checkout-step-actions">
-                            <button type="button" class="commerce-action commerce-action--secondary" data-checkout-prev="2">ویرایش روش پرداخت</button>
+                            <button type="button" class="commerce-action commerce-action--secondary" data-checkout-prev="3">مرحله قبل</button>
+                            <button class="commerce-action commerce-action--primary commerce-action--prominent" type="submit" data-checkout-submit data-label-zibal="پرداخت آنلاین با زیبال" data-label-request="ثبت درخواست سفارش">
+                                {{ $defaultPayment === 'zibal' ? 'پرداخت آنلاین با زیبال' : 'ثبت درخواست سفارش' }}
+                            </button>
                         </div>
-                    </section>
+                        <p class="commerce-checkout-status" data-checkout-status role="status" hidden></p>
+                    </fieldset>
                 </div>
             </div>
 
@@ -160,17 +284,10 @@
                 <dl class="commerce-summary__amounts">
                     <div><dt>جمع کالاها</dt><dd><x-storefront.money :amount="$total" /></dd></div>
                 </dl>
-                <p class="commerce-summary__note">هزینهٔ ارسال در جمع کالاها محاسبه نشده است.</p>
-                @unless ($zibalAvailable)
-                    <p class="commerce-notice">پرداخت آنلاین فعلاً در دسترس نیست. ثبت درخواست، پرداخت یا رزرو کالا ایجاد نمی‌کند.</p>
-                @endunless
+                <p class="commerce-summary__note">هزینهٔ ارسال در جمع کالاها محاسبه نشده است. دکمهٔ پرداخت در مرحلهٔ چهارم نمایش داده می‌شود.</p>
                 <div class="commerce-actions">
-                    <button class="commerce-action commerce-action--primary commerce-action--prominent" type="submit" data-checkout-submit data-label-zibal="پرداخت آنلاین با زیبال" data-label-request="ثبت درخواست سفارش">
-                        {{ $defaultPayment === 'zibal' ? 'پرداخت آنلاین با زیبال' : 'ثبت درخواست سفارش' }}
-                    </button>
                     <a class="commerce-action commerce-action--text" href="{{ route('cart.index') }}">بازگشت به سبد</a>
                 </div>
-                <p class="commerce-checkout-status" data-checkout-status role="status" hidden></p>
             </aside>
         </form>
     </section>
