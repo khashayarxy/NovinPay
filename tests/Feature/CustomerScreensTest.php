@@ -106,11 +106,13 @@ class CustomerScreensTest extends TestCase
         $plan = new DeliveryPlan;
         $plan->state = 'dispatched';
         $steps = CustomerTimeline::order($order, $plan);
-        $this->assertSame(['complete', 'unrecorded', 'complete', 'current'], array_column($steps, 'state'));
-        $this->assertSame('ارسال به شرکت حمل ثبت شد', $steps[3]['label']);
+        $this->assertSame(['complete', 'unrecorded', 'complete', 'unrecorded', 'complete'], array_column($steps, 'state'));
+        $this->assertSame('ارسال به شرکت حمل ثبت شد', $steps[4]['label']);
 
         $order->status = 'cancelled';
-        $this->assertSame(['سفارش ثبت شد', 'سفارش تأیید شد', 'سفارش لغو شد'], array_column(CustomerTimeline::order($order, null), 'label'));
+        $steps = CustomerTimeline::order($order, null);
+        $this->assertSame(['سفارش ثبت شد', 'سفارش تأیید شد', 'سفارش لغو شد'], array_column($steps, 'label'));
+        $this->assertSame(['complete', 'complete', 'cancelled'], array_column($steps, 'state'));
     }
 
     private function capture(string $name, string $url): void
