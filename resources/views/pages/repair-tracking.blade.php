@@ -16,6 +16,7 @@
                 <div class="public-notice public-notice--success" role="status">
                     <h2>{{ ($physicalMatch ?? false) ? 'وضعیت فعلی تعمیر' : \App\Enums\RepairRequestStatus::OnlineSubmitted->label() }}</h2>
                     @if ($physicalMatch ?? false)<p>{{ $physicalStatus }}</p>@endif
+                    <x-account.timeline :steps="$timeline" />
                     <p>برای هماهنگی مراجعه یا دریافت جزئیات با نوین‌پی تماس بگیرید.</p>
                 </div>
             @endif

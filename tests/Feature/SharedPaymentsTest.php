@@ -186,7 +186,8 @@ class SharedPaymentsTest extends TestCase
         $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])
             ->get($connect.'?pay_url=https://elsewhere.test')
             ->assertOk()->assertHeader('Referrer-Policy', 'no-referrer')->assertHeader('Cache-Control', 'no-store, private')
-            ->assertSee('بررسی دوباره اتصال')->assertSee('href="'.route('payments.gateway', $attempt->public_id, false).'"', false)
+            ->assertSeeInOrder(['تلاش مجدد برای پرداخت', 'بازگشت به سبد خرید'])
+            ->assertSee('href="'.route('payments.gateway', $attempt->public_id, false).'"', false)
             ->assertDontSee('ادامه به درگاه')->assertDontSee('بازگشت به سند پرداخت')
             ->assertDontSee('8.8.8.8')->assertDontSee('elsewhere.test')->assertDontSee('gateway.zibal.ir/start/501');
         $this->getJson($connect)->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertExactJson(['ir' => false]);
@@ -202,7 +203,7 @@ class SharedPaymentsTest extends TestCase
         $this->getJson($connect)->assertOk()->assertExactJson(['ir' => null]);
         $this->get('/pay/index.html?pay_url=https://elsewhere.test')->assertNotFound();
         $this->get('/pay/index.html?'.http_build_query(['pay_url' => 'https://gateway.zibal.ir/start/501']))->assertRedirect($connect);
-        $this->get($result)->assertOk()->assertSee('پرداخت سفارش')->assertSee(route('payments.order', $order->public_id));
+        $this->get($result)->assertOk()->assertSee('پرداخت سفارش')->assertSee($connect);
         $this->getJson(route('payments.status', $attempt->public_id))->assertExactJson(['status' => 'processing']);
         $this->get(route('payments.connect', (string) Str::uuid()))->assertNotFound();
         Http::assertSentCount(1);
@@ -237,7 +238,7 @@ class SharedPaymentsTest extends TestCase
         $this->assertDatabaseCount('payment_transactions', 1);
     }
 
-    public function test_repair_payment_uses_the_same_callback_and_returns_to_the_repair_document(): void
+    public function test_repair_payment_uses_the_same_callback_and_returns_to_repair_tracking(): void
     {
         $token = bin2hex(random_bytes(32));
         $this->withSession(['repair_intake_token' => $token])->post('/admin/repairs/intake', [
@@ -263,7 +264,8 @@ class SharedPaymentsTest extends TestCase
         $attempt = PaymentAttempt::query()->sole();
         $result = route('payments.result', $attempt->public_id);
         $this->get(route('payments.callback', ['trackId' => 501, 'orderId' => $attempt->public_id]))->assertRedirect($result);
-        $this->get($result)->assertOk()->assertSee('پرداخت تعمیر')->assertSee($payment);
+        $this->get($result)->assertOk()->assertSee('پرداخت تعمیر')->assertSee('پیگیری تعمیر')
+            ->assertSee(route('account.repairs.show', $case->public_id));
         $this->assertSame($document->charged_minor, $document->fresh()->paid_minor);
         $this->assertDatabaseCount('payment_transactions', 1);
     }

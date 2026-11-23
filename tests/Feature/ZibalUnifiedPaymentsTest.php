@@ -142,7 +142,7 @@ class ZibalUnifiedPaymentsTest extends TestCase
             ->assertOk()
             ->assertSee('پرداخت تأیید شد')
             ->assertSee('۹۸۷۶۵۴۳۲۱')
-            ->assertSee('حساب کاربری');
+            ->assertSee('پیگیری سفارش')->assertSee(route('account.orders.show', $order->public_id));
     }
 
     public function test_storefront_order_canceled_payment_preserves_unpaid_order_and_shows_retry(): void
@@ -331,7 +331,13 @@ class ZibalUnifiedPaymentsTest extends TestCase
 
         $this->get('/r/40219900')->assertOk()
             ->assertSee('value="40219900"', false)
+            ->assertDontSee('data-stage=', false)
             ->assertDontSee('09120001122');
+        $this->post(route('repair.track.store'), [
+            'tracking_reference' => '40219900',
+            'contact_phone' => '09120001122',
+        ])->assertOk()->assertSee('data-stage="current"', false)->assertSee('data-stage="upcoming"', false)
+            ->assertDontSee($case->device_model);
 
         $expiry = now()->addMinutes(10);
         $code = RepairPaymentCode::issue($case->public_id, $expiry->timestamp);
@@ -521,7 +527,7 @@ class ZibalUnifiedPaymentsTest extends TestCase
 
     private function createPayableRepair(int $minor): array
     {
-        $tracking = '402199';
+        $tracking = '40219900';
         $case = RepairCase::forceCreate([
             'public_id' => (string) Str::uuid(),
             'tracking_reference' => $tracking,

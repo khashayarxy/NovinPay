@@ -78,7 +78,7 @@ final class PatternSms
 
             return;
         }
-        if (! $recipient || ! preg_match('/\A09[0-9]{9}\z/D', $recipient)) {
+        if (! $recipient || $recipient === '09000000000' || ! preg_match('/\A09[0-9]{9}\z/D', $recipient)) {
             Log::warning('SMS pattern skipped', $context + ['reason' => 'missing_or_invalid_recipient']);
 
             return;

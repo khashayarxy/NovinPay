@@ -15,8 +15,11 @@
         <h1 id="payment-title">انتقال به درگاه پرداخت</h1>
         <p>اگر درگاه باز نشد، ورود به درگاه را انتخاب کنید.</p>
     @endif
-    <nav class="payment-actions" aria-label="گزینه‌های انتقال به درگاه">
-        <a class="payment-button payment-button--primary" href="{{ $gatewayUrl }}" referrerpolicy="origin">ورود به درگاه زیبال</a>
-        <a class="payment-button" href="{{ $resultUrl }}">بازگشت به وضعیت پرداخت</a>
-    </nav>
+    @if($indeterminate)
+        <x-payment-issue-actions :retry-url="$gatewayUrl" referrer-policy="origin" />
+    @else
+        <nav class="payment-actions" aria-label="گزینه‌های انتقال به درگاه">
+            <a class="payment-button payment-button--primary" href="{{ $gatewayUrl }}" referrerpolicy="origin">ورود به درگاه زیبال</a>
+        </nav>
+    @endif
 @endsection

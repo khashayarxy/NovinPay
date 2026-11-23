@@ -8,7 +8,7 @@ const script = readFileSync(new URL('../../public/pay/assets/vpn-warning.js', im
 async function check({server, trace, status = 200}) {
     const elements = new Map();
     const element = (id) => {
-        if (!elements.has(id)) elements.set(id, {hidden: true, addEventListener() {}});
+        if (!elements.has(id)) elements.set(id, {hidden: true, addEventListener() {}, setAttribute() {}, removeAttribute() {}});
         return elements.get(id);
     };
     element('go').dataset = {
@@ -16,8 +16,9 @@ async function check({server, trace, status = 200}) {
         checkUrl: '/connect',
         indeterminateUrl: '/gateway',
         resultUrl: '/result',
+        gatewayUrl: '/gateway?continue=1',
+        errorUrl: '/pay/error.html',
     };
-    element('fallbackLink').href = '/gateway?continue=1';
     const navigations = [];
     let pollingStopped = false;
     runInNewContext(script, {
@@ -66,4 +67,5 @@ test('agreeing checks preserve automatic forwarding or the region warning', asyn
 
 test('an unavailable attempt goes to its result instead of the gateway', async () => {
     assert.deepEqual((await check({status: 409, trace: true})).navigations, ['/result']);
+    assert.deepEqual((await check({status: 404, trace: true})).navigations, ['/pay/error.html']);
 });

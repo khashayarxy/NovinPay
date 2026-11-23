@@ -106,7 +106,7 @@ class PaymentController extends Controller
             ? ($order ? strtoupper(substr($order->public_id, 0, 8)) : strtoupper(substr($document->public_id, 0, 8)))
             : ($repair?->tracking_reference ?? strtoupper(substr($document->public_id, 0, 8)));
         $destination = $isOrder ? 'payments.order' : 'payments.repair';
-        $backUrl = $source ? route($destination, $source) : route('payments.document', $document->public_id);
+        $documentUrl = $source ? route($destination, $source) : route('payments.document', $document->public_id);
         $canContinue = $this->canContinue($attempt, $payments, $gateway);
 
         return view('payments.result', [
@@ -114,11 +114,14 @@ class PaymentController extends Controller
             'document' => $document,
             'isOrder' => $isOrder,
             'sourceCode' => $sourceCode,
-            'backUrl' => $backUrl,
-            'retryUrl' => $backUrl,
-            'accountUrl' => route('account.index', ['section' => $isOrder ? 'orders' : 'repairs']),
-            'canContinue' => $canContinue,
-            'continueUrl' => $canContinue ? route('payments.connect', $attempt->public_id) : null,
+            'trackingUrl' => $source
+                ? route($isOrder ? 'account.orders.show' : 'account.repairs.show', ['record' => $source])
+                : route('account.index', ['section' => $isOrder ? 'orders' : 'repairs']),
+            'retryUrl' => match (true) {
+                $canContinue => route('payments.connect', $attempt->public_id),
+                $attempt->state === 'failed' => $documentUrl,
+                default => route('payments.result', $attempt->public_id),
+            },
         ]);
     }
 
@@ -150,19 +153,18 @@ class PaymentController extends Controller
         // The attempt UUID and query string must never be part of the bank's Referer.
         return response()->view('payments.forward', [
             'gatewayUrl' => ZibalGateway::START_URL.$attempt->track_id,
-            'resultUrl' => route('payments.result', $attempt->public_id),
             'indeterminate' => $indeterminate,
         ], headers: ['Referrer-Policy' => 'origin']);
     }
 
-    private function ownedAttempt(Request $request): ?PaymentAttempt
+    private function ownedAttempt(Request $request, string $trackKey = 'track_id'): ?PaymentAttempt
     {
         $account = Auth::guard('customer')->user();
         if (! $account || ! $account->is_active || $request->session()->get('customer_session_version') !== $account->session_version) {
             return null;
         }
         $order = $request->query('order_id');
-        $track = $request->query('track_id');
+        $track = $request->query($trackKey);
         if (! is_string($order) || ! Str::isUuid($order) || ($track !== null && ! is_string($track))) {
             return null;
         }
@@ -223,6 +225,10 @@ class PaymentController extends Controller
             return redirect()->route('payments.connect', $attempt->public_id);
         }
 
-        return response(file_get_contents(resource_path('payments/pay/'.$page.'.html')), 200, ['Content-Type' => 'text/html; charset=utf-8', 'X-Frame-Options' => 'DENY']);
+        if ($attempt = $this->ownedAttempt($request, 'ref_id')) {
+            return redirect()->route('payments.result', $attempt->public_id);
+        }
+
+        return response()->view('payments.issue', ['retryUrl' => route('cart.review')], 200, ['X-Frame-Options' => 'DENY']);
     }
 }
