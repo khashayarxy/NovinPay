@@ -20,9 +20,10 @@ use Illuminate\Support\Str;
 class DeliveryManagement
 {
     public const CHECKOUT_METHODS = [
-        'pickup' => ['تحویل حضوری', 'بدون هزینهٔ ارسال'],
+        'pickup' => ['تحویل حضوری در فروشگاه نوینپِی', 'مراجعه حضوری و تحویل مستقیم دستگاه از فروشگاه'],
+        'post' => ['پست', 'ارسال از طریق پست پیشتاز به سراسر کشور'],
         'tipax' => ['تیپاکس', 'هزینه هنگام تحویل به شرکت حمل پرداخت می‌شود.'],
-        'courier' => ['پیک', 'امکان ارسال و هزینه پس از بررسی نشانی اعلام می‌شود.'],
+        'courier' => ['پیک', 'ارسال سریع با پیک پس از هماهنگی نشانی'],
     ];
 
     public function checkoutAddress(CustomerAccount $account, ?string $addressId, string $method): ?array

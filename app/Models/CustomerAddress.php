@@ -12,6 +12,9 @@ class CustomerAddress extends Model
 
     protected function casts(): array
     {
-        return array_fill_keys(['recipient', 'phone', 'province', 'city', 'address', 'postal_code'], 'encrypted');
+        return array_fill_keys(['recipient', 'phone', 'province', 'city', 'address', 'postal_code'], 'encrypted') + [
+            'latitude' => 'float',
+            'longitude' => 'float',
+        ];
     }
 }

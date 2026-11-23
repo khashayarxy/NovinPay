@@ -556,40 +556,174 @@ document.querySelectorAll('[data-desktop-shop-dropdown]').forEach((dropdown) => 
     dropdown.addEventListener('focusin', () => dropdown.classList.remove('is-dismissed'));
 });
 
-// Multi-step fintech checkout stepper & live Zibal submit label sync
+// 4-step fintech checkout stepper, Persian inline validation & interactive OSM pin map
 document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
     const form = stepper.querySelector('[data-store-checkout]');
     if (!(form instanceof HTMLFormElement)) return;
     const panels = Array.from(stepper.querySelectorAll('[data-checkout-step]'));
     const indicators = Array.from(stepper.querySelectorAll('[data-step-indicator]'));
-    if (panels.length < 3) return;
+    if (panels.length < 4) return;
+
+    const toLatinDigits = (str) => String(str || '')
+        .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
+        .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+
+    const isValidNationalCode = (raw) => {
+        const code = toLatinDigits(raw).replace(/\s+/g, '');
+        if (!/^[0-9]{10}$/.test(code) || /^(\d)\1{9}$/.test(code)) return false;
+        let sum = 0;
+        for (let i = 0; i < 9; i++) sum += Number(code[i]) * (10 - i);
+        const rem = sum % 11;
+        const chk = Number(code[9]);
+        return rem < 2 ? chk === rem : chk === 11 - rem;
+    };
+
+    const setFieldError = (name, message) => {
+        const el = form.querySelector(`[name="${name}"]`);
+        const err = form.querySelector(`[data-error-for="${name}"]`);
+        if (el) el.classList.toggle('is-invalid', Boolean(message));
+        if (err) {
+            err.textContent = message || '';
+            err.hidden = !message;
+        }
+    };
+
+    const clearStepErrors = (stepNum) => {
+        const panel = panels.find((p) => Number(p.dataset.checkoutStep) === stepNum);
+        if (!panel) return;
+        panel.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+        panel.querySelectorAll('.checkout-field-error').forEach((el) => {
+            el.textContent = '';
+            el.hidden = true;
+        });
+    };
+
+    const validateStep1 = () => {
+        clearStepErrors(1);
+        let ok = true;
+        const fullName = form.querySelector('[name="full_name"]')?.value.trim() || '';
+        const mobile = toLatinDigits(form.querySelector('[name="mobile"]')?.value || '').replace(/\s+/g, '');
+        const nationalCode = toLatinDigits(form.querySelector('[name="national_code"]')?.value || '').replace(/\s+/g, '');
+        const email = form.querySelector('[name="email"]')?.value.trim() || '';
+
+        if (fullName.length < 2) {
+            setFieldError('full_name', 'لطفاً نام و نام خانوادگی معتبر (حداقل ۲ کاراکتر) وارد کنید.');
+            ok = false;
+        }
+        if (!/^09[0-9]{9}$/.test(mobile)) {
+            setFieldError('mobile', 'لطفاً شماره موبایل معتبر ۱۱ رقمی وارد کنید (مانند ۰۹۱۲۳۴۵۶۷۸۹).');
+            ok = false;
+        }
+        if (nationalCode !== '' && !isValidNationalCode(nationalCode)) {
+            setFieldError('national_code', 'کد ملی واردشده معتبر نیست.');
+            ok = false;
+        }
+        if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setFieldError('email', 'لطفاً نشانی ایمیل معتبر وارد کنید.');
+            ok = false;
+        }
+        if (!ok) {
+            form.querySelector('[data-checkout-step="1"] .is-invalid')?.focus();
+        }
+        return ok;
+    };
+
+    const getAddressMode = () => {
+        const checked = form.querySelector('input[name="address_mode"]:checked');
+        if (checked) return checked.value;
+        const hidden = form.querySelector('input[type="hidden"][name="address_mode"]');
+        return hidden ? hidden.value : 'new';
+    };
+
+    const validateAddressIfShipping = (strict) => {
+        clearStepErrors(2);
+        const mode = getAddressMode();
+        let ok = true;
+        if (mode === 'saved') {
+            const sel = form.querySelector('select[name="address"]');
+            if (strict && (!sel || !sel.value)) {
+                setFieldError('address', 'لطفاً یک نشانی ذخیره‌شده انتخاب کنید یا گزینه ثبت نشانی جدید را بزنید.');
+                ok = false;
+            }
+            return ok;
+        }
+        const province = form.querySelector('[name="province"]')?.value.trim() || '';
+        const city = form.querySelector('[name="city"]')?.value.trim() || '';
+        const street = form.querySelector('[name="street_address"]')?.value.trim() || '';
+        const postal = toLatinDigits(form.querySelector('[name="postal_code"]')?.value || '').replace(/\s+/g, '');
+        const touched = Boolean(province || city || street || postal);
+
+        if (!strict && !touched) return true;
+
+        if (!province) {
+            setFieldError('province', 'لطفاً استان محل تحویل را انتخاب کنید.');
+            ok = false;
+        }
+        if (!city) {
+            setFieldError('city', 'لطفاً شهر محل تحویل را انتخاب کنید.');
+            ok = false;
+        }
+        if (street.length < 10) {
+            setFieldError('street_address', 'آدرس دقیق باید حداقل ۱۰ کاراکتر باشد.');
+            ok = false;
+        }
+        if (!/^[0-9]{10}$/.test(postal)) {
+            setFieldError('postal_code', 'کد پستی باید دقیقاً ۱۰ رقم بدون خط تیره باشد.');
+            ok = false;
+        }
+        return ok;
+    };
+
+    const validateStep3 = () => {
+        clearStepErrors(3);
+        const methodInput = form.querySelector('input[name="method"]:checked');
+        if (!methodInput) {
+            setFieldError('method', 'لطفاً نحوه ارسال سفارش را انتخاب کنید.');
+            return false;
+        }
+        if (methodInput.value !== 'pickup' && !validateAddressIfShipping(true)) {
+            const errBox = form.querySelector('[data-step3-address-error]');
+            if (errBox) {
+                errBox.textContent = 'برای ارسال غیرحضوری، تکمیل نشانی در مرحله ۲ الزامی است. به مرحله قبل بازگردید و نشانی را کامل کنید.';
+                errBox.hidden = false;
+            }
+            return false;
+        }
+        return true;
+    };
 
     const submitBtn = form.querySelector('[data-checkout-submit]');
-    const step1Error = form.querySelector('[data-step1-error]');
+    const confirmPerson = form.querySelector('[data-confirm-person]');
     const confirmDelivery = form.querySelector('[data-confirm-delivery]');
     const confirmAddressRow = form.querySelector('[data-confirm-address-row]');
     const confirmAddress = form.querySelector('[data-confirm-address]');
     const confirmPayment = form.querySelector('[data-confirm-payment]');
 
-    const deliveryLabels = {
-        pickup: 'تحویل حضوری در فروشگاه',
-        tipax: 'ارسال با تیپاکس (پس‌کرایه)',
-        courier: 'ارسال با پیک',
-    };
-
     const syncSummary = () => {
+        const fullName = form.querySelector('[name="full_name"]')?.value.trim() || '';
+        const mobile = form.querySelector('[name="mobile"]')?.value.trim() || '';
+        if (confirmPerson) {
+            confirmPerson.textContent = [fullName, mobile].filter(Boolean).join(' · ') || '—';
+        }
         const methodInput = form.querySelector('input[name="method"]:checked');
         const method = methodInput ? methodInput.value : 'pickup';
         if (confirmDelivery) {
-            confirmDelivery.textContent = deliveryLabels[method] || method;
+            confirmDelivery.textContent = methodInput?.dataset.methodLabel || 'تحویل حضوری در فروشگاه نوینپِی';
         }
-        const addressSelect = form.querySelector('select[name="address"]');
         if (confirmAddressRow && confirmAddress) {
-            if (method !== 'pickup' && addressSelect instanceof HTMLSelectElement && addressSelect.value) {
-                confirmAddressRow.hidden = false;
-                confirmAddress.textContent = addressSelect.options[addressSelect.selectedIndex]?.text || '—';
-            } else {
+            if (method === 'pickup') {
                 confirmAddressRow.hidden = true;
+            } else {
+                confirmAddressRow.hidden = false;
+                if (getAddressMode() === 'saved') {
+                    const sel = form.querySelector('select[name="address"]');
+                    confirmAddress.textContent = sel instanceof HTMLSelectElement && sel.value ? sel.options[sel.selectedIndex]?.text : '—';
+                } else {
+                    const p = form.querySelector('[name="province"]')?.value || '';
+                    const c = form.querySelector('[name="city"]')?.value || '';
+                    const s = form.querySelector('[name="street_address"]')?.value || '';
+                    confirmAddress.textContent = [p, c, s].filter(Boolean).join('، ') || '—';
+                }
             }
         }
         const paymentInput = form.querySelector('input[name="payment_method"]:checked');
@@ -604,65 +738,182 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         }
     };
 
+    const syncAddressSections = () => {
+        const mode = getAddressMode();
+        form.querySelectorAll('[data-address-section]').forEach((box) => {
+            box.hidden = box.dataset.addressSection !== mode;
+        });
+    };
+
     const goToStep = (stepNumber) => {
-        const target = Math.max(1, Math.min(3, stepNumber));
+        const target = Math.max(1, Math.min(4, stepNumber));
         syncSummary();
         panels.forEach((panel) => {
-            const num = Number(panel.dataset.checkoutStep);
-            panel.classList.toggle('is-active', num === target);
+            panel.classList.toggle('is-active', Number(panel.dataset.checkoutStep) === target);
         });
         indicators.forEach((ind) => {
             const num = Number(ind.dataset.stepIndicator);
             ind.classList.toggle('is-active', num === target);
             ind.classList.toggle('is-done', num < target);
-            if (num === target) {
-                ind.setAttribute('aria-current', 'step');
-            } else {
-                ind.removeAttribute('aria-current');
-            }
+            if (num === target) ind.setAttribute('aria-current', 'step');
+            else ind.removeAttribute('aria-current');
         });
     };
 
-    const validateStep1 = () => {
-        if (step1Error) {
-            step1Error.hidden = true;
-            step1Error.textContent = '';
-        }
-        const methodInput = form.querySelector('input[name="method"]:checked');
-        if (!methodInput) {
-            if (step1Error) {
-                step1Error.textContent = 'لطفاً روش تحویل را انتخاب کنید.';
-                step1Error.hidden = false;
-            }
-            return false;
-        }
-        if (methodInput.value !== 'pickup') {
-            const addressSelect = form.querySelector('select[name="address"]');
-            if (!(addressSelect instanceof HTMLSelectElement) || !addressSelect.value) {
-                if (step1Error) {
-                    step1Error.textContent = 'برای ارسال، انتخاب نشانی تحویل الزامی است.';
-                    step1Error.hidden = false;
-                }
-                addressSelect?.focus();
-                return false;
-            }
-        }
-        return true;
-    };
-
     stepper.classList.add('is-stepped');
-    const errorPanel = panels.find((p) => p.querySelector('.commerce-field-error:not([hidden])'));
+    syncAddressSections();
+    const errorPanel = panels.find((p) => p.querySelector('.checkout-field-error:not([hidden])'));
     goToStep(errorPanel ? Number(errorPanel.dataset.checkoutStep) : 1);
 
-    form.addEventListener('change', syncSummary);
+    form.addEventListener('change', () => {
+        syncAddressSections();
+        syncSummary();
+    });
+    form.addEventListener('input', (e) => {
+        const target = e.target;
+        if (target instanceof HTMLElement && target.classList.contains('is-invalid')) {
+            setFieldError(target.getAttribute('name') || '', '');
+        }
+    });
+
     stepper.querySelectorAll('[data-checkout-next]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const next = Number(btn.dataset.checkoutNext);
             if (next === 2 && !validateStep1()) return;
+            if (next === 3 && !validateAddressIfShipping(false)) return;
+            if (next === 4 && !validateStep3()) return;
             goToStep(next);
         });
     });
     stepper.querySelectorAll('[data-checkout-prev]').forEach((btn) => {
         btn.addEventListener('click', () => goToStep(Number(btn.dataset.checkoutPrev)));
     });
+
+    form.addEventListener('submit', (e) => {
+        if (!validateStep1()) {
+            e.preventDefault();
+            goToStep(1);
+            return;
+        }
+        if (!validateStep3()) {
+            e.preventDefault();
+            goToStep(3);
+        }
+    });
+
+    // Lightweight zero-dependency OpenStreetMap interactive pin map
+    const mapBox = form.querySelector('[data-checkout-map]');
+    if (mapBox) {
+        const viewport = mapBox.querySelector('[data-map-viewport]');
+        const tilesEl = mapBox.querySelector('[data-map-tiles]');
+        const coordsEl = mapBox.querySelector('[data-map-coords]');
+        const latInput = mapBox.querySelector('[data-map-lat]');
+        const lngInput = mapBox.querySelector('[data-map-lng]');
+
+        let lat = parseFloat(mapBox.dataset.defaultLat || '35.6597') || 35.6597;
+        let lng = parseFloat(mapBox.dataset.defaultLng || '51.0592') || 51.0592;
+        let zoom = 13;
+
+        const latLngToWorld = (la, ln, z) => {
+            const scale = 256 * Math.pow(2, z);
+            const x = ((ln + 180) / 360) * scale;
+            const sinLat = Math.sin((la * Math.PI) / 180);
+            const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
+            return { x, y };
+        };
+        const worldToLatLng = (x, y, z) => {
+            const scale = 256 * Math.pow(2, z);
+            const ln = (x / scale) * 360 - 180;
+            const n = Math.PI - (2 * Math.PI * y) / scale;
+            const la = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+            return { lat: Math.max(-85, Math.min(85, la)), lng: Math.max(-180, Math.min(180, ln)) };
+        };
+
+        const renderMap = (saveInputs = false) => {
+            if (!viewport || !tilesEl) return;
+            const w = viewport.clientWidth || 420;
+            const h = viewport.clientHeight || 230;
+            const center = latLngToWorld(lat, lng, zoom);
+            const minTx = Math.floor((center.x - w / 2) / 256);
+            const maxTx = Math.floor((center.x + w / 2) / 256);
+            const minTy = Math.floor((center.y - h / 2) / 256);
+            const maxTy = Math.floor((center.y + h / 2) / 256);
+            const maxIndex = Math.pow(2, zoom);
+
+            tilesEl.innerHTML = '';
+            for (let tx = minTx; tx <= maxTx; tx++) {
+                for (let ty = minTy; ty <= maxTy; ty++) {
+                    if (ty < 0 || ty >= maxIndex) continue;
+                    const wrappedX = ((tx % maxIndex) + maxIndex) % maxIndex;
+                    const img = document.createElement('img');
+                    img.src = `https://tile.openstreetmap.org/${zoom}/${wrappedX}/${ty}.png`;
+                    img.alt = '';
+                    img.style.left = `${Math.round(tx * 256 - center.x + w / 2)}px`;
+                    img.style.top = `${Math.round(ty * 256 - center.y + h / 2)}px`;
+                    tilesEl.appendChild(img);
+                }
+            }
+            if (saveInputs) {
+                const fLat = lat.toFixed(6);
+                const fLng = lng.toFixed(6);
+                if (latInput) latInput.value = fLat;
+                if (lngInput) lngInput.value = fLng;
+                if (coordsEl) coordsEl.textContent = `${fLat}, ${fLng}`;
+            }
+        };
+
+        let dragging = false;
+        let dragStart = null;
+        let moved = false;
+
+        viewport?.addEventListener('pointerdown', (e) => {
+            dragging = true;
+            moved = false;
+            dragStart = { x: e.clientX, y: e.clientY, world: latLngToWorld(lat, lng, zoom) };
+            viewport.setPointerCapture?.(e.pointerId);
+        });
+        viewport?.addEventListener('pointermove', (e) => {
+            if (!dragging || !dragStart) return;
+            const dx = e.clientX - dragStart.x;
+            const dy = e.clientY - dragStart.y;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+            const next = worldToLatLng(dragStart.world.x - dx, dragStart.world.y - dy, zoom);
+            lat = next.lat;
+            lng = next.lng;
+            renderMap(true);
+        });
+        viewport?.addEventListener('pointerup', (e) => {
+            if (!dragging) return;
+            dragging = false;
+            if (!moved && viewport) {
+                const rect = viewport.getBoundingClientRect();
+                const dx = e.clientX - rect.left - rect.width / 2;
+                const dy = e.clientY - rect.top - rect.height / 2;
+                const center = latLngToWorld(lat, lng, zoom);
+                const next = worldToLatLng(center.x + dx, center.y + dy, zoom);
+                lat = next.lat;
+                lng = next.lng;
+                renderMap(true);
+            }
+        });
+
+        mapBox.querySelectorAll('[data-map-zoom]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                zoom = btn.dataset.mapZoom === 'in' ? Math.min(18, zoom + 1) : Math.max(5, zoom - 1);
+                renderMap(Boolean(latInput?.value));
+            });
+        });
+
+        mapBox.querySelector('[data-map-locate]')?.addEventListener('click', () => {
+            if (!navigator.geolocation) return;
+            navigator.geolocation.getCurrentPosition((pos) => {
+                lat = pos.coords.latitude;
+                lng = pos.coords.longitude;
+                zoom = 15;
+                renderMap(true);
+            });
+        });
+
+        renderMap(Boolean(latInput?.value));
+    }
 });

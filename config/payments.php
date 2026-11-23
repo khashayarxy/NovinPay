@@ -11,9 +11,9 @@ return [
         'callback_url' => env('ZIBAL_CALLBACK_URL', ''),
         'api_base_url' => env('ZIBAL_API_BASE_URL', 'https://gateway.zibal.ir'),
         'min_rial' => 1000,
-        // Conservative store cap. The provider-wide cap is 4,000,000,000 IRR;
-        // the merchant-specific ceiling may be lower.
-        'max_rial' => 499999999,
+        // Single-transaction Shaparak/Zibal ceiling (100,000,000 Toman = 1,000,000,000 IRR)
+        // so high-value POS terminal orders are never rejected.
+        'max_rial' => 1000000000,
         // Local triage deadline, NOT an assertion that a gateway session expired.
         'review_after_minutes' => 30,
         'reconciliation_limit' => 8,

@@ -12,6 +12,7 @@ use App\Models\SalesOrderLine;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Support\OrderMoney;
 use App\Support\ProductSale;
+use App\Support\RepairIdentity;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -65,8 +66,8 @@ class StoreCheckout
         $order = DB::transaction(function () use ($account, $cart, $key, $quote, &$created): SalesOrder {
             $digest = hash_hmac('sha256', json_encode($cart, JSON_THROW_ON_ERROR), config('app.key'));
             $fresh = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
-            abort_unless($fresh->is_active && $fresh->session_version === $account->session_version && $fresh->customer_id, 403, 'ابتدا پروفایل و اتصال حساب خود را تکمیل کنید.');
-            $customer = Customer::query()->lockForUpdate()->findOrFail($fresh->customer_id);
+            abort_unless($fresh->is_active && $fresh->session_version === $account->session_version, 403);
+            $customer = $this->resolveCustomerForAccount($fresh);
             abort_unless($customer->is_active && ! $customer->merged_into_id, 409);
             $previous = SalesOrder::query()->where('checkout_key', $key)->first();
             if ($previous) {
@@ -116,5 +117,51 @@ class StoreCheckout
         }
 
         return $order;
+    }
+
+    private function resolveCustomerForAccount(CustomerAccount $account): Customer
+    {
+        if ($account->customer_id) {
+            return Customer::query()->lockForUpdate()->findOrFail($account->customer_id);
+        }
+
+        $phone = RepairIdentity::phone((string) ($account->phone ?? ''));
+        $phoneDigest = $phone !== '' ? RepairIdentity::digest('phone', $phone) : hash_hmac('sha256', 'account:'.$account->public_id, config('app.key'));
+
+        if ($phone !== '') {
+            $existing = Customer::query()
+                ->where('phone_digest', $phoneDigest)
+                ->where('is_active', true)
+                ->whereNull('merged_into_id')
+                ->whereNotIn('id', CustomerAccount::query()->whereNotNull('customer_id')->select('customer_id'))
+                ->lockForUpdate()
+                ->first();
+            if ($existing) {
+                $account->customer_id = $existing->id;
+                $account->save();
+
+                return $existing;
+            }
+        }
+
+        $name = trim((string) ($account->name ?: ($account->email ?: 'مشتری نوین‌پی')));
+        $customer = new Customer;
+        foreach ([
+            'public_id' => (string) Str::uuid(),
+            'name' => $name,
+            'contact_phone' => $phone !== '' ? $phone : '09000000000',
+            'name_digest' => hash_hmac('sha256', mb_strtolower($name), config('app.key')),
+            'phone_digest' => $phoneDigest,
+            'identity_digest' => hash_hmac('sha256', $account->public_id.'|'.$phoneDigest, config('app.key')),
+            'is_active' => true,
+        ] as $field => $value) {
+            $customer->$field = $value;
+        }
+        $customer->save();
+
+        $account->customer_id = $customer->id;
+        $account->save();
+
+        return $customer;
     }
 }
