@@ -8,6 +8,17 @@
     </div>
     <div @class(['stock', 'is-available' => $canAddToCart])>
         <strong>{{ $product->is_sample ? $product->stock_status->label() : $sale->stockLabel($product) }}</strong>
+        @if ($canAddToCart && isset($inventory) && $inventory->available > 0)
+            <span class="stock-availability-note">
+                @if ($inventory->available === 1)
+                    · تنها ۱ عدد در انبار باقی مانده
+                @elseif ($inventory->available <= 5)
+                    · تنها {{ \App\Support\FaNumber::digits($inventory->available) }} عدد در انبار باقی مانده
+                @else
+                    · موجودی: {{ \App\Support\FaNumber::digits($inventory->available) }} عدد
+                @endif
+            </span>
+        @endif
     </div>
     @if ($canAddToCart)
         <form id="product-cart-form" method="post" action="{{ route('cart.add', $product) }}" class="product-cart-form" data-cart-mutation>

@@ -33,7 +33,7 @@
         <div style="display: flex; justify-content: space-between; gap: 1rem;">
             <dt style="color: #536d88;">مبلغ تراکنش</dt>
             <dd style="margin: 0; font-weight: 700; color: {{ $attempt->state === 'settled' ? '#15803d' : '#122940' }}; font-variant-numeric: tabular-nums;">
-                {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display($attempt->amount_minor)) }} تومان
+                {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($attempt->amount_minor)) }} تومان
             </dd>
         </div>
     </dl>

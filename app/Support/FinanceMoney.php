@@ -29,4 +29,11 @@ final class FinanceMoney
 
         return ($negative ? '−' : '').$whole.'.'.substr($digits, -2);
     }
+
+    public static function toman(int|string $minor): string
+    {
+        $formatted = self::display($minor);
+
+        return str_ends_with($formatted, '.00') ? substr($formatted, 0, -3) : $formatted;
+    }
 }

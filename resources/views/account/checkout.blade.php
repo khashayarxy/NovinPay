@@ -219,7 +219,7 @@
                                     <span class="checkout-gateway-card__body">
                                         <span class="checkout-gateway-card__title-row">
                                             <strong>پرداخت آنلاین با درگاه زیبال</strong>
-                                            <img src="{{ asset('images/zibal-trust-light.svg') }}" width="22" height="26" alt="زیبال" class="checkout-gateway-card__logo" loading="lazy" decoding="async">
+                                            <img src="{{ versioned_asset('images/zibal-trust-light.svg') }}" width="22" height="26" alt="زیبال" class="checkout-gateway-card__logo" loading="lazy" decoding="async">
                                         </span>
                                         <small>کلیه کارت‌های عضو شتاب · تأیید آنی و انتقال امن به درگاه پرداخت</small>
                                     </span>

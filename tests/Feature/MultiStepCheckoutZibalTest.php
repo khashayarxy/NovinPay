@@ -15,6 +15,7 @@ use App\Models\Product;
 use App\Models\SalesOrder;
 use App\Models\User;
 use App\Services\ShoppingCart;
+use App\Support\CustomerTimeline;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -275,11 +276,20 @@ class MultiStepCheckoutZibalTest extends TestCase
 
         $attempt = PaymentAttempt::query()->sole();
         $order = SalesOrder::query()->sole();
-        $this->assertSame('confirmed', $order->status);
+        $this->assertSame('draft', $order->status);
+        $this->assertSame('در انتظار پرداخت', CustomerTimeline::orderStatus($order));
         $this->assertSame(45000000, $attempt->amount_rial);
         $this->assertSame('246813579', $attempt->track_id);
         $this->assertSame('pending', $attempt->state);
         $res->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/connect');
+
+        // Before payment verification, customer order list & detail page must NOT show «تأییدشده» or «.۰۰»
+        $this->get('https://novinpaypos.test/account?section=orders')
+            ->assertOk()
+            ->assertSee('در انتظار پرداخت')
+            ->assertDontSee('تأییدشده')
+            ->assertSee('۴,۵۰۰,۰۰۰ تومان')
+            ->assertDontSee('.۰۰');
 
         Http::fake([
             'https://gateway.zibal.ir/v1/verify' => Http::response([
@@ -296,6 +306,8 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/result');
 
         $this->assertSame('settled', $attempt->fresh()->state);
+        $this->assertSame('confirmed', $order->fresh()->status);
+        $this->assertSame('تأییدشده', CustomerTimeline::orderStatus($order->fresh()));
         Event::assertDispatchedTimes(OrderPaid::class, 1);
 
         // Cart is automatically cleared after verified Zibal settlement.
@@ -327,6 +339,45 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->assertOk()
             ->assertSee('پرداخت انجام نشد')
             ->assertSee('تلاش مجدد برای پرداخت');
+
+        $order = SalesOrder::query()->sole();
+        $this->assertSame('لغو شده / پرداخت ناموفق', CustomerTimeline::orderStatus($order));
+        $this->get('https://novinpaypos.test/account?section=orders')
+            ->assertOk()
+            ->assertSee('لغو شده / پرداخت ناموفق')
+            ->assertDontSee('تأییدشده');
+    }
+
+    public function test_unified_cart_hides_internal_scopes_allows_authenticated_quantity_increase_and_returns_ajax_html(): void
+    {
+        $this->actingAs($this->account, 'customer')
+            ->withSession(['customer_session_version' => 1])
+            ->withUnencryptedCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('a', 64));
+
+        $initial = $this->get('https://novinpaypos.test/cart')->assertOk();
+
+        $ajaxAdd = $this->withHeaders(['X-Storefront-Cart-Html' => '1'])
+            ->postJson('https://novinpaypos.test/cart/products/'.$this->product->slug, [
+                'cart_context' => $initial->viewData('proof'),
+                'cart_revision' => $initial->viewData('revision'),
+                'quantity' => 1,
+            ])
+            ->assertOk()
+            ->assertJsonPath('count', 1);
+
+        $this->assertNotEmpty($ajaxAdd->json('proof'));
+        $this->assertNotEmpty($ajaxAdd->json('revision'));
+        $this->assertStringContainsString('data-storefront-cart', (string) $ajaxAdd->json('html'));
+        $this->assertStringNotContainsString('این دستگاه', (string) $ajaxAdd->json('html'));
+        $this->assertStringNotContainsString('مدیریت سبدهای جداگانه', (string) $ajaxAdd->json('html'));
+        $this->assertStringNotContainsString('حداکثر قابل انتخاب در این نما', (string) $ajaxAdd->json('html'));
+
+        // Authenticated user can increase quantity in the cart drawer up to available stock (5)
+        $this->postJson('https://novinpaypos.test/cart/products/'.$this->product->slug.'/quantity', [
+            'cart_context' => $ajaxAdd->json('proof'),
+            'cart_revision' => $ajaxAdd->json('revision'),
+            'quantity' => 2,
+        ])->assertOk()->assertJsonPath('count', 2);
     }
 
     private function seedCartItem(): array

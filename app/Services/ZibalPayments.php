@@ -125,12 +125,6 @@ class ZibalPayments
                 return [$prior, false];
             }
 
-            if ($lockedOrder->status === 'draft') {
-                $lockedOrder->status = 'confirmed';
-                $lockedOrder->version++;
-                $lockedOrder->save();
-            }
-
             $document = FinancialDocument::query()->where('sales_order_id', $lockedOrder->id)->lockForUpdate()->first();
             if (! $document) {
                 $actorId = AdminAccount::query()

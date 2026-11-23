@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initClickMap();
     initMobileNavigation();
     initCustomerNavigation();
+    const activeAccountTab = document.querySelector('.np-account-nav a[aria-current="page"]');
+    if (activeAccountTab instanceof HTMLElement && typeof activeAccountTab.scrollIntoView === 'function') {
+        activeAccountTab.scrollIntoView({ behavior: 'instant', inline: 'center', block: 'nearest' });
+    }
     const admin = document.querySelector('.admin-site #main-content');
     if (admin) {
         import('./admin-fields.js').then(({initAdminFields}) => initAdminFields(admin));

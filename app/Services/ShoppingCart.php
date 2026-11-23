@@ -103,18 +103,16 @@ class ShoppingCart
                     $quantity += $owned['quantity'] ?? 0;
                 }
                 abort_unless($offer && $quantity <= min(10, $offer->available), 409, 'موجودی برای این تعداد کافی نیست.');
-                if ($view && $action === 'quantity') {
-                    $allowed = max($existing['device']['quantity'] ?? 0, $existing['account']['quantity'] ?? 0);
-                    abort_if($quantity > $allowed, 409, 'برای افزایش تعداد، کالا را از صفحهٔ محصول به سبد اضافه کنید.');
-                    if ($quantity !== $existing['quantity']) {
-                        $states[$view][$slug] = $quantity;
-                    }
-                } elseif ($action === 'add' || $quantity !== $existing['quantity']) {
+                if ($action === 'add' || $quantity !== $existing['quantity']) {
                     abort_if(! $owned && count($states[$scope]) >= 30, 422);
                     abort_if($owned && $owned['inventory'] !== $offer->id, 409, 'شناسهٔ کالا تغییر کرده است؛ کالا را دوباره به سبد اضافه کنید.');
                     $states[$scope][$slug] = ['inventory' => $offer->id, 'quantity' => $quantity, 'version' => (string) Str::uuid()];
-                    if ($view && array_key_exists($slug, $states[$view])) {
-                        $states[$view][$slug] += $increment;
+                    if ($view) {
+                        if ($action === 'quantity') {
+                            $states[$view][$slug] = $quantity;
+                        } elseif (array_key_exists($slug, $states[$view])) {
+                            $states[$view][$slug] += $increment;
+                        }
                     }
                 }
             } elseif ($action === 'hide') {
@@ -361,8 +359,7 @@ class ShoppingCart
             $matches = $offer && $offer->id === $entry['inventory']
                 && (! $entry['device'] || $entry['device']['inventory'] === $offer->id)
                 && (! $entry['account'] || $entry['account']['inventory'] === $offer->id);
-            $selectionLimit = $state['separate'] ? max($entry['device']['quantity'] ?? 0, $entry['account']['quantity'] ?? 0) : 10;
-            $available[$slug] = $matches ? min($selectionLimit, $offer->available) : 0;
+            $available[$slug] = $matches ? min(10, $offer->available) : 0;
         }
         $unavailable = array_keys(array_filter($available, fn ($limit, $slug) => $limit < $state['items'][$slug]['quantity'], ARRAY_FILTER_USE_BOTH));
         $total = $products->sum(fn ($product) => (int) $product->price * $state['quantity'][$product->slug]);

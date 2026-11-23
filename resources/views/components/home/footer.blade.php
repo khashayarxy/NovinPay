@@ -23,7 +23,7 @@
                        target="_blank"
                        rel="noopener noreferrer nofollow"
                        title="پرداخت آنلاین زیبال">
-                        <img class="np-footer__zibal" src="{{ asset('images/zibal-trust-light.svg') }}" width="42" height="50" alt="پرداخت آنلاین زیبال" loading="lazy" decoding="async">
+                        <img class="np-footer__zibal" src="{{ versioned_asset('images/zibal-trust-light.svg') }}" width="42" height="50" alt="پرداخت آنلاین زیبال" loading="lazy" decoding="async">
                     </a>
                     <div class="np-footer__badge">
                         <img class="np-footer__nezam" src="{{ asset('brand/trust/NezamSenfi.svg') }}" width="64" height="51" alt="سازمان نظام صنفی رایانه‌ای" loading="lazy" decoding="async">
@@ -35,18 +35,16 @@
                     @endif
                 </div>
             </div>
-            <nav aria-label="پیوندهای کاربردی">
-                <h2>دسترسی سریع</h2>
-                <a href="{{ route('account.index') }}">حساب کاربری</a>
-                <a href="{{ route('cart.index') }}">سبد خرید</a>
-                <a href="{{ route('products.index') }}">فروشگاه</a>
-                <a href="{{ route('repair') }}">تعمیرات</a>
-                <a href="{{ route('contact') }}">تماس با ما</a>
-                <a href="{{ route('articles.index') }}">مقاله‌ها</a>
-            </nav>
             <div class="np-footer__information">
                 <h2>تماس با نوین‌پی</h2>
-                <x-business-phones class="np-footer__phones" link-class="np-footer__phone" />
+                <div class="np-footer__phones">
+                    <x-business-phone class="np-footer__phone">
+                        <span class="np-footer__phone-icon" aria-hidden="true"><x-storefront.icon name="phone" /></span>
+                    </x-business-phone>
+                    <x-business-phone :secondary="true" class="np-footer__phone">
+                        <span class="np-footer__phone-icon" aria-hidden="true"><x-storefront.icon name="phone" /></span>
+                    </x-business-phone>
+                </div>
             </div>
         </div>
         <div class="np-footer__bottom">

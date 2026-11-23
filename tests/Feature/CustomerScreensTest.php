@@ -76,7 +76,7 @@ class CustomerScreensTest extends TestCase
         $this->capture('customer-account', '/account');
         $this->capture('customer-profile', '/account?section=profile');
         $this->get('/account?section=profile')->assertOk()->assertDontSee($account->public_id);
-        $this->get('/account')->assertOk()->assertSee($account->public_id)->assertSee('کپی شناسه');
+        $this->get('/account')->assertOk()->assertDontSee($account->public_id)->assertDontSee('کپی شناسه');
         $this->capture('customer-addresses', '/account?section=addresses');
         $this->capture('customer-order', '/account/orders/'.$order->public_id);
         $this->capture('customer-payment', '/account/documents/'.$document->public_id);
@@ -90,7 +90,7 @@ class CustomerScreensTest extends TestCase
         $this->actingAs($other->fresh(), 'customer')->withSession(['customer_session_version' => 1]);
         $this->get('/account/orders/'.$order->public_id)->assertNotFound();
         $this->get('/account?section=orders')->assertOk()->assertDontSee($order->public_id);
-        $this->get('/account?account='.$account->public_id)->assertOk()->assertSee($other->public_id)->assertDontSee($account->public_id);
+        $this->get('/account?account='.$account->public_id)->assertOk()->assertDontSee($other->public_id)->assertDontSee($account->public_id);
     }
 
     public function test_order_timeline_marks_only_recorded_phases_and_does_not_invent_delivery(): void
