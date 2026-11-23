@@ -71,6 +71,9 @@ final class SimpleRepairRecords
             AdminHistory::record($action, 'repair_case', $case->id, $actor->id);
 
             $statusChanged = $before !== $case->status;
+            if ($statusChanged) {
+                DB::afterCommit(fn () => app(UnifiedNotifier::class)->repairStagePattern($case));
+            }
             $costUpdatedOnReady = $case->status === RepairStage::Ready && $beforePrice !== $case->repair_price_toman;
             if (($statusChanged && in_array($case->status, [RepairStage::Ready, RepairStage::Delivered, RepairStage::Returned], true)) || $costUpdatedOnReady) {
                 $notifyPayload = [

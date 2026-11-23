@@ -60,18 +60,18 @@ class CartController extends Controller
         $lat = $request->query('lat');
         $lng = $request->query('lng');
         if (! is_numeric($lat) || ! is_numeric($lng)) {
-            return response()->json(['ok' => false, 'province' => null, 'city' => null]);
+            return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
         }
 
         $latFloat = (float) $lat;
         $lngFloat = (float) $lng;
         if ($latFloat < -90 || $latFloat > 90 || $lngFloat < -180 || $lngFloat > 180) {
-            return response()->json(['ok' => false, 'province' => null, 'city' => null]);
+            return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
         }
 
         $serviceKey = trim((string) config('services.neshan.service_key', ''));
         if ($serviceKey === '') {
-            return response()->json(['ok' => false, 'province' => null, 'city' => null]);
+            return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
         }
 
         try {
@@ -85,28 +85,32 @@ class CartController extends Controller
                 ]);
 
             if (! $response->successful()) {
-                return response()->json(['ok' => false, 'province' => null, 'city' => null]);
+                return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
             }
 
             $payload = $response->json();
             if (! is_array($payload)) {
-                return response()->json(['ok' => false, 'province' => null, 'city' => null]);
+                return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
             }
 
+            $address = is_string($payload['formatted_address'] ?? null)
+                ? mb_substr(trim($payload['formatted_address']), 0, 400)
+                : '';
             [$province, $city] = self::matchIranProvinceAndCity(
                 (string) ($payload['state'] ?? ''),
                 (string) ($payload['city'] ?? ''),
                 (string) ($payload['county'] ?? ''),
-                (string) ($payload['formatted_address'] ?? '')
+                $address
             );
 
             return response()->json([
-                'ok' => $province !== null,
+                'ok' => $province !== null || $address !== '',
                 'province' => $province,
                 'city' => $city,
+                'address' => $address !== '' ? $address : null,
             ]);
         } catch (\Throwable) {
-            return response()->json(['ok' => false, 'province' => null, 'city' => null]);
+            return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
         }
     }
 

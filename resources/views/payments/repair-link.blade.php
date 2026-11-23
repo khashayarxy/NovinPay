@@ -19,12 +19,14 @@
             <dt style="color: #536d88; font-weight: 500;">کد پیگیری تعمیر</dt>
             <dd style="margin: 0; font-weight: 700; font-variant-numeric: tabular-nums;"><bdi dir="ltr">{{ \App\Support\FaNumber::digits((string) $case->tracking_reference) }}</bdi></dd>
         </div>
+        @if ($showDevice)
         <div style="display: flex; justify-content: space-between; gap: 1rem;">
             <dt style="color: #536d88; font-weight: 500;">مدل دستگاه</dt>
             <dd style="margin: 0; font-weight: 500;">
                 @if ($case->device_brand)<bdi dir="ltr">{{ $case->device_brand->value }}</bdi> · @endif{{ $case->device_model }}
             </dd>
         </div>
+        @endif
         <div style="display: flex; justify-content: space-between; gap: 1rem;">
             <dt style="color: #536d88; font-weight: 500;">مبلغ کل صورت‌حساب</dt>
             <dd style="margin: 0; font-weight: 500; font-variant-numeric: tabular-nums;">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($document->charged_minor)) }} تومان</dd>

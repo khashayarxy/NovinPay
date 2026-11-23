@@ -10,18 +10,33 @@ use App\Models\RepairCase;
 use App\Services\PaymentConnectivity;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
+use App\Support\RepairPaymentCode;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class RepairPaymentLinkController extends Controller
 {
+    public function short(string $code, ZibalGateway $gateway)
+    {
+        $link = RepairPaymentCode::resolve($code);
+        abort_unless($link, 404);
+
+        return $this->paymentView($link['repair'], $gateway, $link['expires']);
+    }
+
     public function show(string $repair, ZibalGateway $gateway)
+    {
+        return $this->paymentView($repair, $gateway);
+    }
+
+    private function paymentView(string $repair, ZibalGateway $gateway, ?int $shortLinkExpiry = null)
     {
         $case = RepairCase::query()->where('public_id', $repair)->firstOrFail();
         $document = FinancialDocument::query()->where('repair_case_id', $case->id)->firstOrFail();
         $balance = max(0, $document->charged_minor - $document->paid_minor);
-        $paidTransactions = PaymentTransaction::query()
+        $paidTransactions = $shortLinkExpiry ? collect() : PaymentTransaction::query()
             ->where('financial_document_id', $document->id)
             ->latest('id')
             ->get();
@@ -32,9 +47,10 @@ class RepairPaymentLinkController extends Controller
             'balance' => $balance,
             'isPaid' => $document->charged_minor > 0 && $balance === 0,
             'gatewayAvailable' => $gateway->available(),
-            'startUrl' => URL::temporarySignedRoute('payments.repair.link.start', now()->addHours(2), ['repair' => $case->public_id]),
+            'startUrl' => URL::temporarySignedRoute('payments.repair.link.start', Carbon::createFromTimestamp(min($shortLinkExpiry ?? PHP_INT_MAX, now()->addHours(2)->timestamp)), ['repair' => $case->public_id]),
             'operationKey' => (string) Str::uuid(),
             'transactions' => $paidTransactions,
+            'showDevice' => $shortLinkExpiry === null,
         ]);
     }
 
@@ -115,7 +131,7 @@ class RepairPaymentLinkController extends Controller
     public function result(string $repair, string $payment, ZibalPayments $payments, ZibalGateway $gateway)
     {
         [$case, $document, $attempt] = $this->resolveContext($repair, $payment);
-        $repairLinkUrl = URL::temporarySignedRoute('payments.repair.link', now()->addDays(14), ['repair' => $case->public_id]);
+        $repairLinkUrl = route('payments.repair.short', ['code' => RepairPaymentCode::issue($case->public_id, now()->addDays(14)->timestamp)]);
         $canContinue = $this->canContinue($attempt, $payments, $gateway);
 
         return view('payments.result', [

@@ -17,8 +17,11 @@ use App\Models\PaymentAttempt;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\User;
+use App\Services\Notifications\PanelChi;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Services\ZibalGateway;
 use App\Support\RepairIdentity;
+use App\Support\RepairPaymentCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -303,6 +306,124 @@ class ZibalUnifiedPaymentsTest extends TestCase
             ->assertOk()
             ->assertSee('پرداخت انجام نشد')
             ->assertSee('تلاش مجدد برای پرداخت');
+    }
+
+    public function test_short_links_preserve_account_and_phone_verification_and_payment_expiry(): void
+    {
+        [$order] = $this->createPayableOrder(3500000);
+        [$case] = $this->createPayableRepair(3500000);
+        $orderUrl = route('account.orders.short', ['code' => substr($order->public_id, 0, 8)]);
+        $this->get($orderUrl)->assertRedirect(route('account.login'))
+            ->assertSessionHas('customer_intended', '/o/'.substr($order->public_id, 0, 8));
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $this->get($orderUrl)->assertRedirect(route('account.orders.show', ['record' => $order->public_id]));
+        $other = CustomerAccount::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'name' => 'Another account',
+            'phone' => '09120001123',
+            'phone_digest' => RepairIdentity::digest('customer-phone', '09120001123'),
+            'verified_at' => now(),
+            'is_active' => true,
+            'session_version' => 1,
+        ]);
+        $this->actingAs($other, 'customer')->get($orderUrl)->assertNotFound();
+
+        $this->get('/r/40219900')->assertOk()
+            ->assertSee('value="40219900"', false)
+            ->assertDontSee('09120001122');
+
+        $expiry = now()->addMinutes(10);
+        $code = RepairPaymentCode::issue($case->public_id, $expiry->timestamp);
+        $this->get('/p/'.$code)->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow')
+            ->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertDontSee($case->customer_name)
+            ->assertDontSee($case->contact_phone)
+            ->assertDontSee($case->device_model)
+            ->assertSee('پرداخت آنلاین با زیبال')
+            ->assertSee('expires='.$expiry->timestamp, false);
+        $this->get('/p/'.($code[0] === 'a' ? 'b' : 'a').substr($code, 1))->assertNotFound();
+        $this->travel(11)->minutes();
+        $this->get('/p/'.$code)->assertNotFound();
+    }
+
+    public function test_all_panelchi_patterns_use_the_expected_variables_and_send_once_per_event(): void
+    {
+        [$order] = $this->createPayableOrder(3500000);
+        [$case, $document] = $this->createPayableRepair(3500000);
+        config([
+            'notifications.panelchi.enabled' => true,
+            'notifications.panelchi.api_key' => 'panelchi-test-token',
+            'notifications.panelchi.sender' => '3000505',
+        ]);
+        Http::preventStrayRequests();
+        Http::fake(['https://api.panelchi.com/sms/pattern' => Http::response(['data' => ['uid' => 'test-send']], 201)]);
+        $url = URL::temporarySignedRoute('payments.repair.link', now()->addDays(14), ['repair' => $case->public_id]);
+        $notifier = app(UnifiedNotifier::class);
+        for ($delivery = 0; $delivery < 2; $delivery++) {
+            foreach (['order_confirmed', 'order_preparing', 'order_pickup_ready', 'order_cancelled'] as $event) {
+                $notifier->orderPattern($order, $event);
+            }
+            $notifier->orderShipped($order, 'TIPAX-12345');
+            $notifier->repairCreatedPattern($case);
+            $notifier->repairPaymentLinkGenerated($case, $document, $url);
+            $case->status = RepairStage::Ready;
+            $notifier->repairStagePattern($case);
+            $case->status = RepairStage::Returned;
+            $notifier->repairStagePattern($case);
+        }
+
+        $expected = [
+            'mfae2yqje8msw9e' => ['order_code', 'name', 'product'],
+            '694jmegiuep02i6' => ['order_code'],
+            'yksd5440vew1loy' => ['order_code', 'tracking_code'],
+            '309p3u2jo5b7qds' => ['name', 'repair_code'],
+            'a7h9o09htzyjk17' => ['repair_code', 'pay_code'],
+            'hn7sgk679tfdxvt' => ['repair_code', 'status'],
+            'u2fc816s2qo1u5t' => ['order_code'],
+            'xtawhyckra6k1tt' => ['order_code'],
+            '8zvy6p1t482z3oy' => ['repair_code'],
+        ];
+        Http::assertSentCount(count($expected));
+        foreach ($expected as $pattern => $keys) {
+            Http::assertSent(fn ($request) => $request->url() === 'https://api.panelchi.com/sms/pattern'
+                && $request->hasHeader('Authorization', 'Bearer panelchi-test-token')
+                && $request['sourceNumber'] === '3000505'
+                && $request['recipient'] === '09120001122'
+                && $request['pattern'] === $pattern
+                && array_keys($request['variables']) === $keys);
+        }
+        $payment = Http::recorded(fn ($request) => $request['pattern'] === 'a7h9o09htzyjk17')->sole()[0];
+        $this->assertSame($case->public_id, RepairPaymentCode::resolve($payment['variables']['pay_code'])['repair']);
+    }
+
+    public function test_order_progress_uses_the_admin_workflow_and_keeps_the_send_claim_on_timeout(): void
+    {
+        [, $document] = $this->createPayableOrder(3500000);
+        $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->sole();
+        $url = route('admin.deliveries.order-progress', $plan->public_id);
+        config([
+            'notifications.panelchi.enabled' => true,
+            'notifications.panelchi.api_key' => 'panelchi-test-token',
+            'notifications.panelchi.sender' => '3000505',
+        ]);
+        Http::preventStrayRequests();
+        Http::fake([
+            'https://api.panelchi.com/sms/pattern' => Http::failedConnection(),
+        ]);
+        $input = ['version' => $plan->version, 'password' => 'password', 'progress' => 'pickup_ready'];
+        $this->actingAs($this->owner, 'web')->withSession(['admin_session_version' => 1]);
+        $this->post($url, $input)->assertConflict();
+        $this->assertDatabaseCount('delivery_events', 0);
+        $plan->forceFill(['method' => 'pickup'])->save();
+        $this->post($url, $input)->assertRedirect();
+        $this->post($url, $input)->assertRedirect();
+        $this->assertDatabaseCount('delivery_events', 1);
+        $this->assertDatabaseHas('delivery_events', ['delivery_plan_id' => $plan->id, 'action' => 'order_pickup_ready']);
+
+        Http::fake(['https://api.panelchi.com/sms/pattern' => Http::response(['data' => ['uid' => 'unexpected-replay']])]);
+        $order = SalesOrder::query()->findOrFail($document->sales_order_id);
+        app(PanelChi::class)->send('order_pickup_ready', $order->public_id, '09120001122', ['order_code' => substr($order->public_id, 0, 8)]);
+        Http::assertNothingSent();
     }
 
     private function createPayableOrder(int $minor): array

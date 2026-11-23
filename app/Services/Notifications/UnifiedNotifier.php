@@ -2,6 +2,7 @@
 
 namespace App\Services\Notifications;
 
+use App\Enums\RepairStage;
 use App\Mail\UnifiedNotificationMail;
 use App\Models\Consultation;
 use App\Models\DeliveryPlan;
@@ -13,6 +14,7 @@ use App\Models\RepairRequest;
 use App\Models\SalesOrder;
 use App\Services\IpPanel;
 use App\Support\FaNumber;
+use App\Support\RepairPaymentCode;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,6 +26,7 @@ final class UnifiedNotifier
         private readonly IpPanel $ipPanel,
         private readonly BaleNotifier $bale,
         private readonly TelegramNotifier $telegram,
+        private readonly PanelChi $panelChi,
     ) {}
 
     public function orderPlaced(SalesOrder $order, ?string $customerEmail = null): void
@@ -47,7 +50,7 @@ final class UnifiedNotifier
             $this->sendAdminSms('admin_order_placed', ['code' => $code, 'name' => $customerName, 'total' => $totalToman]);
             $this->sendAdminEmail('سفارش جدید #'.$code, 'ثبت سفارش خرید جدید', 'یک سفارش جدید در فروشگاه ثبت شد.', $adminFields, 'مشاهده سفارش در پنل', $adminUrl);
 
-            if ($customerPhone !== null) {
+            if ($customerPhone !== null && ! config('notifications.panelchi.enabled')) {
                 $this->sendSms($customerPhone, 'customer_order_placed', ['code' => $code, 'total' => $totalToman]);
             }
             $this->sendCustomerEmail(
@@ -70,7 +73,10 @@ final class UnifiedNotifier
             $customerPhone = $this->normalizePhone($order->customer?->contact_phone);
             $trackingText = trim((string) $tracking) !== '' ? trim((string) $tracking) : 'ثبت شده در حساب کاربری';
 
-            if ($customerPhone !== null) {
+            if (trim((string) $tracking) !== '') {
+                $this->orderPattern($order, 'order_shipped', ['tracking_code' => trim($tracking)]);
+            }
+            if ($customerPhone !== null && ! config('notifications.panelchi.enabled')) {
                 $this->sendSms($customerPhone, 'customer_order_shipped', ['code' => $code, 'tracking' => $trackingText]);
             }
             $this->sendCustomerEmail(
@@ -85,8 +91,53 @@ final class UnifiedNotifier
         }, 'order_shipped');
     }
 
+    /** @param array<string, string> $variables */
+    public function orderPattern(SalesOrder $order, string $event, array $variables = []): void
+    {
+        if (! config('notifications.panelchi.enabled')) {
+            return;
+        }
+
+        $this->safe(function () use ($order, $event, $variables): void {
+            $order->loadMissing('customer');
+            if ($event === 'order_confirmed') {
+                $order->loadMissing('lines');
+                $variables['name'] = (string) ($order->customer?->name ?: 'مشتری');
+                $products = $order->lines->pluck('description')->filter()->unique()->implode('، ');
+                $variables['product'] = mb_strimwidth($products ?: 'سفارش فروشگاه', 0, 100, '…');
+            }
+            $this->panelChi->send($event, $order->public_id, $this->normalizePhone($order->customer?->contact_phone),
+                ['order_code' => strtoupper(substr($order->public_id, 0, 8))] + $variables);
+        }, $event);
+    }
+
+    public function repairCreatedPattern(RepairRequest|RepairCase $repair): void
+    {
+        $this->safe(function () use ($repair): void {
+            $code = (string) $repair->tracking_reference;
+            $this->panelChi->send('repair_created', $code, $this->normalizePhone($repair->contact_phone), [
+                'name' => (string) $repair->customer_name,
+                'repair_code' => $code,
+            ]);
+        }, 'repair_created');
+    }
+
+    public function repairStagePattern(RepairCase $case): void
+    {
+        $this->safe(function () use ($case): void {
+            $cancelled = $case->status === RepairStage::Returned;
+            $variables = ['repair_code' => (string) $case->tracking_reference];
+            if (! $cancelled) {
+                $variables['status'] = $case->status->label();
+            }
+            $this->panelChi->send($cancelled ? 'repair_cancelled' : 'repair_status',
+                $case->public_id.':'.$case->version, $this->normalizePhone($case->contact_phone), $variables);
+        }, 'repair_stage_pattern');
+    }
+
     public function repairRequestSubmitted(RepairRequest $repair, ?string $customerEmail = null): void
     {
+        $this->repairCreatedPattern($repair);
         $this->safe(function () use ($repair, $customerEmail): void {
             $ref = FaNumber::digits((string) $repair->tracking_reference);
             $customerName = (string) $repair->customer_name;
@@ -107,7 +158,7 @@ final class UnifiedNotifier
             $this->bale->send($botText);
             $this->telegram->send($botText);
 
-            if ($customerPhone !== null) {
+            if ($customerPhone !== null && ! config('notifications.panelchi.enabled')) {
                 $this->sendSms($customerPhone, 'customer_repair_submitted', ['code' => (string) $repair->tracking_reference, 'device' => $device]);
             }
             $this->sendCustomerEmail(
@@ -135,7 +186,7 @@ final class UnifiedNotifier
             $customerPhone = $this->normalizePhone($case->contact_phone);
             $costText = $costToman !== null ? FaNumber::digits(number_format($costToman)).' تومان' : 'ثبت نشده';
 
-            if ($customerPhone !== null) {
+            if ($customerPhone !== null && ! config('notifications.panelchi.enabled')) {
                 $params = ['code' => $ref, 'status' => $statusLabel];
                 if ($costToman !== null) {
                     $params['cost'] = (string) $costToman;
@@ -249,6 +300,10 @@ final class UnifiedNotifier
             $this->telegram->send($botText);
             $this->bale->send($botText);
         }, 'order_paid');
+        if ($order->status !== 'cancelled' && $document->charged_minor > 0
+            && $document->paid_minor >= $document->charged_minor && $transaction->allocated_minor > 0) {
+            $this->orderPattern($order, 'order_confirmed');
+        }
     }
 
     public function repairPaid(RepairCase $repairCase, FinancialDocument $document, PaymentTransaction $transaction): void
@@ -284,6 +339,18 @@ final class UnifiedNotifier
 
     public function repairPaymentLinkGenerated(RepairCase $repairCase, FinancialDocument $document, string $paymentUrl): void
     {
+        $this->safe(function () use ($repairCase, $document, $paymentUrl): void {
+            parse_str((string) parse_url($paymentUrl, PHP_URL_QUERY), $query);
+            $expires = (int) ($query['expires'] ?? 0);
+            if ($expires <= now()->timestamp) {
+                return;
+            }
+            $this->panelChi->send('repair_payment', $document->public_id.':'.$document->version,
+                $this->normalizePhone($repairCase->contact_phone), [
+                    'repair_code' => (string) $repairCase->tracking_reference,
+                    'pay_code' => RepairPaymentCode::issue($repairCase->public_id, $expires),
+                ]);
+        }, 'repair_payment');
         $this->safe(function () use ($repairCase, $document, $paymentUrl): void {
             $ref = (string) $repairCase->tracking_reference;
             $customerName = (string) ($repairCase->customer_name ?: 'مشتری');

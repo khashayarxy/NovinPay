@@ -169,6 +169,31 @@ class DeliveryManagement
         }, 3);
     }
 
+    public function announceOrderProgress(User $actor, string $password, string $id, int $version, string $progress): void
+    {
+        DB::transaction(function () use ($actor, $password, $id, $version, $progress): void {
+            $actor = app(PaymentReview::class)->actor($actor, $password);
+            Gate::forUser($actor)->authorize('orders.fulfill');
+            Gate::forUser($actor)->authorize('orders.customer_data');
+            $lookup = DeliveryPlan::query()->where('public_id', $id)->firstOrFail();
+            $document = FinancialDocument::query()->lockForUpdate()->findOrFail($lookup->financial_document_id);
+            abort_unless($document->sales_order_id, 404);
+            $order = SalesOrder::query()->findOrFail($document->sales_order_id);
+            $plan = DeliveryPlan::query()->lockForUpdate()->findOrFail($lookup->id);
+            abort_unless($order->status === 'confirmed' && $plan->state === 'planned'
+                && $plan->version === $version && $plan->requested_method === null, 409);
+            abort_unless($progress === 'preparing' || ($progress === 'pickup_ready' && $plan->method === 'pickup'), 409);
+
+            $event = 'order_'.$progress;
+            if (DB::table('delivery_events')->where('delivery_plan_id', $plan->id)->where('action', $event)->exists()) {
+                return;
+            }
+
+            $this->event($plan, $event, $actor->id);
+            DB::afterCommit(fn () => app(UnifiedNotifier::class)->orderPattern($order, $event));
+        }, 3);
+    }
+
     public function completePlan(FinancialDocument $document, User $actor): void
     {
         $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->lockForUpdate()->first();

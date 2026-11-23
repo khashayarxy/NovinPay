@@ -21,6 +21,23 @@ return [
         ],
     ],
 
+    'panelchi' => [
+        'enabled' => (bool) env('NOTIFICATIONS_PANELCHI_ENABLED', false),
+        'api_key' => (string) env('NOTIFICATIONS_PANELCHI_API_KEY', ''),
+        'sender' => (string) env('NOTIFICATIONS_PANELCHI_SENDER', ''),
+        'patterns' => [
+            'order_confirmed' => 'mfae2yqje8msw9e',
+            'order_preparing' => '694jmegiuep02i6',
+            'order_shipped' => 'yksd5440vew1loy',
+            'repair_created' => '309p3u2jo5b7qds',
+            'repair_payment' => 'a7h9o09htzyjk17',
+            'repair_status' => 'hn7sgk679tfdxvt',
+            'order_pickup_ready' => 'u2fc816s2qo1u5t',
+            'order_cancelled' => 'xtawhyckra6k1tt',
+            'repair_cancelled' => '8zvy6p1t482z3oy',
+        ],
+    ],
+
     'email' => [
         'enabled' => (bool) env('NOTIFICATIONS_EMAIL_ENABLED', false),
     ],

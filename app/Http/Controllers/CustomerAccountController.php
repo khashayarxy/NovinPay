@@ -486,6 +486,16 @@ class CustomerAccountController extends Controller
         return view('account.order', ['order' => $order, 'timeline' => CustomerTimeline::order($order, $plan), 'document' => $document, 'plan' => $plan]);
     }
 
+    public function shortOrder(string $code)
+    {
+        $account = Auth::guard('customer')->user();
+        $matches = SalesOrder::query()->where($this->owned($account))
+            ->where('public_id', 'like', strtolower($code).'%')->limit(2)->pluck('public_id');
+        abort_unless($matches->count() === 1, 404);
+
+        return redirect()->route('account.orders.show', ['record' => $matches->first()]);
+    }
+
     private function settlement(CustomerAccount $account, string $column, int $id): array
     {
         $document = FinancialDocument::query()->where('customer_id', $account->customer_id ?? 0)->where($column, $id)->first();

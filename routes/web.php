@@ -132,6 +132,12 @@ Route::withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::cl
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $payment = PaymentController::class;
+    Route::get('/o/{code}', [CustomerAccountController::class, 'shortOrder'])
+        ->where('code', '[A-Fa-f0-9]{8}')->middleware([EnsureCustomerSession::class, 'throttle:60,1'])->name('account.orders.short');
+    Route::get('/r/{code}', [RepairRequestController::class, 'tracking'])
+        ->where('code', '[1-9][0-9]{7}')->middleware('throttle:60,1')->name('repair.track.short');
+    Route::get('/p/{code}', [RepairPaymentLinkController::class, 'short'])
+        ->where('code', '[A-Za-z0-9_-]{48}')->middleware('throttle:60,1')->name('payments.repair.short');
     Route::get('/payments/zibal/callback', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.callback');
     Route::middleware(['signed', 'throttle:60,1'])->prefix('pay/repair')->name('payments.repair.link')->group(function (): void {
         Route::get('/{repair}', [RepairPaymentLinkController::class, 'show'])->whereUuid('repair');
@@ -230,6 +236,8 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
         Route::get('deliveries', [DeliveryController::class, 'admin'])->middleware(['can:finance.view', 'can:finance.details'])->name('deliveries.index');
         Route::post('deliveries/{plan}/confirm', [DeliveryController::class, 'confirm'])->middleware(['can:finance.correct', 'can:finance.details', 'throttle:15,1'])->name('deliveries.confirm');
         Route::post('deliveries/{plan}/dispatch', [DeliveryController::class, 'dispatch'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('deliveries.dispatch');
+        Route::post('deliveries/{plan}/order-progress', [DeliveryController::class, 'announceOrderProgress'])
+            ->whereUuid('plan')->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('deliveries.order-progress');
         Route::get('payments', [App\Http\Controllers\Admin\PaymentController::class, 'index'])->middleware('can:finance.view')->name('payments.index');
         Route::get('payments/receipts/{receipt}/image', [ReceiptController::class, 'image'])->middleware(['can:finance.receive', 'can:finance.details'])->name('payments.image');
         Route::post('payments/{receipt}/review', [App\Http\Controllers\Admin\PaymentController::class, 'review'])->middleware(['can:finance.receive', 'can:finance.details', 'throttle:15,1'])->name('payments.review');
