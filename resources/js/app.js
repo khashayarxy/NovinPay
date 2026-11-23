@@ -712,7 +712,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         const methodInput = form.querySelector('input[name="method"]:checked');
         const method = methodInput ? methodInput.value : 'pickup';
         if (confirmDelivery) {
-            confirmDelivery.textContent = methodInput?.dataset.methodLabel || 'تحویل حضوری در فروشگاه نوینپِی';
+            confirmDelivery.textContent = methodInput?.dataset.methodLabel || 'تحویل حضوری در فروشگاه نوین پی';
         }
         if (confirmAddressRow && confirmAddress) {
             if (method === 'pickup') {
@@ -749,6 +749,8 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         });
     };
 
+    let onStep2Visible = null;
+
     const goToStep = (stepNumber) => {
         const target = Math.max(1, Math.min(4, stepNumber));
         syncSummary();
@@ -762,6 +764,9 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             if (num === target) ind.setAttribute('aria-current', 'step');
             else ind.removeAttribute('aria-current');
         });
+        if (target === 2 && typeof onStep2Visible === 'function') {
+            requestAnimationFrame(() => onStep2Visible());
+        }
     };
 
     stepper.classList.add('is-stepped');
@@ -805,7 +810,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         }
     });
 
-    // Lightweight zero-dependency OpenStreetMap interactive pin map
+    // Interactive Neshan Web Map (with non-blocked CartoDB Voyager tile fallback when NESHAN_WEB_KEY is empty)
     const mapBox = form.querySelector('[data-checkout-map]');
     if (mapBox) {
         const viewport = mapBox.querySelector('[data-map-viewport]');
@@ -813,10 +818,22 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         const coordsEl = mapBox.querySelector('[data-map-coords]');
         const latInput = mapBox.querySelector('[data-map-lat]');
         const lngInput = mapBox.querySelector('[data-map-lng]');
+        const neshanKey = (mapBox.dataset.neshanKey || '').trim();
 
         let lat = parseFloat(mapBox.dataset.defaultLat || '35.6597') || 35.6597;
         let lng = parseFloat(mapBox.dataset.defaultLng || '51.0592') || 51.0592;
-        let zoom = 13;
+        let zoom = 14;
+        let neshanMap = null;
+
+        const saveCoordinates = (la, ln) => {
+            lat = Math.max(-85, Math.min(85, la));
+            lng = Math.max(-180, Math.min(180, ln));
+            const fLat = lat.toFixed(6);
+            const fLng = lng.toFixed(6);
+            if (latInput) latInput.value = fLat;
+            if (lngInput) lngInput.value = fLng;
+            if (coordsEl) coordsEl.textContent = `${fLat}, ${fLng}`;
+        };
 
         const latLngToWorld = (la, ln, z) => {
             const scale = 256 * Math.pow(2, z);
@@ -833,7 +850,13 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             return { lat: Math.max(-85, Math.min(85, la)), lng: Math.max(-180, Math.min(180, ln)) };
         };
 
+        const subdomains = ['a', 'b', 'c', 'd'];
         const renderMap = (saveInputs = false) => {
+            if (saveInputs) saveCoordinates(lat, lng);
+            if (neshanMap) {
+                neshanMap.setView([lat, lng], zoom, { animate: false });
+                return;
+            }
             if (!viewport || !tilesEl) return;
             const w = viewport.clientWidth || 420;
             const h = viewport.clientHeight || 230;
@@ -849,20 +872,15 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 for (let ty = minTy; ty <= maxTy; ty++) {
                     if (ty < 0 || ty >= maxIndex) continue;
                     const wrappedX = ((tx % maxIndex) + maxIndex) % maxIndex;
+                    const sub = subdomains[(wrappedX + ty) % subdomains.length];
                     const img = document.createElement('img');
-                    img.src = `https://tile.openstreetmap.org/${zoom}/${wrappedX}/${ty}.png`;
+                    img.src = `https://${sub}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${wrappedX}/${ty}.png`;
                     img.alt = '';
+                    img.decoding = 'async';
                     img.style.left = `${Math.round(tx * 256 - center.x + w / 2)}px`;
                     img.style.top = `${Math.round(ty * 256 - center.y + h / 2)}px`;
                     tilesEl.appendChild(img);
                 }
-            }
-            if (saveInputs) {
-                const fLat = lat.toFixed(6);
-                const fLng = lng.toFixed(6);
-                if (latInput) latInput.value = fLat;
-                if (lngInput) lngInput.value = fLng;
-                if (coordsEl) coordsEl.textContent = `${fLat}, ${fLng}`;
             }
         };
 
@@ -871,13 +889,14 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         let moved = false;
 
         viewport?.addEventListener('pointerdown', (e) => {
+            if (neshanMap) return;
             dragging = true;
             moved = false;
             dragStart = { x: e.clientX, y: e.clientY, world: latLngToWorld(lat, lng, zoom) };
             viewport.setPointerCapture?.(e.pointerId);
         });
         viewport?.addEventListener('pointermove', (e) => {
-            if (!dragging || !dragStart) return;
+            if (neshanMap || !dragging || !dragStart) return;
             const dx = e.clientX - dragStart.x;
             const dy = e.clientY - dragStart.y;
             if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
@@ -887,7 +906,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             renderMap(true);
         });
         viewport?.addEventListener('pointerup', (e) => {
-            if (!dragging) return;
+            if (neshanMap || !dragging) return;
             dragging = false;
             if (!moved && viewport) {
                 const rect = viewport.getBoundingClientRect();
@@ -904,7 +923,11 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         mapBox.querySelectorAll('[data-map-zoom]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 zoom = btn.dataset.mapZoom === 'in' ? Math.min(18, zoom + 1) : Math.max(5, zoom - 1);
-                renderMap(Boolean(latInput?.value));
+                if (neshanMap) {
+                    neshanMap.setZoom(zoom);
+                } else {
+                    renderMap(Boolean(latInput?.value));
+                }
             });
         });
 
@@ -914,10 +937,84 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 lat = pos.coords.latitude;
                 lng = pos.coords.longitude;
                 zoom = 15;
-                renderMap(true);
+                saveCoordinates(lat, lng);
+                if (neshanMap) {
+                    neshanMap.setView([lat, lng], zoom);
+                } else {
+                    renderMap(true);
+                }
             });
         });
 
+        // Boot Neshan Leaflet Web SDK if NESHAN_WEB_KEY is configured
+        const bootNeshanSdk = () => {
+            if (!neshanKey || !viewport || !tilesEl || neshanMap) return;
+            const mountNeshan = () => {
+                if (!window.L || typeof window.L.Map !== 'function' || neshanMap) return;
+                try {
+                    tilesEl.innerHTML = '';
+                    tilesEl.style.pointerEvents = 'auto';
+                    neshanMap = new window.L.Map(tilesEl, {
+                        key: neshanKey,
+                        maptype: 'neshan',
+                        poi: true,
+                        traffic: false,
+                        center: [lat, lng],
+                        zoom,
+                        zoomControl: false,
+                    });
+                    neshanMap.on('move', () => {
+                        const c = neshanMap.getCenter();
+                        if (c) saveCoordinates(c.lat, c.lng);
+                    });
+                    neshanMap.on('zoomend', () => {
+                        zoom = neshanMap.getZoom() || zoom;
+                    });
+                    neshanMap.on('click', (ev) => {
+                        if (ev && ev.latlng) {
+                            saveCoordinates(ev.latlng.lat, ev.latlng.lng);
+                            neshanMap.panTo(ev.latlng);
+                        }
+                    });
+                    setTimeout(() => neshanMap?.invalidateSize(), 60);
+                } catch {
+                    neshanMap = null;
+                    tilesEl.style.pointerEvents = 'none';
+                    renderMap(Boolean(latInput?.value));
+                }
+            };
+
+            if (window.L && typeof window.L.Map === 'function') {
+                mountNeshan();
+                return;
+            }
+            if (!document.getElementById('neshan-leaflet-css')) {
+                const link = document.createElement('link');
+                link.id = 'neshan-leaflet-css';
+                link.rel = 'stylesheet';
+                link.href = 'https://static.neshan.org/sdk/leaflet/v1.9.4/neshan-sdk/v1.0.8/index.css';
+                document.head.appendChild(link);
+            }
+            if (!document.getElementById('neshan-leaflet-js')) {
+                const script = document.createElement('script');
+                script.id = 'neshan-leaflet-js';
+                script.src = 'https://static.neshan.org/sdk/leaflet/v1.9.4/neshan-sdk/v1.0.8/index.js';
+                script.async = true;
+                script.onload = mountNeshan;
+                document.head.appendChild(script);
+            }
+        };
+
+        onStep2Visible = () => {
+            if (neshanMap) {
+                neshanMap.invalidateSize();
+            } else {
+                renderMap(Boolean(latInput?.value));
+                bootNeshanSdk();
+            }
+        };
+
         renderMap(Boolean(latInput?.value));
+        if (neshanKey) bootNeshanSdk();
     }
 });

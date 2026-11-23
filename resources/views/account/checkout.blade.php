@@ -87,7 +87,7 @@
                 <div class="checkout-step-panel" data-checkout-step="2">
                     <fieldset class="commerce-panel">
                         <legend>مرحله ۲ · مشخصات ارسال و نقشه تعاملی</legend>
-                        <p class="commerce-summary__note">اگر قصد تحویل حضوری در فروشگاه نوینپِی را دارید، می‌توانید بدون وارد کردن نشانی به مرحله بعد بروید.</p>
+                        <p class="commerce-summary__note">اگر قصد تحویل حضوری در فروشگاه نوین پی را دارید، می‌توانید بدون وارد کردن نشانی به مرحله بعد بروید.</p>
 
                         @if ($addresses->isNotEmpty())
                             <div class="checkout-mode-tabs" role="radiogroup" aria-label="انتخاب نوع نشانی">
@@ -154,7 +154,8 @@
                                 </div>
                             </div>
 
-                            <div class="checkout-map" data-checkout-map data-default-lat="{{ old('latitude', '35.6597') }}" data-default-lng="{{ old('longitude', '51.0592') }}">
+                            @php($neshanWebKey = trim((string) config('services.neshan.web_key', '')))
+                            <div class="checkout-map" data-checkout-map data-neshan-key="{{ $neshanWebKey }}" data-default-lat="{{ old('latitude', '35.6597') }}" data-default-lng="{{ old('longitude', '51.0592') }}">
                                 <div class="checkout-map__header">
                                     <span>موقعیت دقیق روی نقشه (برای ثبت پین کلیک یا نقشه را جابه‌جا کنید)</span>
                                     <div class="checkout-map__controls">
@@ -169,7 +170,7 @@
                                 </div>
                                 <div class="checkout-map__footer">
                                     <span class="checkout-map__coords" data-map-coords dir="ltr">{{ old('latitude') && old('longitude') ? old('latitude').', '.old('longitude') : 'موقعیت انتخاب نشده (اختیاری)' }}</span>
-                                    <span class="checkout-map__attr">© OpenStreetMap</span>
+                                    <span class="checkout-map__attr" data-map-attr>{{ $neshanWebKey !== '' ? '© نقشه نشان' : '© CartoDB / OpenStreetMap' }}</span>
                                 </div>
                                 <input type="hidden" name="latitude" value="{{ old('latitude') }}" data-map-lat>
                                 <input type="hidden" name="longitude" value="{{ old('longitude') }}" data-map-lng>
@@ -246,7 +247,7 @@
                             </div>
                             <div>
                                 <dt>نحوه ارسال</dt>
-                                <dd data-confirm-delivery>{{ $methodLabels[$defaultMethod] ?? 'تحویل حضوری در فروشگاه نوینپِی' }}</dd>
+                                <dd data-confirm-delivery>{{ $methodLabels[$defaultMethod] ?? 'تحویل حضوری در فروشگاه نوین پی' }}</dd>
                             </div>
                             <div data-confirm-address-row hidden>
                                 <dt>نشانی ارسال</dt>

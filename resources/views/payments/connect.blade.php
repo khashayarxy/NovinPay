@@ -13,32 +13,39 @@
     <script src="{{ versioned_asset('pay/assets/vpn-warning.js') }}" defer></script>
 </head>
 <body class="t-indigo">
+    @php
+        $checkUrl = $checkUrl ?? route('payments.connect', $payment, false);
+        $resultUrl = $resultUrl ?? route('payments.result', $payment, false);
+        $gatewayRouteUrl = $gatewayRouteUrl ?? route('payments.gateway', $payment, false);
+        $verifySplitVpn = (bool) ($verifySplitVpn ?? false);
+    @endphp
     <main class="payment-warning-shell">
         <div class="payment-warning-brand"><x-home.wordmark /></div>
-        <div class="container" id="go" data-check-url="{{ route('payments.connect', $payment, false) }}"
-            data-result-url="{{ route('payments.result', $payment, false) }}">
+        <div class="container" id="go" data-check-url="{{ $checkUrl }}"
+            data-result-url="{{ $resultUrl }}"
+            data-verify-split="{{ $verifySplitVpn ? '1' : '0' }}">
             <div class="icon-wrap">
                 <div class="icon">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path pathLength="20" d="M7 11V8a5 5 0 0 1 10 0v3"/><path pathLength="20" d="M6 11h12v9H6z"/></svg>
                 </div>
             </div>
-            <h2 id="goTitle">انتقال به درگاه پرداخت</h2>
-            <p class="lead" id="goLead">درگاه پرداخت فقط از داخل ایران در دسترس است.</p>
-            <div class="bar" id="goBar" hidden aria-hidden="true"></div>
-            <p class="hint" id="goHint" hidden>اتصال شما با درگاه پرداخت، امن و رمزگذاری‌شده است.</p>
+            <h2 id="goTitle">{{ $verifySplitVpn ? 'در حال بررسی اتصال...' : 'انتقال به درگاه پرداخت' }}</h2>
+            <p class="lead" id="goLead">{{ $verifySplitVpn ? 'لطفاً چند لحظه صبر کنید.' : 'درگاه پرداخت فقط از داخل ایران در دسترس است.' }}</p>
+            <div class="bar" id="goBar" @unless($verifySplitVpn) hidden @endunless aria-hidden="true"></div>
+            <p class="hint" id="goHint" @unless($verifySplitVpn) hidden @endunless>اتصال شما با درگاه پرداخت، امن و رمزگذاری‌شده است.</p>
 
-            <div class="info-box late" id="vpnBox" role="alert">
+            <div class="info-box late" id="vpnBox" role="alert" @if($verifySplitVpn) hidden @endif>
                 <p><strong>وی‌پی‌ان شما روشن است.</strong></p>
                 <p><span class="ph">برای ورود به درگاه،</span> <span class="ph">وی‌پی‌ان را خاموش کنید.</span></p>
             </div>
             <div class="info-box warn late" id="vpnErr" hidden role="alert">
                 <p id="vpnErrText"></p>
             </div>
-            <button class="btn late" type="button" id="vpnCheck">وی‌پی‌ان رو خاموش کردم</button>
+            <button class="btn late" type="button" id="vpnCheck" @if($verifySplitVpn) hidden @endif>وی‌پی‌ان رو خاموش کردم</button>
 
             <div class="info-box go late" id="fallback" hidden>
                 <p><span class="ph">اگر به‌صورت خودکار</span> <span class="ph">منتقل نشدید،</span> <span class="ph">این دکمه را بزنید.</span></p>
-                <a class="btn" id="fallbackLink" href="{{ route('payments.gateway', $payment, false) }}">انتقال به درگاه پرداخت</a>
+                <a class="btn" id="fallbackLink" href="{{ $gatewayRouteUrl }}">انتقال به درگاه پرداخت</a>
             </div>
         </div>
 

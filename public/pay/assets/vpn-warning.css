@@ -295,3 +295,24 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
 @media (max-height: 520px) {
     .payment-warning-shell { margin-block-start: 36px; }
 }
+
+.btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 18px;
+}
+.btn-group .btn {
+    margin-top: 0;
+}
+.btn.btn--secondary {
+    background: #f1f5f9;
+    color: #334155;
+    box-shadow: none;
+    border: 1px solid #cbd5e1;
+}
+.btn.btn--secondary:hover {
+    background: #e2e8f0;
+    filter: none;
+}

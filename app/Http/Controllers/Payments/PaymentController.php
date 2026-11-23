@@ -74,11 +74,15 @@ class PaymentController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ir' => $isIran]);
         }
-        if ($isIran !== false) {
+        $isBrowserNavigation = $request->headers->get('Sec-Fetch-Mode') === 'navigate';
+        if ($isIran !== false && ! $isBrowserNavigation) {
             return $this->sendToGateway($attempt);
         }
 
-        return view('payments.connect', ['payment' => $attempt->public_id]);
+        return response()->view('payments.connect', [
+            'payment' => $attempt->public_id,
+            'verifySplitVpn' => $isIran !== false,
+        ], 200, ['Referrer-Policy' => 'no-referrer']);
     }
 
     public function gateway(string $payment, ZibalPayments $payments, ZibalGateway $gateway)
