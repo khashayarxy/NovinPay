@@ -51,7 +51,7 @@ class PublishPosPaperRollTest extends TestCase
         $this->get(route('products.index', ['category' => 'consumable']))
             ->assertOk()->assertSee('رول کاغذ کارتخوان');
         $this->get(route('products.show', $product))
-            ->assertOk()->assertSee('۸۵٬۰۰۰')->assertSee('افزودن به سبد خرید');
+            ->assertOk()->assertSee('۸۵٬۰۰۰')->assertSee('خرید محصول');
 
         app(CommerceManagement::class)->execute($owner, 'item.adjust', [
             'operation_key' => (string) Str::uuid(), 'version' => $item->version, 'quantity' => -1,

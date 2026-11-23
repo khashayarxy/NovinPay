@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class RepairRequest extends Model
 {
+    public const ACCESSORIES = ['charger' => 'شارژر', 'battery' => 'باتری', 'sim' => 'سیم‌کارت'];
+
+    public function photoPath(): string
+    {
+        return 'repair-requests/'.$this->id.'/'.$this->submission_digest.'.image';
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

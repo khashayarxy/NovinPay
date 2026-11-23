@@ -64,7 +64,7 @@
             'product-specs' => $hasSpecs ? 'مشخصات فنی' : null,
             'product-review' => !$product->is_sample ? 'دیدگاه‌ها' : null,
             'product-faq' => $faq !== '' ? 'پرسش‌های متداول' : null,
-            'product-related' => $related->isNotEmpty() ? 'محصولات مرتبط' : null,
+            'product-related' => $related->isNotEmpty() ? 'کالاهای مرتبط' : null,
         ]);
         $hasSectionNav = count($sections) > 1;
     @endphp
@@ -76,7 +76,11 @@
                 <section class="identity card" aria-labelledby="product-title">
                     <div class="identity-top">
                         <span @class(['used', 'is-new' => $product->condition === \App\Enums\ProductCondition::New])>{{ $product->condition->label() }}</span>
-                        @if ($product->is_sample)<span class="badge badge-sample">داده نمونه</span>@endif
+                        @if ($product->is_sample)
+                            <span class="badge badge-sample">داده نمونه</span>
+                        @else
+                            <a class="public-inline-link product-compare-link" href="{{ route('products.compare', ['products' => [$product->slug]]) }}"><x-storefront.icon name="compare" /> مقایسهٔ محصول</a>
+                        @endif
                     </div>
                     <h1 id="product-title">{{ $product->name }}</h1>
                     @if ($product->model && !str_contains($product->name, $product->model))<p class="model"><bdi>{{ $product->model }}</bdi></p>@endif
@@ -125,7 +129,7 @@
         </div>
         @if ($related->isNotEmpty() || ($isTerminal && !$product->is_sample))
             <section class="related card" id="product-related" aria-labelledby="related-heading">
-                <h2 id="related-heading">{{ $isTerminal ? 'کارتخوان‌های دیگر '.config('business.name') : 'محصولات مرتبط' }}</h2>
+                <h2 id="related-heading">کالاهای مرتبط</h2>
                 @if ($related->isNotEmpty())
                     <div class="public-product-grid">@foreach ($related as $item)<x-product-card :product="$item" :sale="$relatedSales[$item->id]" />@endforeach</div>
                 @else
@@ -140,10 +144,10 @@
         @endif
     </div>
     @if ($inquiry || $canAddToCart)
-        <div class="sticky-contact" data-product-dock hidden>
+        <div class="sticky-contact" data-product-dock inert>
             <p class="price">@if ($formattedPrice !== null)<bdi>{{ $formattedPrice }}</bdi> <small>تومان</small>@else<small>قیمت نیاز به استعلام دارد</small>@endif</p>
             @if ($canAddToCart)
-                <button class="primary" type="submit" form="product-cart-form"><x-storefront.icon name="cart" />{{ $sale->label() }}</button>
+                <button class="primary" type="submit" form="product-cart-form"><x-storefront.icon name="cart" />خرید محصول</button>
             @else
                 <a class="primary" href="{{ config('business.phone_uri') }}"><x-storefront.icon name="phone" />{{ $sale->label() }}</a>
             @endif

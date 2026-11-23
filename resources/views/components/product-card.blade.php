@@ -1,4 +1,4 @@
-@props(['product', 'sale' => null])
+@props(['product', 'sale' => null, 'quantity' => null])
 @php
     $sale ??= \App\Support\ProductSale::resolve($product, null);
     $known = \App\Support\ProductSale::priceConfirmed($product);
@@ -11,12 +11,12 @@
     };
 @endphp
 
-<article class="card public-product-card flex flex-col overflow-hidden">
-    <a href="{{ route('products.show', $product) }}" class="block bg-slate-100" tabindex="-1" aria-hidden="true">
+<article class="card public-product-card relative flex flex-col overflow-hidden">
+    <div class="block bg-slate-100">
         <div class="aspect-[4/3]">
             <x-product-image :product="$product" />
         </div>
-    </a>
+    </div>
 
     <div class="flex flex-1 flex-col gap-3 p-4 sm:p-5">
         <div class="flex flex-wrap gap-2">
@@ -27,13 +27,16 @@
                 class="badge {{ $sale === \App\Support\ProductSale::Online ? 'badge-success' : 'badge-warning' }}">
                 {{ $status }}
             </span>
+            @if ($sale === \App\Support\ProductSale::Online && $quantity > 0)
+                <span class="text-sm">{{ \App\Support\FaNumber::digits($quantity) }} عدد</span>
+            @endif
             @if ($product->is_sample)
                 <span class="badge badge-sample">داده نمونه</span>
             @endif
         </div>
 
         <h3 class="text-base font-semibold leading-7 break-words">
-            <a href="{{ route('products.show', $product) }}" class="transition-colors hover:text-brand-700">
+            <a href="{{ route('products.show', $product) }}" class="transition-colors hover:text-brand-700 after:absolute after:inset-0">
                 {{ $product->name }}
             </a>
         </h3>
@@ -51,10 +54,7 @@
                     <span class="text-xs font-normal text-slate-600">قیمت نیاز به استعلام دارد</span>
                 @endif
             </p>
-            <a href="{{ route('products.show', $product) }}" class="text-sm font-semibold text-brand-700 hover:underline"
-                aria-label="{{ $action }} برای {{ $product->name }}">
-                {{ $action }}
-            </a>
+            <span class="text-sm font-semibold text-brand-700">{{ $action }}</span>
         </div>
     </div>
 </article>

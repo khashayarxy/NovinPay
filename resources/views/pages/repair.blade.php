@@ -12,9 +12,9 @@
     $customerName = old('customer_name', auth('customer')->user()?->name ?? '');
     $customerName = is_string($customerName) ? $customerName : '';
     $initialStep = 1;
-    if ($errors->hasAny(['device_brand', 'device_model'])) {
+    if ($errors->hasAny(['device_brand', 'device_model', 'device_serial', 'accessories', 'accessories.*'])) {
         $initialStep = 1;
-    } elseif ($errors->has('issue')) {
+    } elseif ($errors->hasAny(['issue', 'device_photo'])) {
         $initialStep = 2;
     } elseif ($errors->hasAny(['customer_name', 'contact_phone', 'submission_token'])) {
         $initialStep = 3;
@@ -31,13 +31,13 @@
 <div class="np-container public-section repair-entry">
     <header class="store-page-intro">
         <h1>ثبت درخواست تعمیر کارتخوان</h1>
-        <p>در سه مرحلهٔ کوتاه مشخصات دستگاه و مشکل آن را ثبت کنید تا کد پیگیری دریافت کنید.</p>
+
     </header>
     <div class="repair-entry-layout">
         <section class="public-panel repair-stepper-panel" aria-label="ثبت درخواست تعمیر">
             <x-form-errors />
             @if(auth('customer')->check())
-            <form method="post" action="{{ route('repair.store') }}" class="public-form repair-stepper" data-repair-stepper data-initial-step="{{ $initialStep }}" novalidate>
+            <form method="post" action="{{ route('repair.store') }}" enctype="multipart/form-data" class="public-form repair-stepper" data-repair-stepper data-initial-step="{{ $initialStep }}" novalidate>
                 @csrf
                 <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
 
@@ -48,7 +48,7 @@
                     </li>
                     <li class="repair-progress__item" data-step-indicator="2" aria-current="{{ $initialStep === 2 ? 'step' : 'false' }}">
                         <span class="repair-progress__num">۲</span>
-                        <span class="repair-progress__label">نوع خرابی</span>
+                        <span class="repair-progress__label">شرح مشکل و عکس</span>
                     </li>
                     <li class="repair-progress__item" data-step-indicator="3" aria-current="{{ $initialStep === 3 ? 'step' : 'false' }}">
                         <span class="repair-progress__num">۳</span>
@@ -79,6 +79,17 @@
                     <x-repair-field name="device_model" label="مدل دستگاه">
                         <input id="device_model" name="device_model" value="{{ $selectedModel }}" class="input" placeholder="مثلاً S90، ME31 یا P10" required maxlength="100" aria-invalid="{{ $errors->has('device_model') ? 'true' : 'false' }}" aria-describedby="device_model-feedback">
                     </x-repair-field>
+                    <x-repair-field name="device_serial" label="شماره سریال دستگاه" :required="false">
+                        <input id="device_serial" name="device_serial" class="input" dir="ltr" maxlength="100">
+                    </x-repair-field>
+                    <fieldset>
+                        <legend>لوازم همراه دستگاه</legend>
+                        <div class="flex flex-wrap gap-3">
+                            @foreach (\App\Models\RepairRequest::ACCESSORIES as $key => $label)
+                                <label><input type="checkbox" name="accessories[]" value="{{ $key }}"> {{ $label }}</label>
+                            @endforeach
+                        </div>
+                    </fieldset>
                     <div class="repair-step-actions">
                         <button type="button" class="np-button np-button--primary" data-step-next>مرحلهٔ بعد <x-home.icon name="arrow-left" /></button>
                         <a class="np-button np-button--outline" href="{{ route('repair.track') }}">پیگیری درخواست قبلی</a>
@@ -88,7 +99,7 @@
                 {{-- Step 2: Issue Selection --}}
                 <div class="repair-step" data-step="2" @if($initialStep !== 2) hidden @endif>
                     <div class="repair-step__head">
-                        <h2>نوع خرابی</h2>
+                        <h2>شرح مشکل و عکس</h2>
                         <p>مشکل اصلی دستگاه را انتخاب کنید یا در کادر زیر توضیح دهید.</p>
                     </div>
                     <div class="repair-issue-grid" role="group" aria-label="مشکلات رایج دستگاه">
@@ -100,7 +111,10 @@
                         @endforeach
                     </div>
                     <x-repair-field name="issue" label="شرح مشکل دستگاه">
-                        <textarea id="issue" name="issue" class="input" rows="4" placeholder="مشکل دستگاه را کوتاه توضیح دهید (حداقل ۱۰ کاراکتر)؛ مثلاً روشن نمی‌شود یا کارت را نمی‌خواند." required minlength="10" maxlength="2000" aria-invalid="{{ $errors->has('issue') ? 'true' : 'false' }}" aria-describedby="issue-feedback">{{ $selectedIssue }}</textarea>
+                        <textarea id="issue" name="issue" class="input" rows="4" placeholder="مشکل دستگاه را کوتاه توضیح دهید (حداقل ۱۰ کاراکتر)؛ مثلاً روشن نمی‌شود یا کارت را نمی‌خواند." required minlength="10" maxlength="2000" aria-invalid="{{ $errors->hasAny(['issue', 'device_photo']) ? 'true' : 'false' }}" aria-describedby="issue-feedback">{{ $selectedIssue }}</textarea>
+                    </x-repair-field>
+                    <x-repair-field name="device_photo" label="عکس دستگاه یا مشکل" hint="اختیاری، حداکثر ۴ مگابایت" :required="false">
+                        <input id="device_photo" name="device_photo" type="file" class="input" accept="image/jpeg,image/png,image/webp">
                     </x-repair-field>
                     <div class="repair-step-actions">
                         <button type="button" class="np-button np-button--primary" data-step-next>مرحلهٔ بعد <x-home.icon name="arrow-left" /></button>
@@ -152,10 +166,12 @@
                     <x-storefront.icon name="shield" />
                     <h2>بعد از ثبت درخواست چه می‌شود؟</h2>
                 </div>
-                <ul>
-                    <li>ثبت آنلاین یعنی دستگاه هنوز به ما تحویل داده نشده است؛ هزینه و زمان دقیق تعمیر پس از بررسی فنی اعلام می‌شود.</li>
-                    <li>پس از ثبت، کد پیگیری هشت‌رقمی دریافت می‌کنید که همراه با شماره موبایل برای پیگیری وضعیت کافی است.</li>
-                </ul>
+                <ol class="list-decimal space-y-2 ps-5">
+                    <li>درخواست را آنلاین ثبت کنید و پیش از مراجعه کد پیگیری بگیرید.</li>
+                    <li>دستگاه را حضوری تحویل دهید یا برای نوین‌پی ارسال کنید.</li>
+                    <li>پس از بررسی فنی، هزینه و زمان تعمیر اعلام می‌شود. تغییر مراحل را با پیامک دنبال کنید.</li>
+                    <li>پس از پرداخت و تکمیل تعمیر، دستگاه را حضوری یا در محل دلخواهتان تحویل بگیرید.</li>
+                </ol>
             </div>
         </aside>
     </div>

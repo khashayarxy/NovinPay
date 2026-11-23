@@ -7,6 +7,7 @@
     min-width: 17px; padding: 0 3px; border-radius: 8px; background: #075da6; color: white;
     font-size: 10px; line-height: 17px; text-align: center;
 }
+.store-cart-count { background: #b4232d; color: #fff; }
 .store-cart-count[hidden] { display: none; }
 .global-store-nav a[aria-current] { background: #f0f7fe; }
 .global-store-nav a[aria-current]::after { height: 2px; width: 12px; }
@@ -66,7 +67,22 @@ body:has(#mobile-drawer[open]) [data-support-launcher] { visibility: hidden; }
     font-size: .85rem; font-weight: 500;
 }
 .catalog-toolbar .btn:hover { background: #f2f7fc; border-color: #b5d1ea; color: #075da6; }
-.catalog-filter-trigger, .catalog-filter-ready .catalog-sort-submit { display: none; }
+.catalog-filter-trigger { display: none; }
+.catalog-filter-ready .catalog-filter-trigger { display: inline-flex; gap: 5px; }
+.checkout-shipping-card[hidden] { display: none; }
+.catalog-filter-ready .catalog-layout { grid-template-columns: minmax(0, 1fr); }
+body:has(.public-catalogue) :is(.store-mobile-search, .np-customer-header [data-storefront-open="search-dialog"]) { display: none; }
+.rating-stars { display: inline-flex; gap: .4rem; color: #596678; }
+.rating-stars > * { display: inline-grid; justify-items: center; font-size: 1.35rem; line-height: 1.25; }
+.rating-stars small { font-size: .75rem; color: #475569; }
+.rating-stars .is-filled, .rating-stars:has(input:checked) label:has(input:checked) { color: #a56500; }
+.rating-stars:has(input:checked) label:has(~ label input:checked) { color: #a56500; }
+.rating-stars:has(input:checked) label:has(input:checked) ~ label { color: #596678; }
+.rating-stars label:focus-within { outline: 2px solid #075da6; }
+.product-compare-link { display: inline-flex; align-items: center; gap: .35rem; }
+.product-compare-link svg { width: 1rem; height: 1rem; }
+.premium-storefront .purchase .stock { width: fit-content; }
+.key-mobile h2, .key-card h2 { font-weight: 700; }
 .catalog-toolbar svg, .catalog-search-field svg, .repair-entry svg { flex: none; width: 18px; height: 18px; }
 .catalog-layout { display: grid; grid-template-columns: minmax(180px, 224px) minmax(0, 1fr); align-items: start; gap: 18px; }
 .catalog-sidebar { padding: 14px; border: 1px solid #dce7f0; border-radius: 12px; background: #fff; min-inline-size: 0; }

@@ -348,7 +348,7 @@ class CustomerAccountController extends Controller
 
     private function finishLogin(Request $request)
     {
-        return redirect()->to($request->session()->pull('customer_intended', route('account.index')));
+        return redirect()->to(CustomerLoginFlow::destination($request));
     }
 
     public function skipPassword(Request $request)
@@ -399,7 +399,7 @@ class CustomerAccountController extends Controller
         $account = $guard->user();
         $version = $request->session()->get('customer_session_version');
         $guard->logout();
-        $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_intended', 'repair_submission_token', 'repair_reference']);
+        $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_intended', 'repair_submission_token', 'repair_reference', 'repair_recovery_phone', 'repair_recovery_challenge']);
         app(LegacyCartHold::class)->rememberOriginalSession($request);
         $request->session()->regenerate(true);
 
@@ -486,14 +486,37 @@ class CustomerAccountController extends Controller
         return view('account.order', ['order' => $order, 'timeline' => CustomerTimeline::order($order, $plan), 'document' => $document, 'plan' => $plan]);
     }
 
-    public function shortOrder(string $code)
+    public function shortOrder(Request $request, string $code, CustomerLogin $login)
     {
-        $account = Auth::guard('customer')->user();
+        $account = $login->authenticatedAccount($request);
+        if (! $account) {
+            return view('pages.order-tracking', ['code' => $code, 'timeline' => null]);
+        }
         $matches = SalesOrder::query()->where($this->owned($account))
             ->where('public_id', 'like', strtolower($code).'%')->limit(2)->pluck('public_id');
         abort_unless($matches->count() === 1, 404);
 
         return redirect()->route('account.orders.show', ['record' => $matches->first()]);
+    }
+
+    public function trackOrder(Request $request, string $code)
+    {
+        $phone = RepairIdentity::phone($request->input('contact_phone'));
+        $matches = SalesOrder::query()->where('public_id', 'like', strtolower($code).'%')->limit(2)
+            ->with(['customer:id,phone_digest', 'events:id,sales_order_id,to_status,created_at'])->get();
+        $order = $matches->count() === 1 ? $matches->first() : null;
+        $account = $order?->customer_account_id ? CustomerAccount::query()->find($order->customer_account_id) : null;
+        $digest = $account?->is_active && $account->verified_at && $account->phone
+            ? RepairIdentity::digest('phone', $account->phone)
+            : ($order?->customer?->phone_digest ?? str_repeat('0', 64));
+        $valid = $order && preg_match('/\A09[0-9]{9}\z/D', $phone)
+            && $phone !== '09000000000'
+            && hash_equals($digest, RepairIdentity::digest('phone', $phone));
+        $document = $valid ? FinancialDocument::query()->where('sales_order_id', $order->id)->first() : null;
+        $plan = $document ? DeliveryPlan::query()->where('financial_document_id', $document->id)->first() : null;
+        $timeline = $valid ? array_map(fn ($step) => array_replace($step, ['at' => null]), CustomerTimeline::order($order, $plan)) : [];
+
+        return view('pages.order-tracking', ['code' => $code, 'timeline' => $timeline]);
     }
 
     private function settlement(CustomerAccount $account, string $column, int $id): array

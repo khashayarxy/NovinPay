@@ -7,6 +7,7 @@ use App\Services\CustomerEmailLogin;
 use App\Services\CustomerLogin;
 use App\Services\GoogleAuthService;
 use App\Support\CustomerAuthThrottle;
+use App\Support\CustomerLoginFlow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -212,6 +213,6 @@ class CustomerThreePathAuthController extends Controller
         $request->session()->regenerate();
         $request->session()->put('customer_session_version', $account->session_version);
 
-        return redirect()->intended(route('account.index'));
+        return redirect()->to(CustomerLoginFlow::destination($request));
     }
 }

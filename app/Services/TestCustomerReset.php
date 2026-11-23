@@ -6,8 +6,10 @@ use App\Enums\AdminAction;
 use App\Enums\RepairRequestStatus;
 use App\Models\AdminActivity;
 use App\Models\CustomerAccount;
+use App\Models\RepairRequest;
 use App\Support\RepairIdentity;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 final class TestCustomerReset
 {
@@ -44,6 +46,9 @@ final class TestCustomerReset
             DB::table('customer_login_challenges')->where('id', $challenge->id)->update([
                 'challenge_id' => null, 'code_hash' => null, 'attempts' => 0, 'expires_at' => null, 'resend_at' => null,
             ]);
+            $photos = RepairRequest::query()->where('customer_account_id', $account->id)
+                ->whereIn('id', $scope['requests'])->get(['id', 'submission_digest'])->map->photoPath()->all();
+            DB::afterCommit(fn () => Storage::disk('local')->delete($photos));
             foreach (['customer_notifications' => 'notifications', 'repair_requests' => 'requests', 'customer_addresses' => 'addresses'] as $table => $key) {
                 DB::table($table)->where('customer_account_id', $account->id)->whereIn('id', $scope[$key])->delete();
             }

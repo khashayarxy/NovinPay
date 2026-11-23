@@ -57,7 +57,7 @@
 
         <script type="application/json" id="iran-locations-data">{!! json_encode($iranLocations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
 
-        <form action="{{ route('cart.checkout') }}" method="post" class="store-checkout commerce-columns" data-store-checkout data-iran-address-form data-zibal-available="{{ $zibalAvailable ? '1' : '0' }}" data-draft-url="{{ route('cart.checkout.draft') }}" data-reverse-geocode-url="{{ route('cart.checkout.reverse-geocode') }}" data-account-key="{{ $account->public_id }}" novalidate>
+        <form action="{{ route('cart.checkout') }}" method="post" class="store-checkout commerce-columns" data-store-checkout data-courier-zones='@json(config('delivery.courier_zones'))' data-iran-address-form data-zibal-available="{{ $zibalAvailable ? '1' : '0' }}" data-draft-url="{{ route('cart.checkout.draft') }}" data-reverse-geocode-url="{{ route('cart.checkout.reverse-geocode') }}" data-account-key="{{ $account->public_id }}" novalidate>
             @csrf
             <x-storefront.cart-context :proof="$proof" :revision="$revision" />
             <input type="hidden" name="operation_key" value="{{ old('operation_key', $operation) }}">
@@ -211,8 +211,8 @@
                         <legend>مرحله ۳ · نحوه ارسال و روش تحویل</legend>
                         <div class="commerce-choices">
                             @foreach (\App\Services\DeliveryManagement::CHECKOUT_METHODS as $method => [$label, $description])
-                                <label class="commerce-choice checkout-shipping-card">
-                                    <input type="radio" name="method" value="{{ $method }}" @checked($defaultMethod === $method) data-method-label="{{ $label }}">
+                                <label class="commerce-choice checkout-shipping-card" @if ($method === 'courier') hidden @endif>
+                                    <input type="radio" name="method" value="{{ $method }}" @disabled($method === 'courier') @checked($defaultMethod === $method) data-method-label="{{ $label }}">
                                     <span class="checkout-shipping-card__body">
                                         <strong>{{ $label }}</strong>
                                         <small>{{ $description }}</small>

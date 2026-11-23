@@ -699,6 +699,15 @@ class SharedPaymentsTest extends TestCase
         }
         $address->save();
         $service = app(DeliveryManagement::class);
+        $this->assertTrue(DeliveryManagement::courierAvailable('تهران', 'شهر قدس'));
+        $this->assertTrue(DeliveryManagement::courierAvailable('البرز', 'کرج'));
+        $this->assertFalse(DeliveryManagement::courierAvailable('تهران', 'کرج'));
+        $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
+        $address->forceFill(['city' => 'تهران'])->save();
+        $this->post(route('delivery.request', $this->document->public_id), [
+            'choice' => 'shipping', 'carrier' => 'courier', 'address' => $address->public_id, 'version' => 1,
+        ])->assertSessionHasErrors('method');
+        $address->forceFill(['city' => 'شهریار'])->save();
         $plan = $service->request($this->account, $this->document->public_id, 'courier', $address->public_id, 1);
         $this->assertSame('tipax', $plan->method);
         $this->assertSame('courier', $plan->requested_method);
@@ -809,16 +818,16 @@ class SharedPaymentsTest extends TestCase
         $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
         $product->update(['online_purchasing_enabled' => false]);
         $this->get(route('products.show', $product))->assertOk()->assertSee('هماهنگی خرید')
-            ->assertDontSee('افزودن به سبد خرید')->assertDontSee('موجودی تأیید نشده');
+            ->assertDontSee('خرید محصول')->assertDontSee('موجودی تأیید نشده');
         $this->post(route('cart.add', $product), ['quantity' => 1])->assertConflict();
         $product->update(['online_purchasing_enabled' => true]);
         $product->update(['product_details' => ['sale_paused' => true]]);
         $this->get(route('products.show', $product))->assertOk()->assertSee('فروش موقتاً متوقف است')
-            ->assertDontSee('افزودن به سبد خرید')->assertDontSee('هماهنگی خرید');
+            ->assertDontSee('خرید محصول')->assertDontSee('هماهنگی خرید');
         $this->post(route('cart.add', $product), ['quantity' => 1])->assertConflict();
         $product->update(['product_details' => ['sale_paused' => false], 'price' => null]);
         $this->get(route('products.show', $product))->assertOk()->assertSee('استعلام قیمت')
-            ->assertDontSee('موجودی تأیید نشده')->assertDontSee('افزودن به سبد خرید');
+            ->assertDontSee('موجودی تأیید نشده')->assertDontSee('خرید محصول');
         $product->update(['price' => 10000]);
         $this->get('/products/'.$product->slug)->assertOk()->assertSee($product->name);
         $this->withCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('d', 64));
@@ -889,7 +898,7 @@ class SharedPaymentsTest extends TestCase
         $this->assertSame(0, $item->fresh()->on_hand);
         $this->assertSame(0, $item->fresh()->reserved);
         $this->get(route('products.show', $product))->assertOk()->assertSee('ناموجود')
-            ->assertSee('https://schema.org/OutOfStock', false)->assertDontSee('افزودن به سبد خرید');
+            ->assertSee('https://schema.org/OutOfStock', false)->assertDontSee('خرید محصول');
         $this->get('/account/orders/'.$order->public_id)->assertOk()->assertSee('تحویل ثبت شد');
         $this->assertSame($document->fresh()->charged_minor, $document->fresh()->paid_minor);
         Http::assertNothingSent();

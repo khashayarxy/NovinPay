@@ -89,7 +89,7 @@ test('Chromium: compact product header, sticky sections and purchase controls fi
             <div class="np-customer-header"><div class="premium-desktop-tools store-desktop-tools"></div><div data-customer-entry><a class="np-customer-trigger" data-customer-guest>Account</a></div></div>
         </div></header><main><div class="storefront-content">
             <div style="height:300px"></div><button data-product-primary-action>Buy</button><div style="height:900px"></div>
-        </div><div class="sticky-contact" data-product-dock hidden>
+        </div><div class="sticky-contact" data-product-dock inert>
             <p class="price"><bdi>۱۰٬۵۰۰٬۰۰۰</bdi> <small>تومان</small></p><button class="primary">خرید</button>
         </div></main><footer style="height:700px"></footer>
         <nav class="global-store-nav" data-mobile-bottom-nav>
@@ -148,19 +148,19 @@ test('Chromium: compact product header, sticky sections and purchase controls fi
                     throw new Error('Narrow navigation label or touch target at ' + width + 'px');
                 }
             }
-            if (!dock.hidden) throw new Error('Dock duplicates the initial purchase action');
+            if (!dock.inert) throw new Error('Dock duplicates the initial purchase action');
             const move = top => {
                 view.scrollTo({top, behavior:'instant'});
                 view.dispatchEvent(new view.Event('scroll'));
                 return new Promise(resolve => view.setTimeout(resolve, 50));
             };
             await move(560);
-            const gap = view.innerHeight - dock.getBoundingClientRect().bottom;
-            if (dock.hidden || !nav.inert || Math.abs(gap - 16) > 1) throw new Error('Dock is missing or collides with the navigation');
+            const gap = view.innerHeight - dock.offsetTop - dock.offsetHeight;
+            if (dock.inert || !nav.inert || Math.abs(gap - 16) > 1) throw new Error('Dock state ' + dock.inert + '/' + nav.inert + ', gap ' + gap);
             await move(root.scrollHeight);
-            if (!dock.hidden) throw new Error('Dock persists over the footer');
+            if (!dock.inert) throw new Error('Dock persists over the footer');
             await move(0);
-            if (!dock.hidden) throw new Error('Dock did not clear when the purchase action returned');
+            if (!dock.inert) throw new Error('Dock did not clear when the purchase action returned');
             frame.remove();
         }
         document.body.textContent = 'MOBILE_PRODUCT_TABS_BROWSER_PASS';

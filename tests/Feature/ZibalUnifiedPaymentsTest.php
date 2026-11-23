@@ -314,8 +314,11 @@ class ZibalUnifiedPaymentsTest extends TestCase
         [$order] = $this->createPayableOrder(3500000);
         [$case] = $this->createPayableRepair(3500000);
         $orderUrl = route('account.orders.short', ['code' => substr($order->public_id, 0, 8)]);
-        $this->get($orderUrl)->assertRedirect(route('account.login'))
-            ->assertSessionHas('customer_intended', '/o/'.substr($order->public_id, 0, 8));
+        $this->get($orderUrl)->assertOk()->assertSee('شماره موبایل')->assertDontSee('data-stage=', false);
+        $this->post($orderUrl, ['contact_phone' => '09120001123'])
+            ->assertOk()->assertSee('سفارشی با این کد و شماره پیدا نشد.')->assertDontSee('data-stage=', false);
+        $this->post($orderUrl, ['contact_phone' => '09120001122'])
+            ->assertOk()->assertSee('data-stage="current"', false)->assertDontSee($this->customer->name);
         $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
         $this->get($orderUrl)->assertRedirect(route('account.orders.show', ['record' => $order->public_id]));
         $other = CustomerAccount::forceCreate([

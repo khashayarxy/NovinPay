@@ -437,6 +437,9 @@ a.np-account-row:hover { color: var(--account-blue); }
 .np-account-facts dd { overflow-wrap: anywhere; }
 .np-account-total { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .35rem; }
 .np-timeline { margin-top: .85rem; }
+@media (prefers-reduced-motion: no-preference) {
+    .np-timeline li { animation: np-account-in .22s ease-out both; }
+}
 .np-timeline li { position: relative; display: grid; grid-template-columns: 1.6rem minmax(0, 1fr); gap: .65rem; min-height: 3.45rem; padding-bottom: .85rem; }
 .np-timeline li:not(:last-child)::before { content: ""; position: absolute; inset-inline-start: .76rem; inset-block: 1.5rem 0; width: 2px; background: var(--account-line); }
 .np-timeline__mark { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border: 2px solid var(--account-line); border-radius: 50%; background: white; }

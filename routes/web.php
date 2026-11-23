@@ -133,9 +133,16 @@ Route::withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::cl
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     $payment = PaymentController::class;
     Route::get('/o/{code}', [CustomerAccountController::class, 'shortOrder'])
-        ->where('code', '[A-Fa-f0-9]{8}')->middleware([EnsureCustomerSession::class, 'throttle:60,1'])->name('account.orders.short');
+        ->where('code', '[A-Fa-f0-9]{8}')->middleware('throttle:60,1')->name('account.orders.short');
+    Route::post('/o/{code}', [CustomerAccountController::class, 'trackOrder'])
+        ->where('code', '[A-Fa-f0-9]{8}')->middleware('throttle:repair-track')->name('account.orders.track');
     Route::get('/r/{code}', [RepairRequestController::class, 'tracking'])
         ->where('code', '[1-9][0-9]{7}')->middleware('throttle:60,1')->name('repair.track.short');
+    Route::get('/repair/track/recovery', [RepairRequestController::class, 'recovery'])->name('repair.track.recovery');
+    Route::get('/repair/track/recovery/{reference}', [RepairRequestController::class, 'recoveredTracking'])
+        ->where('reference', '[A-Za-z0-9-]{1,35}')->middleware('throttle:repair-track')->name('repair.track.recovered');
+    Route::post('/repair/track/recovery/send', [RepairRequestController::class, 'sendRecovery'])->middleware('throttle:customer-otp')->name('repair.track.recovery.send');
+    Route::post('/repair/track/recovery/verify', [RepairRequestController::class, 'verifyRecovery'])->middleware('throttle:customer-verify')->name('repair.track.recovery.verify');
     Route::get('/p/{code}', [RepairPaymentLinkController::class, 'short'])
         ->where('code', '[A-Za-z0-9_-]{48}')->middleware('throttle:60,1')->name('payments.repair.short');
     Route::get('/payments/zibal/callback', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.callback');
@@ -356,6 +363,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
             }
         });
         Route::get('repair-requests', [RepairOverviewController::class, 'index'])->middleware('can:repairs.view')->name('repairs.index');
+        Route::get('repair-requests/{repairRequest}/photo', [RepairOverviewController::class, 'photo'])->middleware('can:view,repairRequest')->name('repairs.photo');
         Route::get('repair-requests/{repairRequest}', [RepairOverviewController::class, 'show'])->middleware('can:view,repairRequest')->name('repairs.show');
         Route::middleware('can:repairs.view')->group(function (): void {
             Route::get('repairs', [RepairCaseController::class, 'index'])->name('repair-cases.index');

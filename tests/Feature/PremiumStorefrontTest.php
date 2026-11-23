@@ -52,7 +52,7 @@ class PremiumStorefrontTest extends TestCase
             ->assertDontSee('id="product-description"', false)->assertDontSee('id="product-faq"', false)
             ->assertDontSee('data-product-sections', false)->assertDontSee('id="product-related"', false)
             ->assertDontSee('data-gallery-open', false)->assertDontSee('product-color-picker', false)
-            ->assertDontSee('افزودن به سبد خرید');
+            ->assertDontSee('خرید محصول');
         $this->get(route('home'))->assertOk()->assertDontSee('storefront-premium.css');
         $this->get(route('products.index'))->assertOk()->assertDontSee('storefront-premium.css');
         $this->post(route('cart.add', $product), ['quantity' => 1])->assertConflict();
@@ -76,7 +76,7 @@ class PremiumStorefrontTest extends TestCase
             ->assertSee('data-gallery-choice', false)->assertSee('کاربری ثبت‌شده برای دستگاه')
             ->assertSee('۶ ماه گارانتی')->assertDontSee('۶ ماه گارانتی نوین‌پی');
         $this->get(route('products.show', $other))->assertOk()->assertSee('۱۲٬۰۰۰٬۰۰۰')
-            ->assertSee('fixture-blue.webp')->assertDontSee('fixture-black.webp')->assertDontSee('افزودن به سبد خرید')
+            ->assertSee('fixture-blue.webp')->assertDontSee('fixture-black.webp')->assertDontSee('خرید محصول')
             ->assertSee('data-gallery-open', false)->assertDontSee('data-gallery-choice', false);
         $this->post(route('cart.add', $other), ['quantity' => 1])->assertConflict();
     }
@@ -93,7 +93,7 @@ class PremiumStorefrontTest extends TestCase
         $commerce->execute($owner, 'item.receive', ['operation_key' => (string) Str::uuid(),
             'version' => $item->version, 'quantity' => 2, 'reason' => 'Isolated UI validation'], $item);
         $this->get(route('products.show', $product))->assertOk()
-            ->assertSee('action="'.route('cart.add', $product).'"', false)->assertSee('افزودن به سبد خرید')
+            ->assertSee('action="'.route('cart.add', $product).'"', false)->assertSee('خرید محصول')
             ->assertSee('<bdi dir="ltr">UI-FIXTURE</bdi>', false);
         $this->withCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('a', 64));
         $fields = fn () => $this->get(route('cart.index'))->assertOk()->original->getData();

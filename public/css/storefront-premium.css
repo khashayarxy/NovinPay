@@ -2702,11 +2702,11 @@ html:has(body.premium-storefront) {
 .premium-storefront .sticky-contact { display: none; }
 
 @media (max-width: 700px) {
-    html:has(.premium-storefront [data-product-dock]:not([hidden])) {
+    html:has(.premium-storefront [data-product-dock][data-dock-visible]) {
         --store-purchase-gap: 8px;
         --store-purchase-space: calc(var(--store-purchase-height, 56px) + var(--store-purchase-gap));
     }
-    .premium-storefront .sticky-contact:not([hidden]) {
+    .premium-storefront .sticky-contact {
         position: fixed;
         z-index: 25;
         inset-inline: max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-left));
@@ -2723,6 +2723,19 @@ html:has(body.premium-storefront) {
         border: 1px solid #cddde9;
         border-radius: 14px;
         box-shadow: 0 3px 12px rgb(18 41 64 / 9%);
+        opacity: 0;
+        transform: translateY(12px);
+        pointer-events: none;
+    }
+    .premium-storefront .sticky-contact[data-dock-visible] {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+    .premium-storefront .sticky-contact .primary { grid-column: 1; grid-row: 1; }
+    .premium-storefront .sticky-contact .price { grid-column: 2; grid-row: 1; }
+    @media (prefers-reduced-motion: no-preference) {
+        .premium-storefront .sticky-contact { transition: transform .2s ease, opacity .2s ease; }
     }
     .premium-storefront .sticky-contact .price {
         display: flex;

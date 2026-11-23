@@ -593,6 +593,17 @@ document.querySelectorAll('[data-desktop-shop-dropdown]').forEach((dropdown) => 
     dropdown.addEventListener('focusin', () => dropdown.classList.remove('is-dismissed'));
 });
 
+document.querySelectorAll('[data-delivery-address-form]').forEach((form) => {
+    const update = () => {
+        const courier = form.elements.carrier.querySelector('[value="courier"]');
+        courier.disabled = form.elements.address.selectedOptions[0]?.dataset.courier !== '1';
+        courier.hidden = courier.disabled;
+        if (courier.disabled && courier.selected) form.elements.carrier.value = 'tipax';
+    };
+    form.elements.address.addEventListener('change', update);
+    update();
+});
+
 // 4-step fintech checkout stepper, Persian inline validation & interactive OSM pin map
 document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
     const form = stepper.querySelector('[data-store-checkout]');
@@ -731,12 +742,29 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
 
     const submitBtn = form.querySelector('[data-checkout-submit]');
     const confirmPerson = form.querySelector('[data-confirm-person]');
+    const courier = form.querySelector('[name="method"][value="courier"]');
+    const zones = JSON.parse(form.dataset.courierZones || '{}');
+    const normalizeZone = (value) => (value || '').replace(/[\s\u200c]+/gu, '').replaceAll('ي', 'ی').replaceAll('ك', 'ک');
+    const syncCourier = () => {
+        if (!courier) return;
+        const saved = form.querySelector('[name="address"]')?.selectedOptions[0];
+        const mode = form.querySelector('[name="address_mode"]:checked, input[type="hidden"][name="address_mode"]')?.value;
+        const province = normalizeZone(mode === 'saved' ? saved?.dataset.province : form.elements.province?.value);
+        const city = normalizeZone(mode === 'saved' ? saved?.dataset.city : form.elements.city?.value);
+        const cities = Object.entries(zones).find(([region]) => normalizeZone(region) === province)?.[1] || [];
+        courier.disabled = !cities.some((place) => normalizeZone(place) === city);
+        courier.closest('label').hidden = courier.disabled;
+        if (courier.disabled && courier.checked) {
+            form.querySelector('[name="method"][value="pickup"]').checked = true;
+        }
+    };
     const confirmDelivery = form.querySelector('[data-confirm-delivery]');
     const confirmAddressRow = form.querySelector('[data-confirm-address-row]');
     const confirmAddress = form.querySelector('[data-confirm-address]');
     const confirmPayment = form.querySelector('[data-confirm-payment]');
 
     const syncSummary = () => {
+        syncCourier();
         const fullName = form.querySelector('[name="full_name"]')?.value.trim() || '';
         const mobile = form.querySelector('[name="mobile"]')?.value.trim() || '';
         if (confirmPerson) {

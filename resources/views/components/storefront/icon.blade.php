@@ -2,6 +2,7 @@
 @php
     // Lucide (ISC) outline geometry adapted to the shared inline SVG component.
     $paths = [
+        'compare' => 'M3 5h7v14H3z M14 5h7v14h-7z M5 9h3 M16 9h3 M5 13h3 M16 13h3',
         'filter' => 'M4 7h16 M7 12h10 M10 17h4',
         'identifier' => 'M3 5v14 M7 5v14 M10 5v14 M15 5v14 M18 5v14 M21 5v14',
         'review' => 'M21 14a3 3 0 0 1-3 3H9l-6 4V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3z M7 8h10 M7 12h6',
