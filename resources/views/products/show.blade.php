@@ -4,9 +4,9 @@
 @section('premium-storefront', '1')
 
 @push('page-head')
-    <link rel="stylesheet" href="{{ asset('css/product-experience.css?v=5') }}">
-    <link rel="stylesheet" href="{{ asset('css/storefront-premium.css?v=16') }}">
-    <script src="{{ asset('js/product-gallery.js?v=12') }}" defer></script>
+    <link rel="stylesheet" href="{{ versioned_asset('css/product-experience.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('css/storefront-premium.css') }}">
+    <script src="{{ versioned_asset('js/product-gallery.js') }}" defer></script>
 @endpush
 
 @section('content')

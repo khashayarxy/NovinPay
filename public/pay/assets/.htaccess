@@ -1,0 +1,6 @@
+# Non-hashed payment static assets: always revalidate after deployments.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=0, must-revalidate"
+    </FilesMatch>
+</IfModule>

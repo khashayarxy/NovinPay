@@ -34,6 +34,8 @@ class AddSecurityHeaders
             if ($request->attributes->get('customer_header_rendered')) {
                 $response->headers->set('Cache-Control', 'no-store, private');
                 $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');
+            } elseif (! $response->headers->has('X-LiteSpeed-Cache-Control')) {
+                $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');
             }
             if (! $response->headers->has('Content-Security-Policy')) {
                 $response->headers->set('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
