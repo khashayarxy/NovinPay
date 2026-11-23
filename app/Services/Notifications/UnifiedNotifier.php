@@ -43,12 +43,9 @@ final class UnifiedNotifier
                 'تعداد اقلام' => $itemCount,
                 'مبلغ کل' => $totalToman,
             ];
-            $botText = $this->formatBotMessage('🛒 سفارش جدید ثبت شد', $adminFields, $adminUrl);
 
             $this->sendAdminSms('admin_order_placed', ['code' => $code, 'name' => $customerName, 'total' => $totalToman]);
             $this->sendAdminEmail('سفارش جدید #'.$code, 'ثبت سفارش خرید جدید', 'یک سفارش جدید در فروشگاه ثبت شد.', $adminFields, 'مشاهده سفارش در پنل', $adminUrl);
-            $this->bale->send($botText);
-            $this->telegram->send($botText);
 
             if ($customerPhone !== null) {
                 $this->sendSms($customerPhone, 'customer_order_placed', ['code' => $code, 'total' => $totalToman]);
@@ -206,8 +203,13 @@ final class UnifiedNotifier
     public function orderPaid(SalesOrder $order, FinancialDocument $document, PaymentTransaction $transaction): void
     {
         $this->safe(function () use ($order, $document, $transaction): void {
-            $lockKey = 'novinpay:notify:order_paid:'.$transaction->public_id;
-            if (! Cache::add($lockKey, true, now()->addDays(7))) {
+            if ($document->charged_minor <= 0 || $document->paid_minor < $document->charged_minor || $transaction->allocated_minor <= 0) {
+                return;
+            }
+
+            $orderLockKey = 'novinpay:notify:order_paid:order:'.$order->public_id;
+            $txLockKey = 'novinpay:notify:order_paid:'.$transaction->public_id;
+            if (! Cache::add($orderLockKey, true, now()->addDays(7)) || ! Cache::add($txLockKey, true, now()->addDays(7))) {
                 return;
             }
 

@@ -19,6 +19,7 @@ use App\Support\CustomerTimeline;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -164,7 +165,19 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->assertStringContainsString('.np-footer__tagline', $homeCss);
         $this->assertStringContainsString('width: 54px; height: 54px;', $homeCss);
         $this->assertStringNotContainsString('.np-footer__brand { flex-direction: column;', $homeCss);
+        $this->assertStringNotContainsString('letter-spacing: -1.3px', $homeCss);
+        $this->assertStringNotContainsString('letter-spacing: -1.2px', $homeCss);
         $this->assertStringContainsString('class="np-footer__tagline"', $html);
+
+        $publicCss = (string) file_get_contents(resource_path('css/public.css'));
+        $this->assertStringNotContainsString('letter-spacing: -.7px', $publicCss);
+
+        $accountCss = (string) file_get_contents(resource_path('css/customer-account.css'));
+        $this->assertStringNotContainsString('letter-spacing: -.015em', $accountCss);
+
+        $this->assertStringNotContainsString('tracking-tight', $appCss);
+        $this->assertStringNotContainsString('.skip-link:focus,', $appCss);
+        $this->assertStringContainsString('.skip-link:focus-visible', $appCss);
 
         // Confirm submit button is ONLY inside Step 4 and NOT in the left-side order summary aside.
         $doc = new \DOMDocument;
@@ -305,11 +318,19 @@ class MultiStepCheckoutZibalTest extends TestCase
 
     public function test_checkout_with_zibal_initiates_gateway_redirect_and_settles_on_callback(): void
     {
-        Event::fake([OrderPaid::class]);
+        Cache::flush();
+        config([
+            'notifications.telegram.enabled' => true,
+            'notifications.telegram.bot_token' => '123456:TEST-CHECKOUT-TG',
+            'notifications.telegram.chat_id' => '-10077889900',
+            'notifications.telegram.api_base' => 'https://api.telegram.org',
+        ]);
+
         [$proof, $revision, $quote] = $this->seedCartItem();
 
         Http::fake([
             'https://gateway.zibal.ir/v1/request' => Http::response(['result' => 100, 'trackId' => 246813579], 200),
+            'https://api.telegram.org/*' => Http::response(['ok' => true], 200),
         ]);
 
         $res = $this->post('https://novinpaypos.test/cart/checkout', [
@@ -331,6 +352,9 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->assertSame('pending', $attempt->state);
         $res->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/connect');
 
+        // Unpaid order creation & gateway redirect must NEVER send a Telegram order notification.
+        Http::assertNotSent(fn ($req) => str_contains($req->url(), 'api.telegram.org'));
+
         // Before payment verification, customer order list & detail page must NOT show «تأییدشده» or «.۰۰»
         $this->get('https://novinpaypos.test/account?section=orders')
             ->assertOk()
@@ -348,15 +372,23 @@ class MultiStepCheckoutZibalTest extends TestCase
                 'trackId' => 246813579,
                 'paidAt' => '2026-11-23T02:20:00',
             ], 200),
+            'https://api.telegram.org/*' => Http::response(['ok' => true], 200),
         ]);
 
+        $this->get('https://novinpaypos.test/payments/zibal/callback?trackId=246813579&orderId='.$attempt->public_id)
+            ->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/result');
+
+        // Duplicate callback replay must NOT send a second Telegram notification.
         $this->get('https://novinpaypos.test/payments/zibal/callback?trackId=246813579&orderId='.$attempt->public_id)
             ->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/result');
 
         $this->assertSame('settled', $attempt->fresh()->state);
         $this->assertSame('confirmed', $order->fresh()->status);
         $this->assertSame('تأییدشده', CustomerTimeline::orderStatus($order->fresh()));
-        Event::assertDispatchedTimes(OrderPaid::class, 1);
+
+        $telegramRequests = Http::recorded(fn ($req) => str_contains($req->url(), 'api.telegram.org'))->values();
+        $this->assertCount(1, $telegramRequests);
+        $this->assertStringContainsString('پرداخت آنلاین سفارش تأیید شد', (string) ($telegramRequests[0][0]['text'] ?? ''));
 
         // Cart is automatically cleared after verified Zibal settlement.
         $this->assertSame(0, app(ShoppingCart::class)->count(request()));

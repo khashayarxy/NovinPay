@@ -139,15 +139,14 @@ class UnifiedNotificationsTest extends TestCase
         Mail::assertSent(UnifiedNotificationMail::class, 1);
         Mail::assertSent(UnifiedNotificationMail::class, fn (UnifiedNotificationMail $mail) => $mail->hasTo('admin@novinpaypos.test'));
 
-        Http::assertSentCount(4);
+        // Unpaid order creation must NOT send Telegram or Bale notifications (those fire only after verified payment settlement).
+        Http::assertSentCount(2);
         Http::assertSent(fn (HttpRequest $req) => $req->url() === 'https://edge.ippanel.com/v1/api/send'
             && $req['code'] === 'patAdminOrder' && $req['recipients'] === ['+989121112233']);
         Http::assertSent(fn (HttpRequest $req) => $req->url() === 'https://edge.ippanel.com/v1/api/send'
             && $req['code'] === 'patCustOrderPlaced' && $req['recipients'] === ['+989123334455']);
-        Http::assertSent(fn (HttpRequest $req) => $req->url() === 'https://tapi.bale.ai/botbale-test-token/sendMessage'
-            && $req['chat_id'] === '10001');
-        Http::assertSent(fn (HttpRequest $req) => $req->url() === 'https://api.telegram.org/bottg-test-token/sendMessage'
-            && $req['chat_id'] === '-100200300');
+        Http::assertNotSent(fn (HttpRequest $req) => str_contains($req->url(), 'api.telegram.org'));
+        Http::assertNotSent(fn (HttpRequest $req) => str_contains($req->url(), 'tapi.bale.ai'));
 
         // Also verify orderShipped sends customer SMS + Email.
         app(UnifiedNotifier::class)->orderShipped($order, 'TIPAX-9988', 'buyer@example.test');

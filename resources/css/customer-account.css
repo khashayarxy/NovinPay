@@ -207,7 +207,7 @@
 
 .np-auth__card { padding: clamp(1.75rem, 4.2vw, 2.45rem); }
 .np-auth__logo { display: flex; align-items: center; justify-content: center; min-height: 44px; max-width: 9rem; margin: 0 auto 1.65rem; }
-.np-auth h1 { font-size: 1.28rem; font-weight: 700; color: #0f172a; letter-spacing: -.015em; line-height: 1.45; text-align: start; margin: 0 0 1.25rem; overflow-wrap: anywhere; }
+.np-auth h1 { font-size: 1.28rem; font-weight: 700; color: #0f172a; letter-spacing: 0; line-height: 1.45; text-align: start; margin: 0 0 1.25rem; overflow-wrap: anywhere; }
 .np-auth h1:has(+ .np-auth__subtitle) { margin-bottom: .35rem; }
 .np-auth__subtitle { text-align: start; color: #64748b; font-size: .84rem; font-weight: 400; line-height: 1.75; margin: 0 0 1.2rem !important; }
 .np-auth .np-account-form label { text-align: start; font-size: .82rem; font-weight: 500; color: #475569; }

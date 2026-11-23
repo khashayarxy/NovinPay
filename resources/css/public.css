@@ -10,7 +10,7 @@
 .public-breadcrumb { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: #52678b; margin-bottom: 20px; }
 .public-breadcrumb a { min-height: 24px; }
 .public-breadcrumb span:last-child { overflow-wrap: anywhere; }
-.public-heading h1, .public-confirmation h1 { font-size: clamp(26px, 3vw, 38px); font-weight: 700; line-height: 1.6; letter-spacing: -.7px; }
+.public-heading h1, .public-confirmation h1 { font-size: clamp(26px, 3vw, 38px); font-weight: 700; line-height: 1.6; letter-spacing: 0; }
 .public-heading p { max-width: 720px; font-size: 14px; line-height: 2; margin-top: 10px; color: #435a7a; }
 .public-heading__icon { display: grid; place-items: center; width: 144px; height: 144px; border-radius: 36px; background: #fff9; border: 1px solid #d3e8fc; color: var(--color-brand-600); transform: rotate(-8deg); }
 .public-heading__icon .np-icon { width: 78px; height: 78px; transform: rotate(8deg); }
