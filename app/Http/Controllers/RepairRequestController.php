@@ -104,7 +104,7 @@ class RepairRequestController extends Controller
     {
         $data = $request->validated();
         // Never hydrate or decrypt customer/device fields for a tracking response.
-        $physical = RepairCase::query()->select(['id', 'phone_digest', 'status', 'delivery_method'])
+        $physical = RepairCase::query()->select(['id', 'phone_digest', 'status', 'delivery_method', 'simple_workflow'])
             ->where(fn ($query) => $query->where('tracking_digest', RepairIdentity::digest('tracking', $data['tracking_reference']))
                 ->orWhereHas('onlineRequest', fn ($source) => $source->where('tracking_reference', $data['tracking_reference'])))->first();
         $physicalMatch = hash_equals($physical?->phone_digest ?? str_repeat('0', 64), RepairIdentity::digest('phone', $data['contact_phone']));
@@ -122,6 +122,8 @@ class RepairRequestController extends Controller
             'matched' => $physicalMatch || ($matched && $repair?->status === RepairRequestStatus::OnlineSubmitted),
             'physicalMatch' => $physicalMatch,
             'physicalStatus' => $physicalMatch ? CustomerTimeline::repairStatus($physical, $plan) : null,
+            'timeline' => $physicalMatch ? CustomerTimeline::repair($physical, $plan, public: true)
+                : ($matched ? CustomerTimeline::request($repair) : []),
         ]);
     }
 

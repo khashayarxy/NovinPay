@@ -9,6 +9,13 @@ final class RepairTracking
 {
     public const FORMAT = '/\A[1-9][0-9]{7}\z/D';
 
+    public static function url(?string $code): string
+    {
+        return $code && preg_match(self::FORMAT, $code)
+            ? route('repair.track.short', ['code' => $code])
+            : route('repair.track');
+    }
+
     /** Reserve across online requests and physical cases, under the caller's transaction. */
     public static function reserve(): string
     {

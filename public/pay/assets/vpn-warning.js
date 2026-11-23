@@ -6,6 +6,7 @@
     var redirected = false;
     var inFlight = false;
     var pollTimer = null;
+    var retry = $('vpnCheck');
 
     function stopPolling() {
         redirected = true;
@@ -16,24 +17,20 @@
     function revealVpnWarning() {
         $('goTitle').textContent = 'انتقال به درگاه پرداخت';
         $('goLead').textContent = 'درگاه پرداخت فقط از داخل ایران در دسترس است.';
-        $('goBar').hidden = true;
-        $('goHint').hidden = true;
         $('vpnBox').hidden = false;
-        $('vpnCheck').hidden = false;
         document.title = 'بررسی اتصال به درگاه | نوین‌پی';
     }
 
     function proceed() {
         if (redirected) return;
         stopPolling();
-        ['vpnBox', 'vpnCheck'].forEach(function (id) { $(id).hidden = true; });
+        $('vpnBox').hidden = true;
         $('goTitle').textContent = 'در حال انتقال به درگاه پرداخت';
         $('goLead').textContent = 'لطفاً چند لحظه صبر کنید.';
-        $('goBar').hidden = false;
-        $('goHint').hidden = false;
         document.title = 'انتقال به درگاه پرداخت | نوین‌پی';
+        retry.href = card.dataset.gatewayUrl;
         setTimeout(function () { $('fallback').hidden = false; }, 4000);
-        window.location.replace($('fallbackLink').href);
+        window.location.replace(retry.href);
     }
 
     function indeterminate() {
@@ -44,14 +41,7 @@
 
     function unavailable(status) {
         stopPolling();
-        if (status === 409) {
-            window.location.replace(card.dataset.resultUrl);
-            return;
-        }
-        document.body.className = 't-rose';
-        card.hidden = true;
-        $('bad').hidden = false;
-        document.title = 'لینک پرداخت نامعتبر | نوین‌پی';
+        window.location.replace(status === 409 ? card.dataset.resultUrl : card.dataset.errorUrl);
     }
 
     function probeSplitTunnelVpn(timeoutMs) {
@@ -108,8 +98,7 @@
     function checkConnection(manual) {
         if (inFlight || redirected || document.hidden) return;
         inFlight = true;
-        var button = $('vpnCheck');
-        button.disabled = true;
+        retry.setAttribute('aria-disabled', 'true');
         geo(manual ? 5000 : 4000).then(function (ir) {
             if (redirected) return;
             if (ir === true) proceed();
@@ -117,13 +106,17 @@
             else indeterminate();
         }, indeterminate).finally(function () {
             inFlight = false;
-            button.disabled = false;
+            retry.removeAttribute('aria-disabled');
         });
     }
 
     function autoCheck() { checkConnection(false); }
 
-    $('vpnCheck').addEventListener('click', function () { checkConnection(true); });
+    retry.addEventListener('click', function (event) {
+        if (redirected) return;
+        event.preventDefault();
+        checkConnection(true);
+    });
     pollTimer = setInterval(autoCheck, 4000);
     document.addEventListener('visibilitychange', autoCheck);
     if (card.dataset.verifySplit === '1') autoCheck();

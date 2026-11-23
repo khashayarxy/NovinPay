@@ -46,8 +46,8 @@
                 مرجع پرداخت: <bdi dir="ltr">{{ $transactions->first()->reference }}</bdi>
             </p>
         @endif
-        <nav class="payment-actions" aria-label="بازگشت به نوین‌پی">
-            <a class="payment-button payment-button--primary" href="{{ route('home') }}">بازگشت به صفحه اصلی</a>
+        <nav class="payment-actions" aria-label="پیگیری پس از پرداخت">
+            <a class="payment-button payment-button--primary" href="{{ \App\Support\RepairTracking::url($case->tracking_reference) }}">پیگیری تعمیر</a>
         </nav>
     @elseif ($balance > 0)
         @if ($gatewayAvailable)
@@ -59,6 +59,7 @@
             <p style="margin-top: .85rem; font-size: .85rem; color: #536d88;">پرداخت از طریق درگاه امن شاپرک و زیبال انجام می‌شود و پس از تأیید، رسید برای شما نمایش داده خواهد شد.</p>
         @else
             <p>درگاه پرداخت آنلاین در حال حاضر غیرفعال است. لطفاً با پشتیبانی نوین‌پی تماس بگیرید.</p>
+            <x-payment-issue-actions :retry-url="request()->fullUrl()" />
         @endif
     @else
         <p>ماندهٔ قابل پرداختی برای این پرونده ثبت نشده است.</p>

@@ -1,4 +1,4 @@
-.np-auth, .np-account {
+.np-auth, .np-account, .repair-track-page {
     --account-ink: #142b4d;
     --account-muted: #506781;
     --account-blue: #075ac7;
@@ -442,6 +442,10 @@ a.np-account-row:hover { color: var(--account-blue); }
 .np-timeline__mark { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border: 2px solid var(--account-line); border-radius: 50%; background: white; }
 .np-timeline li[data-stage=complete] .np-timeline__mark { color: var(--account-blue); background: var(--account-wash); border-color: #9cc5f4; }
 .np-timeline li[data-stage=current] .np-timeline__mark { background: var(--account-blue); border: 4px solid #c3ddfc; animation: np-account-in 220ms ease-out both; }
+.np-timeline li[data-stage=cancelled] .np-timeline__mark { color: #9c262e; background: #fff1f2; border-color: #e9a4ab; }
+.np-timeline__status { display: inline-block; margin-inline-start: .5rem; color: var(--account-muted); font-size: .8rem; }
+.np-timeline li[data-stage=current] .np-timeline__status { color: var(--account-blue); font-weight: 700; }
+.np-timeline li[data-stage=cancelled] .np-timeline__status { color: #9c262e; }
 .np-timeline small { display: block; color: var(--account-muted); }
 @keyframes np-account-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 

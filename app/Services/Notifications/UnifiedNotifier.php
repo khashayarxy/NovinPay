@@ -103,13 +103,13 @@ final class UnifiedNotifier
                 $products = $order->lines->pluck('description')->filter()->unique()->implode('، ');
                 $variables['product'] = mb_strimwidth($products ?: 'سفارش فروشگاه', 0, 100, '…');
             }
-            $phone = $this->normalizePhone($order->customer?->contact_phone);
-            if ($phone === null && $order->customer_account_id) {
+            $phone = null;
+            if ($order->customer_account_id) {
                 $account = CustomerAccount::query()->find($order->customer_account_id);
-                if ($account?->is_active && $account->verified_at) {
-                    $phone = $this->normalizePhone($account->phone);
-                }
+                $phone = $account?->is_active && $account->verified_at
+                    ? $this->normalizePhone($account->phone) : null;
             }
+            $phone ??= $this->normalizePhone($order->customer?->contact_phone);
             $this->patternSms->send($event, $order->public_id, $phone,
                 ['order_code' => strtoupper(substr($order->public_id, 0, 8))] + $variables);
         }, $event);
@@ -257,11 +257,14 @@ final class UnifiedNotifier
 
     public function orderPaid(SalesOrder $order, FinancialDocument $document, PaymentTransaction $transaction): void
     {
-        $this->safe(function () use ($order, $document, $transaction): void {
-            if ($document->charged_minor <= 0 || $document->paid_minor < $document->charged_minor || $transaction->allocated_minor <= 0) {
-                return;
-            }
+        if ($document->charged_minor <= 0 || $document->paid_minor < $document->charged_minor || $transaction->allocated_minor <= 0) {
+            return;
+        }
+        if ($order->status !== 'cancelled') {
+            $this->orderPattern($order, 'order_confirmed');
+        }
 
+        $this->safe(function () use ($order, $document, $transaction): void {
             $orderLockKey = 'novinpay:notify:order_paid:order:'.$order->public_id;
             $txLockKey = 'novinpay:notify:order_paid:'.$transaction->public_id;
             if (! Cache::add($orderLockKey, true, now()->addDays(7)) || ! Cache::add($txLockKey, true, now()->addDays(7))) {
@@ -304,10 +307,6 @@ final class UnifiedNotifier
             $this->telegram->send($botText);
             $this->bale->send($botText);
         }, 'order_paid');
-        if ($order->status !== 'cancelled' && $document->charged_minor > 0
-            && $document->paid_minor >= $document->charged_minor && $transaction->allocated_minor > 0) {
-            $this->orderPattern($order, 'order_confirmed');
-        }
     }
 
     public function repairPaid(RepairCase $repairCase, FinancialDocument $document, PaymentTransaction $transaction): void

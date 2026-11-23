@@ -11,6 +11,7 @@ use App\Services\PaymentConnectivity;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
 use App\Support\RepairPaymentCode;
+use App\Support\RepairTracking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\URL;
@@ -105,7 +106,6 @@ class RepairPaymentLinkController extends Controller
         if ($confirm || ($isIran !== false && ($direct || $request->headers->get('Sec-Fetch-Mode') !== 'navigate'))) {
             return response()->view('payments.forward', [
                 'gatewayUrl' => ZibalGateway::START_URL.$attempt->track_id,
-                'resultUrl' => $resultUrl,
                 'indeterminate' => $confirm || $isIran === null,
             ], headers: ['Referrer-Policy' => 'origin']);
         }
@@ -136,13 +136,12 @@ class RepairPaymentLinkController extends Controller
             'document' => $document,
             'isOrder' => false,
             'sourceCode' => (string) $case->tracking_reference,
-            'backUrl' => $repairLinkUrl,
-            'retryUrl' => $repairLinkUrl,
-            'accountUrl' => null,
-            'canContinue' => $canContinue,
-            'continueUrl' => $canContinue
-                ? URL::temporarySignedRoute('payments.repair.link.connect', now()->addHours(2), ['repair' => $case->public_id, 'payment' => $attempt->public_id])
-                : null,
+            'trackingUrl' => RepairTracking::url($case->tracking_reference),
+            'retryUrl' => match (true) {
+                $canContinue => URL::temporarySignedRoute('payments.repair.link.connect', now()->addHours(2), ['repair' => $case->public_id, 'payment' => $attempt->public_id]),
+                $attempt->state === 'failed' => $repairLinkUrl,
+                default => request()->fullUrl(),
+            },
         ]);
     }
 

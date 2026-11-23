@@ -318,6 +318,14 @@ class MultiStepCheckoutZibalTest extends TestCase
 
     public function test_checkout_with_zibal_initiates_gateway_redirect_and_settles_on_callback(): void
     {
+        $this->customer->forceFill(['contact_phone' => '09000000000'])->save();
+        config([
+            'notifications.pattern_sms.provider' => 'ippanel',
+            'notifications.pattern_sms.enabled' => true,
+            'customer.ippanel.enabled' => true,
+            'customer.ippanel.api_key' => 'synthetic-key',
+            'customer.ippanel.sender' => '+983000505',
+        ]);
         Cache::flush();
         config([
             'notifications.telegram.enabled' => true,
@@ -372,6 +380,7 @@ class MultiStepCheckoutZibalTest extends TestCase
                 'trackId' => 246813579,
                 'paidAt' => '2026-11-23T02:20:00',
             ], 200),
+            'https://edge.ippanel.com/v1/api/send' => Http::response(['meta' => ['status' => true]]),
             'https://api.telegram.org/*' => Http::response(['ok' => true], 200),
         ]);
 
@@ -385,6 +394,22 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->assertSame('settled', $attempt->fresh()->state);
         $this->assertSame('confirmed', $order->fresh()->status);
         $this->assertSame('تأییدشده', CustomerTimeline::orderStatus($order->fresh()));
+        $sms = Http::recorded(fn ($request) => $request->url() === 'https://edge.ippanel.com/v1/api/send')->sole()[0];
+        $this->assertSame('mfae2yqje8msw9e', $sms['code']);
+        $this->assertSame(['+989123334455'], $sms['recipients']);
+        $this->assertSame([
+            'order_code' => strtoupper(substr($order->public_id, 0, 8)),
+            'name' => $this->customer->name,
+            'product' => $this->product->name,
+        ], $sms['params']);
+        $this->get(route('payments.result', $attempt->public_id))->assertOk()
+            ->assertSee('پیگیری سفارش')->assertSee(route('account.orders.show', $order->public_id));
+        $this->get(route('account.orders.show', $order->public_id))->assertOk()
+            ->assertSee('data-stage="complete"', false)
+            ->assertSee('data-stage="current"', false)
+            ->assertSee('aria-current="step"', false)
+            ->assertSee('data-stage="upcoming"', false)
+            ->assertSee('آماده‌سازی سفارش');
 
         $telegramRequests = Http::recorded(fn ($req) => str_contains($req->url(), 'api.telegram.org'))->values();
         $this->assertCount(1, $telegramRequests);
@@ -415,20 +440,20 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->assertSame('failed', $attempt->state);
         $res->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/result');
 
-        $this->get('https://novinpaypos.test/payments/'.$attempt->public_id.'/result')
+        $result = $this->get('https://novinpaypos.test/payments/'.$attempt->public_id.'/result')
             ->assertOk()
-            ->assertSee('class="t-red"', false)
-            ->assertSee('pay/assets/vpn-warning.css?v=', false)
+            ->assertSee('css/payment-flow.css?v=', false)
             ->assertSee('پرداخت انجام نشد')
             ->assertSee('۴٬۵۰۰٬۰۰۰ تومان')
             ->assertDontSee('.۰۰')
-            ->assertSee('تلاش مجدد برای پرداخت');
+            ->assertSeeInOrder(['تلاش مجدد برای پرداخت', 'بازگشت به سبد خرید']);
+        $this->assertSame(2, substr_count($result->getContent(), '<a class="payment-button'));
 
         $order = SalesOrder::query()->sole();
-        $this->assertSame('لغو شده / پرداخت ناموفق', CustomerTimeline::orderStatus($order));
+        $this->assertSame('پرداخت ناموفق؛ در انتظار پرداخت', CustomerTimeline::orderStatus($order));
         $this->get('https://novinpaypos.test/account?section=orders')
             ->assertOk()
-            ->assertSee('لغو شده / پرداخت ناموفق')
+            ->assertSee('پرداخت ناموفق؛ در انتظار پرداخت')
             ->assertDontSee('تأییدشده');
     }
 
@@ -460,7 +485,7 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->get($connectUrl)
             ->assertOk()
             ->assertSee('اتصال از خارج ایران تشخیص داده شد.')
-            ->assertSee('بررسی دوباره اتصال')
+            ->assertSeeInOrder(['تلاش مجدد برای پرداخت', 'بازگشت به سبد خرید'])
             ->assertSee('data-verify-split="0"', false);
 
         // 2. Reverse-proxied foreign VPN IP via SERVER_ADDR + X-Forwarded-For shows the VPN warning page
@@ -472,7 +497,7 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->get($connectUrl)
             ->assertOk()
             ->assertSee('اتصال از خارج ایران تشخیص داده شد.')
-            ->assertSee('بررسی دوباره اتصال')
+            ->assertSeeInOrder(['تلاش مجدد برای پرداخت', 'بازگشت به سبد خرید'])
             ->assertSee('data-verify-split="0"', false);
 
         // 3. Real browser top-level navigation (Sec-Fetch-Mode: navigate) on Iran IP renders connect shell with split-tunnel verification enabled
@@ -482,7 +507,7 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->get($connectUrl)
             ->assertOk()
             ->assertSee('data-verify-split="1"', false)
-            ->assertSee('بررسی دوباره اتصال');
+            ->assertSeeInOrder(['تلاش مجدد برای پرداخت', 'بازگشت به سبد خرید']);
 
         // 4. Direct non-navigation Iran IP check forwards cleanly to Zibal
         $this->flushHeaders()
