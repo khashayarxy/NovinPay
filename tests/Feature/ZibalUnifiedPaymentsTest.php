@@ -17,7 +17,7 @@ use App\Models\PaymentAttempt;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\User;
-use App\Services\Notifications\PanelChi;
+use App\Services\Notifications\PatternSms;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Services\ZibalGateway;
 use App\Support\RepairIdentity;
@@ -347,18 +347,23 @@ class ZibalUnifiedPaymentsTest extends TestCase
         $this->get('/p/'.$code)->assertNotFound();
     }
 
-    public function test_all_panelchi_patterns_use_the_expected_variables_and_send_once_per_event(): void
+    public function test_all_ippanel_patterns_use_the_expected_variables_and_send_once_per_event(): void
     {
         [$order] = $this->createPayableOrder(3500000);
         [$case, $document] = $this->createPayableRepair(3500000);
         config([
-            'notifications.panelchi.enabled' => null,
-            'notifications.panelchi.api_key' => 'panelchi-test-token',
-            'notifications.panelchi.sender' => '3000505',
-            'notifications.panelchi.patterns' => [],
+            'notifications.pattern_sms.enabled' => null,
+            'notifications.pattern_sms.provider' => null,
+            'notifications.pattern_sms.patterns' => [],
+            'customer.sms_provider' => 'ippanel',
+            'customer.ippanel.enabled' => true,
+            'customer.ippanel.api_key' => 'ippanel-test-token',
+            'customer.ippanel.sender' => '+983000505',
+            'customer.ippanel.pattern_code' => 'otpPatternOnly',
         ]);
+        $this->assertNull(app(PatternSms::class)->configurationIssue());
         Http::preventStrayRequests();
-        Http::fake(['https://api.panelchi.com/sms/pattern' => Http::response(['data' => ['uid' => 'test-send']], 201)]);
+        Http::fake(['https://edge.ippanel.com/v1/api/send' => Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [123]]])]);
         $url = URL::temporarySignedRoute('payments.repair.link', now()->addDays(14), ['repair' => $case->public_id]);
         $notifier = app(UnifiedNotifier::class);
         for ($delivery = 0; $delivery < 2; $delivery++) {
@@ -387,42 +392,44 @@ class ZibalUnifiedPaymentsTest extends TestCase
         ];
         Http::assertSentCount(count($expected));
         foreach ($expected as $pattern => $keys) {
-            Http::assertSent(fn ($request) => $request->url() === 'https://api.panelchi.com/sms/pattern'
-                && $request->hasHeader('Authorization', 'Bearer panelchi-test-token')
-                && $request['sourceNumber'] === '3000505'
-                && $request['recipient'] === '09120001122'
-                && $request['pattern'] === $pattern
-                && array_keys($request['variables']) === $keys);
+            Http::assertSent(fn ($request) => $request->url() === 'https://edge.ippanel.com/v1/api/send'
+                && $request->hasHeader('Authorization', 'ippanel-test-token')
+                && $request['from_number'] === '+983000505'
+                && $request['recipients'] === ['+989120001122']
+                && $request['code'] === $pattern
+                && array_keys($request['params']) === $keys);
         }
-        $payment = Http::recorded(fn ($request) => $request['pattern'] === 'a7h9o09htzyjk17')->sole()[0];
-        $this->assertSame($case->public_id, RepairPaymentCode::resolve($payment['variables']['pay_code'])['repair']);
+        $payment = Http::recorded(fn ($request) => $request['code'] === 'a7h9o09htzyjk17')->sole()[0];
+        $this->assertSame($case->public_id, RepairPaymentCode::resolve($payment['params']['pay_code'])['repair']);
     }
 
     public function test_panelchi_missing_config_does_not_claim_events_and_provider_errors_are_sanitized(): void
     {
         Log::spy();
         config([
+            'notifications.pattern_sms.provider' => 'panelchi',
+            'customer.ippanel.api_key' => 'must-not-use',
             'notifications.panelchi.enabled' => true,
             'notifications.panelchi.api_key' => '',
             'notifications.panelchi.sender' => '3000505',
         ]);
         Http::fake(['https://api.panelchi.com/sms/pattern' => Http::response(['detail' => 'private provider response'], 403)]);
-        $service = app(PanelChi::class);
+        $service = app(PatternSms::class);
         $service->send('order_preparing', 'one-order', '09120001122', ['order_code' => 'ORDER']);
         Http::assertNothingSent();
-        Log::shouldHaveReceived('log')->with('warning', 'PanelChi pattern skipped', ['event' => 'order_preparing', 'reason' => 'missing_api_key'])->once();
+        Log::shouldHaveReceived('log')->with('warning', 'SMS pattern skipped', ['event' => 'order_preparing', 'provider' => 'panelchi', 'reason' => 'missing_api_key'])->once();
 
         config([
             'notifications.panelchi.api_key' => 'Bearer panelchi-test-token',
-            'notifications.panelchi.patterns.order_preparing' => 'override123',
+            'notifications.pattern_sms.patterns.order_preparing' => 'override123',
         ]);
         $service->send('order_preparing', 'one-order', '09120001122', ['order_code' => 'ORDER']);
         $service->send('order_preparing', 'one-order', '09120001122', ['order_code' => 'ORDER']);
         Http::assertSentCount(1);
         Http::assertSent(fn ($request) => $request['pattern'] === 'override123'
             && $request->hasHeader('Authorization', 'Bearer panelchi-test-token'));
-        Log::shouldHaveReceived('warning')->with('PanelChi pattern send was not confirmed', [
-            'event' => 'order_preparing', 'http_status' => 403, 'reason' => 'provider_http_error',
+        Log::shouldHaveReceived('log')->with('warning', 'SMS pattern provider outcome', [
+            'event' => 'order_preparing', 'provider' => 'panelchi', 'outcome' => 'unconfirmed', 'http_status' => 403,
         ])->once();
     }
 
@@ -432,13 +439,17 @@ class ZibalUnifiedPaymentsTest extends TestCase
         $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->sole();
         $url = route('admin.deliveries.order-progress', $plan->public_id);
         config([
+            'notifications.pattern_sms.provider' => 'ippanel',
+            'customer.ippanel.enabled' => true,
+            'customer.ippanel.api_key' => 'ippanel-test-token',
+            'customer.ippanel.sender' => '+983000505',
             'notifications.panelchi.enabled' => true,
             'notifications.panelchi.api_key' => 'panelchi-test-token',
             'notifications.panelchi.sender' => '3000505',
         ]);
         Http::preventStrayRequests();
         Http::fake([
-            'https://api.panelchi.com/sms/pattern' => Http::failedConnection(),
+            'https://edge.ippanel.com/v1/api/send' => Http::failedConnection(),
         ]);
         $input = ['version' => $plan->version, 'password' => 'password', 'progress' => 'pickup_ready'];
         $this->actingAs($this->owner, 'web')->withSession(['admin_session_version' => 1]);
@@ -450,9 +461,10 @@ class ZibalUnifiedPaymentsTest extends TestCase
         $this->assertDatabaseCount('delivery_events', 1);
         $this->assertDatabaseHas('delivery_events', ['delivery_plan_id' => $plan->id, 'action' => 'order_pickup_ready']);
 
+        config(['notifications.pattern_sms.provider' => 'panelchi']);
         Http::fake(['https://api.panelchi.com/sms/pattern' => Http::response(['data' => ['uid' => 'unexpected-replay']])]);
         $order = SalesOrder::query()->findOrFail($document->sales_order_id);
-        app(PanelChi::class)->send('order_pickup_ready', $order->public_id, '09120001122', ['order_code' => substr($order->public_id, 0, 8)]);
+        app(PatternSms::class)->send('order_pickup_ready', $order->public_id, '09120001122', ['order_code' => substr($order->public_id, 0, 8)]);
         Http::assertNothingSent();
     }
 

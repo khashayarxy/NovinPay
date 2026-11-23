@@ -1,11 +1,16 @@
 <?php
 
-use App\Services\Notifications\PanelChi;
+use App\Services\Notifications\PatternSms;
 
-$panelChiPatterns = [];
+$patternSmsPatterns = [];
+$patternSmsEnabled = env('NOTIFICATIONS_PATTERN_SMS_ENABLED');
 $panelChiEnabled = env('NOTIFICATIONS_PANELCHI_ENABLED', env('PANELCHI_ENABLED'));
-foreach (PanelChi::PATTERNS as $event => $pattern) {
-    $panelChiPatterns[$event] = trim((string) env('NOTIFICATIONS_PANELCHI_PATTERN_'.strtoupper($event), $pattern)) ?: $pattern;
+foreach (PatternSms::PATTERNS as $event => $pattern) {
+    $suffix = strtoupper($event);
+    $patternSmsPatterns[$event] = trim((string) env('NOTIFICATIONS_SMS_PATTERN_'.$suffix))
+        ?: trim((string) env('NOTIFICATIONS_IPPANEL_PATTERN_'.$suffix))
+        ?: trim((string) env('NOTIFICATIONS_PANELCHI_PATTERN_'.$suffix))
+        ?: $pattern;
 }
 
 return [
@@ -29,14 +34,17 @@ return [
         ],
     ],
 
+    'pattern_sms' => [
+        'provider' => env('NOTIFICATIONS_PATTERN_SMS_PROVIDER') ?: env('SMS_PROVIDER') ?: 'ippanel',
+        'enabled' => in_array($patternSmsEnabled, [null, ''], true) ? null : filter_var($patternSmsEnabled, FILTER_VALIDATE_BOOL),
+        'patterns' => $patternSmsPatterns,
+    ],
+
     'panelchi' => [
-        // An unset switch allows a separately configured PanelChi account to work.
-        // A deliberate opt-out, including the local Herd guard, always takes precedence.
         'enabled' => $panelChiEnabled === null ? null : (bool) $panelChiEnabled,
         'api_key' => trim((string) env('NOTIFICATIONS_PANELCHI_API_KEY')) ?: trim((string) env('PANELCHI_API_KEY', '')),
         'sender' => trim((string) env('NOTIFICATIONS_PANELCHI_SENDER'))
             ?: trim((string) env('PANELCHI_SOURCE_NUMBER', env('PANELCHI_SENDER', ''))),
-        'patterns' => $panelChiPatterns,
     ],
 
     'email' => [
