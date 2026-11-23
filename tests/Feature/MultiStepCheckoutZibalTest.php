@@ -143,6 +143,18 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->assertStringContainsString('basemaps.cartocdn.com/rastertiles/voyager', $appJs);
         $this->assertStringContainsString('static.neshan.org/sdk/leaflet', $appJs);
 
+        foreach (['pay/assets/vpn-warning.css', 'css/payment-flow.css'] as $paymentCssPath) {
+            $css = (string) file_get_contents(public_path($paymentCssPath));
+            $this->assertStringNotContainsString('IRANYekanXVF', $css);
+            $this->assertStringNotContainsString('monospace', $css);
+            $this->assertStringContainsString('DanaFaNum-Regular.woff2', $css);
+            $this->assertStringContainsString('DanaFaNum-Medium.woff2', $css);
+            $this->assertStringContainsString('DanaFaNum-Bold.woff2', $css);
+        }
+
+        $homeCss = (string) file_get_contents(resource_path('css/home.css'));
+        $this->assertStringContainsString('flex-direction: row;', $homeCss);
+
         // Confirm submit button is ONLY inside Step 4 and NOT in the left-side order summary aside.
         $doc = new \DOMDocument;
         @$doc->loadHTML('<?xml encoding="UTF-8">'.$html);

@@ -1,12 +1,4 @@
-/* استایل مشترک صفحه‌های پرداخت */
-@font-face {
-    font-family: 'IRANYekanXVF';
-    src: url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2-variations'),
-        url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2');
-    font-weight: 100 1000;
-    font-style: normal;
-    font-display: swap;
-}
+/* استایل مشترک صفحه‌های پرداخت (فقط وزن‌های استاتیک فونت دانا: 400، 500، 700) */
 @font-face {
     font-family: 'Dana';
     src: url('/fonts/dana/DanaFaNum-Regular.woff2') format('woff2');
@@ -41,19 +33,20 @@
 
 body {
     font-family: 'Dana', Tahoma, sans-serif;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
     background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    padding: 24px 20px;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'IRANYekanXVF', 'Dana', Tahoma, sans-serif;
-    font-variation-settings: 'dots' 1;
-    font-feature-settings: 'dots' 1;
+    font-family: 'Dana', Tahoma, sans-serif;
+    font-weight: 700;
 }
 
 .container {
@@ -166,20 +159,22 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
     border-radius: 16px;
     color: #475569;
     font-size: .9rem;
+    font-weight: 500;
     animation: rise .35s ease backwards;
 }
 .row b {
     color: #1e293b;
-    font-weight: 600;
+    font-weight: 700;
     font-size: .95rem;
-    font-family: monospace;
-    letter-spacing: .04em;
+    font-family: 'Dana', Tahoma, sans-serif;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
     direction: ltr;
     unicode-bidi: isolate;
     overflow-wrap: anywhere;
     text-align: left;
 }
-.row.plain b { font-family: inherit; letter-spacing: 0; direction: rtl; }
+.row.plain b { font-family: 'Dana', Tahoma, sans-serif; letter-spacing: 0; direction: rtl; }
 
 /* ---------- باکس‌ها ---------- */
 .info-box {
@@ -211,9 +206,9 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
     border: 0;
     border-radius: 40px;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
     font-size: .95rem;
-    font-family: inherit;
+    font-family: 'Dana', Tahoma, sans-serif;
     cursor: pointer;
     box-shadow: 0 4px 15px var(--glow);
     transition: transform .2s ease, filter .2s ease;
@@ -256,7 +251,7 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
     transition: background .3s, color .3s;
 }
 .step .dot { width: 22px; height: 22px; border-radius: 50%; flex: none; border: 2px solid #cbd5e1; display: grid; place-items: center; }
-.step.active { background: #eef2ff; color: #312e81; font-weight: 600; }
+.step.active { background: #eef2ff; color: #312e81; font-weight: 700; }
 .step.active .dot { border-color: #c7d2fe; border-top-color: var(--g1); animation: spin 1s linear infinite; }
 .step.done { background: #f0fdf4; color: #14532d; }
 .step.done .dot { background: #22c55e; border-color: #22c55e; }
@@ -282,18 +277,38 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
     .confetti-container { display: none; }
 }
 
-/* Official wordmark uses the space above the original card. */
-.payment-warning-shell { position: relative; width: 100%; max-width: 480px; }
+/* هدر متوازن لوگوی نوین‌پی بالای کارت پرداخت */
+.payment-warning-shell {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
 .payment-warning-brand {
-    position: absolute;
-    inset-block-end: 100%;
-    inset-inline: 0;
-    margin-block-end: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 26px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.96);
+    border-radius: 999px;
+    box-shadow: 0 12px 28px -10px rgba(15, 23, 42, 0.1), 0 2px 6px rgba(15, 23, 42, 0.04);
+    backdrop-filter: blur(10px);
     text-align: center;
 }
-.payment-warning-brand img { display: block; margin-inline: auto; width: 120px; height: auto; }
-@media (max-height: 520px) {
-    .payment-warning-shell { margin-block-start: 36px; }
+.payment-warning-brand img {
+    display: block;
+    margin-inline: auto;
+    width: 136px;
+    height: auto;
+}
+@media (max-width: 480px) {
+    .payment-warning-shell { gap: 14px; }
+    .payment-warning-brand { padding: 9px 22px; }
+    .payment-warning-brand img { width: 122px; }
 }
 
 .btn-group {

@@ -7,6 +7,8 @@
     @yield('navigation')
     <title>@yield('title') | {{ config('business.name') }}</title>
     <x-brand-head />
+    <link rel="preload" href="/fonts/dana/DanaFaNum-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/dana/DanaFaNum-Bold.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ versioned_asset('css/payment-flow.css') }}">
 </head>
 <body>
