@@ -36,7 +36,7 @@
         display: flex; flex-direction: column; justify-content: center; align-items: center;
         gap: 2px; min-height: 44px;
         color: #455e73;
-        font-family: inherit; font-size: 11px; font-weight: 600; line-height: 1.6;
+        font-family: inherit; font-size: 11px; font-weight: 500; line-height: 1.6;
         text-decoration: none; border-radius: 13px;
     }
     .global-store-nav svg { flex: none; width: 20px; height: 20px; stroke-width: 1.75; }

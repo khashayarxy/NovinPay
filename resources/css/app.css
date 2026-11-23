@@ -8,44 +8,10 @@
 
 /*
 |-------------------------------------------------------------------------------
-| Unified Typography: IRANYekanXVF (Headings, 'dots' 1) + Dana (Body/UI)
+| Unified Typography: Static Dana / DanaFaNum (400 Regular, 500 Medium, 700 Bold)
 |-------------------------------------------------------------------------------
 | Commercial WOFF2 binaries live under public/fonts/ (gitignored).
-| Static IRANYekanX (400/500/700) provides a clean non-variable heading fallback.
 */
-@font-face {
-    font-family: 'IRANYekanXVF';
-    src: url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2-variations'),
-        url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2');
-    font-weight: 100 1000;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'IRANYekanX';
-    src: url('/fonts/iranyekanx/IRANYekanXFaNum-Regular.woff2') format('woff2');
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'IRANYekanX';
-    src: url('/fonts/iranyekanx/IRANYekanXFaNum-Medium.woff2') format('woff2');
-    font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'IRANYekanX';
-    src: url('/fonts/iranyekanx/IRANYekanXFaNum-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
-}
-
 @font-face {
     font-family: 'Dana';
     src: url('/fonts/dana/DanaFaNum-Regular.woff2') format('woff2');
@@ -86,19 +52,19 @@
     --site-font-fallback: Tahoma, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --site-font-family: 'Dana', var(--site-font-fallback);
-    --site-heading-font: 'IRANYekanX', 'Dana', var(--site-font-fallback);
+    --site-heading-font: 'Dana', var(--site-font-fallback);
     --site-font-scale: 100%;
     --site-line-height: 1.85;
 }
 
-@supports (font-variation-settings: normal) {
-    :root {
-        --site-heading-font: 'IRANYekanXVF', 'IRANYekanX', 'Dana', var(--site-font-fallback);
-    }
-}
-
 @theme static {
     --font-sans: var(--site-font-family);
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 500;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 700;
+    --font-weight-black: 700;
 
     --color-brand-50: #eff8ff;
     --color-brand-100: #dceeff;
@@ -205,8 +171,6 @@
         @apply text-slate-900;
         font-family: var(--site-heading-font);
         font-weight: 700;
-        font-variation-settings: 'dots' 1;
-        font-feature-settings: 'dots' 1;
     }
 
     h3,
@@ -216,8 +180,6 @@
         @apply text-slate-900;
         font-family: var(--site-heading-font);
         font-weight: 500;
-        font-variation-settings: 'dots' 1;
-        font-feature-settings: 'dots' 1;
     }
 
     :focus-visible {
@@ -251,8 +213,6 @@
     .section-title {
         @apply text-2xl font-bold tracking-tight sm:text-3xl;
         font-family: var(--site-heading-font);
-        font-variation-settings: 'dots' 1;
-        font-feature-settings: 'dots' 1;
     }
 
     .section-lead {
@@ -365,7 +325,7 @@
         min-width: 0;
         color: #647b93;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
     }
 
     .repair-progress__num {
@@ -379,7 +339,7 @@
         background: #f8fbfe;
         color: #52687f;
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 700;
         font-variant-numeric: tabular-nums;
         transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
     }
@@ -425,7 +385,7 @@
     .repair-step__head h2 {
         margin: 0;
         font-size: 17px;
-        font-weight: 800;
+        font-weight: 700;
         color: #122940;
     }
 
@@ -444,7 +404,7 @@
         background: #fff5f5;
         color: #a62b21;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
     }
 
     .repair-choice-fieldset {
@@ -595,7 +555,7 @@
     .repair-confirmation-code .public-reference {
         margin: 0;
         font-size: 28px;
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: 3px;
         color: #075da6;
         font-variant-numeric: tabular-nums;
