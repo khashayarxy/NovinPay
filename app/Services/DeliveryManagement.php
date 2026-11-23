@@ -185,11 +185,10 @@ class DeliveryManagement
             abort_unless($progress === 'preparing' || ($progress === 'pickup_ready' && $plan->method === 'pickup'), 409);
 
             $event = 'order_'.$progress;
-            if (DB::table('delivery_events')->where('delivery_plan_id', $plan->id)->where('action', $event)->exists()) {
-                return;
+            if (! DB::table('delivery_events')->where('delivery_plan_id', $plan->id)->where('action', $event)->exists()) {
+                $this->event($plan, $event, $actor->id);
             }
-
-            $this->event($plan, $event, $actor->id);
+            // Re-announcing can recover a pre-send configuration skip without writing another history entry.
             DB::afterCommit(fn () => app(UnifiedNotifier::class)->orderPattern($order, $event));
         }, 3);
     }

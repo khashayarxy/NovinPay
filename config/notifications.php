@@ -1,5 +1,13 @@
 <?php
 
+use App\Services\Notifications\PanelChi;
+
+$panelChiPatterns = [];
+$panelChiEnabled = env('NOTIFICATIONS_PANELCHI_ENABLED', env('PANELCHI_ENABLED'));
+foreach (PanelChi::PATTERNS as $event => $pattern) {
+    $panelChiPatterns[$event] = trim((string) env('NOTIFICATIONS_PANELCHI_PATTERN_'.strtoupper($event), $pattern)) ?: $pattern;
+}
+
 return [
     'admin' => [
         'phones' => array_values(array_filter(array_map('trim', explode(',', (string) env('NOTIFICATIONS_ADMIN_PHONES', ''))))),
@@ -22,20 +30,13 @@ return [
     ],
 
     'panelchi' => [
-        'enabled' => (bool) env('NOTIFICATIONS_PANELCHI_ENABLED', false),
-        'api_key' => (string) env('NOTIFICATIONS_PANELCHI_API_KEY', ''),
-        'sender' => (string) env('NOTIFICATIONS_PANELCHI_SENDER', ''),
-        'patterns' => [
-            'order_confirmed' => 'mfae2yqje8msw9e',
-            'order_preparing' => '694jmegiuep02i6',
-            'order_shipped' => 'yksd5440vew1loy',
-            'repair_created' => '309p3u2jo5b7qds',
-            'repair_payment' => 'a7h9o09htzyjk17',
-            'repair_status' => 'hn7sgk679tfdxvt',
-            'order_pickup_ready' => 'u2fc816s2qo1u5t',
-            'order_cancelled' => 'xtawhyckra6k1tt',
-            'repair_cancelled' => '8zvy6p1t482z3oy',
-        ],
+        // An unset switch allows a separately configured PanelChi account to work.
+        // A deliberate opt-out, including the local Herd guard, always takes precedence.
+        'enabled' => $panelChiEnabled === null ? null : (bool) $panelChiEnabled,
+        'api_key' => trim((string) env('NOTIFICATIONS_PANELCHI_API_KEY')) ?: trim((string) env('PANELCHI_API_KEY', '')),
+        'sender' => trim((string) env('NOTIFICATIONS_PANELCHI_SENDER'))
+            ?: trim((string) env('PANELCHI_SOURCE_NUMBER', env('PANELCHI_SENDER', ''))),
+        'patterns' => $panelChiPatterns,
     ],
 
     'email' => [

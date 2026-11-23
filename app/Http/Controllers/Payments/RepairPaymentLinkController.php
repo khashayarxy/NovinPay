@@ -98,31 +98,28 @@ class RepairPaymentLinkController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ir' => $isIran]);
         }
-        if ($isIran !== false && ($request->boolean('direct') || $request->headers->get('Sec-Fetch-Mode') !== 'navigate')) {
+        $context = ['repair' => $case->public_id, 'payment' => $attempt->public_id];
+        $resultUrl = URL::temporarySignedRoute('payments.repair.link.result', now()->addHours(24), $context);
+        $direct = $request->boolean('direct');
+        $confirm = $request->boolean('confirm');
+        if ($confirm || ($isIran !== false && ($direct || $request->headers->get('Sec-Fetch-Mode') !== 'navigate'))) {
             return response()->view('payments.forward', [
                 'gatewayUrl' => ZibalGateway::START_URL.$attempt->track_id,
-                'payment' => $attempt->public_id,
+                'resultUrl' => $resultUrl,
+                'indeterminate' => $confirm || $isIran === null,
             ], headers: ['Referrer-Policy' => 'origin']);
         }
 
-        $checkUrl = URL::temporarySignedRoute('payments.repair.link.connect', now()->addHours(2), [
-            'repair' => $case->public_id,
-            'payment' => $attempt->public_id,
-        ]);
-        $gatewayRouteUrl = URL::temporarySignedRoute('payments.repair.link.connect', now()->addHours(2), [
-            'repair' => $case->public_id,
-            'payment' => $attempt->public_id,
-            'direct' => 1,
-        ]);
-        $resultUrl = URL::temporarySignedRoute('payments.repair.link.result', now()->addHours(24), [
-            'repair' => $case->public_id,
-            'payment' => $attempt->public_id,
-        ]);
+        $linkExpiry = now()->addHours(2);
+        $checkUrl = URL::temporarySignedRoute('payments.repair.link.connect', $linkExpiry, $context);
+        $gatewayRouteUrl = URL::temporarySignedRoute('payments.repair.link.connect', $linkExpiry, $context + ['direct' => 1]);
+        $indeterminateUrl = URL::temporarySignedRoute('payments.repair.link.connect', $linkExpiry, $context + ['confirm' => 1]);
 
         return response()->view('payments.connect', [
             'payment' => $attempt->public_id,
             'checkUrl' => $checkUrl,
             'gatewayRouteUrl' => $gatewayRouteUrl,
+            'indeterminateUrl' => $indeterminateUrl,
             'resultUrl' => $resultUrl,
             'verifySplitVpn' => $isIran !== false,
         ], 200, ['Referrer-Policy' => 'no-referrer']);

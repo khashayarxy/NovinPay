@@ -5,6 +5,7 @@ namespace App\Services\Notifications;
 use App\Enums\RepairStage;
 use App\Mail\UnifiedNotificationMail;
 use App\Models\Consultation;
+use App\Models\CustomerAccount;
 use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
 use App\Models\PaymentAttempt;
@@ -50,7 +51,7 @@ final class UnifiedNotifier
             $this->sendAdminSms('admin_order_placed', ['code' => $code, 'name' => $customerName, 'total' => $totalToman]);
             $this->sendAdminEmail('سفارش جدید #'.$code, 'ثبت سفارش خرید جدید', 'یک سفارش جدید در فروشگاه ثبت شد.', $adminFields, 'مشاهده سفارش در پنل', $adminUrl);
 
-            if ($customerPhone !== null && ! config('notifications.panelchi.enabled')) {
+            if ($customerPhone !== null && $this->panelChi->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_order_placed', ['code' => $code, 'total' => $totalToman]);
             }
             $this->sendCustomerEmail(
@@ -76,7 +77,7 @@ final class UnifiedNotifier
             if (trim((string) $tracking) !== '') {
                 $this->orderPattern($order, 'order_shipped', ['tracking_code' => trim($tracking)]);
             }
-            if ($customerPhone !== null && ! config('notifications.panelchi.enabled')) {
+            if ($customerPhone !== null && $this->panelChi->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_order_shipped', ['code' => $code, 'tracking' => $trackingText]);
             }
             $this->sendCustomerEmail(
@@ -94,10 +95,6 @@ final class UnifiedNotifier
     /** @param array<string, string> $variables */
     public function orderPattern(SalesOrder $order, string $event, array $variables = []): void
     {
-        if (! config('notifications.panelchi.enabled')) {
-            return;
-        }
-
         $this->safe(function () use ($order, $event, $variables): void {
             $order->loadMissing('customer');
             if ($event === 'order_confirmed') {
@@ -106,7 +103,14 @@ final class UnifiedNotifier
                 $products = $order->lines->pluck('description')->filter()->unique()->implode('، ');
                 $variables['product'] = mb_strimwidth($products ?: 'سفارش فروشگاه', 0, 100, '…');
             }
-            $this->panelChi->send($event, $order->public_id, $this->normalizePhone($order->customer?->contact_phone),
+            $phone = $this->normalizePhone($order->customer?->contact_phone);
+            if ($phone === null && $order->customer_account_id) {
+                $account = CustomerAccount::query()->find($order->customer_account_id);
+                if ($account?->is_active && $account->verified_at) {
+                    $phone = $this->normalizePhone($account->phone);
+                }
+            }
+            $this->panelChi->send($event, $order->public_id, $phone,
                 ['order_code' => strtoupper(substr($order->public_id, 0, 8))] + $variables);
         }, $event);
     }
@@ -158,7 +162,7 @@ final class UnifiedNotifier
             $this->bale->send($botText);
             $this->telegram->send($botText);
 
-            if ($customerPhone !== null && ! config('notifications.panelchi.enabled')) {
+            if ($customerPhone !== null && $this->panelChi->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_repair_submitted', ['code' => (string) $repair->tracking_reference, 'device' => $device]);
             }
             $this->sendCustomerEmail(
@@ -186,7 +190,7 @@ final class UnifiedNotifier
             $customerPhone = $this->normalizePhone($case->contact_phone);
             $costText = $costToman !== null ? FaNumber::digits(number_format($costToman)).' تومان' : 'ثبت نشده';
 
-            if ($customerPhone !== null && ! config('notifications.panelchi.enabled')) {
+            if ($customerPhone !== null && $this->panelChi->configurationIssue() !== null) {
                 $params = ['code' => $ref, 'status' => $statusLabel];
                 if ($costToman !== null) {
                     $params['cost'] = (string) $costToman;

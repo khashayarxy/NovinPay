@@ -256,6 +256,10 @@ try {
     if ($path === false || file_put_contents($path, $compiled) !== strlen($compiled)) {
         throw new RuntimeException('Unable to create isolated compiled view');
     }
+    if (str_contains($compiled, '<?xml')) {
+        throw new RuntimeException('XML declaration entered compiled Blade source');
+    }
+    echo '<?xml version="1.0" encoding="UTF-8"?>', PHP_EOL;
     require $path;
 } finally {
     if (is_string($path) && is_file($path)) {

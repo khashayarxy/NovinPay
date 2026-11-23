@@ -20,13 +20,13 @@
         $('goHint').hidden = true;
         $('vpnBox').hidden = false;
         $('vpnCheck').hidden = false;
-        document.title = 'وی‌پی‌ان را خاموش کنید | نوین‌پی';
+        document.title = 'بررسی اتصال به درگاه | نوین‌پی';
     }
 
     function proceed() {
         if (redirected) return;
         stopPolling();
-        ['vpnBox', 'vpnErr', 'vpnCheck'].forEach(function (id) { $(id).hidden = true; });
+        ['vpnBox', 'vpnCheck'].forEach(function (id) { $(id).hidden = true; });
         $('goTitle').textContent = 'در حال انتقال به درگاه پرداخت';
         $('goLead').textContent = 'لطفاً چند لحظه صبر کنید.';
         $('goBar').hidden = false;
@@ -34,6 +34,12 @@
         document.title = 'انتقال به درگاه پرداخت | نوین‌پی';
         setTimeout(function () { $('fallback').hidden = false; }, 4000);
         window.location.replace($('fallbackLink').href);
+    }
+
+    function indeterminate() {
+        if (redirected) return;
+        stopPolling();
+        window.location.replace(card.dataset.indeterminateUrl);
     }
 
     function unavailable(status) {
@@ -95,79 +101,30 @@
         return Promise.all([serverCheck, probeSplitTunnelVpn(timeoutMs)]).then(function (results) {
             var serverIr = results[0];
             var traceIr = results[1];
-            if (serverIr === 'UNAVAILABLE') return null;
-            if (serverIr === false || traceIr === false) return false;
-            if (serverIr === true || traceIr === true) return true;
-            return null;
+            return serverIr === traceIr ? serverIr : null;
         });
     }
 
-    function autoCheck() {
+    function checkConnection(manual) {
         if (inFlight || redirected || document.hidden) return;
         inFlight = true;
-        geo(4000).then(function (ir) {
+        var button = $('vpnCheck');
+        button.disabled = true;
+        geo(manual ? 5000 : 4000).then(function (ir) {
+            if (redirected) return;
             if (ir === true) proceed();
-            else if (ir === false && card.dataset.verifySplit === '1') {
-                card.dataset.verifySplit = '0';
-                revealVpnWarning();
-            }
-        }, function () {}).then(function () { inFlight = false; });
-    }
-
-    function showError(text) {
-        revealVpnWarning();
-        $('vpnErrText').textContent = text;
-        $('vpnCheck').textContent = 'تلاش مجدد';
-        function reveal() {
-            $('vpnBox').hidden = true;
-            $('vpnErr').hidden = true;
-            void $('vpnErr').offsetWidth;
-            $('vpnErr').hidden = false;
-        }
-        var box = $('vpnBox');
-        if (!box.hidden) {
-            box.style.transition = 'opacity .25s ease';
-            box.style.opacity = '0';
-            setTimeout(reveal, 250);
-        } else {
-            reveal();
-        }
-    }
-
-    $('vpnCheck').addEventListener('click', function () {
-        if (inFlight || redirected) return;
-        inFlight = true;
-        var btn = this;
-        btn.disabled = true;
-        geo(5000).then(function (ir) {
-            if (redirected) return;
-            if (ir !== false) { proceed(); return; }
-            showError('همچنان وی‌پی‌ان روشن است. مطمئن شوید که وی‌پی‌ان خاموش است و روی دکمه‌ی «تلاش مجدد» بزنید.');
-        }, function () {
-            showError('ارتباط برقرار نشد. اینترنت خود را بررسی کنید و روی دکمه‌ی «تلاش مجدد» بزنید.');
-        }).then(function () {
+            else if (ir === false) revealVpnWarning();
+            else indeterminate();
+        }, indeterminate).finally(function () {
             inFlight = false;
-            setTimeout(function () { btn.disabled = false; }, 1200);
-        });
-    });
-
-    if (card.dataset.verifySplit === '1') {
-        inFlight = true;
-        geo(2600).then(function (ir) {
-            if (redirected) return;
-            if (ir === false) {
-                card.dataset.verifySplit = '0';
-                revealVpnWarning();
-            } else {
-                proceed();
-            }
-        }, function () {
-            proceed();
-        }).then(function () {
-            inFlight = false;
+            button.disabled = false;
         });
     }
 
+    function autoCheck() { checkConnection(false); }
+
+    $('vpnCheck').addEventListener('click', function () { checkConnection(true); });
     pollTimer = setInterval(autoCheck, 4000);
     document.addEventListener('visibilitychange', autoCheck);
+    if (card.dataset.verifySplit === '1') autoCheck();
 })();
