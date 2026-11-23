@@ -12,7 +12,7 @@
             <div class="np-footer__brand">
                 <div class="np-footer__identity">
                     <a href="{{ route('home') }}" class="np-logo-link" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
-                    <p>فروش و تعمیر کارتخوان در شهریار</p>
+                    <p class="np-footer__tagline">فروش و تعمیر کارتخوان در شهریار</p>
                 </div>
                 <div class="np-footer__marks" aria-label="نمادهای اعتماد و مجوزها">
                     <div class="np-footer__badge">

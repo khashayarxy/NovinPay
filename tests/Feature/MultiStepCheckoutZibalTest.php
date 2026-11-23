@@ -154,6 +154,10 @@ class MultiStepCheckoutZibalTest extends TestCase
 
         $homeCss = (string) file_get_contents(resource_path('css/home.css'));
         $this->assertStringContainsString('flex-direction: row;', $homeCss);
+        $this->assertStringContainsString('.np-footer__tagline', $homeCss);
+        $this->assertStringContainsString('width: 54px; height: 54px;', $homeCss);
+        $this->assertStringNotContainsString('.np-footer__brand { flex-direction: column;', $homeCss);
+        $this->assertStringContainsString('class="np-footer__tagline"', $html);
 
         // Confirm submit button is ONLY inside Step 4 and NOT in the left-side order summary aside.
         $doc = new \DOMDocument;
