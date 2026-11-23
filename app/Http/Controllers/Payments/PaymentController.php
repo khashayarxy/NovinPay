@@ -76,7 +76,7 @@ class PaymentController extends Controller
         }
         $isBrowserNavigation = $request->headers->get('Sec-Fetch-Mode') === 'navigate';
         if ($isIran !== false && ! $isBrowserNavigation) {
-            return $this->sendToGateway($attempt);
+            return $this->sendToGateway($attempt, $isIran === null);
         }
 
         return response()->view('payments.connect', [
@@ -85,14 +85,14 @@ class PaymentController extends Controller
         ], 200, ['Referrer-Policy' => 'no-referrer']);
     }
 
-    public function gateway(string $payment, ZibalPayments $payments, ZibalGateway $gateway)
+    public function gateway(Request $request, string $payment, ZibalPayments $payments, ZibalGateway $gateway)
     {
         [$attempt] = $this->paymentContext($payment, $payments);
         if (! $this->canContinue($attempt, $payments, $gateway)) {
             return redirect()->route('payments.result', $attempt->public_id);
         }
 
-        return $this->sendToGateway($attempt);
+        return $this->sendToGateway($attempt, ! $request->boolean('continue'));
     }
 
     public function result(string $payment, ZibalPayments $payments, ZibalGateway $gateway)
@@ -144,13 +144,14 @@ class PaymentController extends Controller
             && $gateway->available() && hash_equals($attempt->merchant_digest, $payments->merchantDigest());
     }
 
-    private function sendToGateway(PaymentAttempt $attempt)
+    private function sendToGateway(PaymentAttempt $attempt, bool $indeterminate = false)
     {
         // A same-origin document makes even a cold/direct entry send the merchant origin.
         // The attempt UUID and query string must never be part of the bank's Referer.
         return response()->view('payments.forward', [
             'gatewayUrl' => ZibalGateway::START_URL.$attempt->track_id,
-            'payment' => $attempt->public_id,
+            'resultUrl' => route('payments.result', $attempt->public_id),
+            'indeterminate' => $indeterminate,
         ], headers: ['Referrer-Policy' => 'origin']);
     }
 

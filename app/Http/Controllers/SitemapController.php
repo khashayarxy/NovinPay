@@ -61,7 +61,10 @@ final class SitemapController extends Controller
 
     private function xml(array $urls, bool $index = false): Response
     {
-        return response()->view('sitemap', compact('urls', 'index'), 200,
+        // Emit the declaration outside Blade so it cannot be tokenized as a PHP opening tag.
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n".view('sitemap', compact('urls', 'index'))->render();
+
+        return response($xml, 200,
             ['Content-Type' => 'application/xml; charset=UTF-8', 'Cache-Control' => 'no-store, max-age=0']);
     }
 }

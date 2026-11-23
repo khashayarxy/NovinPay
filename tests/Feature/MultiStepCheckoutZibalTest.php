@@ -459,8 +459,8 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->withServerVariables(['REMOTE_ADDR' => '193.46.81.204'])
             ->get($connectUrl)
             ->assertOk()
-            ->assertSee('وی‌پی‌ان شما روشن است.')
-            ->assertSee('وی‌پی‌ان رو خاموش کردم')
+            ->assertSee('اتصال از خارج ایران تشخیص داده شد.')
+            ->assertSee('بررسی دوباره اتصال')
             ->assertSee('data-verify-split="0"', false);
 
         // 2. Reverse-proxied foreign VPN IP via SERVER_ADDR + X-Forwarded-For shows the VPN warning page
@@ -471,8 +471,8 @@ class MultiStepCheckoutZibalTest extends TestCase
         ])
             ->get($connectUrl)
             ->assertOk()
-            ->assertSee('وی‌پی‌ان شما روشن است.')
-            ->assertSee('وی‌پی‌ان رو خاموش کردم')
+            ->assertSee('اتصال از خارج ایران تشخیص داده شد.')
+            ->assertSee('بررسی دوباره اتصال')
             ->assertSee('data-verify-split="0"', false);
 
         // 3. Real browser top-level navigation (Sec-Fetch-Mode: navigate) on Iran IP renders connect shell with split-tunnel verification enabled
@@ -482,7 +482,7 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->get($connectUrl)
             ->assertOk()
             ->assertSee('data-verify-split="1"', false)
-            ->assertSee('وی‌پی‌ان رو خاموش کردم');
+            ->assertSee('بررسی دوباره اتصال');
 
         // 4. Direct non-navigation Iran IP check forwards cleanly to Zibal
         $this->flushHeaders()

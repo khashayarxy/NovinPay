@@ -26,6 +26,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -351,9 +352,10 @@ class ZibalUnifiedPaymentsTest extends TestCase
         [$order] = $this->createPayableOrder(3500000);
         [$case, $document] = $this->createPayableRepair(3500000);
         config([
-            'notifications.panelchi.enabled' => true,
+            'notifications.panelchi.enabled' => null,
             'notifications.panelchi.api_key' => 'panelchi-test-token',
             'notifications.panelchi.sender' => '3000505',
+            'notifications.panelchi.patterns' => [],
         ]);
         Http::preventStrayRequests();
         Http::fake(['https://api.panelchi.com/sms/pattern' => Http::response(['data' => ['uid' => 'test-send']], 201)]);
@@ -394,6 +396,34 @@ class ZibalUnifiedPaymentsTest extends TestCase
         }
         $payment = Http::recorded(fn ($request) => $request['pattern'] === 'a7h9o09htzyjk17')->sole()[0];
         $this->assertSame($case->public_id, RepairPaymentCode::resolve($payment['variables']['pay_code'])['repair']);
+    }
+
+    public function test_panelchi_missing_config_does_not_claim_events_and_provider_errors_are_sanitized(): void
+    {
+        Log::spy();
+        config([
+            'notifications.panelchi.enabled' => true,
+            'notifications.panelchi.api_key' => '',
+            'notifications.panelchi.sender' => '3000505',
+        ]);
+        Http::fake(['https://api.panelchi.com/sms/pattern' => Http::response(['detail' => 'private provider response'], 403)]);
+        $service = app(PanelChi::class);
+        $service->send('order_preparing', 'one-order', '09120001122', ['order_code' => 'ORDER']);
+        Http::assertNothingSent();
+        Log::shouldHaveReceived('log')->with('warning', 'PanelChi pattern skipped', ['event' => 'order_preparing', 'reason' => 'missing_api_key'])->once();
+
+        config([
+            'notifications.panelchi.api_key' => 'Bearer panelchi-test-token',
+            'notifications.panelchi.patterns.order_preparing' => 'override123',
+        ]);
+        $service->send('order_preparing', 'one-order', '09120001122', ['order_code' => 'ORDER']);
+        $service->send('order_preparing', 'one-order', '09120001122', ['order_code' => 'ORDER']);
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request['pattern'] === 'override123'
+            && $request->hasHeader('Authorization', 'Bearer panelchi-test-token'));
+        Log::shouldHaveReceived('warning')->with('PanelChi pattern send was not confirmed', [
+            'event' => 'order_preparing', 'http_status' => 403, 'reason' => 'provider_http_error',
+        ])->once();
     }
 
     public function test_order_progress_uses_the_admin_workflow_and_keeps_the_send_claim_on_timeout(): void

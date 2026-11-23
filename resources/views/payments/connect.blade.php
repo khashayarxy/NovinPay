@@ -17,13 +17,15 @@
     @php
         $checkUrl = $checkUrl ?? route('payments.connect', $payment, false);
         $resultUrl = $resultUrl ?? route('payments.result', $payment, false);
-        $gatewayRouteUrl = $gatewayRouteUrl ?? route('payments.gateway', $payment, false);
+        $gatewayRouteUrl = $gatewayRouteUrl ?? route('payments.gateway', ['payment' => $payment, 'continue' => 1], false);
+        $indeterminateUrl = $indeterminateUrl ?? route('payments.gateway', $payment, false);
         $verifySplitVpn = (bool) ($verifySplitVpn ?? false);
     @endphp
     <main class="payment-warning-shell">
         <div class="payment-warning-brand"><x-home.wordmark /></div>
         <div class="container" id="go" data-check-url="{{ $checkUrl }}"
             data-result-url="{{ $resultUrl }}"
+            data-indeterminate-url="{{ $indeterminateUrl }}"
             data-verify-split="{{ $verifySplitVpn ? '1' : '0' }}">
             <div class="icon-wrap">
                 <div class="icon">
@@ -36,13 +38,10 @@
             <p class="hint" id="goHint" @unless($verifySplitVpn) hidden @endunless>اتصال شما با درگاه پرداخت، امن و رمزگذاری‌شده است.</p>
 
             <div class="info-box late" id="vpnBox" role="alert" @if($verifySplitVpn) hidden @endif>
-                <p><strong>وی‌پی‌ان شما روشن است.</strong></p>
+                <p><strong>اتصال از خارج ایران تشخیص داده شد.</strong></p>
                 <p><span class="ph">برای ورود به درگاه،</span> <span class="ph">وی‌پی‌ان را خاموش کنید.</span></p>
             </div>
-            <div class="info-box warn late" id="vpnErr" hidden role="alert">
-                <p id="vpnErrText"></p>
-            </div>
-            <button class="btn late" type="button" id="vpnCheck" @if($verifySplitVpn) hidden @endif>وی‌پی‌ان رو خاموش کردم</button>
+            <button class="btn late" type="button" id="vpnCheck" @if($verifySplitVpn) hidden @endif>بررسی دوباره اتصال</button>
 
             <div class="info-box go late" id="fallback" hidden>
                 <p><span class="ph">اگر به‌صورت خودکار</span> <span class="ph">منتقل نشدید،</span> <span class="ph">این دکمه را بزنید.</span></p>
@@ -65,8 +64,9 @@
     </main>
     <noscript>
         <div class="container t-amber">
-            <h2>جاوااسکریپت غیرفعال است</h2>
-            <p class="lead">برای انتقال به درگاه پرداخت، جاوااسکریپت مرورگر باید فعال باشد.</p>
+            <h2>بررسی اتصال در دسترس نیست</h2>
+            <p class="lead">برای دیدن راهنمای اتصال و ادامهٔ پرداخت، وضعیت اتصال را باز کنید.</p>
+            <a class="btn" href="{{ $indeterminateUrl }}">ادامهٔ پرداخت</a>
         </div>
         <style>.payment-warning-shell { display: none; }</style>
     </noscript>

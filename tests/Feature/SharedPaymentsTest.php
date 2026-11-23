@@ -186,18 +186,19 @@ class SharedPaymentsTest extends TestCase
         $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])
             ->get($connect.'?pay_url=https://elsewhere.test')
             ->assertOk()->assertHeader('Referrer-Policy', 'no-referrer')->assertHeader('Cache-Control', 'no-store, private')
-            ->assertSee('وی‌پی‌ان رو خاموش کردم')->assertSee('href="'.route('payments.gateway', $attempt->public_id, false).'"', false)
+            ->assertSee('بررسی دوباره اتصال')->assertSee('href="'.route('payments.gateway', $attempt->public_id, false).'"', false)
             ->assertDontSee('ادامه به درگاه')->assertDontSee('بازگشت به سند پرداخت')
             ->assertDontSee('8.8.8.8')->assertDontSee('elsewhere.test')->assertDontSee('gateway.zibal.ir/start/501');
         $this->getJson($connect)->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertExactJson(['ir' => false]);
         $this->getJson($connect)->assertOk()->assertExactJson(['ir' => false]);
         $this->get($toGateway.'?redirect=https://elsewhere.test')->assertOk()->assertHeader('Referrer-Policy', 'origin')
-            ->assertSee('0;url=https://gateway.zibal.ir/start/501')->assertSee('referrerpolicy="origin"', false)->assertDontSee('elsewhere.test');
+            ->assertDontSee('http-equiv="refresh"', false)->assertSee('وضعیت وی‌پی‌ان قابل تأیید نیست')->assertSee('css/payment-flow.css?v=', false)->assertSee('href="https://gateway.zibal.ir/start/501"', false)->assertSee('referrerpolicy="origin"', false)->assertDontSee('elsewhere.test');
+        $this->get($toGateway.'?continue=1')->assertOk()->assertSee('0;url=https://gateway.zibal.ir/start/501');
         $this->withServerVariables(['REMOTE_ADDR' => '5.160.0.1'])->get($connect)->assertOk()
             ->assertHeader('Referrer-Policy', 'origin')->assertSee('0;url=https://gateway.zibal.ir/start/501');
         $this->getJson($connect)->assertOk()->assertExactJson(['ir' => true]);
         $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->get($connect)->assertOk()
-            ->assertHeader('Referrer-Policy', 'origin')->assertSee('0;url=https://gateway.zibal.ir/start/501');
+            ->assertHeader('Referrer-Policy', 'origin')->assertSee('وضعیت وی‌پی‌ان قابل تأیید نیست');
         $this->getJson($connect)->assertOk()->assertExactJson(['ir' => null]);
         $this->get('/pay/index.html?pay_url=https://elsewhere.test')->assertNotFound();
         $this->get('/pay/index.html?'.http_build_query(['pay_url' => 'https://gateway.zibal.ir/start/501']))->assertRedirect($connect);
