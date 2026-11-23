@@ -399,7 +399,14 @@
     gap: clamp(24px, calc(var(--storefront-unlocked-viewport, 100vw) * 0.04), 56px);
     padding-block-end: 28px;
 }
-.np-footer__brand { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.np-footer__brand {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px 28px;
+}
 .np-footer__brand .np-logo-link { max-width: 100%; vertical-align: top; }
 .np-footer__brand .np-wordmark { display: block; width: 174px; height: auto; max-width: 100%; }
 .np-footer__identity p { margin-block-start: 8px; }
@@ -495,7 +502,7 @@
 .np-footer__bottom { border-block-start: 1px solid var(--footer-divider); padding-block: 12px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
 @media (max-width: 850px) {
     .np-footer__grid { grid-template-columns: 1fr; gap: 16px; padding-block-end: 20px; }
-    .np-footer__brand { padding-block-end: 16px; border-block-end: 1px solid var(--footer-divider); }
+    .np-footer__brand { flex-direction: column; align-items: flex-start; gap: 14px; padding-block-end: 16px; border-block-end: 1px solid var(--footer-divider); }
     .np-footer__phone { min-height: 44px; }
 }
 @media (max-width: 520px) {

@@ -8,6 +8,7 @@
     <link rel="help" href="{{ route('privacy') }}#payment-country-data">
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     <link rel="preload" href="/fonts/dana/DanaFaNum-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/dana/DanaFaNum-Bold.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ versioned_asset('pay/assets/vpn-warning.css') }}">
     <title>وی‌پی‌ان را خاموش کنید | نوین‌پی</title>
     <script src="{{ versioned_asset('pay/assets/vpn-warning.js') }}" defer></script>

@@ -1,13 +1,4 @@
 @font-face {
-    font-family: 'IRANYekanXVF';
-    src: url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2-variations'),
-        url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2');
-    font-style: normal;
-    font-weight: 100 1000;
-    font-display: swap;
-}
-
-@font-face {
     font-family: 'Dana';
     src: url('/fonts/dana/DanaFaNum-Regular.woff2') format('woff2');
     font-style: normal;
@@ -33,32 +24,46 @@
 
 :root {
     color-scheme: light;
-    font: 100%/1.85 'Dana', Tahoma, sans-serif;
+    font: 400 100%/1.85 'Dana', Tahoma, sans-serif;
+    font-variant-numeric: tabular-nums;
     color: #122940;
     background: #f2f7fc;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'IRANYekanXVF', 'Dana', Tahoma, sans-serif;
-    font-variation-settings: 'dots' 1;
-    font-feature-settings: 'dots' 1;
+    font-family: 'Dana', Tahoma, sans-serif;
+    font-weight: 700;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; }
+body { margin: 0; font-family: 'Dana', Tahoma, sans-serif; font-weight: 400; }
 
 .payment-shell {
     width: min(100%, 42rem);
     margin-inline: auto;
     padding: max(2rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
         max(2rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
-    padding-block-start: max(clamp(2rem, 10vh, 6rem), env(safe-area-inset-top));
+    padding-block-start: max(clamp(2rem, 8vh, 4.5rem), env(safe-area-inset-top));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.15rem;
 }
 
-.payment-brand { margin-block-end: 1.25rem; }
-.payment-brand img { display: block; inline-size: 8.75rem; max-inline-size: 100%; block-size: auto; }
+.payment-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .65rem 1.5rem;
+    background: #fff;
+    border: 1px solid #dce7f0;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px rgb(18 41 64 / 5%);
+}
+.payment-brand img { display: block; inline-size: 8.5rem; max-inline-size: 100%; block-size: auto; }
 
 .payment-panel {
+    width: 100%;
     padding: clamp(1rem, 5vw, 2.25rem);
     border: 1px solid #dce7f0;
     border-radius: .75rem;
@@ -73,7 +78,7 @@ body { margin: 0; }
     inline-size: fit-content;
     color: #075da6;
     font-size: .875rem;
-    font-weight: 620;
+    font-weight: 500;
 }
 
 .payment-context svg { inline-size: 1.25rem; block-size: 1.25rem; }
@@ -106,7 +111,7 @@ body { margin: 0; }
     border-radius: .5rem;
     color: #075da6;
     font-size: .875rem;
-    font-weight: 600;
+    font-weight: 700;
     text-align: center;
     text-decoration: none;
 }
