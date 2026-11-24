@@ -144,13 +144,46 @@
         @endif
     </div>
     @if ($inquiry || $canAddToCart)
+        @php
+            $dockMaxQty = $canAddToCart ? min(10, (int) ($inventory->available ?? 10)) : 1;
+            $dockCartQty = $canAddToCart ? max(0, (int) ($cartQuantity ?? 0)) : 0;
+            $dockRemoveScope = ($cartSeparate ?? false) ? 'hide' : 'device';
+        @endphp
+        @if ($canAddToCart)
+            <div class="np-added-bar" data-added-bar role="status" aria-live="polite" hidden>
+                <span class="np-added-bar__text">کالا اضافه شد!</span>
+                <div class="np-added-bar__actions">
+                    <a class="np-added-bar__link" href="{{ route('cart.index') }}">برو به سبد خرید</a>
+                    <button type="button" class="np-added-bar__close" data-added-bar-close aria-label="بستن اعلان">×</button>
+                </div>
+            </div>
+        @endif
         <div class="sticky-contact" data-product-dock inert>
-            <p class="price">@if ($formattedPrice !== null)<bdi>{{ $formattedPrice }}</bdi> <small>تومان</small>@else<small>قیمت نیاز به استعلام دارد</small>@endif</p>
             @if ($canAddToCart)
-                <button class="primary" type="submit" form="product-cart-form"><x-storefront.icon name="cart" />خرید محصول</button>
+                <div class="product-dock-action"
+                     data-product-cart-control
+                     data-product-slug="{{ $product->slug }}"
+                     data-product-qty="{{ $dockCartQty }}"
+                     data-product-max="{{ $dockMaxQty }}"
+                     data-update-url="{{ route('cart.update', $product) }}"
+                     data-remove-url="{{ route('cart.remove', $product->slug) }}"
+                     data-remove-scope="{{ $dockRemoveScope }}">
+                    <button class="primary" type="submit" form="product-cart-form" data-dock-add-btn @if($dockCartQty > 0) hidden @endif><x-storefront.icon name="cart" />افزودن به سبد خرید</button>
+                    <div class="np-inline-stepper np-inline-stepper--dock" data-inline-stepper @if($dockCartQty <= 0) hidden @endif>
+                        <button type="button" class="np-inline-stepper__btn np-inline-stepper__btn--inc" data-stepper-inc aria-label="افزایش تعداد در سبد خرید" @disabled($dockCartQty >= $dockMaxQty)>+</button>
+                        <span class="np-inline-stepper__count" data-stepper-count>{{ \App\Support\FaNumber::digits(max(1, $dockCartQty)) }}</span>
+                        <button type="button" class="np-inline-stepper__btn np-inline-stepper__btn--dec" data-stepper-dec data-mode="{{ $dockCartQty <= 1 ? 'remove' : 'decrement' }}" aria-label="{{ $dockCartQty <= 1 ? 'حذف از سبد خرید' : 'کاهش تعداد' }}">
+                            <span class="np-inline-stepper__minus" @if($dockCartQty <= 1) hidden @endif>−</span>
+                            <span class="np-inline-stepper__trash" @if($dockCartQty > 1) hidden @endif aria-hidden="true">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                            </span>
+                        </button>
+                    </div>
+                </div>
             @else
                 <a class="primary" href="{{ config('business.phone_uri') }}"><x-storefront.icon name="phone" />{{ $sale->label() }}</a>
             @endif
+            <p class="price">@if ($formattedPrice !== null)<bdi>{{ $formattedPrice }}</bdi> <small>تومان</small>@else<small>قیمت نیاز به استعلام دارد</small>@endif</p>
         </div>
     @endif
 @endsection

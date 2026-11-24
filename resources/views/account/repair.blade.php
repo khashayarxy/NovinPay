@@ -6,7 +6,7 @@
     <header class="np-account-banner">
         <div>
             <p>پیگیری تعمیر <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></p>
-            <h1>{{ $repair->device_model }}</h1>
+            <h1>@if(preg_match('/[A-Za-z]/', (string) $repair->device_model))<bdi class="np-latin-code" dir="ltr">{{ $repair->device_model }}</bdi>@else{{ $repair->device_model }}@endif</h1>
             <p>{{ $case ? \App\Support\CustomerTimeline::repairStatus($repair, $plan) : 'درخواست ثبت شد؛ دستگاه هنوز دریافت نشده است.' }}</p>
         </div>
     </header>

@@ -8,6 +8,7 @@ use App\Models\CustomerAccount;
 use App\Models\CustomerAddress;
 use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
+use App\Models\ProductFeedback;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
@@ -414,7 +415,7 @@ class CustomerAccountController extends Controller
     {
         $account = Auth::guard('customer')->user();
         $section = $request->query('section');
-        $sections = ['overview', 'repairs', 'orders', 'profile', 'addresses', 'security'];
+        $sections = ['overview', 'repairs', 'orders', 'reviews', 'profile', 'addresses', 'security'];
         $section = in_array($section, ['payments', 'delivery'], true)
             ? 'orders'
             : (in_array($section, $sections, true) ? $section : 'overview');
@@ -443,6 +444,9 @@ class CustomerAccountController extends Controller
             'repairs' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($repairs, $section, 'repairs_page') : [],
             'requests' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($requests->whereDoesntHave('physicalCase'), $section, 'requests_page') : [],
             'orders' => in_array($section, ['overview', 'orders'], true) ? $this->listing((clone $orders)->with('lines'), $section, 'orders_page') : [],
+            'reviews' => $section === 'reviews'
+                ? ProductFeedback::query()->where('customer_account_id', $account->id)->with('product:id,slug,name')->latest('id')->paginate(10, ['*'], 'reviews_page')->appends(['section' => 'reviews'])
+                : [],
             'documents' => [],
             'addresses' => $section === 'addresses' ? CustomerAddress::query()->where('customer_account_id', $account->id)->latest('id')->get() : [],
             'complete' => $section === 'overview' && $account->name && CustomerAddress::query()->where('customer_account_id', $account->id)->exists(),

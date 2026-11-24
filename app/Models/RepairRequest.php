@@ -7,14 +7,53 @@ use App\Enums\RepairRequestStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
 class RepairRequest extends Model
 {
     public const ACCESSORIES = ['charger' => 'شارژر', 'battery' => 'باتری', 'sim' => 'سیم‌کارت'];
 
+    public const PHOTO_SIDES = [
+        'front' => 'نمای جلو',
+        'back' => 'نمای پشت',
+        'right' => 'سمت راست',
+        'left' => 'سمت چپ',
+    ];
+
+    public const HANDOVER_METHODS = [
+        'self_ship' => 'خودم میفرستم (پست / تیپاکس)',
+        'in_person' => 'حضوری میآورم',
+        'doorstep_pickup' => 'به پیک شما تحویل میدهم',
+    ];
+
     public function photoPath(): string
     {
         return 'repair-requests/'.$this->id.'/'.$this->submission_digest.'.image';
+    }
+
+    public function sidePhotoPath(string $side, string $extension = 'webp'): string
+    {
+        return 'repair-requests/'.$this->id.'/'.$this->submission_digest.'-'.$side.'.'.$extension;
+    }
+
+    /**
+     * @return array<string, string> Map of side key => stored path on private local disk
+     */
+    public function existingSidePhotos(): array
+    {
+        $disk = Storage::disk('local');
+        $found = [];
+        foreach (array_keys(self::PHOTO_SIDES) as $side) {
+            foreach (['webp', 'jpg', 'png'] as $ext) {
+                $path = $this->sidePhotoPath($side, $ext);
+                if ($disk->exists($path)) {
+                    $found[$side] = $path;
+                    break;
+                }
+            }
+        }
+
+        return $found;
     }
 
     public function customer(): BelongsTo

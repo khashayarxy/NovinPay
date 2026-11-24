@@ -208,6 +208,9 @@ Route::middleware(PublicArticleResponse::class)->prefix('articles')->name('artic
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/repair', [RepairRequestController::class, 'create'])->name('repair');
+    Route::post('/repair/auth/send', [RepairRequestController::class, 'sendAuth'])->middleware('throttle:customer-otp')->name('repair.auth.send');
+    Route::post('/repair/auth/verify', [RepairRequestController::class, 'verifyAuth'])->middleware('throttle:customer-verify')->name('repair.auth.verify');
+    Route::post('/repair/auth/reset', [RepairRequestController::class, 'resetAuth'])->middleware('throttle:30,1')->name('repair.auth.reset');
     Route::get('/repair/start', [RepairRequestController::class, 'start'])->middleware(EnsureCustomerSession::class)->name('repair.start');
     Route::post('/repair', [RepairRequestController::class, 'store'])->middleware([EnsureCustomerSession::class, 'throttle:repair-submit'])->name('repair.store');
     Route::get('/repair/confirmation', [RepairRequestController::class, 'confirmation'])->name('repair.confirmation');

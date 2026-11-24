@@ -26,7 +26,7 @@
 .article-page-links a:hover, .article-page-links [aria-current] { background: #eff7ff; border-color: #075da6; color: #075da6; }
 .article-page-links [aria-current] { font-weight: 700; }
 .article-page-links [aria-disabled] { color: #64748b; background: #f8fafc; }
-.article-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 34px 20px; border: 1px solid #dfe9f5; border-radius: 18px; background: #fff; box-shadow: 0 4px 18px rgb(18 41 64 / 4%); }
+.article-empty { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 560px; margin-inline: auto; padding: 24px 20px; border: 1px solid #dfe9f5; border-radius: 16px; background: #fff; box-shadow: none; }
 .article-empty__icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #edf5ff; color: #075da6; margin-bottom: 14px; }
 .article-empty__icon svg { width: 24px; height: 24px; }
 .article-empty h2 { font-size: 17px; font-weight: 700; color: #122940; margin: 0; }

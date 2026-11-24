@@ -66,7 +66,6 @@
 <dialog id="mobile-drawer" class="np-mobile-drawer" aria-label="ناوبری موبایل">
     <div class="np-mobile-drawer__panel">
         <div class="np-mobile-drawer__heading">
-            <a href="{{ route('home') }}" class="np-mobile-drawer__logo" aria-label="صفحهٔ اصلی {{ config('business.name') }}"><x-home.wordmark /></a>
             <button type="button" data-navigation-close aria-label="بستن فهرست ناوبری" autofocus>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
             </button>

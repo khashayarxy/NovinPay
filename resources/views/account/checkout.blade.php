@@ -158,7 +158,7 @@
                                 </div>
                                 <div class="checkout-map__footer">
                                     <span class="checkout-map__coords" data-map-coords dir="ltr">{{ $defaultLat !== '' && $defaultLng !== '' ? $defaultLat.', '.$defaultLng : 'موقعیت انتخاب نشده (اختیاری)' }}</span>
-                                    <span class="checkout-map__attr" data-map-attr>{{ $neshanWebKey !== '' ? '© نقشه نشان' : '© CartoDB / OpenStreetMap' }}</span>
+                                    <span class="checkout-map__attr" data-map-attr>© نقشه نشان</span>
                                 </div>
                                 <input type="hidden" name="latitude" value="{{ $defaultLat }}" data-map-lat>
                                 <input type="hidden" name="longitude" value="{{ $defaultLng }}" data-map-lng>

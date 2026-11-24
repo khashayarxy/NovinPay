@@ -75,9 +75,15 @@ class PublicWebsiteTest extends TestCase
 
     public function test_legal_drafts_describe_active_form_honestly_and_stay_unindexed(): void
     {
-        $this->get('/privacy')->assertOk()->assertSee('پیش‌نویس')->assertSee('نیازمند تأیید مالک')
-            ->assertSee('نام، شمارهٔ همراه')->assertSee('مدت نگهداری')->assertSee('content="noindex, nofollow"', false)
+        $this->get('/privacy')->assertOk()
+            ->assertDontSee('پیش‌نویس')
+            ->assertDontSee('نیازمند تأیید مالک')
+            ->assertSee('نام، شمارهٔ همراه')
+            ->assertSee('مدت نگهداری')
+            ->assertSee('content="noindex, nofollow"', false)
             ->assertDontSee('داده‌ای از بازدیدکنندگان دریافت نمی‌شود');
-        $this->get('/terms')->assertOk()->assertSee('نیازمند تأیید مالک')->assertSee('به معنی دریافت فیزیکی دستگاه');
+        $this->get('/terms')->assertOk()
+            ->assertDontSee('نیازمند تأیید مالک')
+            ->assertSee('به معنی دریافت فیزیکی دستگاه');
     }
 }

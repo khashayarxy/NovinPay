@@ -4,8 +4,10 @@ namespace App\Http\Requests;
 
 use App\Enums\RepairBrand;
 use App\Models\RepairRequest;
+use App\Support\RepairIdentity;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreRepairRequest extends PrivateRepairFormRequest
 {
@@ -15,7 +17,13 @@ class StoreRepairRequest extends PrivateRepairFormRequest
     {
         parent::prepareForValidation();
         $account = Auth::guard('customer')->user();
-        $this->merge(['contact_phone' => $account?->phone]);
+        $merge = ['contact_phone' => $account?->phone];
+
+        if ($this->filled('responsive_phone') && is_string($this->input('responsive_phone'))) {
+            $merge['responsive_phone'] = RepairIdentity::phone($this->input('responsive_phone'));
+        }
+
+        $this->merge($merge);
     }
 
     public function rules(): array
@@ -32,9 +40,44 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             'device_serial' => ['nullable', 'string', 'max:100'],
             'accessories' => ['sometimes', 'array', 'max:3'],
             'accessories.*' => ['required', 'string', 'distinct', Rule::in(array_keys(RepairRequest::ACCESSORIES))],
-            'device_photo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:4096'],
+            'device_photo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:8192'],
+            'device_photos' => ['nullable', 'array'],
+            'device_photos.front' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:8192'],
+            'device_photos.back' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:8192'],
+            'device_photos.right' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:8192'],
+            'device_photos.left' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:8192'],
+            'province' => ['nullable', 'string', 'max:80'],
+            'city' => ['nullable', 'string', 'max:80'],
+            'handover_method' => ['nullable', 'string', Rule::in(array_keys(RepairRequest::HANDOVER_METHODS))],
+            'pickup_address' => ['nullable', 'string', 'max:500'],
+            'pickup_latitude' => ['nullable', 'numeric', 'between:-85,85'],
+            'pickup_longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'responsive_phone' => ['nullable', 'string', 'regex:/\A09[0-9]{9}\z/'],
             'submission_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $method = $this->input('handover_method');
+            if ($method !== 'doorstep_pickup') {
+                return;
+            }
+
+            $province = trim((string) $this->input('province', ''));
+            $city = trim((string) $this->input('city', ''));
+            $zones = config('delivery.courier_zones', []);
+            $allowedCities = is_array($zones[$province] ?? null) ? $zones[$province] : [];
+
+            if ($province === '' || $city === '' || ! in_array($city, $allowedCities, true)) {
+                $validator->errors()->add('handover_method', 'تحویل در محل فقط برای شهرهای تحت پوشش پیک نوین‌پی فعال است.');
+            }
+
+            if (mb_strlen(trim((string) $this->input('pickup_address', ''))) < 10) {
+                $validator->errors()->add('pickup_address', 'برای تحویل در محل، نشانی دقیق (حداقل ۱۰ کاراکتر) را وارد کنید.');
+            }
+        });
     }
 
     public function messages(): array
@@ -47,13 +90,27 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             'max' => ':attribute طولانی‌تر از حد مجاز است.',
             'issue.max' => 'شرح مشکل دستگاه نباید بیشتر از ۲۰۰۰ کاراکتر باشد.',
             'contact_phone.regex' => 'شماره موبایل ۱۱ رقمی با ۰۹ وارد کنید.',
+            'responsive_phone.regex' => 'شماره تماس پاسخگو باید ۱۱ رقمی و با ۰۹ شروع شود.',
             'device_brand' => 'یکی از برندهای مجاز دستگاه را انتخاب کنید.',
+            'handover_method.in' => 'روش تحویل دستگاه معتبر نیست.',
             'submission_token' => 'فرم را دوباره باز کنید و درخواست را ارسال کنید.',
         ];
     }
 
     public function attributes(): array
     {
-        return ['customer_name' => 'نام', 'contact_phone' => 'شماره موبایل', 'device_brand' => 'برند', 'device_model' => 'مدل دستگاه', 'issue' => 'شرح مشکل دستگاه', 'submission_token' => 'شناسهٔ فرم'];
+        return [
+            'customer_name' => 'نام',
+            'contact_phone' => 'شماره موبایل',
+            'responsive_phone' => 'شماره تماس پاسخگو',
+            'device_brand' => 'برند',
+            'device_model' => 'مدل دستگاه',
+            'issue' => 'شرح مشکل دستگاه',
+            'province' => 'استان',
+            'city' => 'شهر',
+            'handover_method' => 'روش تحویل دستگاه',
+            'pickup_address' => 'نشانی تحویل در محل',
+            'submission_token' => 'شناسهٔ فرم',
+        ];
     }
 }

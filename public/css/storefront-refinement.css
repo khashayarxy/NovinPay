@@ -849,13 +849,15 @@ button[data-loading="true"] {
 }
 .checkout-map__controls {
     display: inline-flex;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 6px;
+    flex: none;
 }
 .checkout-map__btn {
-    min-width: 30px;
-    min-height: 30px;
-    padding: 2px 9px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px 10px;
     border: 1px solid #cbd9e8;
     border-radius: 8px;
     background: #fff;
@@ -863,6 +865,8 @@ button[data-loading="true"] {
     font-family: inherit;
     font-size: 12px;
     font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
     cursor: pointer;
 }
 .checkout-map__btn:hover { background: #eff7ff; border-color: #93c5fd; }
@@ -880,6 +884,16 @@ button[data-loading="true"] {
     position: absolute;
     inset: 0;
     pointer-events: none;
+}
+.checkout-map__unavailable {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 16px;
+    text-align: center;
+    font-size: 13px;
+    color: #536d88;
 }
 .checkout-map__tiles:not(.leaflet-container) img {
     position: absolute;

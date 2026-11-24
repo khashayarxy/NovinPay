@@ -46,7 +46,7 @@ class AddSecurityHeaders
             if (! $response->headers->has('Content-Security-Policy-Report-Only')) {
                 // Console-only rollout: no public report endpoint or payload logs.
                 // Existing operator/widget enforcement remains authoritative.
-                $response->headers->set('Content-Security-Policy-Report-Only', "default-src 'self'; script-src 'self' https://static.neshan.org; style-src 'self' 'unsafe-inline' https://static.neshan.org; img-src 'self' data: blob: https://trustseal.enamad.ir https://*.neshan.org https://*.basemaps.cartocdn.com; font-src 'self' data: https://static.neshan.org; connect-src 'self' https://*.neshan.org https://*.basemaps.cartocdn.com https://www.cloudflare.com https://1.1.1.1; frame-src 'self' https://neshan.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'");
+                $response->headers->set('Content-Security-Policy-Report-Only', "default-src 'self'; script-src 'self' https://static.neshan.org; style-src 'self' 'unsafe-inline' https://static.neshan.org; img-src 'self' data: blob: https://trustseal.enamad.ir https://*.neshan.org; font-src 'self' data: https://static.neshan.org; connect-src 'self' https://*.neshan.org https://www.cloudflare.com https://1.1.1.1; frame-src 'self' https://neshan.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'");
             }
         }
 

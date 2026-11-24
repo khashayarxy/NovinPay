@@ -100,9 +100,9 @@ class MobileNavigationTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
         $xpath = new DOMXPath($document);
         $this->assertSame(0, $xpath->query('//header/nav[@aria-label="دسترسی سریع"]')->length);
-        $drawerLogo = $xpath->query('//dialog[@id="mobile-drawer"]//a[contains(@class,"np-mobile-drawer__logo") and @href="'.route('home').'"]/img');
-        $this->assertSame(1, $drawerLogo->length);
-        $this->assertSame($xpath->query('//header//a[contains(@class,"np-logo-link")]/img')->item(0)->getAttribute('src'), $drawerLogo->item(0)->getAttribute('src'));
+        $this->assertSame(0, $xpath->query('//dialog[@id="mobile-drawer"]//a[contains(@class,"np-mobile-drawer__logo")]')->length);
+        $this->assertSame(1, $xpath->query('//header//a[contains(@class,"np-logo-link")]/img')->length);
+        $this->assertSame(1, $xpath->query('//dialog[@id="mobile-drawer"]//button[@data-navigation-close]')->length);
 
         $menu = $xpath->query('//nav[@id="mobile-navigation"]')->item(0);
         $links = $xpath->query('./a', $menu);

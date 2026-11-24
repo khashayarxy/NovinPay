@@ -26,6 +26,7 @@
     @endisset
     <x-public-seo :canonical="$canonical ?? null" :content-seo="$contentSeo ?? null" :public-robots="$publicRobots ?? null" :product="$product ?? null" :product-sale="$sale ?? null" :product-rating="$productRating ?? null" :article="$article ?? null" :version="$version ?? null" />
     <x-brand-head />
+    <link rel="preload" href="{{ asset('fonts/dana/DanaFaNum-Regular.woff2') }}" as="font" type="font/woff2" crossorigin>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <script src="{{ versioned_asset('js/storefront-scroll-lock.js') }}" defer></script>
@@ -52,7 +53,7 @@
     @endunless
     <main id="main-content" class="flex-1" tabindex="-1">@yield('content')</main>
     @unless(View::hasSection('quiet-shell'))
-        @if(request()->routeIs('home', 'contact', 'repair*'))
+        @if(request()->routeIs('home', 'contact'))
             <x-home.location />
         @endif
         <x-home.footer :compact="View::hasSection('compact-footer')" />

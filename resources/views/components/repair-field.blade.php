@@ -4,6 +4,6 @@
     {{ $slot }}
     <div id="{{ $name }}-feedback">
         @if ($hint)<p class="public-hint">{{ $hint }}</p>@endif
-        @error($name)<p class="public-field-error">{{ $message }}</p>@enderror
+        <p class="public-field-error" data-field-error="{{ $name }}" role="alert" @unless($errors->has($name)) hidden @endunless>@error($name){{ $message }}@enderror</p>
     </div>
 </div>

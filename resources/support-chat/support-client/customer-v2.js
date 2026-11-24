@@ -38,6 +38,94 @@ window.closeChat=()=>{if(parent!==window)closeFrame();else startup.classList.rem
 if(parent===window){let queued=false;const fit=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;const v=window.visualViewport;if(innerWidth>599||!v||Math.abs(v.scale-1)>.01){for(const key of ['height','top','bottom'])startup.style.removeProperty(key);return;}startup.style.height=Math.max(1,Math.min(v.height,innerHeight))+'px';startup.style.top=Math.max(0,v.offsetTop)+'px';startup.style.bottom='auto';});};window.visualViewport?.addEventListener('resize',fit);window.visualViewport?.addEventListener('scroll',fit);addEventListener('resize',fit);addEventListener('pageshow',fit);startup.addEventListener('focusin',fit);startup.addEventListener('focusout',fit);fit();}
 startup.classList.add('active');startup.setAttribute('aria-busy','true');startup.querySelector('.chat-send').disabled=true;loading.hidden=false;startup.dataset.initState='initializing';
 let config=null,bootJob=null,mounted=false,tools=null;
+function initFaqAndChannels(win,cfg){
+ if(!win||win.dataset.faqBound==='1')return;
+ win.dataset.faqBound='1';
+ const tabChat=win.querySelector('[data-support-tab="chat"]');
+ const tabFaq=win.querySelector('[data-support-tab="faq"]');
+ const chatPane=win.querySelector('#supportChatPane');
+ const faqPane=win.querySelector('#supportFaqPane');
+ const inputArea=win.querySelector('#inputArea');
+ const searchInput=win.querySelector('#supportFaqSearch');
+ const faqList=win.querySelector('#supportFaqList');
+ const faqEmpty=win.querySelector('#supportFaqEmpty');
+ const toChatBtn=win.querySelector('#supportFaqToChat');
+ const phoneRow=win.querySelector('#supportPhoneRow');
+ if(!tabChat||!tabFaq||!faqPane||!chatPane)return;
+
+ const setTab=tab=>{
+  const isFaq=tab==='faq';
+  tabChat.classList.toggle('is-active',!isFaq);
+  tabFaq.classList.toggle('is-active',isFaq);
+  tabChat.setAttribute('aria-selected',String(!isFaq));
+  tabFaq.setAttribute('aria-selected',String(isFaq));
+  chatPane.hidden=isFaq;
+  if(inputArea)inputArea.hidden=isFaq;
+  faqPane.hidden=!isFaq;
+  if(isFaq)searchInput?.focus({preventScroll:true});
+  else win.querySelector('#chatInput')?.focus({preventScroll:true});
+ };
+ tabChat.addEventListener('click',()=>setTab('chat'));
+ tabFaq.addEventListener('click',()=>setTab('faq'));
+ toChatBtn?.addEventListener('click',()=>setTab('chat'));
+
+ const items=Array.isArray(cfg?.faq_items)?cfg.faq_items:[];
+ const renderFaq=(query='')=>{
+  if(!faqList)return;
+  const q=query.trim().toLowerCase();
+  faqList.innerHTML='';
+  let shown=0;
+  for(const item of items){
+   const hay=`${item.q||''} ${item.a||''}`.toLowerCase();
+   if(q&&!hay.includes(q))continue;
+   const details=document.createElement('details');
+   details.className='v2-faq-item';
+   const summary=document.createElement('summary');
+   summary.textContent=item.q||'';
+   const body=document.createElement('div');
+   body.className='v2-faq-item__body';
+   const p=document.createElement('p');
+   p.textContent=item.a||'';
+   body.append(p);
+   if(item.link&&typeof item.link==='string'&&item.link.startsWith('/')){
+    const a=document.createElement('a');
+    a.className='v2-faq-item__link';
+    a.href=item.link;
+    a.target='_top';
+    a.textContent=(item.link_label||'مشاهده بیشتر')+' ←';
+    body.append(a);
+   }
+   details.append(summary,body);
+   faqList.append(details);
+   shown++;
+  }
+  if(faqEmpty)faqEmpty.hidden=shown>0;
+ };
+ renderFaq();
+ searchInput?.addEventListener('input',()=>renderFaq(searchInput.value));
+
+ const ch=cfg?.contact_channels||{};
+ if(phoneRow&&ch.phone){
+  phoneRow.innerHTML='';
+  const callLink=document.createElement('a');
+  callLink.className='v2-phone-action';
+  callLink.href=ch.phone_uri||`tel:${ch.phone}`;
+  callLink.textContent=`تماس: ${ch.phone_display||ch.phone}`;
+  const smsLink=document.createElement('a');
+  smsLink.className='v2-phone-action';
+  smsLink.href=ch.sms_uri||`sms:${ch.phone}`;
+  smsLink.textContent='پیامک';
+  const copyBtn=document.createElement('button');
+  copyBtn.type='button';
+  copyBtn.className='v2-phone-copy';
+  copyBtn.textContent='کپی شماره';
+  copyBtn.addEventListener('click',()=>{
+   const done=()=>{copyBtn.textContent='کپی شد';setTimeout(()=>{copyBtn.textContent='کپی شماره';},1800);};
+   if(navigator.clipboard?.writeText){navigator.clipboard.writeText(ch.phone).then(done).catch(()=>{});}
+  });
+  phoneRow.append(callLink,smsLink,copyBtn);
+ }
+}
 const allowed=path=>config?.source_paths?.includes(path)?path:null;
 addEventListener('message',event=>{if(parent===window||event.origin!==location.origin||event.source!==parent||event.data?.type!=='support-widget-visibility')return;globalThis.SupportSourcePath=allowed(event.data.source_path);globalThis.SupportWidgetHidden=!event.data.visible;dispatchEvent(new CustomEvent('support-widget-visibility',{detail:{visible:!!event.data.visible}}));if(event.data.visible&&matchMedia('(pointer:fine)').matches)document.getElementById('chatInput')?.focus({preventScroll:true});});
 const launch=()=>{if(bootJob)return bootJob;const retry=loading.querySelector('[data-init-retry]'),text=loading.querySelector('[data-init-text]');retry.disabled=true;retry.hidden=true;loading.hidden=false;text.textContent='در حال آماده‌سازی گفتگو...';startup.dataset.initState='initializing';
@@ -50,7 +138,7 @@ const launch=()=>{if(bootJob)return bootJob;const retry=loading.querySelector('[
    finally{clearTimeout(timer);}
   }
   if(typeof config?.name!=='string')throw Error();
-  globalThis.SupportWidgetConfig=config;window.SupportTheme?.configure(config);const requested=new URL(location.href).searchParams.get('source_path');let referring=null;try{const ref=new URL(document.referrer);if(ref.origin===location.origin)referring=ref.pathname;}catch{}globalThis.SupportSourcePath=allowed(requested)||allowed(referring);
+  globalThis.SupportWidgetConfig=config;initFaqAndChannels(startup,config);window.SupportTheme?.configure(config);const requested=new URL(location.href).searchParams.get('source_path');let referring=null;try{const ref=new URL(document.referrer);if(ref.origin===location.origin)referring=ref.pathname;}catch{}globalThis.SupportSourcePath=allowed(requested)||allowed(referring);
   tools=customerTools();mounted=true;await mountCustomer({shellFactory:shell,transcriptRenderer:renderCustomerV2,presentation:tools,onClose:parent!==window?closeFrame:null});
   if(!startup.classList.contains('active'))window.toggleChat();if(parent!==window){parent.postMessage({type:'support-widget-ready'},location.origin);publishTheme();}
  })().catch(error=>{startup.dataset.initState='failed';startup.setAttribute('aria-busy','false');loading.hidden=false;text.textContent='گفتگو در دسترس نیست. دوباره بررسی کنید.';retry.hidden=false;retry.onclick=mounted?()=>location.reload():()=>configurationRecovery.start(true);loading.querySelector('[data-init-reference]').textContent='';diagnostics.events.push({stage:mounted?'mount':'configuration',code:transientFailure(error)?'transient':'terminal',ms:Math.round(performance.now())});diagnostics.events=diagnostics.events.slice(-12);dispatchEvent(new Event('support-init-state'));throw error;})
