@@ -10,6 +10,7 @@ use App\Services\CustomerLogin;
 use App\Services\ProductPurchaseVerification;
 use App\Services\ShoppingCart;
 use App\Services\StoreCheckout;
+use App\Support\PaymentTestProduct;
 use App\Support\ProductSale;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class ProductController extends Controller
         'lowest' => 'کمترین امتیاز',
     ];
 
-    public function index(Request $request, StoreCheckout $checkout): View|RedirectResponse
+    public function index(Request $request, StoreCheckout $checkout, CustomerLogin $login): View|Response|RedirectResponse
     {
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
@@ -37,6 +38,7 @@ class ProductController extends Controller
             'category' => 'دسته‌بندی انتخاب‌شده معتبر نیست.',
         ]);
 
+        $account = $login->authenticatedAccount($request);
         $term = trim((string) ($validated['q'] ?? ''));
         $category = isset($validated['category'])
             ? ProductCategory::from($validated['category'])
@@ -46,6 +48,7 @@ class ProductController extends Controller
         $condition = $validated['condition'] ?? null;
         $products = Product::query()
             ->published()
+            ->visibleTo($account)
             ->with('inventoryItems')
             ->when($term !== '', fn ($query) => $query->search($term))
             ->when($category !== null, fn ($query) => $query->category($category))
@@ -66,7 +69,7 @@ class ProductController extends Controller
 
         $stock = $products->getCollection()->mapWithKeys(fn (Product $product) => [$product->id => $checkout->confirmedInventory($product)?->available])->all();
 
-        return view('products.index', [
+        $response = response()->view('products.index', [
             'products' => $products,
             'stock' => $stock,
             'sales' => $products->getCollection()->mapWithKeys(fn (Product $product) => [
@@ -83,11 +86,19 @@ class ProductController extends Controller
             'publicRobots' => $term !== '' || $category !== null || array_diff(array_keys($request->query()), ['page'])
                 ? 'noindex, follow' : 'index, follow',
         ]);
+
+        if (PaymentTestProduct::canAccess($account)) {
+            $response->headers->set('Cache-Control', 'private, no-store');
+            $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');
+        }
+
+        return $response;
     }
 
     public function show(Request $request, Product $product, StoreCheckout $checkout, CustomerLogin $login, ProductPurchaseVerification $purchase, ShoppingCart $cart): Response
     {
-        abort_unless($product->is_published, 404);
+        $account = $login->authenticatedAccount($request);
+        abort_unless($product->is_published && PaymentTestProduct::canSeeProduct($product, $account), 404);
 
         $product->loadMissing('inventoryItems');
         $inventory = $checkout->confirmedInventory($product);
@@ -96,6 +107,7 @@ class ProductController extends Controller
         $variants = collect();
         if ($product->variant_family && ! $product->is_sample) {
             $variants = Product::query()->published()->where('is_sample', false)
+                ->excludePrivatePaymentTest()
                 ->where('variant_family', $product->variant_family)
                 ->where('category', $product->category->value)->whereNotNull('color')->whereKeyNot($product->id)
                 ->with('inventoryItems')->orderBy('id')->get();
@@ -105,11 +117,11 @@ class ProductController extends Controller
         $rating = null;
         $reviewSort = $request->query('review_sort');
         $reviewSort = is_string($reviewSort) && isset(self::REVIEW_SORTS[$reviewSort]) ? $reviewSort : 'newest';
-        $account = null;
         $ownReview = null;
         if (! $product->is_sample) {
             $manual = preg_split('/[,\s]+/', $product->product_details['related_slugs'] ?? '', -1, PREG_SPLIT_NO_EMPTY);
             $relatedQuery = Product::query()->published()->where('is_sample', false)
+                ->excludePrivatePaymentTest()
                 ->whereKeyNot($product->id)->with('inventoryItems')
                 ->when($product->variant_family, fn ($query, $family) => $query
                     ->where(fn ($other) => $other->whereNull('variant_family')->orWhere('variant_family', '!=', $family)));
@@ -143,12 +155,11 @@ class ProductController extends Controller
                 $weighted = $counts->sum(fn ($number, $stars) => $number * $stars);
                 $rating = ['count' => $count, 'value' => round($weighted / $count, 1), 'distribution' => $counts];
             }
-            $account = $login->authenticatedAccount($request);
-            if (! $account?->verified_at) {
-                $account = null;
-            }
+            $account = $account?->verified_at ? $account : null;
             $ownReview = $account ? ProductFeedback::query()->where('product_id', $product->id)
                 ->where('review_owner_id', $account->id)->first() : null;
+        } else {
+            $account = $account?->verified_at ? $account : null;
         }
         $sale = ProductSale::resolve($product, $inventory ? $inventory->available > 0 : null);
         $variantSales = $this->sales($variants, $checkout) + [$product->id => $sale];
@@ -177,11 +188,12 @@ class ProductController extends Controller
             'ownReview' => $ownReview,
             'canonical' => rtrim($request->getHost() === 'novinpaypos.test' ? config('business.public_url') : config('app.url'), '/')
                 .route('products.show', $product, false),
-            'publicRobots' => $product->is_sample ? 'noindex, follow' : 'index, follow',
+            'publicRobots' => ($product->is_sample || $product->isPrivatePaymentTest()) ? 'noindex, nofollow' : 'index, follow',
         ]);
 
-        if ($account) {
+        if ($account || $product->isPrivatePaymentTest()) {
             $response->headers->set('Cache-Control', 'private, no-store');
+            $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');
         }
 
         return $response;
@@ -194,9 +206,11 @@ class ProductController extends Controller
             'add' => ['nullable', 'string', 'max:255', 'regex:/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/']]);
         $slugs = array_slice(array_unique(array_filter([...($data['products'] ?? []), $data['add'] ?? null])), 0, 4);
         $products = Product::query()->published()->where('is_sample', false)
+            ->excludePrivatePaymentTest()
             ->whereIn('slug', $slugs)->get()->keyBy('slug');
         $products = collect($slugs)->map(fn ($slug) => $products->get($slug))->filter()->values();
         $choices = Product::query()->published()->where('is_sample', false)
+            ->excludePrivatePaymentTest()
             ->whereNotIn('slug', $slugs)->orderBy('name')->get(['slug', 'name']);
         $specs = $products->mapWithKeys(function (Product $product) {
             $rows = ['برند' => $product->brand, 'مدل' => $product->model, 'رنگ' => $product->color];

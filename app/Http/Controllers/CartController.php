@@ -12,6 +12,7 @@ use App\Services\ShoppingCart;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
 use App\Support\FaNumber;
+use App\Support\PaymentTestProduct;
 use App\Support\RepairIdentity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -266,15 +267,19 @@ class CartController extends Controller
         ]);
     }
 
-    public function add(Request $request, Product $product, ShoppingCart $cart)
+    public function add(Request $request, Product $product, ShoppingCart $cart, CustomerLogin $login)
     {
+        abort_unless(PaymentTestProduct::canSeeProduct($product, $login->authenticatedAccount($request)), 404);
+
         $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:'.ShoppingCart::MAX_ITEM_QUANTITY]]);
 
         return $this->changed($request, $cart->change($request, $product->slug, 'add', (int) $data['quantity'], $product), $cart);
     }
 
-    public function update(Request $request, Product $product, ShoppingCart $cart)
+    public function update(Request $request, Product $product, ShoppingCart $cart, CustomerLogin $login)
     {
+        abort_unless(PaymentTestProduct::canSeeProduct($product, $login->authenticatedAccount($request)), 404);
+
         $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:'.ShoppingCart::MAX_ITEM_QUANTITY]]);
 
         return $this->changed($request, $cart->change($request, $product->slug, 'quantity', (int) $data['quantity'], $product), $cart);

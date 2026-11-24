@@ -76,7 +76,9 @@
                 <section class="identity card" aria-labelledby="product-title">
                     <div class="identity-top">
                         <span @class(['used', 'is-new' => $product->condition === \App\Enums\ProductCondition::New])>{{ $product->condition->label() }}</span>
-                        @if ($product->is_sample)
+                        @if ($product->isPrivatePaymentTest())
+                            <span class="badge badge-sample">خصوصی · تست درگاه</span>
+                        @elseif ($product->is_sample)
                             <span class="badge badge-sample">داده نمونه</span>
                         @else
                             <a class="public-inline-link product-compare-link" href="{{ route('products.compare', ['products' => [$product->slug]]) }}"><x-storefront.icon name="compare" /> مقایسهٔ محصول</a>

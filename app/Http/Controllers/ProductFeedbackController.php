@@ -19,7 +19,7 @@ class ProductFeedbackController extends Controller
 
     public function store(Request $request, Product $product, ProductPurchaseVerification $purchase): RedirectResponse
     {
-        abort_unless($product->is_published && ! $product->is_sample, 404);
+        abort_unless($product->is_published && ! $product->is_sample && ! $product->isPrivatePaymentTest(), 404);
         $data = $request->validate([
             'kind' => ['required', Rule::in(['review', 'question'])],
             'body' => ['required', 'string', 'min:5', 'max:1500'],
@@ -31,7 +31,7 @@ class ProductFeedbackController extends Controller
             $owner = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
             abort_unless($owner->is_active && $owner->session_version === $account->session_version && $owner->verified_at, 403);
             $published = Product::query()->lockForUpdate()->findOrFail($product->id);
-            abort_unless($published->is_published && ! $published->is_sample, 404);
+            abort_unless($published->is_published && ! $published->is_sample && ! $published->isPrivatePaymentTest(), 404);
             $review = $data['kind'] === 'review';
             $verified = $review && $purchase->verified($owner, $product);
             if (isset($data['rating']) && ! $verified) {
@@ -53,7 +53,7 @@ class ProductFeedbackController extends Controller
 
     public function report(Request $request, Product $product, ProductFeedback $feedback): RedirectResponse
     {
-        abort_unless($product->is_published && ! $product->is_sample
+        abort_unless($product->is_published && ! $product->is_sample && ! $product->isPrivatePaymentTest()
             && $feedback->product_id === $product->id && $feedback->status === 'approved', 404);
         $data = $request->validate(['reason' => ['required', Rule::in(array_keys(self::REPORT_REASONS))]]);
         $account = Auth::guard('customer')->user();

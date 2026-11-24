@@ -50,6 +50,9 @@
                                     @else
                                         <span class="badge badge-warning">پیش‌نویس</span>
                                     @endif
+                                    @if ($product->isPrivatePaymentTest())
+                                        <span class="badge badge-sample">تست خصوصی</span>
+                                    @endif
                                     @if ($product->is_sample)
                                         <span class="badge badge-sample">داده نمونه</span>
                                     @endif
