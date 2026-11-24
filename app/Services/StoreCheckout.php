@@ -88,9 +88,9 @@ class StoreCheckout
             $total = 0;
             foreach ($products as $product) {
                 $quantity = $cart[$product->slug];
-                abort_unless(is_int($quantity) && $quantity >= 1 && $quantity <= 10, 422);
+                abort_unless(is_int($quantity) && $quantity >= 1 && $quantity <= ShoppingCart::MAX_ITEM_QUANTITY, 422);
                 $item = $this->offer($product, true);
-                abort_unless($item && $item->available >= $quantity, 409, 'موجودی کالا تغییر کرده است؛ سبد را بررسی کنید.');
+                abort_unless($item && $quantity <= ShoppingCart::maxQuantityForOffer($item), 409, 'موجودی کالا تغییر کرده است؛ سبد را بررسی کنید.');
                 $unit = OrderMoney::minor((string) $product->price);
                 $sum = $unit * $quantity;
                 $total += $sum;

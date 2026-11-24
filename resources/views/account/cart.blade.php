@@ -8,6 +8,7 @@
         :$quantity
         :$unavailable
         :$available
+        :$stockAvailable
         :$total
         :$separate
         :$proof

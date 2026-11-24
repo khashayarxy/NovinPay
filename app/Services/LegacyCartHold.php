@@ -62,7 +62,7 @@ class LegacyCartHold
         $legacy = decrypt($hold->payload);
         abort_unless(is_array($legacy) && $legacy === $request->session()->get('store_cart') && count($legacy) <= 30, 409);
         foreach ($legacy as $slug => $quantity) {
-            abort_unless(preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D', (string) $slug) && is_int($quantity) && $quantity >= 1 && $quantity <= 10, 409);
+            abort_unless(preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D', (string) $slug) && is_int($quantity) && $quantity >= 1 && $quantity <= ShoppingCart::MAX_ITEM_QUANTITY, 409);
         }
         $import($legacy);
         DB::table('legacy_cart_holds')->where('reference', $reference)

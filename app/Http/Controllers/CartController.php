@@ -268,14 +268,14 @@ class CartController extends Controller
 
     public function add(Request $request, Product $product, ShoppingCart $cart)
     {
-        $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:10']]);
+        $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:'.ShoppingCart::MAX_ITEM_QUANTITY]]);
 
         return $this->changed($request, $cart->change($request, $product->slug, 'add', (int) $data['quantity'], $product), $cart);
     }
 
     public function update(Request $request, Product $product, ShoppingCart $cart)
     {
-        $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:10']]);
+        $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:'.ShoppingCart::MAX_ITEM_QUANTITY]]);
 
         return $this->changed($request, $cart->change($request, $product->slug, 'quantity', (int) $data['quantity'], $product), $cart);
     }
@@ -551,6 +551,24 @@ class CartController extends Controller
             return redirect()->route('cart.index');
         }
 
+        if ($cart && $request->headers->get('X-Storefront-Cart-State') === '1') {
+            $state = $cart->stateData($request);
+
+            return response()->json([
+                'count' => $count,
+                'proof' => $state['proof'],
+                'revision' => $state['revision'],
+                'quantities' => $state['quantity'],
+                'available' => $state['available'],
+                'stockAvailable' => $state['stockAvailable'],
+                'prices' => $state['prices'],
+                'total' => $state['total'],
+                'unavailable' => $state['unavailable'],
+                'overLimit' => $state['overLimit'],
+                'separate' => (bool) $state['separate'],
+            ]);
+        }
+
         if ($cart && $request->headers->get('X-Storefront-Cart-Html') === '1') {
             $viewData = $cart->viewData($request);
 
@@ -559,8 +577,17 @@ class CartController extends Controller
                 'proof' => $viewData['proof'],
                 'revision' => $viewData['revision'],
                 'quantities' => $viewData['quantity'],
+                'available' => $viewData['available'],
+                'stockAvailable' => $viewData['stockAvailable'],
+                'prices' => $viewData['prices'],
+                'total' => $viewData['total'],
+                'unavailable' => $viewData['unavailable'],
+                'overLimit' => $viewData['overLimit'],
                 'separate' => (bool) $viewData['separate'],
-                'html' => view('components.storefront.cart-content', [...$viewData, 'drawer' => true])->render(),
+                'html' => view('components.storefront.cart-content', [
+                    ...$viewData,
+                    'drawer' => $request->headers->get('X-Storefront-Cart-Page') !== '1',
+                ])->render(),
             ]);
         }
 

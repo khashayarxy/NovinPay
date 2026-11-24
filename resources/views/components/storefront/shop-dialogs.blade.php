@@ -31,6 +31,7 @@
                 :quantity="$ssrCart['quantity']"
                 :unavailable="$ssrCart['unavailable']"
                 :available="$ssrCart['available']"
+                :stock-available="$ssrCart['stockAvailable']"
                 :total="$ssrCart['total']"
                 :separate="$ssrCart['separate']"
                 :proof="$ssrCart['proof']"
