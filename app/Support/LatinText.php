@@ -9,7 +9,7 @@ final class LatinText
     public static function html(?string $text): HtmlString
     {
         $raw = (string) $text;
-        if (preg_match('/<\/?[A-Za-z]/', $raw) === 1) {
+        if (preg_match('/<\/[A-Za-z]+>|<script\b/i', $raw) === 1) {
             return new HtmlString(e($raw));
         }
 

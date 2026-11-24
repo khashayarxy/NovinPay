@@ -125,7 +125,8 @@
         content: '';
     }
 
-    .np-latin {
+    .np-latin,
+    .purchase-meta dd bdi[dir="ltr"] {
         font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
         direction: ltr;
         unicode-bidi: isolate;

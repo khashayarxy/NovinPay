@@ -224,11 +224,11 @@
                             <dl class="repair-shipping-details">
                                 <div>
                                     <dt>آدرس گیرنده:</dt>
-                                    <dd>استان تهران، شهریار، بلوار رسول اکرم، خیابان مفتح، پاساژ الماس شهر، طبقه زیر همکف، واحد ۸۷</dd>
+                                    <dd>{{ config('business.address') }}</dd>
                                 </div>
                                 <div>
                                     <dt>شماره موبایل:</dt>
-                                    <dd><a href="tel:09362896373" dir="ltr">۰۹۳۶۲۸۹۶۳۷۳</a></dd>
+                                    <dd><a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></dd>
                                 </div>
                                 <div>
                                     <dt>کد پستی:</dt>
@@ -239,7 +239,7 @@
                                 <button type="button"
                                         class="btn btn-secondary btn-sm repair-shipping-copy-btn"
                                         data-copy-shipping
-                                        data-copy-text="آدرس گیرنده: استان تهران، شهریار، بلوار رسول اکرم، خیابان مفتح، پاساژ الماس شهر، طبقه زیر همکف، واحد ۸۷&#10;شماره موبایل: ۰۹۳۶۲۸۹۶۳۷۳&#10;کد پستی: ۳۳۵۱۶۱۱۸۲۸"
+                                        data-copy-text="آدرس گیرنده: {{ config('business.address') }}&#10;شماره موبایل: {{ \App\Support\FaNumber::digits(config('business.phone')) }}&#10;کد پستی: ۳۳۵۱۶۱۱۸۲۸"
                                         aria-describedby="repair-shipping-copy-status">کپی اطلاعات ارسال</button>
                                 <span id="repair-shipping-copy-status" class="repair-shipping-copy-status" role="status" aria-live="polite"></span>
                             </div>

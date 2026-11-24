@@ -340,7 +340,8 @@ class ZibalUnifiedPaymentsTest extends TestCase
             'tracking_reference' => '40219900',
             'contact_phone' => '09120001122',
         ])->assertOk()->assertSee('data-stage="current"', false)->assertSee('data-stage="upcoming"', false)
-            ->assertDontSee($case->device_model);
+            ->assertDontSee($case->customer_name)
+            ->assertDontSee($case->contact_phone);
 
         $expiry = now()->addMinutes(10);
         $code = RepairPaymentCode::issue($case->public_id, $expiry->timestamp);

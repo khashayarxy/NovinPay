@@ -71,7 +71,7 @@
     @endif
     <dl class="purchase-meta">
         @if ($sku)
-            <div><dt><x-storefront.icon name="identifier" />شناسه کالا</dt><dd><bdi class="np-latin" dir="ltr">{{ $sku }}</bdi></dd></div>
+            <div><dt><x-storefront.icon name="identifier" />شناسه کالا</dt><dd><bdi dir="ltr">{{ $sku }}</bdi></dd></div>
         @endif
         @if ($product->category)
             <div><dt><x-storefront.icon name="shop" />دسته‌بندی</dt><dd><a href="{{ route('products.index', ['category' => $product->category->value]) }}">{{ $product->category->label() }}</a></dd></div>
