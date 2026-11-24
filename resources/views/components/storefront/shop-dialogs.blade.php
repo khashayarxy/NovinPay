@@ -45,6 +45,6 @@
     @endif
 </dialog>
 <dialog id="search-dialog" class="search-dialog store-search-dialog" data-storefront-dialog aria-labelledby="search-title">
-    <div class="overlay-heading"><h2 id="search-title">جست‌وجو در فروشگاه</h2><button type="button" data-storefront-close aria-label="بستن جست‌وجو"><x-storefront.icon name="close" /></button></div>
-    <form action="{{ route('products.index') }}" method="get"><label for="product-search">نام یا مدل دستگاه</label><input id="product-search" name="q" type="search" maxlength="100" placeholder="مثلاً ME31" autocomplete="off" enterkeyhint="search"><button type="submit" class="primary"><x-storefront.icon name="search" />جست‌وجو</button></form>
+    <div class="overlay-heading"><h2 id="search-title">جستجو در فروشگاه</h2><button type="button" data-storefront-close aria-label="بستن جستجو"><x-storefront.icon name="close" /></button></div>
+    <form action="{{ route('products.index') }}" method="get"><label for="product-search">نام یا مدل دستگاه</label><input id="product-search" name="q" type="search" maxlength="100" placeholder="مثلاً ME31" autocomplete="off" enterkeyhint="search"><button type="submit" class="primary"><x-storefront.icon name="search" />جستجو</button></form>
 </dialog>

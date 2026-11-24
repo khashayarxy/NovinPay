@@ -50,7 +50,6 @@ function initFaqAndChannels(win,cfg){
  const faqList=win.querySelector('#supportFaqList');
  const faqEmpty=win.querySelector('#supportFaqEmpty');
  const toChatBtn=win.querySelector('#supportFaqToChat');
- const phoneRow=win.querySelector('#supportPhoneRow');
  if(!tabChat||!tabFaq||!faqPane||!chatPane)return;
 
  const setTab=tab=>{
@@ -103,28 +102,6 @@ function initFaqAndChannels(win,cfg){
  };
  renderFaq();
  searchInput?.addEventListener('input',()=>renderFaq(searchInput.value));
-
- const ch=cfg?.contact_channels||{};
- if(phoneRow&&ch.phone){
-  phoneRow.innerHTML='';
-  const callLink=document.createElement('a');
-  callLink.className='v2-phone-action';
-  callLink.href=ch.phone_uri||`tel:${ch.phone}`;
-  callLink.textContent=`تماس: ${ch.phone_display||ch.phone}`;
-  const smsLink=document.createElement('a');
-  smsLink.className='v2-phone-action';
-  smsLink.href=ch.sms_uri||`sms:${ch.phone}`;
-  smsLink.textContent='پیامک';
-  const copyBtn=document.createElement('button');
-  copyBtn.type='button';
-  copyBtn.className='v2-phone-copy';
-  copyBtn.textContent='کپی شماره';
-  copyBtn.addEventListener('click',()=>{
-   const done=()=>{copyBtn.textContent='کپی شد';setTimeout(()=>{copyBtn.textContent='کپی شماره';},1800);};
-   if(navigator.clipboard?.writeText){navigator.clipboard.writeText(ch.phone).then(done).catch(()=>{});}
-  });
-  phoneRow.append(callLink,smsLink,copyBtn);
- }
 }
 const allowed=path=>config?.source_paths?.includes(path)?path:null;
 addEventListener('message',event=>{if(parent===window||event.origin!==location.origin||event.source!==parent||event.data?.type!=='support-widget-visibility')return;globalThis.SupportSourcePath=allowed(event.data.source_path);globalThis.SupportWidgetHidden=!event.data.visible;dispatchEvent(new CustomEvent('support-widget-visibility',{detail:{visible:!!event.data.visible}}));if(event.data.visible&&matchMedia('(pointer:fine)').matches)document.getElementById('chatInput')?.focus({preventScroll:true});});

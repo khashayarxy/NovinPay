@@ -1583,15 +1583,22 @@
         }
 
         .repair-brand-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
         }
 
         .repair-issue-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .repair-step-actions {
+            flex-direction: column;
+            align-items: stretch;
         }
 
         .repair-step-actions > * {
-            flex: 1 1 auto;
+            width: 100%;
             justify-content: center;
         }
     }

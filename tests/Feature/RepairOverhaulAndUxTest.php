@@ -56,9 +56,9 @@ class RepairOverhaulAndUxTest extends TestCase
             ->assertSee('data-is-guest="1"', false)
             ->assertSee('data-repair-inline-auth', false)
             ->assertSee('data-issue-guidance', false)
-            ->assertSee('خودم میفرستم')
-            ->assertSee('حضوری میآورم')
-            ->assertSee('به پیک شما تحویل میدهم')
+            ->assertSee('خودم می‌فرستم')
+            ->assertSee('حضوری می‌آورم')
+            ->assertSee('به پیک شما تحویل می‌دهم')
             ->assertSee('مسیریابی با:')
             ->assertDontSee('repair-overview-strip')
             ->assertDontSee('repair-entry-notes')
@@ -285,9 +285,9 @@ class RepairOverhaulAndUxTest extends TestCase
 
         $html = file_get_contents(resource_path('support-chat/support-client/widget-v2.html'));
         $this->assertStringContainsString('data-support-tab="faq"', $html);
-        $this->assertStringContainsString('سوالات متداول و تماس', $html);
+        $this->assertStringContainsString('سوالات متداول', $html);
         $this->assertStringContainsString('supportFaqSearch', $html);
-        $this->assertStringContainsString('supportPhoneRow', $html);
-        $this->assertStringNotContainsString('supportChannelsGrid', $html);
+        $this->assertStringNotContainsString('supportPhoneRow', $html);
+        $this->assertStringNotContainsString('supportChannels', $html);
     }
 }

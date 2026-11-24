@@ -239,17 +239,17 @@
                             <div class="repair-handover-grid" role="radiogroup" aria-label="نحوهٔ تحویل دستگاه">
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="self_ship">
                                     <input type="radio" name="handover_method" value="self_ship" @checked($selectedHandover === 'self_ship')>
-                                    <span class="repair-choice-card__title">خودم میفرستم</span>
+                                    <span class="repair-choice-card__title">خودم می‌فرستم</span>
                                     <span class="repair-choice-card__sub">ارسال از سراسر کشور با پست یا تیپاکس</span>
                                 </label>
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="in_person">
                                     <input type="radio" name="handover_method" value="in_person" @checked($selectedHandover === 'in_person')>
-                                    <span class="repair-choice-card__title">حضوری میآورم</span>
+                                    <span class="repair-choice-card__title">حضوری می‌آورم</span>
                                     <span class="repair-choice-card__sub">تحویل مستقیم در فروشگاه نوین‌پی شهریار</span>
                                 </label>
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="doorstep_pickup" hidden>
                                     <input type="radio" name="handover_method" value="doorstep_pickup" @checked($selectedHandover === 'doorstep_pickup') disabled>
-                                    <span class="repair-choice-card__title">به پیک شما تحویل میدهم</span>
+                                    <span class="repair-choice-card__title">به پیک شما تحویل می‌دهم</span>
                                     <span class="repair-choice-card__sub">دریافت دستگاه از محل شما توسط پیک نوین‌پی</span>
                                 </label>
                             </div>

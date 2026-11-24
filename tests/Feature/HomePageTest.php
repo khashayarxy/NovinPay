@@ -258,8 +258,13 @@ class HomePageTest extends TestCase
         $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$this->get('/')->assertOk()->getContent());
         $xpath = new DOMXPath($document);
-        $this->assertSame(2, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
-        $this->assertSame(0, $xpath->query('//footer//nav')->length);
+        $this->assertSame(3, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
+        $quickLinks = $xpath->query('//footer//nav[@aria-label="دسترسی سریع"]//a');
+        $this->assertSame(4, $quickLinks->length);
+        $this->assertSame(
+            ['فروشگاه', 'درخواست تعمیر', 'پیگیری تعمیر', 'مقالات و آموزش‌ها'],
+            array_map(fn ($link) => trim(preg_replace('/\s+/', ' ', $link->textContent)), iterator_to_array($quickLinks)),
+        );
         $this->assertSame(0, $xpath->query('//footer//address')->length);
         $this->assertStringNotContainsString(config('business.address'), $xpath->query('//footer')->item(0)->textContent);
         $this->assertStringNotContainsString(config('business.hours.open'), $xpath->query('//footer')->item(0)->textContent);

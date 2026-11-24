@@ -15,7 +15,7 @@
                 <div class="public-notice public-notice--success" role="status">
                     <h2>{{ ($physicalMatch ?? false) ? 'وضعیت فعلی تعمیر' : \App\Enums\RepairRequestStatus::OnlineSubmitted->label() }}</h2>
                     @if ($physicalMatch ?? false)<p>{{ $physicalStatus }}</p>@endif
-                    <x-account.timeline :steps="$timeline" />
+                    <x-account.timeline :steps="$timeline" orientation="horizontal" />
                     <p>{{ $nextAction }}</p>
                 </div>
             @endif
