@@ -55,10 +55,11 @@ class RepairOverhaulAndUxTest extends TestCase
             ->assertSee('© نقشه نشان')
             ->assertSee('data-is-guest="1"', false)
             ->assertSee('data-repair-inline-auth', false)
-            ->assertSee('data-issue-guidance', false)
-            ->assertSee('خودم می‌فرستم')
-            ->assertSee('حضوری می‌آورم')
-            ->assertSee('به پیک شما تحویل می‌دهم')
+            ->assertSee('data-upgrade-estimate', false)
+            ->assertSee('خودم ارسال میکنم')
+            ->assertSee('خودم حضوری میارم')
+            ->assertSee('به پیک شما تحویل میدم')
+            ->assertSee('کپی اطلاعات ارسال')
             ->assertSee('مسیریابی با:')
             ->assertDontSee('repair-overview-strip')
             ->assertDontSee('repair-entry-notes')
@@ -140,7 +141,7 @@ class RepairOverhaulAndUxTest extends TestCase
 
         $repair = RepairRequest::query()->sole();
         $this->assertStringContainsString('تهران - شهریار', $repair->issue);
-        $this->assertStringContainsString('به پیک شما تحویل میدهم', $repair->issue);
+        $this->assertStringContainsString('به پیک شما تحویل میدم', $repair->issue);
         $this->assertStringContainsString('شهریار، بلوار ولیعصر', $repair->issue);
         $this->assertStringContainsString('09362896373', $repair->issue);
 

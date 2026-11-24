@@ -9,7 +9,11 @@ final class LatinText
     public static function html(?string $text): HtmlString
     {
         $raw = (string) $text;
-        $pattern = '/(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9._\/-]*(?:\s+[A-Za-z0-9._\/-]+)*/';
+        if (preg_match('/<\/[A-Za-z]+>|<script\b/i', $raw) === 1) {
+            return new HtmlString(e($raw));
+        }
+
+        $pattern = '/(?<![A-Za-z0-9])(?:[A-Za-z][A-Za-z0-9._\/-]*|[0-9]+(?:\.[0-9]+)?[A-Za-z][A-Za-z0-9._\/-]*)(?:\s*(?:\/|\s)\s*(?:[A-Za-z][A-Za-z0-9._\/-]*|[0-9]+(?:\.[0-9]+)?[A-Za-z][A-Za-z0-9._\/-]*|[0-9]+(?:[._\/-][A-Za-z0-9]+)*))*/';
 
         if (! preg_match_all($pattern, $raw, $matches, PREG_OFFSET_CAPTURE)) {
             return new HtmlString(e($raw));

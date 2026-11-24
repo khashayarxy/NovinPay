@@ -45,7 +45,7 @@
         </h3>
 
         @if ($product->summary)
-            <p class="text-sm leading-7 text-slate-600 public-product-summary">{{ $product->summary }}</p>
+            <p class="text-sm leading-7 text-slate-600 public-product-summary">{{ \App\Support\LatinText::html($product->summary) }}</p>
         @endif
 
         <div class="mt-auto flex items-end justify-between gap-3 border-t border-slate-100 pt-3">

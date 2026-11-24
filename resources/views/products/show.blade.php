@@ -69,7 +69,7 @@
         $hasSectionNav = count($sections) > 1;
     @endphp
     <div class="storefront-content">
-        <nav class="breadcrumb" aria-label="مسیر صفحه"><a href="{{ route('home') }}">خانه</a><span aria-hidden="true">/</span><a href="{{ route('products.index') }}">فروشگاه</a><span aria-hidden="true">/</span><span aria-current="page">{{ $product->name }}</span></nav>
+        <nav class="breadcrumb" aria-label="مسیر صفحه"><a href="{{ route('home') }}">خانه</a><span aria-hidden="true">/</span><a href="{{ route('products.index') }}">فروشگاه</a><span aria-hidden="true">/</span><span aria-current="page">{{ \App\Support\LatinText::html($product->name) }}</span></nav>
         <div class="product-layout">
             @include('products._gallery')
             <div class="product-overview">
@@ -85,7 +85,7 @@
                         @endif
                     </div>
                     <h1 id="product-title">{{ \App\Support\LatinText::html($product->name) }}</h1>
-                    @if ($product->model && !str_contains($product->name, $product->model))<p class="model"><bdi>{{ $product->model }}</bdi></p>@endif
+                    @if ($product->model && !str_contains($product->name, $product->model))<p class="model"><bdi class="np-latin" dir="ltr">{{ $product->model }}</bdi></p>@endif
                     @include('products._colors')
                 </section>
                 @if ($keyRows)<div class="key-mobile card">@include('products._premium-key-specs')</div>@endif
@@ -136,12 +136,12 @@
                     <div class="public-product-grid">@foreach ($related as $item)<x-product-card :product="$item" :sale="$relatedSales[$item->id]" />@endforeach</div>
                 @else
                     <p class="related-empty">محصول مشابهی برای نمایش وجود ندارد.</p>
-                    <a class="public-inline-link" href="{{ route('products.index', ['category' => $product->category->value]) }}">مشاهدهٔ همهٔ {{ $product->category->label() }}</a>
+                    <a class="public-inline-link" href="{{ route('products.index') }}">مشاهدهٔ همهٔ محصولات</a>
                 @endif
             </section>
         @elseif (!$product->is_sample)
             <div class="mt-4">
-                <a class="public-inline-link" href="{{ route('products.index', ['category' => $product->category->value]) }}">مشاهدهٔ همهٔ {{ $product->category->label() }}</a>
+                <a class="public-inline-link" href="{{ route('products.index') }}">مشاهدهٔ همهٔ محصولات</a>
             </div>
         @endif
     </div>

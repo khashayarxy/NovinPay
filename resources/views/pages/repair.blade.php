@@ -35,63 +35,29 @@
         $initialStep = 3;
     }
     $issuePresets = [
-        [
-            'چاپگر و رول کاغذ',
-            'بنویسید چاپ رسید کاملاً سفید است یا کمرنگ می‌شود، کاغذ گیر می‌کند یا صدای غیرعادی از چاپگر شنیده می‌شود.',
-            'printer',
-            '',
-        ],
-        [
-            'باتری و شارژ',
-            'بنویسید دستگاه روشن نمی‌شود، شارژ خالی می‌کند، سوکت شارژ لق شده یا فقط با اتصال به برق کار می‌کند.',
-            'battery-charging',
-            '',
-        ],
-        [
-            'صفحه‌نمایش و کیپد',
-            'بنویسید صفحه‌نمایش شکسته یا سیاه شده، خط افتاده یا کدام کلیدهای کیپد کار نمی‌کنند و آیا دستگاه ضربه خورده است.',
-            'layout-dashboard',
-            '',
-        ],
-        [
-            'آنتن‌دهی و سیم‌کارت',
-            'بنویسید پیام خطای شبکه یا عدم شناسایی سیم‌کارت چیست، با چه اپراتوری مشکل دارد و آیا در محل‌های دیگر هم قطع است.',
-            'antenna-bars-5',
-            '',
-        ],
-        [
-            'خطای تمپر و نرم‌افزار',
-            'متن دقیق خطا (مانند Tamper یا پیغام روی صفحه) و اینکه پس از چه اتفاقی ظاهر شده را بنویسید.',
-            'shield-check',
-            '',
-        ],
-        [
-            'ارتقای ماژول 2G به 4G',
-            'مدل دقیق پشت دستگاه و وضعیت فعلی آنتن‌دهی آن را بنویسید تا امکان‌پذیری ارتقا بررسی شود.',
-            'tool',
-            'برآورد اولیه: حدود ۴٬۰۰۰٬۰۰۰ تومان — هزینه و امکان‌پذیری نهایی پس از بررسی فنی اعلام می‌شود.',
-        ],
-        [
-            'سایر موارد',
-            'نشانهٔ خرابی، زمان شروع مشکل و اگر دستگاه آب‌خورده یا ضربه‌خورده است را به‌اختصار شرح دهید.',
-            'tool',
-            '',
-        ],
+        ['چاپگر و رول کاغذ', 'printer', false],
+        ['باتری و شارژ', 'battery-charging', false],
+        ['صفحه‌نمایش و کیپد', 'layout-dashboard', false],
+        ['آنتن‌دهی و سیم‌کارت', 'antenna-bars-5', false],
+        ['خطای تمپر و نرم‌افزار', 'shield-check', false],
+        ['ارتقای ماژول 2G به 4G', 'tool', true],
+        ['سایر موارد', 'tool', false],
     ];
     $authRemaining = max(0, (int) ($authResendAt ?? 0) - now()->timestamp);
 @endphp
 <div class="np-container public-section repair-entry">
-    <header class="store-page-intro repair-hero-intro">
-        <div class="repair-hero-intro__row">
-            <div>
-                <h1>ثبت درخواست تعمیر کارتخوان</h1>
-                <p>در سه مرحلهٔ ساده درخواست خود را ثبت کنید و کد پیگیری بگیرید.</p>
+    <div class="repair-entry-shell">
+        <header class="store-page-intro repair-hero-intro">
+            <div class="repair-hero-intro__row">
+                <div>
+                    <h1>ثبت درخواست تعمیر کارتخوان</h1>
+                    <p>در سه مرحلهٔ ساده درخواست خود را ثبت کنید و کد پیگیری بگیرید.</p>
+                </div>
+                <a class="public-inline-link" href="{{ route('repair.track') }}">پیگیری درخواست قبلی <x-home.icon name="arrow-left" /></a>
             </div>
-            <a class="public-inline-link" href="{{ route('repair.track') }}">پیگیری درخواست قبلی <x-home.icon name="arrow-left" /></a>
-        </div>
-    </header>
+        </header>
 
-    <div class="repair-entry-layout repair-entry-layout--single">
+        <div class="repair-entry-layout repair-entry-layout--single">
         <section class="public-panel repair-stepper-panel" aria-label="ثبت درخواست تعمیر">
             <x-form-errors />
 
@@ -115,7 +81,7 @@
                     </li>
                     <li class="repair-progress__item" data-step-indicator="2" aria-current="{{ $initialStep === 2 ? 'step' : 'false' }}">
                         <span class="repair-progress__num">۲</span>
-                        <span class="repair-progress__label">شرح مشکل و عکس</span>
+                        <span class="repair-progress__label">شرح مشکل</span>
                     </li>
                     <li class="repair-progress__item" data-step-indicator="3" aria-current="{{ $initialStep === 3 ? 'step' : 'false' }}">
                         <span class="repair-progress__num">۳</span>
@@ -135,7 +101,7 @@
                         <legend class="label">برند دستگاه <span class="required-mark">*</span></legend>
                         <div class="repair-brand-grid" role="radiogroup" aria-label="برند دستگاه">
                             @foreach ($brands as $brand)
-                                <label class="repair-choice-card repair-choice-card--brand">
+                                <label @class(['repair-choice-card repair-choice-card--brand', 'repair-choice-card--brand-full' => $brand->value === 'سایر'])>
                                     <input type="radio" name="device_brand" value="{{ $brand->value }}" @checked($selectedBrand === $brand->value) required>
                                     <span class="repair-choice-card__title" @if($brand->value !== 'سایر') dir="ltr" @endif>{{ $brand->value }}</span>
                                 </label>
@@ -145,10 +111,10 @@
                     </fieldset>
                     <div class="public-form__grid repair-paired-fields">
                         <x-repair-field name="device_model" label="مدل دستگاه">
-                            <input id="device_model" name="device_model" value="{{ $selectedModel }}" class="input" dir="rtl" placeholder="مثلاً S90، ME31 یا P10" required maxlength="100" aria-invalid="{{ $errors->has('device_model') ? 'true' : 'false' }}" aria-describedby="device_model-feedback">
+                            <input id="device_model" name="device_model" value="{{ $selectedModel }}" class="input np-latin-mixed" dir="rtl" placeholder="مثلاً ME31" required maxlength="100" aria-invalid="{{ $errors->has('device_model') ? 'true' : 'false' }}" aria-describedby="device_model-feedback">
                         </x-repair-field>
-                        <x-repair-field name="device_serial" label="شماره سریال دستگاه" :required="false">
-                            <input id="device_serial" name="device_serial" value="{{ old('device_serial', '') }}" class="input" dir="rtl" maxlength="100" placeholder="مثال: S/N درج‌شده روی برچسب پشت دستگاه" aria-invalid="{{ $errors->has('device_serial') ? 'true' : 'false' }}" aria-describedby="device_serial-feedback">
+                        <x-repair-field name="device_serial" label="شماره سریال دستگاه (اختیاری)" :required="false">
+                            <input id="device_serial" name="device_serial" value="{{ old('device_serial', '') }}" class="input np-latin-mixed" dir="rtl" maxlength="100" placeholder="کد S/N درج‌شده روی برچسب پشت دستگاه" aria-invalid="{{ $errors->has('device_serial') ? 'true' : 'false' }}" aria-describedby="device_serial-feedback">
                         </x-repair-field>
                     </div>
                     <fieldset class="repair-choice-fieldset">
@@ -167,34 +133,30 @@
                     </fieldset>
                     <div class="repair-step-actions">
                         <button type="button" class="np-button np-button--primary" data-step-next>مرحلهٔ بعد <x-home.icon name="arrow-left" /></button>
-                        <a class="public-inline-link" href="{{ route('repair.track') }}">پیگیری درخواست قبلی</a>
                     </div>
                 </div>
 
-                {{-- Step 2: Issue Selection with Helper Guidance Preview --}}
+                {{-- Step 2: Issue Selection --}}
                 <div class="repair-step" data-step="2" @if($initialStep !== 2) hidden @endif>
                     <div class="repair-step__head">
-                        <h2>شرح مشکل و عکس</h2>
-                        <p>موضوع اصلی مشکل را انتخاب کنید تا راهنمای نوشتن جزئیات نمایش داده شود، سپس مشکل دستگاه را شرح دهید.</p>
+                        <h2>شرح مشکل</h2>
+                        <p>موضوع اصلی مشکل را انتخاب کنید و توضیح کوتاهی دربارهٔ ایراد دستگاه بنویسید.</p>
                     </div>
                     <div class="repair-issue-grid" role="group" aria-label="مشکلات رایج دستگاه">
-                        @foreach ($issuePresets as [$label, $guideText, $icon, $indicativePrice])
+                        @foreach ($issuePresets as [$label, $icon, $isUpgrade])
                             <button type="button"
-                                    class="repair-choice-card repair-choice-card--issue"
+                                    @class(['repair-choice-card repair-choice-card--issue', 'repair-choice-card--issue-full' => $label === 'سایر موارد'])
                                     data-issue-preset
                                     data-issue-label="{{ $label }}"
-                                    data-issue-guide="{{ $guideText }}"
-                                    @if($indicativePrice !== '') data-issue-price="{{ $indicativePrice }}" @endif
+                                    @if($isUpgrade) data-issue-upgrade="1" @endif
                                     aria-pressed="false">
                                 <span class="repair-choice-card__icon"><x-home.icon :name="$icon" /></span>
-                                <span class="repair-choice-card__title">{{ $label }}</span>
+                                <span class="repair-choice-card__title">{{ \App\Support\LatinText::html($label) }}</span>
                             </button>
                         @endforeach
                     </div>
-                    <div class="repair-issue-guidance" data-issue-guidance role="region" aria-live="polite" hidden>
-                        <strong data-issue-guidance-title></strong>
-                        <p data-issue-guidance-body></p>
-                        <p class="repair-issue-guidance__price" data-issue-guidance-price hidden></p>
+                    <div class="repair-upgrade-estimate" data-upgrade-estimate role="status" aria-live="polite" hidden>
+                        <p>برآورد اولیه ارتقای ماژول <bdi class="np-latin" dir="ltr">2G</bdi> به <bdi class="np-latin" dir="ltr">4G</bdi>: حدود ۴٬۰۰۰٬۰۰۰ تومان — هزینه و امکان‌پذیری نهایی پس از بررسی فنی اعلام می‌شود.</p>
                     </div>
                     <x-repair-field name="issue" label="شرح مشکل دستگاه">
                         <textarea id="issue" name="issue" class="input" rows="4" placeholder="نشانهٔ خرابی، پیام خطای نمایشگر و زمان بروز مشکل را بنویسید (حداقل ۱۰ کاراکتر)" required minlength="10" maxlength="2000" aria-invalid="{{ $errors->has('issue') ? 'true' : 'false' }}" aria-describedby="issue-feedback">{{ $selectedIssue }}</textarea>
@@ -239,17 +201,17 @@
                             <div class="repair-handover-grid" role="radiogroup" aria-label="نحوهٔ تحویل دستگاه">
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="self_ship">
                                     <input type="radio" name="handover_method" value="self_ship" @checked($selectedHandover === 'self_ship')>
-                                    <span class="repair-choice-card__title">خودم می‌فرستم</span>
+                                    <span class="repair-choice-card__title">خودم ارسال میکنم</span>
                                     <span class="repair-choice-card__sub">ارسال از سراسر کشور با پست یا تیپاکس</span>
                                 </label>
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="in_person">
                                     <input type="radio" name="handover_method" value="in_person" @checked($selectedHandover === 'in_person')>
-                                    <span class="repair-choice-card__title">حضوری می‌آورم</span>
+                                    <span class="repair-choice-card__title">خودم حضوری میارم</span>
                                     <span class="repair-choice-card__sub">تحویل مستقیم در فروشگاه نوین‌پی شهریار</span>
                                 </label>
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="doorstep_pickup" hidden>
                                     <input type="radio" name="handover_method" value="doorstep_pickup" @checked($selectedHandover === 'doorstep_pickup') disabled>
-                                    <span class="repair-choice-card__title">به پیک شما تحویل می‌دهم</span>
+                                    <span class="repair-choice-card__title">به پیک شما تحویل میدم</span>
                                     <span class="repair-choice-card__sub">دریافت دستگاه از محل شما توسط پیک نوین‌پی</span>
                                 </label>
                             </div>
@@ -259,8 +221,28 @@
                         {{-- Conditional Details: Self-Ship --}}
                         <div class="repair-handover-panel repair-handover-panel--office" data-handover-panel="self_ship" hidden>
                             <h3>نشانی و راهنمای ارسال پستی / تیپاکس</h3>
-                            <p class="repair-office-address">{{ config('business.address') }}</p>
-                            <p class="repair-office-hours">ساعات کاری: <x-business-hours /> — تلفن هماهنگی: <a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></p>
+                            <dl class="repair-shipping-details">
+                                <div>
+                                    <dt>آدرس گیرنده:</dt>
+                                    <dd>{{ config('business.address') }}</dd>
+                                </div>
+                                <div>
+                                    <dt>شماره موبایل:</dt>
+                                    <dd><a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></dd>
+                                </div>
+                                <div>
+                                    <dt>کد پستی:</dt>
+                                    <dd dir="ltr">۳۳۵۱۶۱۱۸۲۸</dd>
+                                </div>
+                            </dl>
+                            <div class="repair-shipping-copy-row">
+                                <button type="button"
+                                        class="btn btn-secondary btn-sm repair-shipping-copy-btn"
+                                        data-copy-shipping
+                                        data-copy-text="آدرس گیرنده: {{ config('business.address') }}&#10;شماره موبایل: {{ \App\Support\FaNumber::digits(config('business.phone')) }}&#10;کد پستی: ۳۳۵۱۶۱۱۸۲۸"
+                                        aria-describedby="repair-shipping-copy-status">کپی اطلاعات ارسال</button>
+                                <span id="repair-shipping-copy-status" class="repair-shipping-copy-status" role="status" aria-live="polite"></span>
+                            </div>
                             <ul class="repair-checklist">
                                 <li>سیم‌کارت شخصی، رول اضافه و لوازم غیرضروری را پیش از ارسال از دستگاه خارج کنید.</li>
                                 <li>دستگاه را درون جعبه و با ضربه‌گیر مناسب بسته‌بندی کنید و کد پیگیری را داخل بسته بنویسید.</li>
@@ -328,7 +310,7 @@
                     <div class="repair-summary-box" data-repair-summary>
                         <div class="repair-summary-box__item">
                             <span>دستگاه</span>
-                            <strong data-summary-device>—</strong>
+                            <strong class="np-latin-mixed" data-summary-device>—</strong>
                         </div>
                         <div class="repair-summary-box__item">
                             <span>شرح مشکل</span>
@@ -403,6 +385,7 @@
             <script type="application/json" id="repair-iran-locations">@json($iranLocations)</script>
             <script type="application/json" id="repair-courier-zones">@json($courierZones)</script>
         </section>
+        </div>
     </div>
 </div>
 @endsection
