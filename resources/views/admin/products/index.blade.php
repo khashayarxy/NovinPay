@@ -26,10 +26,11 @@
                 </thead>
                 <tbody role="rowgroup">
                     @foreach ($products as $product)
+                        @php($stock = $stockByProduct !== null ? $stockByProduct->get($product->id) : null)
                         <tr role="row">
                             <td role="cell">
-                                <strong class="admin-catalog-name">{{ $product->name }}</strong>
-                                <span class="admin-table-meta"><bdi dir="ltr">{{ $product->slug }}</bdi></span>
+                                <strong class="admin-catalog-name">{{ \App\Support\LatinText::html($product->name) }}</strong>
+                                <span class="admin-table-meta np-latin" dir="ltr">{{ $product->slug }}</span>
                             </td>
                             <td role="cell"><span class="admin-mobile-cell-label" aria-hidden="true">دسته‌بندی</span>{{ $product->category->label() }}</td>
                             <td role="cell">
@@ -52,35 +53,43 @@
                                     @if ($product->is_sample)
                                         <span class="badge badge-sample">داده نمونه</span>
                                     @endif
+                                    @if ($product->stock_status !== \App\Enums\StockStatus::InStock)
+                                        <span class="badge badge-warning">{{ $product->stock_status->label() }}</span>
+                                    @endif
                                 </div>
-                                <small class="admin-table-meta">{{ $product->stock_status->label() }}</small>
                             </td>
                             @if($stockByProduct !== null)
-                                @php($stock = $stockByProduct->get($product->id))
                                 <td role="cell">
                                     <span class="admin-mobile-cell-label" aria-hidden="true">موجودی فیزیکی</span>
                                     @if($stock)
-                                        <div>آزاد <strong>{{ \App\Support\FaNumber::digits($stock->physical - $stock->reserved) }}</strong></div>
-                                        <small class="admin-table-meta">کل {{ \App\Support\FaNumber::digits($stock->physical) }}</small>
+                                        <div>موجودی فیزیکی: <strong>{{ \App\Support\FaNumber::digits($stock->physical) }} عدد</strong> <span class="admin-table-meta">({{ \App\Support\FaNumber::digits($stock->physical - $stock->reserved) }} آزاد)</span></div>
                                         @if($stock->low)<small class="commerce-low">نیاز به تأمین</small>@endif
-                                        <a class="admin-text-link" href="{{ route('admin.inventory.index', ['product' => $product->id]) }}">جزئیات موجودی</a>
                                     @else
                                         <span class="admin-table-meta">موجودی تعریف نشده</span>
                                     @endif
                                 </td>
                             @endif
                             <td role="cell">
-                                @can('products.manage')<div class="flex items-center justify-end gap-3">
-                                    <a href="{{ route('admin.products.edit', $product) }}"
-                                        class="admin-text-link">ویرایش</a>
-                                    <details class="admin-row-actions"><summary>بیشتر</summary>
-                                    <form method="POST" action="{{ route('admin.products.destroy', $product) }}"
-                                        data-confirm="محصول «{{ $product->name }}» حذف شود؟ این عملیات قابل بازگشت نیست.">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="font-medium text-red-600 hover:underline">حذف</button>
-                                    </form></details>
-                                </div>@else<span class="text-xs text-slate-500">فقط مشاهده</span>@endcan
+                                @can('products.manage')
+                                    <div class="admin-row-actions-bar">
+                                        <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-secondary btn-sm">ویرایش</a>
+                                        @if($stockByProduct !== null && $stock)
+                                            <a href="{{ route('admin.inventory.index', ['product' => $product->id]) }}" class="btn btn-secondary btn-sm">جزئیات موجودی</a>
+                                        @endif
+                                        <form method="POST" action="{{ route('admin.products.destroy', $product) }}"
+                                            data-confirm="محصول «{{ $product->name }}» حذف شود؟ این عملیات قابل بازگشت نیست.">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn-danger-ghost">حذف</button>
+                                        </form>
+                                    </div>
+                                @else
+                                    @if($stockByProduct !== null && $stock)
+                                        <a href="{{ route('admin.inventory.index', ['product' => $product->id]) }}" class="btn btn-secondary btn-sm">جزئیات موجودی</a>
+                                    @else
+                                        <span class="text-xs text-slate-500">فقط مشاهده</span>
+                                    @endif
+                                @endcan
                             </td>
                         </tr>
                     @endforeach

@@ -109,10 +109,12 @@ class DeliveryManagement
         }, 3);
     }
 
-    public function confirm(User $actor, string $password, string $id, int $version, string $operation): DeliveryPlan
+    public function confirm(User $actor, ?string $password, string $id, int $version, string $operation): DeliveryPlan
     {
         return DB::transaction(function () use ($actor, $password, $id, $version, $operation): DeliveryPlan {
-            $actor = app(PaymentReview::class)->actor($actor, $password, 'credit');
+            $actor = $password !== null && $password !== ''
+                ? app(PaymentReview::class)->actor($actor, $password, 'credit')
+                : app(PaymentReview::class)->authorizedActor($actor, 'credit');
             $lookup = DeliveryPlan::query()->where('public_id', $id)->firstOrFail();
             $document = FinancialDocument::query()->lockForUpdate()->findOrFail($lookup->financial_document_id);
             $this->openSource($document);
@@ -123,7 +125,9 @@ class DeliveryManagement
             abort_unless($plan->state === 'planned' && $plan->version === $version && $plan->requested_method, 409);
             // No postal amount may enter a final invoice without the verified adapter.
             abort_if($plan->requested_method === 'post', 503, 'استعلام پستی تأیید نشده است؛ روش دیگری انتخاب کنید.');
-            $this->adjust($actor, $password, $document, -$plan->shipping_minor, $operation);
+            if ($plan->shipping_minor !== 0) {
+                $this->adjust($actor, (string) $password, $document, -$plan->shipping_minor, $operation);
+            }
             $plan->method = $plan->requested_method;
             $plan->address_snapshot = $plan->requested_address;
             $plan->requested_method = null;
@@ -158,10 +162,13 @@ class DeliveryManagement
         }
     }
 
-    public function dispatch(User $actor, string $password, string $id, int $version, string $tracking, string $recipient): void
+    public function dispatch(User $actor, ?string $password, string $id, int $version, string $tracking, string $recipient): void
     {
         DB::transaction(function () use ($actor, $password, $id, $version, $tracking, $recipient): void {
-            $actor = app(PaymentReview::class)->actor($actor, $password);
+            $skipPassword = $password === null || $password === '';
+            $actor = $skipPassword
+                ? app(PaymentReview::class)->authorizedActor($actor)
+                : app(PaymentReview::class)->actor($actor, $password);
             $lookup = DeliveryPlan::query()->where('public_id', $id)->firstOrFail();
             $document = FinancialDocument::query()->lockForUpdate()->findOrFail($lookup->financial_document_id);
             FinanceAccess::source($actor, $document->sales_order_id ? 'order' : 'repair');
@@ -174,7 +181,8 @@ class DeliveryManagement
             if ($case?->simple_workflow) {
                 app(SimpleRepairRecords::class)->save($actor, $case, [
                     'intent' => 'handover', 'version' => $case->version, 'handover_confirmed' => true,
-                    'shipment_tracking' => $tracking, 'recipient_name' => $recipient, 'current_password' => $password,
+                    'shipment_tracking' => $tracking, 'recipient_name' => $recipient, 'current_password' => $password ?? '',
+                    'skip_password_check' => $skipPassword,
                     'confirmed_delivery_method' => $plan->method,
                 ]);
 
@@ -187,15 +195,17 @@ class DeliveryManagement
                 $order = SalesOrder::query()->findOrFail($document->sales_order_id);
                 app(CommerceManagement::class)->execute($actor, 'order.fulfill', ['operation_key' => (string) Str::uuid(), 'version' => $order->version, 'reason' => 'ثبت تحویل واقعی پس از تسویه', 'fulfillment_info' => $recipient.' / '.$tracking], $order);
             } else {
-                app(RepairOperations::class)->update($actor, $case, 'delivery', ['version' => $case->version, 'recipient_name' => $recipient, 'delivered_at' => RepairTime::input(), 'outcome_notes' => 'تحویل واقعی با مرجع '.$tracking, 'handover_confirmed' => true, 'amounts_confirmed' => true, 'current_password' => $password]);
+                app(RepairOperations::class)->update($actor, $case, 'delivery', ['version' => $case->version, 'recipient_name' => $recipient, 'delivered_at' => RepairTime::input(), 'outcome_notes' => 'تحویل واقعی با مرجع '.$tracking, 'handover_confirmed' => true, 'amounts_confirmed' => true, 'current_password' => $password ?? '', 'skip_password_check' => $skipPassword]);
             }
         }, 3);
     }
 
-    public function announceOrderProgress(User $actor, string $password, string $id, int $version, string $progress): void
+    public function announceOrderProgress(User $actor, ?string $password, string $id, int $version, string $progress): void
     {
         DB::transaction(function () use ($actor, $password, $id, $version, $progress): void {
-            $actor = app(PaymentReview::class)->actor($actor, $password);
+            $actor = $password !== null && $password !== ''
+                ? app(PaymentReview::class)->actor($actor, $password)
+                : app(PaymentReview::class)->authorizedActor($actor);
             Gate::forUser($actor)->authorize('orders.fulfill');
             Gate::forUser($actor)->authorize('orders.customer_data');
             $lookup = DeliveryPlan::query()->where('public_id', $id)->firstOrFail();

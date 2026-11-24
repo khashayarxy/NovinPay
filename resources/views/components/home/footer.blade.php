@@ -48,7 +48,7 @@
             </div>
         </div>
         <div class="np-footer__bottom">
-            <p>تمامی حقوق برای {{ config('business.name') }} محفوظ است. © {{ \App\Support\FaNumber::digits(now()->year) }}</p>
+            <p>تمامی حقوق مادی و معنوی برای {{ config('business.name') }} محفوظ است. © {{ \App\Support\FaNumber::digits(now()->year) }}</p>
         </div>
     </div>
     @endif

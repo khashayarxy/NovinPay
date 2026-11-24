@@ -12,17 +12,25 @@
 @endif
 <div class="admin-form-grid">
     <fieldset class="admin-form"><legend>اطلاعات مشتری</legend>
-        <x-operation-field name="customer_name" label="نام و نام خانوادگی" :value="$source?->customer_name ?? ''" :maxlength="100"/>
-        <x-operation-field name="contact_phone" label="شماره موبایل" type="tel" :value="$source?->contact_phone ?? ''" :maxlength="40"/>
+        <x-operation-field name="customer_name" label="نام و نام خانوادگی" :value="$source?->customer_name ?? ''" :mark-required="true" :maxlength="100"/>
+        <x-operation-field name="contact_phone" label="شماره موبایل" type="tel" :value="$source?->contact_phone ?? ''" :mark-required="true" :maxlength="40"/>
     </fieldset>
     <fieldset class="admin-form"><legend>اطلاعات دستگاه</legend>
-        <x-operation-field name="device_model" label="مدل دستگاه" :value="$source?->device_model ?? ''" :maxlength="100"/>
+        <div>
+            <span class="label">انتخاب سریع برند</span>
+            <div class="admin-brand-pills" role="group" aria-label="انتخاب سریع برند دستگاه">
+                @foreach(\App\Enums\RepairBrand::cases() as $brand)
+                    <button type="button" class="admin-brand-pill" data-brand-pill="{{ $brand->value }}" aria-pressed="false">{{ $brand->value }}</button>
+                @endforeach
+            </div>
+        </div>
+        <x-operation-field name="device_model" label="مدل دستگاه" :value="$source ? \App\Support\RepairIdentity::deviceLabel($source->device_brand, $source->device_model) : ''" :mark-required="true" :maxlength="100"/>
         <x-operation-field name="device_serial" label="شماره سریال (اختیاری)" :required="false" :maxlength="120"/>
     </fieldset>
 </div>
-<div class="admin-form-grid"><x-operation-field name="issue" label="شرح مشکل دستگاه" kind="textarea" :value="$source?->issue ?? ''"/><x-operation-field name="physical_condition" label="وضعیت ظاهری هنگام دریافت" kind="textarea"/></div>
-<p class="admin-hint">پذیرش را هنگام دریافت واقعی دستگاه ثبت کنید.</p>
-<div class="admin-form-footer"><button type="submit" class="btn btn-primary">ثبت پذیرش</button></div>
+<div class="admin-form-grid"><x-operation-field name="issue" label="شرح مشکل دستگاه" kind="textarea" :value="$source?->issue ?? ''" :mark-required="true"/><x-operation-field name="physical_condition" label="وضعیت ظاهری هنگام دریافت" kind="textarea" :mark-required="true"/></div>
+<p class="admin-hint">پذیرش را هنگام دریافت واقعی دستگاه ثبت کنید. موارد دارای <span class="admin-required">*</span> الزامی هستند.</p>
+<div class="admin-form-footer"><button type="submit" class="btn btn-primary admin-btn-mobile-full">ثبت پذیرش</button></div>
 </form>
 </div>
 @endsection

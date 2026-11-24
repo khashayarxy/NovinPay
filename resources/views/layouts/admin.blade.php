@@ -20,10 +20,14 @@
                     <a class="admin-brand" href="{{ \App\Support\AdminAccess::landingUrl(auth()->user()) }}"><x-brand-logo /><span><strong>{{ config('business.name') }}</strong><small>پنل مدیریت</small></span></a>
                     <a class="admin-brand-site" href="{{ route('home') }}" target="_blank" rel="nofollow noopener noreferrer" aria-label="مشاهده وب‌سایت" title="مشاهده وب‌سایت"><x-home.icon name="world" /></a>
                 </div>
-                <details class="admin-navigation" data-admin-navigation open>
-                    <summary>فهرست مدیریت <x-home.icon name="settings" /></summary>
+                <button type="button" class="admin-mobile-menu-btn" data-admin-mobile-toggle aria-controls="admin-navigation-panel" aria-expanded="false">
+                    <svg class="admin-menu-icon admin-menu-icon--open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    <svg class="admin-menu-icon admin-menu-icon--close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    <span>فهرست مدیریت</span>
+                </button>
+                <div id="admin-navigation-panel" class="admin-navigation-panel" data-admin-navigation>
                     <x-admin.navigation :account="$adminAccount" />
-                </details>
+                </div>
             </aside>
             <div class="admin-workspace">
                 <header class="admin-topbar">
@@ -31,9 +35,7 @@
                         <button type="button" class="admin-sidebar-toggle" data-admin-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="true" aria-label="نمایش یا پنهان‌کردن منوی مدیریت" hidden>
                             <span class="admin-sidebar-glyph" aria-hidden="true"></span>
                         </button>
-                        <span class="admin-topbar-root">مدیریت</span>
-                        <span class="admin-topbar-divider" aria-hidden="true"></span>
-                        <strong>@yield('title', 'داشبورد مدیریت')</strong>
+                        <span class="admin-topbar-root">پنل مدیریت {{ config('business.name') }}</span>
                     </div>
                     <div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : ($adminAccount->isManager() ? 'مدیر' : 'کارمند') }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج <x-home.icon name="arrow-left" /></button></form></div>
                 </header>

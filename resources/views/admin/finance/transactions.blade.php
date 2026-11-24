@@ -7,9 +7,9 @@
             <tr role="row">
                 <td role="cell"><span class="finance-cell-label" aria-hidden="true">رویداد و دسته</span><div class="finance-cell-value"><strong>{{ \App\Support\FinanceInput::KINDS[$entry->kind] }}</strong><small>{{ \App\Support\FinanceInput::CATEGORIES[$entry->category] }}</small></div></td>
                 @foreach(['charge_delta'=>'تغییر مطالبه','receipt_delta'=>'دریافت','expense_delta'=>'هزینه'] as $field=>$label)
-                    <td role="cell"><span class="finance-cell-label" aria-hidden="true">{{ $label }} (تومان)</span><div class="finance-cell-value"><bdi dir="ltr">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display($entry->$field)) }}</bdi></div></td>
+                    <td role="cell"><span class="finance-cell-label" aria-hidden="true">{{ $label }} (تومان)</span><div class="finance-cell-value"><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman($entry->$field) }}</bdi></div></td>
                 @endforeach
-                <td role="cell"><span class="finance-cell-label" aria-hidden="true">ثبت‌کننده و زمان</span><div class="finance-cell-value">همکار {{ \App\Support\FaNumber::digits($entry->actor_id) }}<small><x-finance-time :value="$entry->created_at"/></small></div></td>
+                <td role="cell"><span class="finance-cell-label" aria-hidden="true">ثبت‌کننده و زمان</span><div class="finance-cell-value">{{ $entry->actor?->name ?? ('همکار '.\App\Support\FaNumber::digits($entry->actor_id)) }}<small><x-finance-time :value="$entry->created_at"/></small></div></td>
                 <td role="cell"><span class="finance-cell-label" aria-hidden="true">مدرک</span><div class="finance-cell-value">@if($financeAllows('finance.details'))<a class="admin-text-link" href="{{ route('admin.finance.entries.show',$entry) }}">مشاهدهٔ خصوصی</a>@else<span class="admin-hint">مجوز جداگانه</span>@endif</div></td>
             </tr>
         @empty

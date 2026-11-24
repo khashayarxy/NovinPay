@@ -13,8 +13,10 @@ use App\Models\User;
 use App\Services\ConsultationManagement;
 use App\Support\AdminAccess;
 use App\Support\AdminHistory;
+use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Gate;
 
 class ConsultationController extends Controller
@@ -33,7 +35,20 @@ class ConsultationController extends Controller
                 $query->where($column, $criteria[$column]);
             }
         }
-        if ($contact && ! empty($criteria['phone_digest'])) {
+        if ($contact && ! empty($criteria['query_cipher'])) {
+            $raw = FaNumber::normalizeDigits(trim(Crypt::decryptString($criteria['query_cipher'])));
+            $needle = mb_strtolower($raw);
+            $phoneNeedle = RepairIdentity::phone($raw);
+            $matchedIds = [];
+            foreach ((clone $query)->select(['id', 'customer_name', 'contact_phone'])->cursor() as $candidate) {
+                $matchesName = str_contains(mb_strtolower((string) $candidate->customer_name), $needle);
+                $matchesPhone = $phoneNeedle !== '' && str_contains(RepairIdentity::phone((string) $candidate->contact_phone), $phoneNeedle);
+                if ($matchesName || $matchesPhone) {
+                    $matchedIds[] = $candidate->id;
+                }
+            }
+            $query->whereIn('id', $matchedIds ?: [0]);
+        } elseif ($contact && ! empty($criteria['phone_digest'])) {
             $query->where('phone_digest', $criteria['phone_digest']);
         }
 
@@ -46,7 +61,11 @@ class ConsultationController extends Controller
         $criteria = array_diff_key($data, ['q' => true]);
         if (! empty($data['q'])) {
             Gate::authorize('consultations.contact');
-            $criteria['phone_digest'] = RepairIdentity::digest('phone', RepairIdentity::phone($data['q']));
+            $phone = RepairIdentity::phone($data['q']);
+            if (preg_match('/\A09[0-9]{9}\z/', $phone)) {
+                $criteria['phone_digest'] = RepairIdentity::digest('phone', $phone);
+            }
+            $criteria['query_cipher'] = Crypt::encryptString($data['q']);
         }
         $request->session()->put('consultation_search', $criteria);
 

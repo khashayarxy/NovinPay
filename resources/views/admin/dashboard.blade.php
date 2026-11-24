@@ -39,7 +39,33 @@
             @can('repairs.view')
             <section class="admin-panel" aria-labelledby="recent-requests"><div class="admin-panel-heading"><h2 id="recent-requests">درخواست‌های آنلاین اخیر</h2><a href="{{ route('admin.repairs.index') }}" class="admin-text-link">همهٔ درخواست‌ها <x-home.icon name="arrow-left" /></a></div>
                     @forelse($recentRepairs as $repair)
-                        <a class="admin-request-row" href="{{ route('admin.repairs.show', $repair) }}"><span class="admin-icon"><x-home.icon name="tool" /></span><div><h3>درخواست {{ \App\Support\FaNumber::digits($repair->id) }} · <bdi>{{ $repair->device_brand->value }}</bdi></h3><p>{{ $repair->physical_case_exists ? 'پذیرش فیزیکی در پروندهٔ جداگانه ثبت شده است' : 'ثبت آنلاین؛ دریافت دستگاه تأیید نشده است' }}</p></div><x-home.icon name="arrow-left" /></a>
+                        @php
+                            $deviceTitle = \App\Support\RepairIdentity::deviceLabel(
+                                $repair->device_brand,
+                                ($canReadRepairCustomer ?? false) ? $repair->device_model : null
+                            );
+                            $handover = ($canReadRepairCustomer ?? false) ? $repair->handoverBadge() : null;
+                        @endphp
+                        <a class="admin-request-row" href="{{ route('admin.repairs.show', $repair) }}">
+                            <span class="admin-icon"><x-home.icon name="tool" /></span>
+                            <div>
+                                <h3>
+                                    @if(($canReadRepairCustomer ?? false) && $repair->customer_name)
+                                        {{ $repair->customer_name }} · {{ \App\Support\LatinText::html($deviceTitle) }}
+                                    @else
+                                        درخواست #{{ \App\Support\FaNumber::digits($repair->id) }} · {{ \App\Support\LatinText::html($deviceTitle) }}
+                                    @endif
+                                </h3>
+                                <p class="flex flex-wrap items-center gap-2 mt-1">
+                                    @if($handover)
+                                        <x-admin.status :tone="$handover['tone']">{{ $handover['label'] }}</x-admin.status>
+                                    @endif
+                                    <x-admin.status :tone="$repair->physical_case_exists ? 'success' : 'warning'">{{ $repair->physical_case_exists ? 'پذیرش‌شده' : 'در انتظار پذیرش' }}</x-admin.status>
+                                    <span><x-finance-time :value="$repair->created_at" /></span>
+                                </p>
+                            </div>
+                            <x-home.icon name="arrow-left" />
+                        </a>
                     @empty
                         <x-admin.empty-state title="درخواست آنلاینی ثبت نشده است" icon="tool">درخواست‌های تازهٔ وب‌سایت اینجا نمایش داده می‌شوند.</x-admin.empty-state>
                     @endforelse
@@ -69,7 +95,7 @@
                 @if($recentActivities->isEmpty())
                     <x-admin.empty-state title="فعالیت تازه‌ای ثبت نشده است" icon="clock" />
                 @else
-                    <ul class="admin-activities"><x-admin.activity-list :activities="$recentActivities" /></ul>
+                    <ul class="admin-activities"><x-admin.activity-list :activities="$recentActivities" :meta="$activityMeta" /></ul>
                 @endif
         </section>
         @endcan

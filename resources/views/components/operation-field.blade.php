@@ -1,9 +1,9 @@
-@props(['name', 'label', 'kind' => 'input', 'type' => 'text', 'value' => '', 'required' => true, 'maxlength' => 2000, 'retain' => false, 'inputmode' => null, 'autocomplete' => null])
+@props(['name', 'label', 'kind' => 'input', 'type' => 'text', 'value' => '', 'required' => true, 'markRequired' => false, 'maxlength' => 2000, 'retain' => false, 'inputmode' => null, 'autocomplete' => null])
 @php($fieldId = 'repair-'.$name.'-'.\Illuminate\Support\Str::random(6))
 @php($value = $type === 'password' ? '' : ($retain ? old($name, $value) : $value))
 @php($value = is_scalar($value) ? $value : '')
 @php($value = $type === 'tel' ? \App\Support\FaNumber::digits(\App\Support\FaNumber::normalizeDigits((string) $value)) : $value)
-<div><label class="label" for="{{ $fieldId }}">{{ $label }}</label>
+<div><label class="label" for="{{ $fieldId }}">{{ $label }}@if($markRequired && $required)<span class="admin-required" aria-hidden="true">*</span>@endif</label>
 @if($kind === 'textarea')
     <textarea class="input" id="{{ $fieldId }}" name="{{ $name }}" rows="3" maxlength="{{ $maxlength }}" @required($required) @error($name) aria-invalid="true" aria-describedby="{{ $fieldId }}-error" @enderror>{{ $value }}</textarea>
 @else

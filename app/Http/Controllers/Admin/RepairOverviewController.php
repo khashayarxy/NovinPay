@@ -6,17 +6,74 @@ use App\Enums\AdminAction;
 use App\Http\Controllers\Controller;
 use App\Models\RepairRequest;
 use App\Support\AdminHistory;
+use App\Support\FaNumber;
+use App\Support\RepairIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class RepairOverviewController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('admin.repairs.index', ['repairs' => RepairRequest::query()
-            ->select(['id', 'tracking_reference', 'device_brand', 'status', 'created_at'])->withExists('physicalCase')->latest('id')->paginate(20)]);
+        $filters = $request->validate([
+            'status' => ['nullable', Rule::in(['all', 'pending', 'accepted'])],
+            'q' => ['nullable', 'string', 'max:100'],
+        ]);
+        $status = $filters['status'] ?? 'all';
+        $term = trim((string) ($filters['q'] ?? ''));
+        $canReadCustomer = Gate::allows('repairs.customer_data');
+
+        $counts = [
+            'all' => RepairRequest::query()->count(),
+            'pending' => RepairRequest::query()->whereDoesntHave('physicalCase')->count(),
+            'accepted' => RepairRequest::query()->whereHas('physicalCase')->count(),
+        ];
+
+        $columns = ['id', 'tracking_reference', 'device_brand', 'status', 'created_at'];
+        if ($canReadCustomer) {
+            $columns = array_merge($columns, ['customer_name', 'device_model', 'issue']);
+        }
+
+        $query = RepairRequest::query()->select($columns)->withExists('physicalCase');
+        if ($status === 'pending') {
+            $query->whereDoesntHave('physicalCase');
+        } elseif ($status === 'accepted') {
+            $query->whereHas('physicalCase');
+        }
+
+        if ($term !== '') {
+            $normalized = FaNumber::normalizeDigits($term);
+            $needle = mb_strtolower($normalized);
+            $phoneNeedle = RepairIdentity::phone($normalized);
+            $scanColumns = $canReadCustomer
+                ? ['id', 'tracking_reference', 'customer_name', 'contact_phone', 'device_model']
+                : ['id', 'tracking_reference'];
+
+            $matchedIds = [];
+            foreach ((clone $query)->select($scanColumns)->cursor() as $candidate) {
+                $matchesRef = str_contains(mb_strtolower((string) $candidate->tracking_reference), $needle)
+                    || (ctype_digit(ltrim($normalized, '#')) && (string) $candidate->id === ltrim($normalized, '#'));
+                $matchesCustomer = $canReadCustomer && (
+                    str_contains(mb_strtolower((string) $candidate->customer_name.' '.(string) $candidate->device_model), $needle)
+                    || ($phoneNeedle !== '' && str_contains(RepairIdentity::phone((string) $candidate->contact_phone), $phoneNeedle))
+                );
+                if ($matchesRef || $matchesCustomer) {
+                    $matchedIds[] = $candidate->id;
+                }
+            }
+            $query->whereIn('id', $matchedIds ?: [0]);
+        }
+
+        return view('admin.repairs.index', [
+            'repairs' => $query->latest('id')->paginate(20)->appends(array_filter(['status' => $status !== 'all' ? $status : null, 'q' => $term !== '' ? $term : null])),
+            'canReadCustomer' => $canReadCustomer,
+            'status' => $status,
+            'searchQuery' => $term,
+            'counts' => $counts,
+        ]);
     }
 
     public function photo(Request $request, RepairRequest $repairRequest)

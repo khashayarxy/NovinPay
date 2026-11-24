@@ -7,7 +7,7 @@
             <tr role="row">
                 <td role="cell"><span class="finance-cell-label" aria-hidden="true">سند</span><div class="finance-cell-value"><a class="admin-text-link" href="{{ route('admin.finance.documents.show',$document) }}">{{ $document->sales_order_id ? 'فروش' : 'تعمیر' }} {{ \App\Support\FaNumber::digits($document->id) }}</a></div></td>
                 @foreach(['charged_minor'=>'مطالبه','paid_minor'=>'دریافت ثبت‌شده','outstanding'=>'مانده'] as $field=>$label)
-                    <td role="cell"><span class="finance-cell-label" aria-hidden="true">{{ $label }} (تومان)</span><div class="finance-cell-value {{ $field === 'outstanding' ? 'font-bold' : '' }}"><bdi dir="ltr">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display($field === 'outstanding' ? $document->charged_minor-$document->paid_minor : $document->$field)) }}</bdi></div></td>
+                    <td role="cell"><span class="finance-cell-label" aria-hidden="true">{{ $label }} (تومان)</span><div class="finance-cell-value {{ $field === 'outstanding' ? 'font-bold' : '' }}"><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman($field === 'outstanding' ? $document->charged_minor-$document->paid_minor : $document->$field) }}</bdi></div></td>
                 @endforeach
                 <td role="cell"><span class="finance-cell-label" aria-hidden="true">وضعیت</span><div class="finance-cell-value">{{ \App\Support\FinanceInput::STATES[$document->settlement()] }}</div></td>
             </tr>

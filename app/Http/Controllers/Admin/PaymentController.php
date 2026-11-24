@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\FinancialDocument;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentReceipt;
+use App\Models\RepairCase;
+use App\Models\SalesOrder;
 use App\Services\PaymentReview;
+use App\Support\FaNumber;
 use App\Support\FinanceMoney;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,11 +30,87 @@ class PaymentController extends Controller
             }
         })->select('id');
 
+        $receipts = PaymentReceipt::query()->whereIn('financial_document_id', clone $documents)->where('state', 'pending')->oldest('id')->paginate(20);
+        $credits = DB::table('payment_credit_events')
+            ->join('financial_documents', 'financial_documents.id', '=', 'payment_credit_events.financial_document_id')
+            ->whereIn('financial_document_id', clone $documents)
+            ->selectRaw('financial_documents.id AS document_id, financial_documents.public_id, SUM(amount_delta) AS balance')
+            ->groupBy('financial_documents.id', 'financial_documents.public_id')
+            ->havingRaw('SUM(amount_delta) > 0')
+            ->paginate(20, ['*'], 'credits_page');
+        $attempts = PaymentAttempt::query()->whereIn('financial_document_id', clone $documents)->whereIn('state', ['review', 'uncertain', 'requesting', 'pending', 'processing', 'verified'])->latest('id')->paginate(20, ['*'], 'attempts_page');
+
+        $docIds = collect($receipts->items())->pluck('financial_document_id')
+            ->merge(collect($attempts->items())->pluck('financial_document_id'))
+            ->merge(collect($credits->items())->pluck('document_id'))
+            ->filter()->unique()->values()->all();
+
+        $docContext = $this->documentContext($request, $docIds);
+
         return view('admin.payments', [
-            'receipts' => PaymentReceipt::query()->whereIn('financial_document_id', clone $documents)->where('state', 'pending')->oldest('id')->paginate(20),
-            'credits' => DB::table('payment_credit_events')->join('financial_documents', 'financial_documents.id', '=', 'payment_credit_events.financial_document_id')->whereIn('financial_document_id', clone $documents)->selectRaw('financial_documents.public_id, SUM(amount_delta) AS balance')->groupBy('financial_documents.public_id')->havingRaw('SUM(amount_delta) > 0')->paginate(20, ['*'], 'credits_page'),
-            'attempts' => PaymentAttempt::query()->whereIn('financial_document_id', clone $documents)->whereIn('state', ['review', 'uncertain', 'requesting', 'pending', 'processing', 'verified'])->latest('id')->paginate(20, ['*'], 'attempts_page'),
+            'receipts' => $receipts,
+            'credits' => $credits,
+            'attempts' => $attempts,
+            'docContext' => $docContext,
         ]);
+    }
+
+    /**
+     * @param  array<int, int|string>  $docIds
+     * @return array<int, array{title: string, customer: ?string, document_url: string}>
+     */
+    private function documentContext(Request $request, array $docIds): array
+    {
+        if ($docIds === []) {
+            return [];
+        }
+
+        $docs = FinancialDocument::query()
+            ->whereIn('id', $docIds)
+            ->get(['id', 'public_id', 'sales_order_id', 'repair_case_id', 'customer_id']);
+
+        $canOrderCustomer = $request->user()->can('orders.customer_data');
+        $canRepairCustomer = $request->user()->can('repairs.customer_data');
+
+        $orderIds = $docs->pluck('sales_order_id')->filter()->unique()->values()->all();
+        $repairIds = $docs->pluck('repair_case_id')->filter()->unique()->values()->all();
+        $customerIds = $canOrderCustomer ? $docs->pluck('customer_id')->filter()->unique()->values()->all() : [];
+
+        $orders = $orderIds !== []
+            ? SalesOrder::query()->whereIn('id', $orderIds)->get(['id', 'public_id'])->keyBy('id')
+            : collect();
+        $repairs = $repairIds !== []
+            ? RepairCase::query()->whereIn('id', $repairIds)->get($canRepairCustomer ? ['id', 'tracking_reference', 'customer_name'] : ['id', 'tracking_reference'])->keyBy('id')
+            : collect();
+        $customers = $customerIds !== []
+            ? Customer::query()->whereIn('id', $customerIds)->get(['id', 'name'])->keyBy('id')
+            : collect();
+
+        $context = [];
+        foreach ($docs as $doc) {
+            if ($doc->sales_order_id && isset($orders[$doc->sales_order_id])) {
+                $title = 'سفارش #'.FaNumber::digits($doc->sales_order_id);
+                $customerName = $canOrderCustomer && $doc->customer_id && isset($customers[$doc->customer_id])
+                    ? $customers[$doc->customer_id]->name
+                    : null;
+            } elseif ($doc->repair_case_id && isset($repairs[$doc->repair_case_id])) {
+                $case = $repairs[$doc->repair_case_id];
+                $ref = (string) $case->tracking_reference;
+                $title = 'تعمیر '.(preg_match('/\A[0-9]+\z/', $ref) ? FaNumber::digits($ref) : substr($ref, 0, 10));
+                $customerName = $canRepairCustomer ? ($case->customer_name ?: null) : null;
+            } else {
+                $title = 'سند مالی #'.FaNumber::digits($doc->id);
+                $customerName = null;
+            }
+
+            $context[$doc->id] = [
+                'title' => $title,
+                'customer' => $customerName,
+                'document_url' => route('admin.finance.documents.show', $doc->public_id),
+            ];
+        }
+
+        return $context;
     }
 
     public function review(Request $request, string $receipt, PaymentReview $service)

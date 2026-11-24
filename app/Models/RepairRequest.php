@@ -66,6 +66,35 @@ class RepairRequest extends Model
         return $this->hasOne(RepairCase::class);
     }
 
+    /**
+     * Extract a compact delivery-method badge from the encrypted issue note when loaded.
+     *
+     * @return array{label: string, tone: string}|null
+     */
+    public function handoverBadge(): ?array
+    {
+        if (! array_key_exists('issue', $this->attributes)) {
+            return null;
+        }
+
+        $issue = (string) $this->issue;
+        if (! str_contains($issue, 'نحوه تحویل دستگاه:')) {
+            return null;
+        }
+
+        if (str_contains($issue, 'حضوری')) {
+            return ['label' => 'حضوری', 'tone' => 'info'];
+        }
+        if (str_contains($issue, 'پست') || str_contains($issue, 'تیپاکس')) {
+            return ['label' => 'پستی', 'tone' => 'warning'];
+        }
+        if (str_contains($issue, 'پیک')) {
+            return ['label' => 'پیک', 'tone' => 'success'];
+        }
+
+        return null;
+    }
+
     // No public mass-assignment surface; the controller assigns each field.
     protected $guarded = ['*'];
 

@@ -51,6 +51,16 @@ class PaymentReview
         return $persisted;
     }
 
+    public function authorizedActor(User $actor, string $action = 'receipt'): User
+    {
+        $grant = AdminAccount::query()->where('user_id', $actor->id)->lockForUpdate()->firstOrFail();
+        $persisted = User::query()->lockForUpdate()->findOrFail($actor->id);
+        FinanceAccess::authorize($persisted, $action);
+        abort_unless(! $grant->must_change_password, 403);
+
+        return $persisted;
+    }
+
     public function inStore(User $actor, string $password, string $documentId, int $amount, string $operation): PaymentTransaction
     {
         return DB::transaction(function () use ($actor, $password, $documentId, $amount, $operation): PaymentTransaction {

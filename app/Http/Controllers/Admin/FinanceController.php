@@ -44,7 +44,7 @@ class FinanceController extends Controller
 
         $isReport = $request->routeIs('admin.finance.reports');
         $period = $filters + ['timezone' => 'Asia/Tehran'];
-        $data = ['filters' => $filters, 'summary' => $reporting->summary($period), 'entries' => $reporting->entries($period)->latest('id')->paginate(25, ['id', 'public_id', 'financial_document_id', 'kind', 'category', 'charge_delta', 'receipt_delta', 'expense_delta', 'actor_id', 'created_at'])->appends($filters)];
+        $data = ['filters' => $filters, 'summary' => $reporting->summary($period), 'entries' => $reporting->entries($period)->with('actor:id,name')->latest('id')->paginate(25, ['id', 'public_id', 'financial_document_id', 'kind', 'category', 'charge_delta', 'receipt_delta', 'expense_delta', 'actor_id', 'created_at'])->appends($filters)];
         if (! $isReport) {
             $data['documents'] = FinancialDocument::query()->latest('id')->paginate(20, ['*'], 'documents_page');
         }

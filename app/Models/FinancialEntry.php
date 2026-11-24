@@ -2,9 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 class FinancialEntry extends CommerceHistory
 {
     protected $hidden = ['note', 'reference', 'reference_digest'];
+
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_id');
+    }
 
     protected function casts(): array
     {

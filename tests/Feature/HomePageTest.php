@@ -220,7 +220,7 @@ class HomePageTest extends TestCase
         $this->assertSame('استوک', ProductCondition::Used->label());
         $this->travelTo(now()->setYear(2026));
         $response = $this->get('/')->assertOk();
-        $response->assertSee('تمامی حقوق برای نوین‌پی محفوظ است. © ۲۰۲۶');
+        $response->assertSee('تمامی حقوق مادی و معنوی برای نوین‌پی محفوظ است. © ۲۰۲۶');
         $response->assertSee('آکبند و استوک')->assertDontSee('نو و کارکرده');
         $this->travelBack();
     }

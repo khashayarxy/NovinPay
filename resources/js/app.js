@@ -817,12 +817,23 @@ document.addEventListener('DOMContentLoaded', () => {
         goToStep(currentStep);
     }
     const adminNavigation = document.querySelector('[data-admin-navigation]');
-    if (adminNavigation instanceof HTMLDetailsElement) {
+    const adminMobileToggle = document.querySelector('[data-admin-mobile-toggle]');
+    if (adminNavigation instanceof HTMLElement) {
         const desktop = window.matchMedia('(min-width: 801px)');
         const sidebar = adminNavigation.closest('.admin-sidebar');
         const toggle = document.querySelector('[data-admin-sidebar-toggle]');
+        const setMobileOpen = (open) => {
+            const shouldOpen = !desktop.matches && open;
+            adminNavigation.classList.toggle('is-open', shouldOpen);
+            document.body.classList.toggle('admin-nav-open', shouldOpen);
+            if (adminMobileToggle instanceof HTMLButtonElement) {
+                adminMobileToggle.setAttribute('aria-expanded', String(shouldOpen));
+            }
+        };
         const updateNavigation = () => {
-            adminNavigation.open = desktop.matches;
+            if (desktop.matches) {
+                setMobileOpen(false);
+            }
             if (sidebar instanceof HTMLElement) sidebar.hidden = false;
             if (toggle instanceof HTMLButtonElement) {
                 toggle.hidden = !desktop.matches;
@@ -832,8 +843,14 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNavigation();
         desktop.addEventListener('change', updateNavigation);
         window.addEventListener('pageshow', (event) => {
-            if (event.persisted && !desktop.matches) adminNavigation.open = false;
+            if (event.persisted && !desktop.matches) setMobileOpen(false);
         });
+        if (adminMobileToggle instanceof HTMLButtonElement) {
+            adminMobileToggle.addEventListener('click', () => {
+                if (desktop.matches) return;
+                setMobileOpen(!adminNavigation.classList.contains('is-open'));
+            });
+        }
         if (sidebar instanceof HTMLElement && toggle instanceof HTMLButtonElement) {
             toggle.addEventListener('click', () => {
                 if (!desktop.matches) return;
@@ -841,10 +858,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggle.setAttribute('aria-expanded', String(!sidebar.hidden));
             });
         }
-        adminNavigation.addEventListener('keydown', (event) => {
-            if (event.key !== 'Escape' || desktop.matches || !adminNavigation.open) return;
-            adminNavigation.open = false;
-            adminNavigation.querySelector('summary')?.focus();
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape' || desktop.matches || !adminNavigation.classList.contains('is-open')) return;
+            setMobileOpen(false);
+            adminMobileToggle?.focus();
         });
         const groups = [...adminNavigation.querySelectorAll('.admin-nav-group')];
         const closeOtherGroups = (current) => {
@@ -859,14 +876,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
             const link = event.target instanceof Element ? event.target.closest('.admin-nav a') : null;
             if (!link) return;
-            if (link.hasAttribute('data-admin-category')) {
-                const group = link.nextElementSibling;
-                if (group instanceof HTMLDetailsElement) {
-                    closeOtherGroups(group);
-                    group.open = true;
-                }
-            }
-            if (!desktop.matches) adminNavigation.open = false;
+            if (!desktop.matches) setMobileOpen(false);
         });
     }
     document.getElementById('error-summary')?.focus();
@@ -2222,4 +2232,60 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             tick();
         }
     }
+
+    document.addEventListener('click', (event) => {
+        const trigger = event.target instanceof Element ? event.target.closest('[data-toggle-panel]') : null;
+        if (trigger instanceof HTMLButtonElement) {
+            const targetId = trigger.getAttribute('data-toggle-panel');
+            const panel = targetId ? document.getElementById(targetId) : null;
+            if (panel instanceof HTMLElement) {
+                const groupName = trigger.getAttribute('data-toggle-group');
+                const willOpen = panel.hidden;
+                if (willOpen && groupName) {
+                    document.querySelectorAll(`[data-toggle-group="${CSS.escape(groupName)}"]`).forEach((otherBtn) => {
+                        if (otherBtn === trigger) return;
+                        const otherId = otherBtn.getAttribute('data-toggle-panel');
+                        const otherPanel = otherId ? document.getElementById(otherId) : null;
+                        if (otherPanel instanceof HTMLElement) otherPanel.hidden = true;
+                        otherBtn.setAttribute('aria-expanded', 'false');
+                    });
+                }
+                panel.hidden = !willOpen;
+                trigger.setAttribute('aria-expanded', String(willOpen));
+                if (willOpen) {
+                    const firstInput = panel.querySelector('input:not([type="hidden"]), select, textarea');
+                    if (firstInput instanceof HTMLElement) {
+                        firstInput.focus({ preventScroll: true });
+                    }
+                }
+            }
+            return;
+        }
+
+        const brandPill = event.target instanceof Element ? event.target.closest('[data-brand-pill]') : null;
+        if (brandPill instanceof HTMLButtonElement) {
+            const brand = brandPill.getAttribute('data-brand-pill') || '';
+            const form = brandPill.closest('form');
+            const modelInput = form?.querySelector('input[name="device_model"]');
+            form?.querySelectorAll('[data-brand-pill]').forEach((btn) => {
+                btn.setAttribute('aria-pressed', String(btn === brandPill));
+            });
+            if (modelInput instanceof HTMLInputElement) {
+                const knownBrands = ['PAX', 'Newland', 'NewPOS', 'SZZT', 'MoreFun', 'TOPWISE'];
+                let current = modelInput.value.trim();
+                for (const b of knownBrands) {
+                    if (current.toLowerCase().startsWith(b.toLowerCase())) {
+                        current = current.slice(b.length).trim();
+                        break;
+                    }
+                }
+                if (brand && brand !== 'سایر') {
+                    modelInput.value = current ? `${brand} ${current}` : `${brand} `;
+                } else {
+                    modelInput.value = current;
+                }
+                modelInput.focus();
+            }
+        }
+    });
 });
