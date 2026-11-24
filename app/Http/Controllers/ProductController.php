@@ -188,7 +188,9 @@ class ProductController extends Controller
             'ownReview' => $ownReview,
             'canonical' => rtrim($request->getHost() === 'novinpaypos.test' ? config('business.public_url') : config('app.url'), '/')
                 .route('products.show', $product, false),
-            'publicRobots' => ($product->is_sample || $product->isPrivatePaymentTest()) ? 'noindex, nofollow' : 'index, follow',
+            'publicRobots' => $product->isPrivatePaymentTest()
+                ? 'noindex, nofollow'
+                : ($product->is_sample ? 'noindex, follow' : 'index, follow'),
         ]);
 
         if ($account || $product->isPrivatePaymentTest()) {
