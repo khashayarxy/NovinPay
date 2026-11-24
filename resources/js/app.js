@@ -151,14 +151,40 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (pos) onMove(pos.lat, pos.lng);
                     });
                 }
+                let lastLeafletClickAt = 0;
+                const selectLatLng = (latlng) => {
+                    if (!latlng) return;
+                    if (marker) marker.setLatLng(latlng);
+                    map.panTo(latlng);
+                    onMove(latlng.lat, latlng.lng);
+                };
                 map.on('click', (ev) => {
-                    if (ev && ev.latlng) {
-                        if (marker) marker.setLatLng(ev.latlng);
-                        map.panTo(ev.latlng);
-                        onMove(ev.latlng.lat, ev.latlng.lng);
+                    lastLeafletClickAt = Date.now();
+                    selectLatLng(ev?.latlng);
+                });
+                let downPoint = null;
+                tilesEl.addEventListener('pointerdown', (ev) => {
+                    if (ev.button !== 0 && ev.pointerType === 'mouse') return;
+                    if (ev.target instanceof Element && ev.target.closest('button, a, .leaflet-control')) return;
+                    downPoint = { x: ev.clientX, y: ev.clientY };
+                });
+                tilesEl.addEventListener('pointerup', (ev) => {
+                    if (!downPoint) return;
+                    const dx = Math.abs(ev.clientX - downPoint.x);
+                    const dy = Math.abs(ev.clientY - downPoint.y);
+                    downPoint = null;
+                    if (dx > 6 || dy > 6) return;
+                    if (Date.now() - lastLeafletClickAt < 100) return;
+                    if (typeof map.mouseEventToLatLng === 'function') {
+                        selectLatLng(map.mouseEventToLatLng(ev));
                     }
                 });
-                window.setTimeout(() => map.invalidateSize(), 60);
+                window.setTimeout(() => map.invalidateSize(true), 60);
+                window.setTimeout(() => map.invalidateSize(true), 220);
+                if (typeof ResizeObserver === 'function') {
+                    const ro = new ResizeObserver(() => map.invalidateSize(true));
+                    ro.observe(tilesEl);
+                }
                 return { map, marker };
             } catch {
                 showUnavailable();
@@ -638,6 +664,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (headEl) headEl.hidden = true;
                     if (verifiedBadge) verifiedBadge.hidden = false;
                     saveDraft();
+                    if (typeof repairStepper._reverseGeocodeIfPinned === 'function') {
+                        repairStepper._reverseGeocodeIfPinned();
+                    }
                     if (nameInput && !nameInput.value.trim()) nameInput.focus();
                 } catch {
                     setFieldError('repair_auth_code', 'خطا در تأیید کد. لطفاً دوباره تلاش کنید.');
@@ -658,6 +687,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const lngInput = repairMap.querySelector('[data-map-lng]');
             const neshanKey = (repairMap.dataset.neshanKey || '').trim();
             const reverseUrl = repairStepper.dataset.reverseGeocodeUrl || '';
+            const cityCenters = {
+                'شهریار': [35.6597, 51.0592],
+                'تهران': [35.6892, 51.3890],
+                'کرج': [35.8400, 50.9391],
+                'شهر قدس': [35.7214, 51.1090],
+                'اندیشه': [35.6829, 51.0195],
+                'ملارد': [35.6659, 50.9767],
+                'فردیس': [35.7239, 50.9885],
+                'رباط کریم': [35.4846, 51.0829],
+                'باغستان': [35.6350, 51.1167],
+                'صباشهر': [35.5819, 51.0933],
+                'وحیدیه': [35.6095, 51.0315],
+                'شاهدشهر': [35.5733, 51.0706],
+                'فردوسیه': [35.6025, 51.0695],
+            };
+            let userPinned = Boolean((latInput?.value || '').trim() && (lngInput?.value || '').trim());
             let lat = parseFloat(latInput?.value || repairMap.dataset.defaultLat || '35.6597') || 35.6597;
             let lng = parseFloat(lngInput?.value || repairMap.dataset.defaultLng || '51.0592') || 51.0592;
             let zoom = 14;
@@ -668,44 +713,50 @@ document.addEventListener('DOMContentLoaded', () => {
             let geocodeTimer = null;
             pickupAddressInput?.addEventListener('input', () => { addrEdited = (pickupAddressInput.value || '').trim().length > 0; });
 
+            const runReverseGeocode = (fLat, fLng) => {
+                if (!reverseUrl || !pickupAddressInput || addrEdited || repairStepper.dataset.isGuest === '1') return;
+                if (geocodeTimer) window.clearTimeout(geocodeTimer);
+                geocodeTimer = window.setTimeout(() => {
+                    const url = new URL(reverseUrl, window.location.origin);
+                    url.searchParams.set('lat', fLat);
+                    url.searchParams.set('lng', fLng);
+                    window.fetch(url.href, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                        .then((r) => (r.ok ? r.json() : null))
+                        .then((data) => {
+                            if (!addrEdited && data?.ok && typeof data.address === 'string' && data.address.trim()) {
+                                pickupAddressInput.value = data.address.slice(0, pickupAddressInput.maxLength || 500);
+                                saveDraft();
+                            }
+                        }).catch(() => {});
+                }, 250);
+            };
+
             const updateCoords = (la, ln, triggerReverse = false) => {
+                userPinned = true;
                 lat = Math.max(-85, Math.min(85, la));
                 lng = Math.max(-180, Math.min(180, ln));
                 const fLat = lat.toFixed(6);
                 const fLng = lng.toFixed(6);
                 if (latInput) latInput.value = fLat;
                 if (lngInput) lngInput.value = fLng;
-                if (coordsEl) coordsEl.textContent = `${fLat}, ${fLng}`;
+                if (coordsEl) coordsEl.textContent = `موقعیت انتخاب شد · ${fLat}, ${fLng}`;
                 if (neshanMarker && typeof neshanMarker.setLatLng === 'function') {
                     const cur = neshanMarker.getLatLng();
                     if (!cur || Math.abs(cur.lat - lat) > 0.000001 || Math.abs(cur.lng - lng) > 0.000001) {
                         neshanMarker.setLatLng([lat, lng]);
                     }
                 }
-                if (triggerReverse && reverseUrl && pickupAddressInput && !addrEdited) {
-                    if (geocodeTimer) window.clearTimeout(geocodeTimer);
-                    geocodeTimer = window.setTimeout(() => {
-                        const url = new URL(reverseUrl, window.location.origin);
-                        url.searchParams.set('lat', fLat);
-                        url.searchParams.set('lng', fLng);
-                        window.fetch(url.href, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
-                            .then((r) => (r.ok ? r.json() : null))
-                            .then((data) => {
-                                if (!addrEdited && data?.ok && typeof data.address === 'string' && data.address.trim()) {
-                                    pickupAddressInput.value = data.address.slice(0, pickupAddressInput.maxLength || 500);
-                                    saveDraft();
-                                }
-                            }).catch(() => {});
-                    }, 300);
-                }
+                if (triggerReverse) runReverseGeocode(fLat, fLng);
             };
 
             const ensureRepairMap = () => {
+                if (currentStep !== 3 || !pickupPanel || pickupPanel.hidden) return;
+                if (!viewport || viewport.offsetWidth === 0) return;
                 if (neshanMap) {
-                    neshanMap.invalidateSize();
+                    neshanMap.invalidateSize(true);
                     return;
                 }
-                if (neshanBooting || !viewport || !tilesEl) return;
+                if (neshanBooting || !tilesEl) return;
                 neshanBooting = true;
                 mountNeshanMapWidget({
                     tilesEl,
@@ -726,9 +777,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     neshanMap.on('zoomend', () => {
                         zoom = neshanMap.getZoom() || zoom;
                     });
+                    neshanMap.invalidateSize(true);
                 });
             };
             repairStepper._renderRepairMap = ensureRepairMap;
+            repairStepper._centerMapForCity = (cityName) => {
+                const coords = cityCenters[String(cityName || '').trim()];
+                if (!coords || userPinned) return;
+                lat = coords[0];
+                lng = coords[1];
+                if (neshanMap) {
+                    neshanMap.setView([lat, lng], zoom);
+                    if (neshanMarker && typeof neshanMarker.setLatLng === 'function') {
+                        neshanMarker.setLatLng([lat, lng]);
+                    }
+                }
+            };
+            repairStepper._reverseGeocodeIfPinned = () => {
+                if (userPinned && latInput?.value && lngInput?.value) {
+                    runReverseGeocode(latInput.value, lngInput.value);
+                }
+            };
 
             repairMap.querySelectorAll('[data-map-zoom]').forEach((btn) => {
                 btn.addEventListener('click', () => {
@@ -748,7 +817,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         provinceSelect?.addEventListener('change', () => { populateRepairCities(''); saveDraft(); });
-        citySelect?.addEventListener('change', () => { syncPickupAvailability(); saveDraft(); });
+        citySelect?.addEventListener('change', () => {
+            syncPickupAvailability();
+            if (typeof repairStepper._centerMapForCity === 'function') {
+                repairStepper._centerMapForCity(citySelect.value);
+            }
+            saveDraft();
+        });
         handoverRadios.forEach((radio) => radio.addEventListener('change', () => { syncHandoverPanels(); saveDraft(); }));
 
         repairStepper.addEventListener('input', saveDraft);

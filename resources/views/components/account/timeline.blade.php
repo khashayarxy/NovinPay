@@ -1,5 +1,5 @@
-@props(['steps'])
-<ol class="np-timeline" aria-label="مراحل پیگیری">
+@props(['steps', 'orientation' => 'vertical'])
+<ol @class(['np-timeline', 'np-timeline--horizontal' => $orientation === 'horizontal']) aria-label="مراحل پیگیری">
     @foreach($steps as $step)
         <li data-stage="{{ $step['state'] }}" @if(in_array($step['state'], ['current', 'cancelled'], true)) aria-current="step" @endif>
             <span class="np-timeline__mark" aria-hidden="true">

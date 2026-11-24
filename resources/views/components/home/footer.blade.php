@@ -35,6 +35,15 @@
                     @endif
                 </div>
             </div>
+            <div class="np-footer__links-col">
+                <h2>دسترسی سریع</h2>
+                <nav class="np-footer__links" aria-label="دسترسی سریع">
+                    <a href="{{ route('products.index') }}">فروشگاه</a>
+                    <a href="{{ route('repair') }}">درخواست تعمیر</a>
+                    <a href="{{ route('repair.track') }}">پیگیری تعمیر</a>
+                    <a href="{{ route('articles.index') }}">مقالات و آموزش‌ها</a>
+                </nav>
+            </div>
             <div class="np-footer__information">
                 <h2>تماس با نوین‌پی</h2>
                 <div class="np-footer__phones">

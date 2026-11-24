@@ -12,13 +12,13 @@
 @endphp
 
 <article class="card public-product-card relative flex flex-col overflow-hidden">
-    <div class="block bg-slate-100">
+    <div class="public-product-card__media">
         <div class="aspect-[4/3]">
             <x-product-image :product="$product" />
         </div>
     </div>
 
-    <div class="flex flex-1 flex-col gap-3 p-4 sm:p-5">
+    <div class="public-product-card__body flex flex-1 flex-col gap-3 p-4 sm:p-5">
         <div class="flex flex-wrap gap-2">
             <span class="badge {{ $product->condition->value === 'new' ? 'badge-success' : 'badge-warning' }}">
                 {{ $product->condition->label() }}
@@ -37,7 +37,7 @@
 
         <h3 class="text-base font-semibold leading-7 break-words">
             <a href="{{ route('products.show', $product) }}" class="transition-colors hover:text-brand-700 after:absolute after:inset-0">
-                {{ $product->name }}
+                {{ \App\Support\LatinText::html($product->name) }}
             </a>
         </h3>
 

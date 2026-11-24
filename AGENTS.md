@@ -13,6 +13,13 @@
 - Never instruct the user to manually upload files/zips via File Manager, manually edit files, or manually create databases when any automated, CLI, API, cPanel UAPI (using the authenticated DPAPI token in `C:\Users\Khashayar\AppData\Local\NovinPay-SecureAccess\cpanel-token.dpapi`), or MCP method can be used.
 - Only ask the user for explicit approval, cPanel Terminal execution when cPanel UAPI does not expose shell execution, or one-time credentials/access setup when direct execution is technically blocked.
 
+## Git, parallel-work & UI safety rules
+
+- **Mandatory Pre-Branch Audit:** Before creating any new feature branch or starting a new task, ALWAYS inspect `git status`, `git stash list`, local/remote unmerged branches (`git branch -a --no-merged main`), and open PRs (`gh pr list`).
+- **Never Silently Drop Parallel Work:** If uncommitted changes, unmerged branches, or open PRs exist from an earlier prompt, do NOT silently branch off `main` and leave them behind. Immediately warn the user, list the unmerged work, and ask whether to merge it first or base the new branch on it.
+- **No Destructive Git Commands Without Explicit Approval:** Never run `git reset --hard`, `git clean -fd`, `git branch -D`, `git push --force`, or blanket `git checkout -- .` without explicit confirmation from the user.
+- **Global `<details>/<summary>` UI Rule:** Ban raw browser disclosure triangles (`<details>/<summary>`) across the entire site (`summary { list-style: none; }` and `summary::-webkit-details-marker, summary::marker { display: none; }`). Short explanatory notes must remain always visible in subtle info cards; actions must be real buttons; accordions are reserved strictly for genuine FAQ-style lists with custom SVG chevrons.
+
 ## Authoritative project references
 
 For a new agent/session, start with [AI project handoff](docs/AI-PROJECT-HANDOFF.md) and [working preferences](docs/AI-WORKING-PREFERENCES.md). They distinguish dated evidence from open work; verify current Git/host state before relying on it. `CLAUDE.md` points to the same rules for Claude Code.

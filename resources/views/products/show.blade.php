@@ -82,7 +82,7 @@
                             <a class="public-inline-link product-compare-link" href="{{ route('products.compare', ['products' => [$product->slug]]) }}"><x-storefront.icon name="compare" /> مقایسهٔ محصول</a>
                         @endif
                     </div>
-                    <h1 id="product-title">{{ $product->name }}</h1>
+                    <h1 id="product-title">{{ \App\Support\LatinText::html($product->name) }}</h1>
                     @if ($product->model && !str_contains($product->name, $product->model))<p class="model"><bdi>{{ $product->model }}</bdi></p>@endif
                     @include('products._colors')
                 </section>

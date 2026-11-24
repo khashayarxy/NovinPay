@@ -50,12 +50,12 @@
             </div>
         </div>
         @if ($shopTools)
-            <a class="np-customer-trigger store-mobile-search" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-controls="search-dialog" aria-label="جست‌وجوی محصولات"><x-storefront.icon name="search" width="20" height="20" /></a>
+            <a class="np-customer-trigger store-mobile-search" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-controls="search-dialog" aria-label="جستجوی محصولات"><x-storefront.icon name="search" width="20" height="20" /></a>
         @endif
         <div class="np-customer-header" data-customer-header data-session-url="{{ route('customer.header') }}">
             @if ($shopTools)
                 <div class="premium-desktop-tools store-desktop-tools" aria-label="ابزارهای فروشگاه">
-                    <a class="np-customer-trigger" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-label="جست‌وجوی محصولات"><x-storefront.icon name="search" /></a>
+                    <a class="np-customer-trigger" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-label="جستجوی محصولات"><x-storefront.icon name="search" /></a>
                     <a class="np-customer-trigger" href="{{ route('cart.index') }}" data-storefront-open="cart-dialog" aria-haspopup="dialog" aria-label="سبد خرید"><x-storefront.icon name="cart" /><x-storefront.cart-count /></a>
                 </div>
             @endif
