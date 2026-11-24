@@ -1,6 +1,19 @@
 @props(['steps', 'orientation' => 'vertical'])
-<ol @class(['np-timeline', 'np-timeline--horizontal' => $orientation === 'horizontal']) aria-label="مراحل پیگیری">
+@php
+    $isHorizontal = $orientation === 'horizontal';
+@endphp
+<ol @class(['np-timeline', 'np-timeline--horizontal' => $isHorizontal]) aria-label="مراحل پیگیری">
     @foreach($steps as $step)
+        @php
+            $isUpcoming = $step['state'] === 'upcoming';
+            $status = match ($step['state']) {
+                'current' => $step['note'] ?? 'مرحلهٔ فعلی',
+                'complete' => $isHorizontal ? null : 'تکمیل‌شده',
+                'upcoming' => $isHorizontal ? null : 'در پیش',
+                'cancelled' => 'لغوشده',
+                default => null,
+            };
+        @endphp
         <li data-stage="{{ $step['state'] }}" @if(in_array($step['state'], ['current', 'cancelled'], true)) aria-current="step" @endif>
             <span class="np-timeline__mark" aria-hidden="true">
                 @if($step['state'] === 'complete')
@@ -11,18 +24,11 @@
             </span>
             <div>
                 <strong>{{ $step['label'] }}</strong>
-                @php
-                    $status = match ($step['state']) {
-                        'current' => 'مرحلهٔ فعلی',
-                        'complete' => 'تکمیل‌شده',
-                        'upcoming' => 'در پیش',
-                        'cancelled' => 'لغوشده',
-                        default => null,
-                    };
-                @endphp
-                @if($status)<span class="np-timeline__status">{{ $status }}</span>@endif
-                @if($step['at'])<small><x-finance-time :value="$step['at']" /></small>@endif
-                @if($step['state'] === 'unrecorded')<small>این مرحله ثبت نشده است.</small>@endif
+                @if(! $isHorizontal || ! $isUpcoming)
+                    @if($status)<span class="np-timeline__status">{{ $status }}</span>@endif
+                    @if(! $isHorizontal && ! empty($step['at']))<small><x-finance-time :value="$step['at']" /></small>@endif
+                    @if(! $isHorizontal && $step['state'] === 'unrecorded')<small>این مرحله ثبت نشده است.</small>@endif
+                @endif
             </div>
         </li>
     @endforeach

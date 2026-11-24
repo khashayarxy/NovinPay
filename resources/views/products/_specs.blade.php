@@ -30,7 +30,7 @@
             <h3>{{ $group['heading'] }}</h3>
             <dl>
                 @foreach ($group['rows'] as [$label, $value])
-                    <div><dt>{{ $publicSpecLabel($label) }}</dt><dd><bdi>{{ $value }}</bdi></dd></div>
+                    <div><dt>{{ $publicSpecLabel($label) }}</dt><dd>{{ \App\Support\LatinText::html($value) }}</dd></div>
                 @endforeach
             </dl>
         </section>

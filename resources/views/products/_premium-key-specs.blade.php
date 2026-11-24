@@ -6,7 +6,7 @@
     @endif
     <dl>
         @foreach ($rows as [$label, $value])
-            <div><dt>{{ $publicSpecLabel($label) }}</dt><dd><bdi>{{ $value }}</bdi></dd></div>
+            <div><dt>{{ $publicSpecLabel($label) }}</dt><dd>{{ \App\Support\LatinText::html($value) }}</dd></div>
         @endforeach
     </dl>
     @if ($loop->last && $index > 0)

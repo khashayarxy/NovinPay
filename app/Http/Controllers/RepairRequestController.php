@@ -515,33 +515,73 @@ class RepairRequestController extends Controller
 
     private function trackingResult(string $reference, string $phoneDigest): View
     {
-        // Never hydrate or decrypt customer/device fields for a tracking response.
-        $physical = RepairCase::query()->select(['id', 'phone_digest', 'status', 'delivery_method', 'simple_workflow'])
+        // Only retrieve minimal non-PII summary fields after both tracking code AND phone match.
+        $physical = RepairCase::query()->select(['id', 'phone_digest', 'status', 'delivery_method', 'simple_workflow', 'device_brand', 'device_model', 'repair_request_id'])
             ->where(fn ($query) => $query->where('tracking_digest', RepairIdentity::digest('tracking', $reference))
                 ->orWhereHas('onlineRequest', fn ($source) => $source->where('tracking_reference', $reference)))->first();
         $physicalMatch = hash_equals($physical?->phone_digest ?? str_repeat('0', 64), $phoneDigest);
-        // Only retrieve a public state after the tracking code AND phone match.
         $plan = $physicalMatch ? DeliveryPlan::query()->select('state')->whereIn('financial_document_id',
             DB::table('financial_documents')->select('id')->where('repair_case_id', $physical->id))->first() : null;
-        $repair = RepairRequest::query()->select(['phone_digest', 'status'])
+        $repair = RepairRequest::query()->select(['id', 'phone_digest', 'status', 'device_brand', 'device_model', 'issue', 'created_at'])
             ->where('tracking_reference', $reference)->first();
         $matched = hash_equals(
             $repair?->phone_digest ?? str_repeat('0', 64),
             $phoneDigest,
         );
 
+        $isMatched = $physicalMatch || ($matched && $repair?->status === RepairRequestStatus::OnlineSubmitted);
+        $trackSummary = null;
+        if ($isMatched) {
+            $sourceBrand = $physicalMatch ? ($physical->device_brand ?? $repair?->device_brand) : $repair?->device_brand;
+            $sourceModel = $physicalMatch ? ($physical->device_model ?: $repair?->device_model) : $repair?->device_model;
+            $deliveryLabel = null;
+            if ($repair && $matched) {
+                $badge = $repair->handoverBadge();
+                if ($badge) {
+                    $deliveryLabel = match ($badge['label']) {
+                        'حضوری' => 'خودم حضوری میارم',
+                        'پستی' => 'خودم ارسال میکنم',
+                        'پیک' => 'به پیک شما تحویل میدم',
+                        default => $badge['label'],
+                    };
+                }
+            }
+            if ($deliveryLabel === null && $physicalMatch) {
+                $deliveryLabel = match ($physical->delivery_method) {
+                    'shipping' => 'ارسال پستی',
+                    'pickup', 'in_person' => 'تحویل حضوری',
+                    default => 'ثبت‌شده در پذیرش',
+                };
+            }
+
+            $trackSummary = [
+                'code' => FaNumber::digits($reference),
+                'device' => RepairIdentity::deviceLabel($sourceBrand, $sourceModel),
+                'delivery' => $deliveryLabel ?? 'ثبت‌شده',
+            ];
+        }
+
+        $timeline = $physicalMatch
+            ? CustomerTimeline::repair($physical, $plan, public: true)
+            : ($isMatched ? [
+                ['label' => 'ثبت درخواست', 'state' => 'complete', 'at' => $repair?->created_at],
+                ['label' => 'دریافت دستگاه', 'state' => 'current', 'note' => 'در انتظار تحویل دستگاه', 'at' => null],
+                ['label' => 'بررسی و اعلام هزینه', 'state' => 'upcoming', 'at' => null],
+                ['label' => 'تعمیر و تحویل', 'state' => 'upcoming', 'at' => null],
+            ] : []);
+
         return view('pages.repair-tracking', [
-            'matched' => $physicalMatch || ($matched && $repair?->status === RepairRequestStatus::OnlineSubmitted),
+            'matched' => $isMatched,
             'physicalMatch' => $physicalMatch,
             'physicalStatus' => $physicalMatch ? CustomerTimeline::repairStatus($physical, $plan) : null,
+            'trackSummary' => $trackSummary,
             'nextAction' => $physicalMatch ? match ($physical->status) {
                 RepairStage::WaitingApproval => 'برای بررسی و تأیید برآورد، جزئیات تعمیر را در حساب کاربری باز کنید.',
                 RepairStage::Ready, RepairStage::ReturnPending => 'برای تحویل دستگاه، با نوین‌پی هماهنگ کنید.',
                 RepairStage::Delivered, RepairStage::Returned => 'برای جزئیات تحویل، پرونده را در حساب کاربری باز کنید.',
                 default => 'آخرین مرحلهٔ بررسی و تعمیر را در همین صفحه دنبال کنید.',
             } : 'کد پیگیری را برای تحویل حضوری یا ارسال دستگاه همراه داشته باشید.',
-            'timeline' => $physicalMatch ? CustomerTimeline::repair($physical, $plan, public: true)
-                : ($matched ? CustomerTimeline::request($repair) : []),
+            'timeline' => $timeline,
         ]);
     }
 

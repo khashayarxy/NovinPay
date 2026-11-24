@@ -21,9 +21,9 @@ class RepairRequest extends Model
     ];
 
     public const HANDOVER_METHODS = [
-        'self_ship' => 'خودم میفرستم (پست / تیپاکس)',
-        'in_person' => 'حضوری میآورم',
-        'doorstep_pickup' => 'به پیک شما تحویل میدهم',
+        'self_ship' => 'خودم ارسال میکنم',
+        'in_person' => 'خودم حضوری میارم',
+        'doorstep_pickup' => 'به پیک شما تحویل میدم',
     ];
 
     public function photoPath(): string
@@ -85,7 +85,7 @@ class RepairRequest extends Model
         if (str_contains($issue, 'حضوری')) {
             return ['label' => 'حضوری', 'tone' => 'info'];
         }
-        if (str_contains($issue, 'پست') || str_contains($issue, 'تیپاکس')) {
+        if (str_contains($issue, 'پست') || str_contains($issue, 'تیپاکس') || str_contains($issue, 'ارسال')) {
             return ['label' => 'پستی', 'tone' => 'warning'];
         }
         if (str_contains($issue, 'پیک')) {

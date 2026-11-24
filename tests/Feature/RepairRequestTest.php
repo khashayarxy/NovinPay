@@ -101,7 +101,7 @@ class RepairRequestTest extends TestCase
         $this->assertArrayNotHasKey('customer_name', $repair->toArray());
         $this->assertNull(session('repair_submission_token'));
         $this->get('/repair/confirmation')->assertOk()->assertSee($repair->tracking_reference)
-            ->assertSee('دریافت فیزیکی تأیید نشده')->assertDontSee($data['customer_name'])
+            ->assertSee('دستگاه هنوز تحویل نشده است')->assertDontSee($data['customer_name'])
             ->assertDontSee('09123456789')->assertDontSee($data['issue']);
     }
 
@@ -254,8 +254,11 @@ class RepairRequestTest extends TestCase
         $response = $this->post('/repair/track', [
             'tracking_reference' => $displayedCode,
             'contact_phone' => '۰۹۱۲۳۴۵۶۷۸۹',
-        ])->assertOk()->assertSee('دریافت فیزیکی تأیید نشده است');
-        foreach ([$repair->customer_name, $repair->contact_phone, $repair->device_model, $repair->issue, $repair->tracking_reference, $repair->phone_digest] as $sensitive) {
+        ])->assertOk()
+            ->assertSee('دریافت فیزیکی تأیید نشده است')
+            ->assertSee($displayedCode)
+            ->assertSee('پیگیری کد دیگر');
+        foreach ([$repair->customer_name, $repair->contact_phone, $repair->issue, $repair->tracking_reference, $repair->phone_digest] as $sensitive) {
             $response->assertDontSee($sensitive);
         }
         $response->assertHeader('Referrer-Policy', 'no-referrer')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -342,7 +345,8 @@ class RepairRequestTest extends TestCase
             ->assertSee('data-repair-stepper', false)
             ->assertSee('data-initial-step="1"', false)
             ->assertSee('مشخصات دستگاه')
-            ->assertSee('شرح مشکل و عکس')
+            ->assertSee('شرح مشکل')
+            ->assertDontSee('شرح مشکل و عکس')
             ->assertSee('اطلاعات تماس و ثبت')
             ->assertSee('data-step="1"', false)
             ->assertSee('data-step="2"', false)
@@ -385,7 +389,7 @@ class RepairRequestTest extends TestCase
     {
         $this->get('/repair')
             ->assertOk()
-            ->assertSee('مثال: S/N درج‌شده روی برچسب پشت دستگاه')
+            ->assertSee('کد S/N درج‌شده روی برچسب پشت دستگاه')
             ->assertSee('repair-accessory-grid', false);
 
         $this->get('/repair/track')

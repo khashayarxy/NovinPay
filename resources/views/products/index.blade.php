@@ -56,27 +56,37 @@
             <form data-catalog-filters action="{{ route('products.index') }}" method="get">
                 @if ($term !== '')<input type="hidden" name="q" value="{{ $term }}">@endif
                 @if ($sort)<input type="hidden" name="sort" value="{{ $sort }}">@endif
-                <div>
-                    <label for="category" class="label">دسته‌بندی</label>
-                    <select id="category" name="category" class="input">
-                        <option value="">همه دسته‌بندی‌ها</option>
+                <fieldset class="catalog-filter-fieldset">
+                    <legend class="label">دسته‌بندی</legend>
+                    <div class="catalog-filter-chips" role="radiogroup" aria-label="دسته‌بندی">
+                        <label class="catalog-filter-chip">
+                            <input type="radio" name="category" value="" @checked(! $category)>
+                            <span>همه دسته‌بندی‌ها</span>
+                        </label>
                         @foreach ($categories as $item)
-                            <option value="{{ $item->value }}" @selected($category?->value === $item->value)>
-                                {{ $item->label() }}
-                            </option>
+                            <label class="catalog-filter-chip">
+                                <input type="radio" name="category" value="{{ $item->value }}" @checked($category?->value === $item->value)>
+                                <span>{{ $item->label() }}</span>
+                            </label>
                         @endforeach
-                    </select>
-                </div>
+                    </div>
+                </fieldset>
 
-                <div>
-                    <label class="label" for="condition">وضعیت کالا</label>
-                    <select class="input" name="condition" id="condition">
-                        <option value="">همه وضعیت‌ها</option>
+                <fieldset class="catalog-filter-fieldset">
+                    <legend class="label">وضعیت کالا</legend>
+                    <div class="catalog-filter-chips" role="radiogroup" aria-label="وضعیت کالا">
+                        <label class="catalog-filter-chip">
+                            <input type="radio" name="condition" value="" @checked(! $condition)>
+                            <span>همه وضعیت‌ها</span>
+                        </label>
                         @foreach (\App\Enums\ProductCondition::cases() as $item)
-                            <option value="{{ $item->value }}" @selected($condition === $item->value)>{{ $item->label() }}</option>
+                            <label class="catalog-filter-chip">
+                                <input type="radio" name="condition" value="{{ $item->value }}" @checked($condition === $item->value)>
+                                <span>{{ $item->label() }}</span>
+                            </label>
                         @endforeach
-                    </select>
-                </div>
+                    </div>
+                </fieldset>
                 <div class="catalog-filter-actions">
                     <button class="btn btn-primary" type="submit">نمایش نتایج</button>
                     @if ($hasFilters)<a href="{{ route('products.index') }}" class="btn btn-secondary">پاک کردن فیلترها</a>@endif
@@ -117,18 +127,23 @@
     </div>
     <dialog class="store-filter-dialog" id="catalog-sort-dialog" data-storefront-dialog aria-labelledby="sort-title">
         <header class="overlay-heading"><h2 id="sort-title">مرتب‌سازی محصولات</h2><button type="button" data-storefront-close aria-label="بستن"><x-storefront.icon name="close" /></button></header>
-        <form class="public-form p-4" action="{{ route('products.index') }}">
-            @if ($term !== '')<input type="hidden" name="q" value="{{ $term }}">@endif
-            @if ($category)<input type="hidden" name="category" value="{{ $category->value }}">@endif
-            @if ($condition)<input type="hidden" name="condition" value="{{ $condition }}">@endif
-            <label for="sort">ترتیب نمایش</label>
-            <select name="sort" id="sort" class="input">
-                <option value="">تازه‌ترین</option>
-                <option value="price-low" @selected($sort === 'price-low')>ارزان‌ترین</option>
-                <option value="price-high" @selected($sort === 'price-high')>گران‌ترین</option>
-            </select>
-            <button class="btn btn-primary">نمایش نتایج</button>
-        </form>
+        <nav class="catalog-sort-list" aria-label="ترتیب نمایش">
+            @foreach ([
+                '' => 'تازه‌ترین',
+                'price-low' => 'ارزان‌ترین',
+                'price-high' => 'گران‌ترین',
+            ] as $sortKey => $sortLabel)
+                @php($isCurrentSort = ($sort ?? '') === $sortKey)
+                <a class="catalog-sort-option"
+                   href="{{ route('products.index', array_filter(['q' => $term ?: null, 'category' => $category?->value, 'condition' => $condition, 'sort' => $sortKey ?: null])) }}"
+                   @if ($isCurrentSort) aria-current="true" @endif>
+                    <span>{{ $sortLabel }}</span>
+                    @if ($isCurrentSort)
+                        <span class="catalog-sort-option__check" aria-hidden="true">✓</span>
+                    @endif
+                </a>
+            @endforeach
+        </nav>
     </dialog>
     <dialog class="store-filter-dialog" id="catalog-filter-dialog" data-storefront-dialog aria-labelledby="filter-title">
         <header class="overlay-heading"><h2 id="filter-title">فیلتر محصولات</h2><button type="button" data-storefront-close aria-label="بستن فیلترها"><x-storefront.icon name="close" /></button></header>

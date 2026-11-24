@@ -218,10 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const pickupAddressInput = repairStepper.querySelector('#pickup_address');
         const responsivePhoneInput = repairStepper.querySelector('#responsive_phone');
         const presetButtons = [...repairStepper.querySelectorAll('[data-issue-preset]')];
-        const guidanceBox = repairStepper.querySelector('[data-issue-guidance]');
-        const guidanceTitle = repairStepper.querySelector('[data-issue-guidance-title]');
-        const guidanceBody = repairStepper.querySelector('[data-issue-guidance-body]');
-        const guidancePrice = repairStepper.querySelector('[data-issue-guidance-price]');
+        const upgradeEstimateBox = repairStepper.querySelector('[data-upgrade-estimate]');
         const summaryDevice = repairStepper.querySelector('[data-summary-device]');
         const summaryIssue = repairStepper.querySelector('[data-summary-issue]');
         const summaryHandover = repairStepper.querySelector('[data-summary-handover]');
@@ -240,9 +237,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const handoverLabels = {
-            self_ship: 'خودم میفرستم (پست / تیپاکس)',
-            in_person: 'حضوری میآورم',
-            doorstep_pickup: 'به پیک شما تحویل میدهم',
+            self_ship: 'خودم ارسال میکنم',
+            in_person: 'خودم حضوری میارم',
+            doorstep_pickup: 'به پیک شما تحویل میدم',
         };
 
         const fieldInputMap = {
@@ -470,24 +467,15 @@ document.addEventListener('DOMContentLoaded', () => {
             input.addEventListener('change', () => setFieldError(key, ''));
         });
 
-        // Issue categories show helper guidance preview without overwriting user text
+        // Issue categories toggle selection and show blue 2G-to-4G estimate only when selected (never auto-focus textarea)
         presetButtons.forEach((button) => {
             button.addEventListener('click', () => {
                 presetButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
-                const label = button.dataset.issueLabel || '';
-                const guide = button.dataset.issueGuide || '';
-                const priceNote = button.dataset.issuePrice || '';
-                if (guidanceBox && guidanceTitle && guidanceBody) {
-                    guidanceTitle.textContent = label ? `راهنمای نوشتن شرح مشکل (${label}):` : 'راهنمای نوشتن شرح مشکل:';
-                    guidanceBody.textContent = guide;
-                    if (guidancePrice) {
-                        guidancePrice.textContent = priceNote;
-                        guidancePrice.hidden = !priceNote;
-                    }
-                    guidanceBox.hidden = !(guide || priceNote);
+                const isUpgrade = button.dataset.issueUpgrade === '1';
+                if (upgradeEstimateBox) {
+                    upgradeEstimateBox.hidden = !isUpgrade;
                 }
                 setFieldError('issue', '');
-                issueInput?.focus();
             });
         });
 
@@ -1218,6 +1206,46 @@ document.addEventListener('DOMContentLoaded', () => {
             const visible = input.type === 'password';
             input.type = visible ? 'text' : 'password';
             button.textContent = visible ? 'پنهان کردن' : 'نمایش';
+        });
+    });
+
+    document.querySelectorAll('[data-copy-shipping]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const text = button.dataset.copyText || '';
+            const statusId = button.getAttribute('aria-describedby');
+            const status = statusId ? document.getElementById(statusId) : null;
+            if (!text) return;
+            try {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const helper = document.createElement('textarea');
+                    helper.value = text;
+                    helper.setAttribute('readonly', '');
+                    helper.style.position = 'fixed';
+                    helper.style.opacity = '0';
+                    document.body.append(helper);
+                    helper.select();
+                    document.execCommand('copy');
+                    helper.remove();
+                }
+                if (status) status.textContent = 'اطلاعات ارسال کپی شد.';
+            } catch {
+                if (status) status.textContent = 'کپی خودکار انجام نشد؛ لطفاً متن را دستی کپی کنید.';
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-toggle-track-search]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const targetId = button.getAttribute('aria-controls');
+            const panel = targetId ? document.getElementById(targetId) : null;
+            if (!panel) return;
+            const expanded = button.getAttribute('aria-expanded') === 'true';
+            const next = !expanded;
+            button.setAttribute('aria-expanded', String(next));
+            panel.hidden = !next;
+            button.textContent = next ? 'بستن فرم پیگیری' : 'پیگیری کد دیگر';
         });
     });
 
