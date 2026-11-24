@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
+
 // Calendar conversion preserved from the approved payment reference.
 final class PaymentDate
 {
@@ -27,5 +30,46 @@ final class PaymentDate
         }
 
         return [$jy, $jm, $jd];
+    }
+
+    public static function formatPaidAt(?string $providerPaidAt, ?CarbonInterface $fallbackAt = null): ?string
+    {
+        $tehran = null;
+
+        if (is_string($providerPaidAt) && trim($providerPaidAt) !== '') {
+            $raw = trim($providerPaidAt);
+            if (preg_match('/(?:Z|[+-]\d{2}:?\d{2})\z/', $raw)) {
+                try {
+                    $tehran = CarbonImmutable::parse($raw)->setTimezone('Asia/Tehran');
+                } catch (\Throwable) {
+                    $tehran = null;
+                }
+            } elseif (preg_match('/\A(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/', $raw, $m)
+                && checkdate((int) $m[2], (int) $m[3], (int) $m[1])
+                && (int) $m[4] < 24 && (int) $m[5] < 60) {
+                $tehran = CarbonImmutable::create(
+                    (int) $m[1],
+                    (int) $m[2],
+                    (int) $m[3],
+                    (int) $m[4],
+                    (int) $m[5],
+                    (int) ($m[6] ?? 0),
+                    'Asia/Tehran'
+                );
+            }
+        }
+
+        $tehran ??= $fallbackAt?->copy()->timezone('Asia/Tehran');
+        if ($tehran === null) {
+            return null;
+        }
+
+        [$jy, $jm, $jd] = self::gregorianToJalali(
+            (int) $tehran->format('Y'),
+            (int) $tehran->format('n'),
+            (int) $tehran->format('j')
+        );
+
+        return FaNumber::digits(sprintf('%04d/%02d/%02d | %s', $jy, $jm, $jd, $tehran->format('H:i')));
     }
 }

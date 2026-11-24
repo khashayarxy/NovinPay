@@ -1,4 +1,4 @@
-@props(['document', 'plan'])
+@props(['document', 'plan', 'paidAtDisplay' => null])
 <section class="np-account-card">
     <h2>پرداخت و ارسال</h2>
     @if($document)
@@ -7,6 +7,12 @@
                 <dt>وضعیت تسویه</dt>
                 <dd>{{ ['cleared' => 'مبلغی برای پرداخت وجود ندارد.', 'settled' => 'سند تسویه شده است.', 'partial' => 'بخشی از مبلغ پرداخت شده است.', 'unpaid' => 'پرداختی برای این سند ثبت نشده است.'][$document->settlement()] }}</dd>
             </div>
+            @if(! empty($paidAtDisplay))
+                <div>
+                    <dt>تاریخ و ساعت پرداخت</dt>
+                    <dd><bdi dir="ltr">{{ $paidAtDisplay }}</bdi></dd>
+                </div>
+            @endif
             @if($document->charged_minor > $document->paid_minor)
                 <div>
                     <dt>مانده قابل پرداخت</dt>

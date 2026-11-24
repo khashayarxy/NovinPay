@@ -8,6 +8,8 @@ use App\Models\CustomerAccount;
 use App\Models\CustomerAddress;
 use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
+use App\Models\PaymentAttempt;
+use App\Models\PaymentTransaction;
 use App\Models\ProductFeedback;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
@@ -22,6 +24,7 @@ use App\Support\CustomerAuthThrottle;
 use App\Support\CustomerLoginFlow;
 use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
+use App\Support\PaymentDate;
 use App\Support\RepairIdentity;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
@@ -438,7 +441,8 @@ class CustomerAccountController extends Controller
             'section' => $section,
             'counts' => $section === 'overview' ? [
                 'requests' => (clone $requests)->count(),
-                'active' => (clone $repairs)->whereNotIn('status', [RepairStage::Delivered->value, RepairStage::Returned->value])->count(),
+                'active' => (clone $repairs)->whereNotIn('status', [RepairStage::Delivered->value, RepairStage::Returned->value])->count()
+                    + (clone $requests)->whereDoesntHave('physicalCase')->whereNotIn('status', ['cancelled', 'completed', 'delivered', 'returned'])->count(),
                 'orders' => (clone $orders)->count(),
             ] : [],
             'repairs' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($repairs, $section, 'repairs_page') : [],
@@ -486,9 +490,9 @@ class CustomerAccountController extends Controller
         $account = Auth::guard('customer')->user();
         $repair = RepairCase::query()->where($this->owned($account))->where('public_id', $record)
             ->with(['onlineRequest' => fn ($q) => $q->where($this->owned($account)), 'currentEstimate.decision', 'delivery', 'events' => fn ($q) => $q->orderBy('id')])->firstOrFail();
-        [$document, $plan] = $this->settlement($account, 'repair_case_id', $repair->id);
+        [$document, $plan, $paidAtDisplay] = $this->settlement($account, 'repair_case_id', $repair->id);
 
-        return view('account.repair', ['repair' => $repair, 'case' => true, 'timeline' => CustomerTimeline::repair($repair, $plan), 'document' => $document, 'plan' => $plan]);
+        return view('account.repair', ['repair' => $repair, 'case' => true, 'timeline' => CustomerTimeline::repair($repair, $plan), 'document' => $document, 'plan' => $plan, 'paidAtDisplay' => $paidAtDisplay]);
     }
 
     public function order(string $record)
@@ -496,9 +500,9 @@ class CustomerAccountController extends Controller
         $account = Auth::guard('customer')->user();
         $order = SalesOrder::query()->where($this->owned($account))->where('public_id', $record)
             ->with(['lines', 'events' => fn ($q) => $q->orderBy('id')])->firstOrFail();
-        [$document, $plan] = $this->settlement($account, 'sales_order_id', $order->id);
+        [$document, $plan, $paidAtDisplay] = $this->settlement($account, 'sales_order_id', $order->id);
 
-        return view('account.order', ['order' => $order, 'timeline' => CustomerTimeline::order($order, $plan), 'document' => $document, 'plan' => $plan]);
+        return view('account.order', ['order' => $order, 'timeline' => CustomerTimeline::order($order, $plan), 'document' => $document, 'plan' => $plan, 'paidAtDisplay' => $paidAtDisplay]);
     }
 
     public function shortOrder(Request $request, string $code, CustomerLogin $login)
@@ -538,8 +542,24 @@ class CustomerAccountController extends Controller
     {
         $document = FinancialDocument::query()->where('customer_id', $account->customer_id ?? 0)->where($column, $id)->first();
         $plan = $document ? DeliveryPlan::query()->where('financial_document_id', $document->id)->first() : null;
+        $paidAtDisplay = null;
+        if ($document && $document->paid_minor > 0) {
+            $transaction = PaymentTransaction::query()
+                ->where('financial_document_id', $document->id)
+                ->latest('id')
+                ->first(['provider_paid_at', 'created_at']);
+            $attempt = $transaction ? null : PaymentAttempt::query()
+                ->where('financial_document_id', $document->id)
+                ->where('state', 'settled')
+                ->latest('id')
+                ->first(['verified_at', 'updated_at']);
+            $paidAtDisplay = PaymentDate::formatPaidAt(
+                $transaction?->provider_paid_at,
+                $transaction?->created_at ?? $attempt?->verified_at ?? $attempt?->updated_at
+            );
+        }
 
-        return [$document, $plan];
+        return [$document, $plan, $paidAtDisplay];
     }
 
     public function profile(Request $request)

@@ -17,6 +17,7 @@ use App\Services\LegacyCartHold;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
+use App\Support\FinanceTime;
 use App\Support\RepairIdentity;
 use App\Support\RepairPhotoProcessor;
 use App\Support\RepairTracking;
@@ -337,17 +338,72 @@ class RepairRequestController extends Controller
         }
 
         $digest = $this->recoveredPhone($request);
-        $codes = collect();
+        $recoveredItems = collect();
         if ($digest) {
-            $online = DB::table('repair_requests')->where('phone_digest', $digest)->select('tracking_reference', 'created_at');
-            $physical = DB::table('repair_cases')->where('phone_digest', $digest)->select('tracking_reference', 'created_at');
-            $codes = DB::query()->fromSub($online->unionAll($physical), 'repairs')
-                ->whereNotNull('tracking_reference')->orderByDesc('created_at')->orderBy('tracking_reference')
-                ->pluck('tracking_reference')->filter(fn ($code) => preg_match('/\A[A-Za-z0-9-]{1,35}\z/D', $code))->unique()->values();
+            $byCode = [];
+            $cases = RepairCase::query()
+                ->where('phone_digest', $digest)
+                ->whereNotNull('tracking_reference')
+                ->latest('created_at')
+                ->get(['tracking_reference', 'device_brand', 'device_model', 'received_at', 'created_at']);
+            foreach ($cases as $case) {
+                $code = (string) $case->tracking_reference;
+                if (! preg_match('/\A[A-Za-z0-9-]{1,35}\z/D', $code) || isset($byCode[$code])) {
+                    continue;
+                }
+                $device = RepairIdentity::deviceLabel($case->device_brand, $case->device_model);
+                $ts = $case->received_at ?? $case->created_at;
+                $byCode[$code] = [
+                    'code' => $code,
+                    'device' => $device,
+                    'isLatinDevice' => preg_match('/[A-Za-z]/', $device) === 1,
+                    'date' => FinanceTime::display($ts, false),
+                    'sortAt' => $ts?->getTimestamp() ?? 0,
+                ];
+            }
+
+            $onlineRequests = RepairRequest::query()
+                ->where('phone_digest', $digest)
+                ->whereNotNull('tracking_reference')
+                ->latest('created_at')
+                ->get(['tracking_reference', 'device_brand', 'device_model', 'created_at']);
+            foreach ($onlineRequests as $req) {
+                $code = (string) $req->tracking_reference;
+                if (! preg_match('/\A[A-Za-z0-9-]{1,35}\z/D', $code)) {
+                    continue;
+                }
+                if (isset($byCode[$code])) {
+                    if ($req->created_at) {
+                        $byCode[$code]['date'] = FinanceTime::display($req->created_at, false);
+                        $byCode[$code]['sortAt'] = $req->created_at->getTimestamp();
+                    }
+
+                    continue;
+                }
+                $device = RepairIdentity::deviceLabel($req->device_brand, $req->device_model);
+                $byCode[$code] = [
+                    'code' => $code,
+                    'device' => $device,
+                    'isLatinDevice' => preg_match('/[A-Za-z]/', $device) === 1,
+                    'date' => FinanceTime::display($req->created_at, false),
+                    'sortAt' => $req->created_at?->getTimestamp() ?? 0,
+                ];
+            }
+
+            $recoveredItems = collect($byCode)
+                ->sort(fn (array $a, array $b): int => ($b['sortAt'] <=> $a['sortAt']) ?: strcmp($a['code'], $b['code']))
+                ->values()
+                ->map(fn (array $item): array => [
+                    'code' => $item['code'],
+                    'device' => $item['device'],
+                    'isLatinDevice' => $item['isLatinDevice'],
+                    'date' => $item['date'],
+                ]);
         }
 
         return view('pages.repair-recovery', [
-            'codes' => $codes,
+            'codes' => $recoveredItems->pluck('code')->values(),
+            'recoveredItems' => $recoveredItems,
             'verified' => $digest !== null,
             'challenge' => $request->session()->has('repair_recovery_challenge'),
             'maskedPhone' => $request->session()->get('repair_recovery_phone_masked'),

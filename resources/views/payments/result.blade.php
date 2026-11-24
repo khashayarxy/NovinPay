@@ -20,6 +20,9 @@
             <div><dt>کد رهگیری زیبال</dt><dd><bdi dir="ltr">{{ \App\Support\FaNumber::digits((string) $attempt->track_id) }}</bdi></dd></div>
         @endif
         <div><dt>مبلغ تراکنش</dt><dd>{{ $amount }} تومان</dd></div>
+        @if ($settled && ! empty($paidAtDisplay))
+            <div><dt>تاریخ و ساعت پرداخت</dt><dd><bdi dir="ltr">{{ $paidAtDisplay }}</bdi></dd></div>
+        @endif
     </dl>
     @if ($settled)
         <nav class="payment-actions" aria-label="پیگیری پس از پرداخت">

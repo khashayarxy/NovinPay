@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Enums\RepairBrand;
+
 final class RepairIdentity
 {
     public static function phone(mixed $value): string
@@ -20,5 +22,24 @@ final class RepairIdentity
         // A keyed digest avoids a dictionary-searchable index of phone numbers.
         // Keep APP_KEY stable and backed up; rotation needs explicit re-indexing.
         return hash_hmac('sha256', $purpose.':'.$value, config('app.key'));
+    }
+
+    public static function deviceLabel(?RepairBrand $brand, ?string $model): string
+    {
+        $cleanModel = trim((string) $model);
+        $brandName = $brand?->value ?? '';
+
+        if ($brandName !== '' && $brandName !== 'سایر') {
+            if ($cleanModel === '') {
+                return $brandName;
+            }
+            if (stripos($cleanModel, $brandName) === 0) {
+                return $cleanModel;
+            }
+
+            return $brandName.' '.$cleanModel;
+        }
+
+        return $cleanModel !== '' ? $cleanModel : ($brandName !== '' ? $brandName : 'دستگاه کارتخوان');
     }
 }

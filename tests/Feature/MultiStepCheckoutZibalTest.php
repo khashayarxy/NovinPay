@@ -16,6 +16,7 @@ use App\Models\SalesOrder;
 use App\Models\User;
 use App\Services\ShoppingCart;
 use App\Support\CustomerTimeline;
+use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -408,7 +409,7 @@ class MultiStepCheckoutZibalTest extends TestCase
         $shortCode = strtoupper(substr($order->public_id, 0, 8));
         $this->get('https://novinpaypos.test/account?section=orders')
             ->assertOk()
-            ->assertSee($shortCode)
+            ->assertSee(FaNumber::digits($shortCode))
             ->assertSee('تأییدشده')
             ->assertDontSee('اسناد و پرداخت‌ها')
             ->assertDontSee('ارسال و تحویل');
@@ -423,7 +424,7 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->get(route('payments.result', $attempt->public_id))->assertOk()
             ->assertSee('پیگیری سفارش')->assertSee(route('account.orders.show', $order->public_id));
         $this->get(route('account.orders.show', $order->public_id))->assertOk()
-            ->assertSee('کد <bdi dir="ltr">'.$shortCode.'</bdi>', false)
+            ->assertSee('کد <bdi dir="ltr">'.FaNumber::digits($shortCode).'</bdi>', false)
             ->assertDontSee($order->public_id)
             ->assertDontSee('موجودی رزرو شد')
             ->assertDontSee('مشاهده سند و رسیدها')
