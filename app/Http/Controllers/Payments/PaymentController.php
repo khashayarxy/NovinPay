@@ -108,12 +108,24 @@ class PaymentController extends Controller
         $destination = $isOrder ? 'payments.order' : 'payments.repair';
         $documentUrl = $source ? route($destination, $source) : route('payments.document', $document->public_id);
         $canContinue = $this->canContinue($attempt, $payments, $gateway);
+        $paidAtDisplay = null;
+        if ($attempt->state === 'settled') {
+            $transaction = PaymentTransaction::query()
+                ->where('payment_attempt_id', $attempt->id)
+                ->latest('id')
+                ->first(['provider_paid_at', 'created_at']);
+            $paidAtDisplay = PaymentDate::formatPaidAt(
+                $transaction?->provider_paid_at,
+                $attempt->verified_at ?? $transaction?->created_at ?? $attempt->updated_at
+            );
+        }
 
         return view('payments.result', [
             'attempt' => $attempt,
             'document' => $document,
             'isOrder' => $isOrder,
             'sourceCode' => $sourceCode,
+            'paidAtDisplay' => $paidAtDisplay,
             'trackingUrl' => $source
                 ? route($isOrder ? 'account.orders.show' : 'account.repairs.show', ['record' => $source])
                 : route('account.index', ['section' => $isOrder ? 'orders' : 'repairs']),

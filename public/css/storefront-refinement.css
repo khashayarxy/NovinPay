@@ -103,6 +103,9 @@ body:has(.public-catalogue) :is(.store-mobile-search, .np-customer-header [data-
 .public-catalogue .public-product-card .badge { white-space: normal; }
 .public-catalogue .public-product-card > div > div:last-child { flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .public-catalogue .public-product-card > div > div:last-child a { min-height: 44px; display: inline-flex; align-items: center; }
+@media (min-width: 1200px) {
+    .public-catalogue .public-product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+}
 
 body.public-site :is(.store-cart-drawer, .store-search-dialog, .store-filter-dialog, .store-account-dialog) {
     color: #122940; background: #fff; border: 1px solid #dce7f0; padding: 0;

@@ -10,6 +10,7 @@ use App\Models\RepairCase;
 use App\Services\PaymentConnectivity;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
+use App\Support\PaymentDate;
 use App\Support\RepairPaymentCode;
 use App\Support\RepairTracking;
 use Illuminate\Http\Request;
@@ -130,12 +131,24 @@ class RepairPaymentLinkController extends Controller
         [$case, $document, $attempt] = $this->resolveContext($repair, $payment);
         $repairLinkUrl = route('payments.repair.short', ['code' => RepairPaymentCode::issue($case->public_id, now()->addDays(14)->timestamp)]);
         $canContinue = $this->canContinue($attempt, $payments, $gateway);
+        $paidAtDisplay = null;
+        if ($attempt->state === 'settled') {
+            $transaction = PaymentTransaction::query()
+                ->where('payment_attempt_id', $attempt->id)
+                ->latest('id')
+                ->first(['provider_paid_at', 'created_at']);
+            $paidAtDisplay = PaymentDate::formatPaidAt(
+                $transaction?->provider_paid_at,
+                $attempt->verified_at ?? $transaction?->created_at ?? $attempt->updated_at
+            );
+        }
 
         return view('payments.result', [
             'attempt' => $attempt,
             'document' => $document,
             'isOrder' => false,
             'sourceCode' => (string) $case->tracking_reference,
+            'paidAtDisplay' => $paidAtDisplay,
             'trackingUrl' => RepairTracking::url($case->tracking_reference),
             'retryUrl' => match (true) {
                 $canContinue => URL::temporarySignedRoute('payments.repair.link.connect', now()->addHours(2), ['repair' => $case->public_id, 'payment' => $attempt->public_id]),

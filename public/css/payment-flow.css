@@ -104,7 +104,19 @@ body { margin: 0; font-family: 'Dana', Tahoma, sans-serif; font-weight: 400; }
     border-radius: .5rem;
     background: #f8fbff;
 }
-.payment-summary-list > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .25rem .8rem; }
+.payment-summary-list > div {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .25rem .8rem;
+    padding-block: .45rem;
+    border-bottom: 1px solid #e6eff8;
+}
+.payment-summary-list > div:last-child { border-bottom: 0; padding-block-end: 0; }
+.payment-summary-list > div:first-child { padding-block-start: 0; }
+@media (min-width: 1024px) {
+    .payment-shell { width: min(100%, 46rem); }
+}
 .payment-summary-list dt { color: #475e73; }
 .payment-summary-list dd { margin: 0; font-weight: 700; }
 

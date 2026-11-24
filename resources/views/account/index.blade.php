@@ -52,17 +52,24 @@
                 </section>
             @endif
 
+            @if($section === 'overview')
+                <div class="np-account-overview-grid">
+            @endif
             @if(in_array($section, ['overview', 'orders'], true))
                 <section class="np-account-card">
                     <div class="np-account-card__heading">
                         <h2>{{ $section === 'overview' ? 'سفارش‌های اخیر' : 'سابقه سفارش‌ها' }}</h2>
-                        <a class="np-account-link" href="{{ route('products.index') }}">مشاهده فروشگاه</a>
+                        @if($section === 'overview')
+                            <a class="np-account-link" href="{{ route('account.index', ['section' => 'orders']) }}">همه سفارش‌ها</a>
+                        @else
+                            <a class="np-account-link" href="{{ route('products.index') }}">مشاهده فروشگاه</a>
+                        @endif
                     </div>
                     @forelse($orders as $order)
                         <a class="np-account-row np-account-row--order" href="{{ route('account.orders.show', $order->public_id) }}">
                             <span class="np-account-row__main">
                                 <span class="np-account-row__title">
-                                    کد سفارش <bdi class="np-latin-code" dir="ltr">{{ strtoupper(substr($order->public_id, 0, 8)) }}</bdi>
+                                    کد سفارش <bdi dir="ltr">{{ \App\Support\FaNumber::digits(strtoupper(substr($order->public_id, 0, 8))) }}</bdi>
                                 </span>
                                 <span class="np-account-row__meta">
                                     <span class="np-account-pill">{{ \App\Support\CustomerTimeline::orderStatus($order) }}</span>
@@ -90,24 +97,44 @@
                 <section class="np-account-card">
                     <div class="np-account-card__heading">
                         <h2>{{ $section === 'overview' ? 'تعمیرات اخیر' : 'درخواست‌ها و پرونده‌ها' }}</h2>
-                        <a class="np-account-link" href="{{ route('repair') }}">ثبت درخواست تعمیر</a>
+                        @if($section === 'overview')
+                            <a class="np-account-link" href="{{ route('account.index', ['section' => 'repairs']) }}">همه تعمیرات</a>
+                        @else
+                            <a class="np-account-link" href="{{ route('repair') }}">ثبت درخواست تعمیر</a>
+                        @endif
                     </div>
                     @foreach($repairs as $repair)
+                        @php($deviceLabel = \App\Support\RepairIdentity::deviceLabel($repair->device_brand, $repair->device_model))
                         <a class="np-account-row" href="{{ route('account.repairs.show', $repair->public_id) }}">
                             <span class="np-account-row__main">
-                                <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', (string) $repair->device_model))<bdi class="np-latin-code" dir="ltr">{{ $repair->device_model }}</bdi>@else{{ $repair->device_model }}@endif</span>
-                                <span class="np-account-row__meta">کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
+                                <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', $deviceLabel))<bdi class="np-latin-code" dir="ltr">{{ $deviceLabel }}</bdi>@else{{ $deviceLabel }}@endif</span>
+                                <span class="np-account-row__meta">
+                                    <span>کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
+                                    <span class="np-account-dot" aria-hidden="true">·</span>
+                                    <span><x-finance-time :value="$repair->received_at ?? $repair->created_at" :with-time="false" /></span>
+                                </span>
                             </span>
-                            <span class="np-account-pill">{{ \App\Support\CustomerTimeline::repairStatus($repair) }}</span>
+                            <span class="np-account-row__end">
+                                <span class="np-account-pill">{{ \App\Support\CustomerTimeline::repairStatus($repair) }}</span>
+                                <svg class="np-account-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                            </span>
                         </a>
                     @endforeach
                     @foreach($requests as $repair)
+                        @php($deviceLabel = \App\Support\RepairIdentity::deviceLabel($repair->device_brand, $repair->device_model))
                         <a class="np-account-row" href="{{ route('account.repairs.request', $repair->tracking_reference) }}">
                             <span class="np-account-row__main">
-                                <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', (string) $repair->device_model))<bdi class="np-latin-code" dir="ltr">{{ $repair->device_model }}</bdi>@else{{ $repair->device_model }}@endif</span>
-                                <span class="np-account-row__meta">کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
+                                <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', $deviceLabel))<bdi class="np-latin-code" dir="ltr">{{ $deviceLabel }}</bdi>@else{{ $deviceLabel }}@endif</span>
+                                <span class="np-account-row__meta">
+                                    <span>کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
+                                    <span class="np-account-dot" aria-hidden="true">·</span>
+                                    <span><x-finance-time :value="$repair->created_at" :with-time="false" /></span>
+                                </span>
                             </span>
-                            <span class="np-account-pill">درخواست ثبت شد</span>
+                            <span class="np-account-row__end">
+                                <span class="np-account-pill">درخواست ثبت شد</span>
+                                <svg class="np-account-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                            </span>
                         </a>
                     @endforeach
                     @if($repairs->isEmpty() && $requests->isEmpty())
@@ -119,12 +146,17 @@
                     @if($section === 'repairs'){{ $repairs->links() }}{{ $requests->links() }}@endif
                 </section>
             @endif
+            @if($section === 'overview')
+                </div>
+            @endif
 
             @if($section === 'reviews')
                 <section class="np-account-card">
                     <div class="np-account-card__heading">
                         <h2>دیدگاه‌ها و امتیازهای شما</h2>
-                        <a class="np-account-link" href="{{ route('products.index') }}">فروشگاه</a>
+                        @if($reviews->isNotEmpty())
+                            <a class="np-account-link" href="{{ route('products.index') }}">فروشگاه</a>
+                        @endif
                     </div>
                     @forelse($reviews as $feedback)
                         <article class="np-account-review">
@@ -177,7 +209,10 @@
                         @endif
                         <label for="profile-mobile">شماره موبایل</label>
                         <input id="profile-mobile" type="tel" value="{{ $account->phone ? \App\Support\FaNumber::digits($account->phone) : '' }}" placeholder="ثبت نشده" dir="ltr" readonly>
-                        <small>{{ $account->phone ? 'تغییر شماره به تأیید دوباره مالکیت آن نیاز دارد.' : 'شماره موبایلی برای این حساب ثبت نشده است.' }}</small>
+                        <div class="np-account-field-help">
+                            <small>{{ $account->phone ? 'تغییر شماره به تأیید دوباره مالکیت آن نیاز دارد.' : 'شماره موبایلی برای این حساب ثبت نشده است.' }}</small>
+                            <a class="np-account-link np-account-link--inline" href="{{ route('account.index', ['section' => 'security']) }}">{{ $account->phone ? 'تغییر شماره موبایل' : 'تنظیم شماره موبایل' }}</a>
+                        </div>
                         <button class="np-account-primary" type="submit">ذخیره اطلاعات</button>
                     </form>
                 </section>
@@ -189,7 +224,16 @@
                     <script type="application/json" id="iran-locations-data">@json(config('iran_locations', []))</script>
                     @forelse($addresses as $address)
                         <details class="np-account-address" @if($errors->any() && old('address_form_key') === $address->public_id) open @endif>
-                            <summary><span class="np-account-row__title">{{ $address->recipient }}</span> <span class="np-account-row__meta">· {{ $address->province }}، {{ $address->city }}</span></summary>
+                            <summary class="np-account-address__summary">
+                                <span class="np-account-address__head">
+                                    <span class="np-account-address__top">
+                                        <span class="np-account-row__title">{{ $address->recipient }}</span>
+                                        <span class="np-account-address__city">{{ $address->province }}، {{ $address->city }}</span>
+                                    </span>
+                                    <span class="np-account-address__preview">{{ \Illuminate\Support\Str::limit($address->address, 90) }}</span>
+                                </span>
+                                <svg class="np-account-address__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                            </summary>
                             <x-account.address-form :address="$address" />
                             <form class="mt-4" method="post" action="{{ route('account.address.remove', $address->public_id) }}" data-confirm="این آدرس از فهرست شما حذف شود؟ نشانی ارسال‌های قبلی باقی می‌ماند.">
                                 @csrf<button class="np-account-link" type="submit">حذف آدرس</button>
@@ -201,7 +245,13 @@
                         </div>
                     @endforelse
                     <details class="np-account-address" @if($addresses->isEmpty() || ($errors->any() && old('address_form_key', 'new') === 'new')) open @endif>
-                        <summary>افزودن آدرس جدید</summary>
+                        <summary class="np-account-address__summary np-account-address__summary--new">
+                            <span class="np-account-address__new-label">
+                                <svg class="np-account-address__plus" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                                <span>افزودن آدرس جدید</span>
+                            </span>
+                            <svg class="np-account-address__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                        </summary>
                         <x-account.address-form />
                     </details>
                 </section>
