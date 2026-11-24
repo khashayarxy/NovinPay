@@ -347,7 +347,22 @@ class ShoppingCart
 
     private function revision(array $items): string
     {
-        return hash_hmac('sha256', $this->encode($items), config('app.key'));
+        return hash_hmac('sha256', $this->encode($this->canonicalize($items)), config('app.key'));
+    }
+
+    private function canonicalize(array $value): array
+    {
+        if (! array_is_list($value)) {
+            ksort($value, SORT_STRING);
+        }
+
+        foreach ($value as $key => $item) {
+            if (is_array($item)) {
+                $value[$key] = $this->canonicalize($item);
+            }
+        }
+
+        return $value;
     }
 
     private function states(array $scopes, bool $lock): array
