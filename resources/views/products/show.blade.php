@@ -145,7 +145,7 @@
     </div>
     @if ($inquiry || $canAddToCart)
         @php
-            $dockMaxQty = $canAddToCart ? min(10, (int) ($inventory->available ?? 10)) : 1;
+            $dockMaxQty = $canAddToCart ? \App\Services\ShoppingCart::maxQuantityForOffer($inventory ?? null) : 1;
             $dockCartQty = $canAddToCart ? max(0, (int) ($cartQuantity ?? 0)) : 0;
             $dockRemoveScope = ($cartSeparate ?? false) ? 'hide' : 'device';
         @endphp

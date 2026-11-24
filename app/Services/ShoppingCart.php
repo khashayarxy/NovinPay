@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CustomerAccount;
 use App\Models\FinancialDocument;
+use App\Models\InventoryItem;
 use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\SalesOrder;
@@ -17,7 +18,22 @@ class ShoppingCart
 {
     public const DEVICE_COOKIE = '__Host-np_cart';
 
+    public const MAX_ITEM_QUANTITY = 1000;
+
+    public const MAX_SERIALIZED_ITEM_QUANTITY = 100;
+
     public function __construct(private CustomerLogin $login, private StoreCheckout $checkout) {}
+
+    public static function maxQuantityForOffer(?InventoryItem $offer): int
+    {
+        if (! $offer || $offer->available <= 0) {
+            return 0;
+        }
+
+        $cap = $offer->serialized ? self::MAX_SERIALIZED_ITEM_QUANTITY : self::MAX_ITEM_QUANTITY;
+
+        return min((int) $offer->available, $cap);
+    }
 
     private function scopes(Request $request, bool $initialize): array
     {
@@ -63,6 +79,10 @@ class ShoppingCart
 
     public function read(Request $request, bool $initialize = true): array
     {
+        if ($request->attributes->has('storefront-cart-committed')) {
+            return $request->attributes->get('storefront-cart-committed');
+        }
+
         $scopes = $this->scopes($request, $initialize);
         $states = $this->states($scopes, false);
         $items = $this->combined($scopes, $states);
@@ -82,9 +102,10 @@ class ShoppingCart
     {
         $scopes = $this->verifiedScopes($request);
 
-        return DB::transaction(function () use ($request, $scopes, $slug, $action, $quantity, $product): int {
+        $committed = DB::transaction(function () use ($request, $scopes, $slug, $action, $quantity, $product): array {
             $this->lockOwner($request);
             $states = $this->states($scopes, true);
+            $originalStates = $states;
             $items = $this->combined($scopes, $states);
             $scope = $scopes['account'] ?? $scopes['device'];
             $view = $scopes['view'];
@@ -98,20 +119,28 @@ class ShoppingCart
                 abort_if($action === 'quantity' && ! $existing, 404);
                 $product = Product::query()->lockForUpdate()->findOrFail($product->id);
                 $offer = $this->checkout->offer($product, true);
+                $maxQty = self::maxQuantityForOffer($offer);
                 if ($action === 'add') {
                     $increment = $quantity;
-                    $quantity += $owned['quantity'] ?? 0;
+                    $visibleBefore = $existing['quantity'] ?? 0;
+                    $targetVisible = $visibleBefore + $increment;
+                    abort_unless($offer && $targetVisible <= $maxQty, 409, 'موجودی برای این تعداد کافی نیست.');
+                    $targetOwned = ($owned['quantity'] ?? 0) + $increment;
+                    if ($view && array_key_exists($slug, $states[$view])) {
+                        $quantity = min($targetOwned, $maxQty);
+                        $states[$view][$slug] = $targetVisible;
+                    } else {
+                        $quantity = max($targetVisible, $targetOwned);
+                        abort_unless($quantity <= $maxQty, 409, 'موجودی برای این تعداد کافی نیست.');
+                    }
+                } else {
+                    abort_unless($offer && $quantity <= $maxQty, 409, 'موجودی برای این تعداد کافی نیست.');
                 }
-                abort_unless($offer && $quantity <= min(10, $offer->available), 409, 'موجودی برای این تعداد کافی نیست.');
                 if ($action === 'add' || $quantity !== $existing['quantity'] || ($owned && $owned['inventory'] !== $offer->id)) {
                     abort_if(! $owned && count($states[$scope]) >= 30, 422);
                     $states[$scope][$slug] = ['inventory' => $offer->id, 'quantity' => $quantity, 'version' => (string) Str::uuid()];
-                    if ($view) {
-                        if ($action === 'quantity') {
-                            $states[$view][$slug] = $quantity;
-                        } elseif (array_key_exists($slug, $states[$view])) {
-                            $states[$view][$slug] += $increment;
-                        }
+                    if ($view && $action === 'quantity') {
+                        $states[$view][$slug] = $quantity;
                     }
                 }
             } elseif ($action === 'hide') {
@@ -131,18 +160,38 @@ class ShoppingCart
 
             $next = $this->combined($scopes, $states);
             foreach ($states as $key => $state) {
-                $this->save($key, $state);
+                if (! array_key_exists($key, $originalStates) || $originalStates[$key] !== $state) {
+                    $this->save($key, $state);
+                }
             }
 
-            return array_sum(array_column($next, 'quantity'));
+            $quantities = array_column($next, 'quantity', 'slug');
+
+            return [
+                'count' => array_sum($quantities),
+                'state' => [
+                    'items' => $next,
+                    'quantity' => $quantities,
+                    'revision' => $this->revision($next),
+                    'proof' => $scopes['proof'],
+                    'separate' => $scopes['account'] !== null,
+                    'excluded' => array_keys(array_intersect_key(array_filter($states[$scopes['view']] ?? [], fn ($item) => $item === 0),
+                        ($states[$scopes['device']] ?? []) + ($states[$scopes['account']] ?? []))),
+                ],
+            ];
         }, 3);
+
+        $request->attributes->set('storefront-cart-committed', $committed['state']);
+        $request->attributes->set('storefront-cart-count', $committed['count']);
+
+        return $committed['count'];
     }
 
     public function importLegacy(Request $request, LegacyCartHold $legacy): int
     {
         $scopes = $this->verifiedScopes($request);
 
-        return DB::transaction(function () use ($request, $legacy, $scopes): int {
+        $count = DB::transaction(function () use ($request, $legacy, $scopes): int {
             $device = $scopes['device'];
             $this->lockOwner($request);
             $states = $this->states($scopes, true);
@@ -165,6 +214,11 @@ class ShoppingCart
 
             return array_sum(array_column($this->combined($scopes, $states), 'quantity'));
         }, 3);
+
+        $request->attributes->remove('storefront-cart-committed');
+        $request->attributes->remove('storefront-cart-count');
+
+        return $count;
     }
 
     public function place(Request $request, string $key, string $quote, string $method, ?string $address): SalesOrder
@@ -293,7 +347,22 @@ class ShoppingCart
 
     private function revision(array $items): string
     {
-        return hash_hmac('sha256', $this->encode($items), config('app.key'));
+        return hash_hmac('sha256', $this->encode($this->canonicalize($items)), config('app.key'));
+    }
+
+    private function canonicalize(array $value): array
+    {
+        if (! array_is_list($value)) {
+            ksort($value, SORT_STRING);
+        }
+
+        foreach ($value as $key => $item) {
+            if (is_array($item)) {
+                $value[$key] = $this->canonicalize($item);
+            }
+        }
+
+        return $value;
     }
 
     private function states(array $scopes, bool $lock): array
@@ -303,15 +372,18 @@ class ShoppingCart
             return [];
         }
         sort($keys, SORT_STRING);
-        if ($lock) {
-            foreach ($keys as $key) {
+        $query = DB::table('shopping_carts')->whereIn('scope', $keys)->orderBy('scope');
+        $rows = ($lock ? $query->lockForUpdate() : $query)->pluck('state', 'scope');
+
+        if ($lock && $rows->count() < count($keys)) {
+            $missing = array_values(array_diff($keys, $rows->keys()->all()));
+            foreach ($missing as $key) {
                 DB::table('shopping_carts')->insertOrIgnore(['scope' => $key, 'state' => '{}']);
             }
+            $rows = DB::table('shopping_carts')->whereIn('scope', $keys)->orderBy('scope')->lockForUpdate()->pluck('state', 'scope');
         }
-        $query = DB::table('shopping_carts')->whereIn('scope', $keys)->orderBy('scope');
 
-        return ($lock ? $query->lockForUpdate() : $query)->pluck('state', 'scope')
-            ->map(fn ($state) => json_decode($state, true, 512, JSON_THROW_ON_ERROR))->all();
+        return $rows->map(fn ($state) => json_decode($state, true, 512, JSON_THROW_ON_ERROR))->all();
     }
 
     private function combined(array $scopes, array $states): array
@@ -345,24 +417,44 @@ class ShoppingCart
         }
     }
 
-    public function viewData(Request $request): array
+    public function stateData(Request $request): array
     {
         $state = $this->read($request);
         $products = $state['items'] === []
             ? collect()
             : Product::query()->published()->with('inventoryItems')->whereIn('slug', array_keys($state['items']))->get()->keyBy('slug');
         $available = [];
+        $stockAvailable = [];
         foreach ($state['items'] as $slug => $entry) {
             $product = $products->get($slug);
             $offer = $product ? $this->checkout->offer($product) : null;
-            $available[$slug] = $offer ? min(10, $offer->available) : 0;
+            $available[$slug] = self::maxQuantityForOffer($offer);
+            $stockAvailable[$slug] = $offer ? max(0, (int) $offer->available) : 0;
         }
         $unavailable = array_keys(array_filter($available, fn ($limit, $slug) => $limit < $state['items'][$slug]['quantity'], ARRAY_FILTER_USE_BOTH));
+        $prices = $products->mapWithKeys(fn (Product $product) => [$product->slug => (int) $product->price])->all();
         $total = $products->sum(fn ($product) => (int) $product->price * $state['quantity'][$product->slug]);
 
-        return [...$state, 'products' => $products, 'unavailable' => $unavailable, 'available' => $available, 'total' => $total,
-            'legacyStatus' => app(LegacyCartHold::class)->status($request), 'overLimit' => count($state['items']) > 30,
-            'quote' => $this->checkout->quote($products),
+        return [
+            ...$state,
+            'products' => $products,
+            'unavailable' => $unavailable,
+            'available' => $available,
+            'stockAvailable' => $stockAvailable,
+            'prices' => $prices,
+            'total' => $total,
+            'overLimit' => count($state['items']) > 30,
+        ];
+    }
+
+    public function viewData(Request $request): array
+    {
+        $data = $this->stateData($request);
+
+        return [
+            ...$data,
+            'legacyStatus' => app(LegacyCartHold::class)->status($request),
+            'quote' => $this->checkout->quote($data['products']),
         ];
     }
 

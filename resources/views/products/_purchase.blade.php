@@ -16,7 +16,7 @@
     </div>
     @if ($canAddToCart)
         @php
-            $maxProductQty = min(10, (int) ($inventory->available ?? 10));
+            $maxProductQty = \App\Services\ShoppingCart::maxQuantityForOffer($inventory ?? null);
             $currentCartQty = max(0, (int) ($cartQuantity ?? 0));
             $removeScope = ($cartSeparate ?? false) ? 'hide' : 'device';
         @endphp

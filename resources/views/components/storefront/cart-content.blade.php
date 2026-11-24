@@ -4,6 +4,7 @@
     'quantity',
     'unavailable',
     'available',
+    'stockAvailable' => [],
     'total',
     'separate',
     'proof',
@@ -17,6 +18,7 @@
     @unless ($drawer)
         <h1>سبد خرید</h1>
         <x-admin.errors />
+        <p class="store-cart-error" data-cart-page-error role="alert" hidden></p>
     @endunless
     <div @class(['commerce-columns', 'commerce-columns--single' => $items === []])>
         <div class="commerce-cart-lines">
@@ -32,9 +34,25 @@
             @endif
             <div class="store-cart-items">
                 @forelse ($items as $slug => $item)
-                    @php($product = $products->get($slug))
-                    @php($unavailableItem = in_array($slug, $unavailable, true))
-                    <article @class(['store-cart-item', 'store-cart-unavailable' => !$product]) data-cart-item>
+                    @php
+                        $product = $products->get($slug);
+                        $unavailableItem = in_array($slug, $unavailable, true);
+                        $itemLimit = (int) ($available[$slug] ?? 0);
+                        $itemStockAvail = (int) ($stockAvailable[$slug] ?? $itemLimit);
+                        $stockNote = '';
+                        if ($product && $itemLimit > 0) {
+                            if ($itemStockAvail === 1) {
+                                $stockNote = 'تنها ۱ عدد در انبار باقی مانده (موجودی: ۱ عدد)';
+                            } elseif ($item['quantity'] >= $itemLimit) {
+                                $stockNote = $itemStockAvail > $itemLimit
+                                    ? 'حداکثر تعداد مجاز در هر سفارش انتخاب شده است ('.\App\Support\FaNumber::digits($itemLimit).' عدد)'
+                                    : 'موجودی: '.\App\Support\FaNumber::digits($itemLimit).' عدد در انبار (حداکثر موجودی انتخاب شده است)';
+                            } elseif ($itemStockAvail <= 5) {
+                                $stockNote = 'تنها '.\App\Support\FaNumber::digits($itemStockAvail).' عدد در انبار باقی مانده';
+                            }
+                        }
+                    @endphp
+                    <article @class(['store-cart-item', 'store-cart-unavailable' => !$product]) data-cart-item data-cart-slug="{{ $slug }}" data-unit-price="{{ $product?->price ?? 0 }}" data-cart-qty="{{ $item['quantity'] }}" data-cart-limit="{{ $itemLimit }}" data-stock-available="{{ $itemStockAvail }}">
                         @if ($product)
                             <a class="store-cart-image" href="{{ route('products.show', $product) }}" aria-label="{{ $product->name }}">
                                 <x-product-image :product="$product" />
@@ -67,18 +85,12 @@
                                     </button>
                                 </form>
                             </div>
-                            @if ($product && $available[$slug] > 0)
-                                @if ($available[$slug] === 1)
-                                    <p class="commerce-stock-note">تنها ۱ عدد در انبار باقی مانده (موجودی: ۱ عدد)</p>
-                                @elseif ($item['quantity'] >= $available[$slug])
-                                    <p class="commerce-stock-note">موجودی: <bdi>{{ \App\Support\FaNumber::digits($available[$slug]) }}</bdi> عدد در انبار (حداکثر موجودی انتخاب شده است)</p>
-                                @elseif ($available[$slug] <= 5)
-                                    <p class="commerce-stock-note">تنها <bdi>{{ \App\Support\FaNumber::digits($available[$slug]) }}</bdi> عدد در انبار باقی مانده</p>
-                                @endif
+                            @if ($product && $itemLimit > 0)
+                                <p class="commerce-stock-note" data-cart-stock-note {{ $stockNote === '' ? 'hidden' : '' }}>{{ $stockNote }}</p>
                             @endif
                         </div>
                         @unless($unavailableItem)
-                            <p class="commerce-cart-item__total">جمع ردیف <x-storefront.money :amount="$product->price * $item['quantity']" /></p>
+                            <p class="commerce-cart-item__total">جمع ردیف <x-storefront.money :amount="$product->price * $item['quantity']" data-cart-line-total /></p>
                         @endunless
                     </article>
                 @empty
@@ -97,7 +109,7 @@
                     <p class="commerce-notice">برای ثبت سفارش، حداکثر ۳۰ کالا در نمای فعلی نگه دارید.</p>
                 @elseif ($unavailable === [])
                     <dl class="commerce-summary__amounts">
-                        <div><dt>جمع کالاها</dt><dd><x-storefront.money :amount="$total" /></dd></div>
+                        <div><dt>جمع کالاها</dt><dd><x-storefront.money :amount="$total" data-cart-grand-total /></dd></div>
                     </dl>
                     <p class="commerce-summary__note">هزینهٔ تحویل جداگانه و بر اساس روش انتخابی مشخص می‌شود.</p>
                 @else
