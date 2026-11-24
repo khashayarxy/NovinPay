@@ -24,4 +24,8 @@ return [
         'trusted_proxies' => explode(',', (string) env('PAYMENTS_TRUSTED_PROXY_IPS', '')),
     ],
     'bank' => ['enabled' => (bool) env('BANK_TRANSFER_ENABLED', false), 'card_number' => env('NOVINPAY_BANK_CARD', ''), 'holder' => env('NOVINPAY_BANK_HOLDER', '')],
+    'test_product' => [
+        'slug' => trim((string) env('PAYMENT_TEST_PRODUCT_SLUG', 'zibal-gateway-test-5000')),
+        'allowed_phones' => explode(',', (string) env('PAYMENT_TEST_ALLOWED_PHONES', '')),
+    ],
 ];

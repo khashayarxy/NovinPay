@@ -8,6 +8,7 @@ use App\Models\InventoryItem;
 use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\SalesOrder;
+use App\Support\PaymentTestProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
@@ -118,6 +119,7 @@ class ShoppingCart
                 $owned = $states[$scope][$slug] ?? null;
                 abort_if($action === 'quantity' && ! $existing, 404);
                 $product = Product::query()->lockForUpdate()->findOrFail($product->id);
+                abort_unless(PaymentTestProduct::canSeeProduct($product, $this->login->authenticatedAccount($request)), 404);
                 $offer = $this->checkout->offer($product, true);
                 $maxQty = self::maxQuantityForOffer($offer);
                 if ($action === 'add') {
@@ -195,9 +197,13 @@ class ShoppingCart
             $device = $scopes['device'];
             $this->lockOwner($request);
             $states = $this->states($scopes, true);
-            $legacy->claim($request, $device, function (array $selections) use ($device, &$states): void {
-                $products = Product::query()->published()->with('inventoryItems')->whereIn('slug', array_keys($selections))->get()->keyBy('slug');
+            $account = $this->login->authenticatedAccount($request);
+            $legacy->claim($request, $device, function (array $selections) use ($device, $account, &$states): void {
+                $products = Product::query()->published()->visibleTo($account)->with('inventoryItems')->whereIn('slug', array_keys($selections))->get()->keyBy('slug');
                 foreach ($selections as $slug => $quantity) {
+                    if (PaymentTestProduct::isTestProduct($slug) && ! PaymentTestProduct::canAccess($account)) {
+                        continue;
+                    }
                     $item = $states[$device][$slug] ?? null;
                     if ($item && $item['quantity'] >= $quantity) {
                         continue;
@@ -420,9 +426,10 @@ class ShoppingCart
     public function stateData(Request $request): array
     {
         $state = $this->read($request);
+        $account = $this->login->authenticatedAccount($request);
         $products = $state['items'] === []
             ? collect()
-            : Product::query()->published()->with('inventoryItems')->whereIn('slug', array_keys($state['items']))->get()->keyBy('slug');
+            : Product::query()->published()->visibleTo($account)->with('inventoryItems')->whereIn('slug', array_keys($state['items']))->get()->keyBy('slug');
         $available = [];
         $stockAvailable = [];
         foreach ($state['items'] as $slug => $entry) {

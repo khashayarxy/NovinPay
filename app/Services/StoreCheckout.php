@@ -11,6 +11,7 @@ use App\Models\SalesOrderEvent;
 use App\Models\SalesOrderLine;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Support\OrderMoney;
+use App\Support\PaymentTestProduct;
 use App\Support\ProductSale;
 use App\Support\RepairIdentity;
 use Illuminate\Support\Collection;
@@ -79,6 +80,9 @@ class StoreCheckout
             abort_if($cart === [], 422);
             $products = Product::query()->whereIn('slug', array_keys($cart))->orderBy('id')->lockForUpdate()->get();
             abort_unless($products->count() === count($cart), 409);
+            foreach ($products as $product) {
+                abort_unless(PaymentTestProduct::canSeeProduct($product, $fresh), 403, 'دسترسی به این محصول مجاز نیست.');
+            }
             abort_if($quote !== null && ! hash_equals($this->quote($products), $quote), 409, 'قیمت کالا تغییر کرده است؛ سبد را دوباره بررسی کنید.');
             $order = new SalesOrder;
             foreach (['public_id' => (string) Str::uuid(), 'customer_id' => $customer->id, 'customer_account_id' => $fresh->id, 'checkout_key' => $key, 'checkout_digest' => $digest, 'status' => 'draft', 'currency' => 'TOMAN', 'total' => '0.00', 'version' => 1] as $field => $value) {

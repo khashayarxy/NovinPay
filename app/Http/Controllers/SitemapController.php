@@ -48,7 +48,7 @@ final class SitemapController extends Controller
     private function query(string $type): Builder
     {
         return match ($type) {
-            'products' => Product::published()->where('is_sample', false),
+            'products' => Product::published()->where('is_sample', false)->excludePrivatePaymentTest(),
             'articles' => Article::published(),
             default => abort(404),
         };

@@ -30,6 +30,9 @@
             @if ($sale === \App\Support\ProductSale::Online && $quantity > 0)
                 <span class="text-sm">{{ \App\Support\FaNumber::digits($quantity) }} عدد</span>
             @endif
+            @if ($product->isPrivatePaymentTest())
+                <span class="badge badge-sample">خصوصی · تست درگاه</span>
+            @endif
             @if ($product->is_sample)
                 <span class="badge badge-sample">داده نمونه</span>
             @endif

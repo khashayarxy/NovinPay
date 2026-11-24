@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
+use App\Support\PaymentTestProduct;
 use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -153,5 +154,27 @@ class Product extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('is_published', true);
+    }
+
+    public function isPrivatePaymentTest(): bool
+    {
+        return PaymentTestProduct::isTestProduct($this);
+    }
+
+    public function scopeVisibleTo(Builder $query, ?CustomerAccount $account = null): Builder
+    {
+        $slug = PaymentTestProduct::slug();
+        if ($slug === '' || PaymentTestProduct::canAccess($account)) {
+            return $query;
+        }
+
+        return $query->where('slug', '!=', $slug);
+    }
+
+    public function scopeExcludePrivatePaymentTest(Builder $query): Builder
+    {
+        $slug = PaymentTestProduct::slug();
+
+        return $slug === '' ? $query : $query->where('slug', '!=', $slug);
     }
 }

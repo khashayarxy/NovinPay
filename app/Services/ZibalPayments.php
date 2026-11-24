@@ -12,6 +12,7 @@ use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\User;
 use App\Support\OrderMoney;
+use App\Support\PaymentTestProduct;
 use App\Support\RepairIdentity;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -51,6 +52,12 @@ class ZibalPayments
             $fresh = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
             abort_unless($fresh->is_active && $fresh->session_version === $account->session_version, 403);
             $document = $this->ownedDocument($fresh, $documentId, true);
+            if ($document->sales_order_id) {
+                $linkedOrder = SalesOrder::query()->find($document->sales_order_id);
+                if ($linkedOrder) {
+                    $this->assertOrderPaymentTestAccess($fresh, $linkedOrder);
+                }
+            }
             $prior = PaymentAttempt::query()->where('operation_key', $operation)->first();
             if ($prior) {
                 abort_unless($prior->customer_account_id === $account->id && $prior->financial_document_id === $document->id && $prior->amount_minor === $amountMinor, 409);
@@ -117,6 +124,7 @@ class ZibalPayments
 
             $lockedOrder = SalesOrder::query()->lockForUpdate()->findOrFail($order->id);
             abort_unless($lockedOrder->customer_account_id === $freshAccount->id, 403);
+            $this->assertOrderPaymentTestAccess($freshAccount, $lockedOrder);
 
             $prior = PaymentAttempt::query()->where('operation_key', $operation)->first();
             if ($prior) {
@@ -554,5 +562,21 @@ class ZibalPayments
         $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->lockForUpdate()->first();
         abort_if($plan?->method === 'post', 503, 'پرداخت پستی تا تأیید کاربرد تعرفه و اتصال استعلام به سند فعال نیست.');
         abort_unless($plan && $plan->state === 'planned' && $plan->requested_method === null && in_array($plan->method, ['tipax', 'courier', 'post'], true), 409, 'ابتدا ارسال به آدرس و هزینهٔ آن باید تأیید شود. پرداخت تحویل حضوری هنگام مراجعه است.');
+    }
+
+    private function assertOrderPaymentTestAccess(CustomerAccount $account, SalesOrder $order): void
+    {
+        $slug = PaymentTestProduct::slug();
+        if ($slug === '' || PaymentTestProduct::canAccess($account)) {
+            return;
+        }
+
+        $containsPrivateTest = $order->lines()
+            ->join('inventory_items', 'inventory_items.id', '=', 'sales_order_lines.inventory_item_id')
+            ->join('products', 'products.id', '=', 'inventory_items.product_id')
+            ->where('products.slug', $slug)
+            ->exists();
+
+        abort_if($containsPrivateTest, 403, 'دسترسی به این محصول مجاز نیست.');
     }
 }
