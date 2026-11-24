@@ -460,7 +460,7 @@ class ZibalUnifiedPaymentsTest extends TestCase
         Http::fake([
             'https://edge.ippanel.com/v1/api/send' => Http::failedConnection(),
         ]);
-        $input = ['version' => $plan->version, 'password' => 'password', 'progress' => 'pickup_ready'];
+        $input = ['version' => $plan->version, 'progress' => 'pickup_ready'];
         $this->actingAs($this->owner, 'web')->withSession(['admin_session_version' => 1]);
         $this->post($url, $input)->assertConflict();
         $this->assertDatabaseCount('delivery_events', 0);

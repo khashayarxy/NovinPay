@@ -149,8 +149,9 @@ class OrdersInventoryTest extends TestCase
 
         $this->get('/admin/products')->assertOk()
             ->assertSee('موجودی محدود')
-            ->assertSee('آزاد <strong>۴</strong>', false)
-            ->assertSee('کل ۵')
+            ->assertSee('موجودی فیزیکی:')
+            ->assertSee('۵ عدد')
+            ->assertSee('۴ آزاد')
             ->assertSee('نیاز به تأمین')
             ->assertSee($stockUrl, false);
         $this->get($stockUrl)->assertOk()
@@ -531,7 +532,7 @@ class OrdersInventoryTest extends TestCase
         $this->get('/admin/orders/'.$order->public_id)->assertOk()->assertDontSee('PRIVATE-ORDER-CUSTOMER')->assertDontSee('09000000001');
         $this->get('/admin/orders/create')->assertForbidden();
         $this->actingAs(User::factory()->staff(['orders.view', 'orders.customer_data', 'customers.view', 'customers.contact'])->create());
-        $this->get('/admin/orders/'.$order->public_id)->assertOk()->assertSee('PRIVATE-ORDER-CUSTOMER')->assertSee('09000000001');
+        $this->get('/admin/orders/'.$order->public_id)->assertOk()->assertSee('PRIVATE-ORDER-CUSTOMER')->assertSee('۰۹۰۰۰۰۰۰۰۰۱');
     }
 
     public function test_low_stock_flag_reconciles_after_receipt_reservation_release_and_adjustment(): void

@@ -7,8 +7,20 @@
 @if(session('maintenance_warning'))<div class="admin-notice" role="alert">{{ session('maintenance_warning') }}</div>@endif
 <section class="admin-panel" aria-labelledby="maintenance-state-title">
     <div class="admin-panel-heading">
-        <h2 id="maintenance-state-title">وضعیت فعلی: {{ $fault ? 'خطای خواندن وضعیت؛ دسترسی عمومی بسته است' : ($current['enabled'] ? 'فعال' : 'غیرفعال') }}</h2>
-        <span @class(['admin-state-dot', 'admin-state-dot--attention' => $fault || $current['enabled']]) aria-hidden="true"></span>
+        <h2 id="maintenance-state-title">
+            @if($fault)
+                وضعیت فعلی: خطای خواندن وضعیت؛ دسترسی عمومی بسته است
+            @elseif($current['enabled'])
+                وضعیت فعلی: فعال — حالت نگهداری روشن است
+            @else
+                سایت آنلاین است (حالت نگهداری خاموش)
+            @endif
+        </h2>
+        <span @class([
+            'admin-state-dot',
+            'admin-state-dot--danger' => $fault,
+            'admin-state-dot--attention' => !$fault && $current['enabled'],
+        ]) aria-hidden="true"></span>
     </div>
     <p class="admin-hint">با فعال‌سازی، بازدیدکنندگان صفحهٔ نگهداری را می‌بینند. درخواست‌های قبلی و کارهای پس‌زمینه ممکن است ادامه پیدا کنند.</p>
     @if($fault)
@@ -26,6 +38,9 @@
         @else<p class="admin-hint">این حساب فقط اجازهٔ مشاهده و پیش‌نمایش دارد.</p>@endcan
     @endif
 </section>
-<details class="admin-panel mt-3"><summary>نگهداری هنگام به‌روزرسانی</summary><p class="admin-hint">این کنترل، نگهداری هنگام به‌روزرسانی را لغو نمی‌کند. در صورت قطع دسترسی مدیریت، از راهنمای بازیابی اضطراری استفاده کنید.</p></details>
+<aside class="admin-info-card mt-3" aria-label="نگهداری هنگام به‌روزرسانی">
+    <h2>نگهداری هنگام به‌روزرسانی</h2>
+    <p class="admin-hint">این کنترل، نگهداری هنگام به‌روزرسانی را لغو نمی‌کند. در صورت قطع دسترسی مدیریت، از راهنمای بازیابی اضطراری استفاده کنید.</p>
+</aside>
 </div>
 @endsection

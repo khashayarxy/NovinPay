@@ -495,6 +495,18 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
 .np-account-address[open] > summary .np-account-address__chevron { transform: rotate(180deg); color: var(--account-blue); }
 .np-account-address__new-label { display: inline-flex; align-items: center; gap: .5rem; color: var(--account-blue); font-weight: 600; font-size: .92rem; }
 .np-account-address__plus { flex: 0 0 auto; }
+.np-account-address--new { padding-top: .85rem; }
+.np-account-add-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+    min-height: 44px; padding: .55rem 1.05rem;
+    border: 1.5px solid #9cc5f4; border-radius: .75rem;
+    background: var(--account-wash); color: var(--account-blue);
+    font-size: .9rem; font-weight: 600; cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease;
+}
+.np-account-add-btn:hover { background: #dceeff; border-color: var(--account-blue); }
+.np-account-address-panel { margin-top: .75rem; }
+.np-account-address-panel[hidden] { display: none; }
 @media (min-width: 1024px) {
     .np-account-layout { grid-template-columns: 14.5rem minmax(0, 1fr); gap: 1.35rem; }
     .np-account-nav { position: sticky; top: 5.5rem; }

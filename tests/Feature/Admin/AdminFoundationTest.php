@@ -105,8 +105,9 @@ class AdminFoundationTest extends TestCase
         $this->actingAs($this->owner())->get('/admin')->assertOk()
             ->assertSee('href="'.route('home').'" target="_blank" rel="nofollow noopener noreferrer" aria-label="مشاهده وب‌سایت" title="مشاهده وب‌سایت"', false)
             ->assertSeeInOrder(['داشبورد مدیریت', 'عملیات روزانه', 'تعمیرات', 'سفارش‌ها و کالاها', 'مشتریان', 'مالی و ارسال', 'محتوا و تنظیمات', 'مقالات', 'وضعیت و نگهداری سایت', 'دسترسی و سوابق', 'امنیت حساب من'])
-            ->assertSee('href="'.route('admin.orders.index').'" data-admin-category', false)
-            ->assertSee('href="'.route('admin.payments.index').'" data-admin-category', false)
+            ->assertSee('<summary class="admin-nav-group-trigger">', false)
+            ->assertSee('href="'.route('admin.orders.index').'"', false)
+            ->assertSee('href="'.route('admin.payments.index').'"', false)
             ->assertSee('href="'.route('admin.deliveries.index').'"', false);
 
         $staff = User::factory()->staff(['dashboard.view', 'inventory.view', 'consultations.view', 'finance.view'])->create();
@@ -285,7 +286,12 @@ class AdminFoundationTest extends TestCase
         $this->actingAs($staff)->get('/admin/repair-requests/'.$repair->id)->assertOk()
             ->assertSee($repair->customer_name)->assertSee(FaNumber::digits($repair->contact_phone))
             ->assertSee(e($repair->device_model), false)->assertDontSee('<script>PRIVATE-MODEL</script>', false);
-        $this->get('/admin/repair-requests')->assertDontSee($repair->customer_name)->assertDontSee($repair->contact_phone);
+        $this->get('/admin/repair-requests')->assertOk()
+            ->assertSee($repair->customer_name)
+            ->assertSee('PRIVATE-MODEL')
+            ->assertDontSee('<script>PRIVATE-MODEL</script>', false)
+            ->assertDontSee($repair->contact_phone)
+            ->assertDontSee(FaNumber::digits($repair->contact_phone));
         $this->assertDatabaseHas('admin_activities', ['actor_id' => $staff->id, 'action' => AdminAction::RepairCustomerViewed->value, 'target_type' => 'repair_request', 'target_id' => $repair->id]);
         $logs = DB::table('admin_activities')->get()->toJson();
         foreach ([$repair->customer_name, $repair->contact_phone, $repair->device_model, $repair->issue, $repair->tracking_reference, $staff->password, $staff->remember_token] as $sensitive) {
@@ -301,7 +307,7 @@ class AdminFoundationTest extends TestCase
     {
         $this->repair();
         $this->actingAs($this->owner())->get('/admin')->assertOk()
-            ->assertViewHas('repairCount', 1)->assertSee('کارهای جاری')->assertDontSee('PRIVATE-CUSTOMER');
+            ->assertViewHas('repairCount', 1)->assertSee('کارهای جاری')->assertSee('PRIVATE-CUSTOMER');
         $this->actingAs(User::factory()->staff(['dashboard.view'])->create())->get('/admin')->assertOk()
             ->assertViewHas('repairCount', null)->assertDontSee('کارهای جاری')
             ->assertDontSee('PRIVATE-CUSTOMER')->assertSee('دسترسی به درخواست‌ها ندارید');

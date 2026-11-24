@@ -61,29 +61,24 @@
                 </header>
                 <p class="product-lines">{{ $entry->body }}</p>
                 @if ($entry->staff_reply)
-                    @if ($kind === 'question')
-                        <details class="product-reply">
-                            <summary>پاسخ رسمی نوین‌پی</summary>
-                            <p class="product-lines">{{ $entry->staff_reply }}</p>
-                        </details>
-                    @else
-                        <div class="product-reply"><strong>پاسخ رسمی نوین‌پی</strong><p class="product-lines">{{ $entry->staff_reply }}</p></div>
-                    @endif
+                    <div class="product-reply"><strong>پاسخ رسمی نوین‌پی</strong><p class="product-lines">{{ $entry->staff_reply }}</p></div>
                 @endif
                 @if ($feedbackAccount)
-                    <details class="product-report">
-                        <summary>گزارش محتوا</summary>
-                        <form method="post" action="{{ route('products.feedback.report', [$product, $entry]) }}">
-                            @csrf
-                            <label class="label" for="report-{{ $entry->id }}">دلیل گزارش</label>
-                            <select class="input" name="reason" id="report-{{ $entry->id }}" required>
-                                @foreach (\App\Http\Controllers\ProductFeedbackController::REPORT_REASONS as $key => $label)
-                                    <option value="{{ $key }}">{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <button type="submit" class="btn btn-secondary">ارسال گزارش</button>
-                        </form>
-                    </details>
+                    <div class="product-report">
+                        <button type="button" class="product-report-toggle" data-toggle-panel="product-report-{{ $entry->id }}" aria-expanded="false" aria-controls="product-report-{{ $entry->id }}">گزارش محتوا</button>
+                        <div id="product-report-{{ $entry->id }}" class="product-report-panel" hidden>
+                            <form method="post" action="{{ route('products.feedback.report', [$product, $entry]) }}">
+                                @csrf
+                                <label class="label" for="report-{{ $entry->id }}">دلیل گزارش</label>
+                                <select class="input" name="reason" id="report-{{ $entry->id }}" required>
+                                    @foreach (\App\Http\Controllers\ProductFeedbackController::REPORT_REASONS as $key => $label)
+                                        <option value="{{ $key }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="submit" class="btn btn-secondary">ارسال گزارش</button>
+                            </form>
+                        </div>
+                    </div>
                 @endif
             </article>
         @empty

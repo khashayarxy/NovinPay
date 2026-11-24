@@ -36,4 +36,21 @@ final class FinanceMoney
 
         return str_ends_with($formatted, '.00') ? substr($formatted, 0, -3) : $formatted;
     }
+
+    public static function persianToman(int|string $minor): string
+    {
+        $formatted = str_replace([',', '.'], ['٬', '٫'], self::toman($minor));
+
+        return FaNumber::digits($formatted);
+    }
+
+    public static function persianOrderToman(string|int|float $major): string
+    {
+        $normalized = self::normalize((string) $major);
+        if (preg_match('/\A(?:0|[1-9][0-9]{0,9})(?:\.[0-9]{1,2})?\z/', $normalized)) {
+            return self::persianToman(OrderMoney::minor($normalized));
+        }
+
+        return FaNumber::digits(str_replace(',', '٬', (string) $major));
+    }
 }

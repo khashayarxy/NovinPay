@@ -3,7 +3,7 @@
     <div class="admin-panel-heading">
         <h2 id="repair-zibal-link">لینک پرداخت آنلاین تعمیر (زیبال)</h2>
     </div>
-    <p class="admin-hint mt-2">مانده قابل پرداخت: <strong style="font-variant-numeric: tabular-nums;">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::display($repairDocument->charged_minor - $repairDocument->paid_minor)) }} تومان</strong></p>
+    <p class="admin-hint mt-2">مانده قابل پرداخت: <strong style="font-variant-numeric: tabular-nums;">{{ \App\Support\FinanceMoney::persianToman($repairDocument->charged_minor - $repairDocument->paid_minor) }} تومان</strong></p>
     <form method="post" action="{{ route('admin.repair-cases.payment-link', $case) }}" class="mt-3">
         @csrf
         <button type="submit" class="btn btn-primary">تولید لینک پرداخت آنلاین</button>

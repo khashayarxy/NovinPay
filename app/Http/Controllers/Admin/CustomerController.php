@@ -11,8 +11,10 @@ use App\Models\CustomerAccount;
 use App\Services\CustomerManagement;
 use App\Support\AdminHistory;
 use App\Support\CrmAccess;
+use App\Support\FaNumber;
 use App\Support\RepairIdentity;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Gate;
 
 class CustomerController extends Controller
@@ -21,11 +23,26 @@ class CustomerController extends Controller
     {
         $criteria = $request->session()->get('customer_search', []);
         $contact = Gate::allows('customers.contact');
-        $query = Customer::query()->select($contact ? ['id', 'public_id', 'name', 'contact_phone', 'is_active', 'merged_into_id', 'created_at'] : ['id', 'public_id', 'is_active', 'merged_into_id', 'created_at']);
+        $query = Customer::query()
+            ->select($contact ? ['id', 'public_id', 'name', 'contact_phone', 'is_active', 'merged_into_id', 'created_at'] : ['id', 'public_id', 'is_active', 'merged_into_id', 'created_at'])
+            ->withCount(['salesOrders', 'repairCases', 'repairRequests']);
         if (isset($criteria['active']) && $criteria['active'] !== '') {
             $query->where('is_active', (bool) $criteria['active']);
         }
-        if ($contact && isset($criteria['digest'])) {
+        if ($contact && ! empty($criteria['query_cipher'])) {
+            $raw = FaNumber::normalizeDigits(trim(Crypt::decryptString($criteria['query_cipher'])));
+            $needle = mb_strtolower($raw);
+            $phoneNeedle = RepairIdentity::phone($raw);
+            $matchedIds = [];
+            foreach ((clone $query)->select(['id', 'name', 'contact_phone'])->cursor() as $candidate) {
+                $matchesName = str_contains(mb_strtolower((string) $candidate->name), $needle);
+                $matchesPhone = $phoneNeedle !== '' && str_contains(RepairIdentity::phone((string) $candidate->contact_phone), $phoneNeedle);
+                if ($matchesName || $matchesPhone) {
+                    $matchedIds[] = $candidate->id;
+                }
+            }
+            $query->whereIn('id', $matchedIds ?: [0]);
+        } elseif ($contact && isset($criteria['digest'])) {
             $query->where($criteria['column'], $criteria['digest']);
         }
 
@@ -40,7 +57,11 @@ class CustomerController extends Controller
             Gate::authorize('customers.contact');
             $phone = RepairIdentity::phone($data['q']);
             $isPhone = preg_match('/\A09[0-9]{9}\z/', $phone);
-            $criteria += ['column' => $isPhone ? 'phone_digest' : 'name_digest', 'digest' => RepairIdentity::digest($isPhone ? 'customer-phone' : 'customer-name', $isPhone ? $phone : CrmAccess::name($data['q']))];
+            $criteria += [
+                'column' => $isPhone ? 'phone_digest' : 'name_digest',
+                'digest' => RepairIdentity::digest($isPhone ? 'customer-phone' : 'customer-name', $isPhone ? $phone : CrmAccess::name($data['q'])),
+                'query_cipher' => Crypt::encryptString($data['q']),
+            ];
         }
         $request->session()->put('customer_search', $criteria);
 

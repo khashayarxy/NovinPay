@@ -73,9 +73,11 @@
                     </a>
                 @else
                     <div @class(['admin-nav-section', 'admin-nav-current' => $current])>
-                        <a class="admin-nav-category" href="{{ route($visible[0][1]) }}" data-admin-category><x-home.icon :name="$icon" /><span>{{ $label }}</span></a>
-                        <details class="admin-nav-group" name="admin-module" @if($current) open @endif>
-                            <summary aria-label="باز یا بسته کردن {{ $label }}"><span class="admin-nav-chevron" aria-hidden="true"></span></summary>
+                        <details class="admin-nav-group" @if($current) open @endif>
+                            <summary class="admin-nav-group-trigger">
+                                <span class="admin-nav-group-label"><x-home.icon :name="$icon" /><span>{{ $label }}</span></span>
+                                <svg class="admin-nav-chevron-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                            </summary>
                             <div class="admin-nav-children">
                                 @foreach($visible as [$ability, $route, $active, $text])
                                     <a href="{{ route($route) }}" @if(request()->routeIs(...(array) $active)) aria-current="page" @endif>{{ $text }}</a>

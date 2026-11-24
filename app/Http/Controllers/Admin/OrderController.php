@@ -11,24 +11,76 @@ use App\Models\SalesOrder;
 use App\Services\CommerceManagement;
 use App\Support\AdminHistory;
 use App\Support\CommerceAccess;
+use App\Support\FaNumber;
+use App\Support\RepairIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $filters = $request->validate(['status' => ['nullable', Rule::in(array_keys(SalesOrder::STATUSES))], 'reference' => ['nullable', 'uuid']]);
-        $query = SalesOrder::query()->select(['id', 'public_id', 'status', 'currency', 'total', 'created_at']);
+        $filters = $request->validate([
+            'status' => ['nullable', Rule::in(array_keys(SalesOrder::STATUSES))],
+            'q' => ['nullable', 'string', 'max:100'],
+            'reference' => ['nullable', 'uuid'],
+        ]);
+        $contact = CommerceAccess::contact();
+        $term = trim((string) ($filters['q'] ?? $filters['reference'] ?? ''));
+
+        $relations = ['lines:id,sales_order_id,description,quantity'];
+        if ($contact) {
+            $relations[] = 'customer:id,public_id,name,contact_phone';
+        }
+
+        $query = SalesOrder::query()
+            ->select(['id', 'public_id', 'customer_id', 'status', 'currency', 'total', 'created_at'])
+            ->with($relations);
+
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
-        if (! empty($filters['reference'])) {
-            $query->where('public_id', $filters['reference']);
+
+        if ($term !== '') {
+            if (Str::isUuid($term)) {
+                $query->where('public_id', $term);
+            } else {
+                $normalized = FaNumber::normalizeDigits($term);
+                $needle = mb_strtolower($normalized);
+                $numericId = ctype_digit(ltrim($normalized, '#')) ? (int) ltrim($normalized, '#') : null;
+                $phoneNeedle = RepairIdentity::phone($normalized);
+
+                $customerIds = [];
+                if ($contact) {
+                    foreach (Customer::query()->select(['id', 'name', 'contact_phone'])->cursor() as $candidate) {
+                        $matchesName = str_contains(mb_strtolower((string) $candidate->name), $needle);
+                        $matchesPhone = $phoneNeedle !== '' && str_contains(RepairIdentity::phone((string) $candidate->contact_phone), $phoneNeedle);
+                        if ($matchesName || $matchesPhone) {
+                            $customerIds[] = $candidate->id;
+                        }
+                    }
+                }
+
+                $escapedPrefix = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], strtolower($normalized)).'%';
+                $query->where(function ($sub) use ($numericId, $escapedPrefix, $customerIds): void {
+                    $sub->whereRaw("LOWER(public_id) LIKE ? ESCAPE '!'", [$escapedPrefix]);
+                    if ($numericId !== null) {
+                        $sub->orWhere('id', $numericId);
+                    }
+                    if ($customerIds !== []) {
+                        $sub->orWhereIn('customer_id', $customerIds);
+                    }
+                });
+            }
         }
 
-        return view('admin.orders.index', ['orders' => $query->latest('id')->paginate(20)->appends($filters), 'filters' => $filters]);
+        return view('admin.orders.index', [
+            'orders' => $query->latest('id')->paginate(20)->appends($filters),
+            'filters' => $filters + ['q' => $term],
+            'contact' => $contact,
+        ]);
     }
 
     public function create(Request $request)
