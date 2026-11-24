@@ -193,10 +193,11 @@ class ProductExperienceTest extends TestCase
             ->assertDontSee('href="#submit-review"', false)
             ->assertDontSee('ورود و ثبت دیدگاه');
 
-        // Homepage, contact, and repair still render the location section.
-        foreach (['home', 'contact', 'repair'] as $routeName) {
+        // Homepage and contact render the location section; repair omits it to keep the form clean.
+        foreach (['home', 'contact'] as $routeName) {
             $this->get(route($routeName))->assertOk()->assertSee('np-location');
         }
+        $this->get(route('repair'))->assertOk()->assertDontSee('np-location');
     }
 
     private function product(string $slug, array $attributes = []): Product
