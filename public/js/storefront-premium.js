@@ -358,18 +358,22 @@
                 throw new Error(message);
             }
             const payload = await response.json();
-            const {count, proof, html} = payload;
+            const {count, proof, revision, quantities, separate, html} = payload;
             if (!Number.isInteger(count) || count < 0) throw new Error();
             if (typeof proof === 'string' && proof.length > 0) {
                 document.querySelectorAll('input[name="cart_context"]').forEach(input => { input.value = proof; });
             }
+            if (typeof revision === 'string' && revision.length > 0) {
+                document.querySelectorAll('input[name="cart_revision"]').forEach(input => { input.value = revision; });
+            }
+            syncProductControls(quantities, separate);
             commerce?.postMessage('cart-change');
             if (epoch !== cartEpoch) return;
             cartSnapshot = null;
             renderCartCount(count);
             if (!fromDrawer) {
                 playFlyToCart(submitter || form);
-
+                if (form.id === 'product-cart-form') showAddedBar();
             }
             if (active === cartDialog) {
                 const focusInCart = cartDialog.querySelector('[data-live-cart]').contains(document.activeElement);
@@ -405,6 +409,132 @@
                 delete submitter.dataset.loading;
                 if (originalLabel !== null) submitter.textContent = originalLabel;
             }
+        }
+    });
+
+    const addedBar = document.querySelector('[data-added-bar]');
+    let addedBarTimer = 0;
+    function hideAddedBar() {
+        clearTimeout(addedBarTimer);
+        addedBarTimer = 0;
+        if (!addedBar) return;
+        addedBar.hidden = true;
+        addedBar.removeAttribute('data-bar-visible');
+        root.style.setProperty('--store-added-bar-space', '0px');
+    }
+    function showAddedBar() {
+        if (!addedBar) return;
+        clearTimeout(addedBarTimer);
+        addedBar.hidden = false;
+        requestAnimationFrame(() => {
+            addedBar.setAttribute('data-bar-visible', '');
+            const h = addedBar.offsetHeight || 48;
+            root.style.setProperty('--store-added-bar-space', `${h + 8}px`);
+        });
+        addedBarTimer = setTimeout(hideAddedBar, 5200);
+    }
+    addedBar?.querySelector('[data-added-bar-close]')?.addEventListener('click', hideAddedBar);
+
+    const toFaDigits = value => String(value).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
+    function syncProductControls(quantities, separate) {
+        const controls = document.querySelectorAll('[data-product-cart-control]');
+        if (!controls.length) return;
+        controls.forEach(control => {
+            const slug = control.dataset.productSlug || '';
+            const max = Math.max(1, Number(control.dataset.productMax || 10));
+            const qty = quantities && typeof quantities === 'object' ? Math.max(0, Number(quantities[slug] || 0)) : Math.max(0, Number(control.dataset.productQty || 0));
+            control.dataset.productQty = String(qty);
+            if (typeof separate === 'boolean') control.dataset.removeScope = separate ? 'hide' : 'device';
+            const formEl = control.querySelector('form[data-cart-mutation]');
+            const dockBtn = control.querySelector('[data-dock-add-btn]');
+            const stepper = control.querySelector('[data-inline-stepper]');
+            const countEl = control.querySelector('[data-stepper-count]');
+            const incBtn = control.querySelector('[data-stepper-inc]');
+            const decBtn = control.querySelector('[data-stepper-dec]');
+            const minusIcon = control.querySelector('.np-inline-stepper__minus');
+            const trashIcon = control.querySelector('.np-inline-stepper__trash');
+            if (formEl) formEl.hidden = qty > 0;
+            if (dockBtn) dockBtn.hidden = qty > 0;
+            if (stepper) stepper.hidden = qty <= 0;
+            if (countEl && qty > 0) countEl.textContent = toFaDigits(qty);
+            if (incBtn) incBtn.disabled = qty >= max;
+            if (decBtn) {
+                const isRemove = qty <= 1;
+                decBtn.dataset.mode = isRemove ? 'remove' : 'decrement';
+                decBtn.setAttribute('aria-label', isRemove ? 'حذف از سبد خرید' : 'کاهش تعداد');
+                if (minusIcon) minusIcon.hidden = isRemove;
+                if (trashIcon) trashIcon.hidden = !isRemove;
+            }
+        });
+    }
+
+    document.addEventListener('click', async event => {
+        const stepperBtn = event.target instanceof Element ? event.target.closest('[data-stepper-inc], [data-stepper-dec]') : null;
+        if (!stepperBtn || cartPending) return;
+        const control = stepperBtn.closest('[data-product-cart-control]');
+        if (!control) return;
+        const currentQty = Math.max(0, Number(control.dataset.productQty || 0));
+        const maxQty = Math.max(1, Number(control.dataset.productMax || 10));
+        const isInc = stepperBtn.hasAttribute('data-stepper-inc');
+        const nextQty = isInc ? Math.min(maxQty, currentQty + 1) : Math.max(0, currentQty - 1);
+        if (nextQty === currentQty) return;
+
+        const endpoint = nextQty === 0 ? control.dataset.removeUrl : control.dataset.updateUrl;
+        const csrf = document.querySelector('#product-cart-form input[name="_token"]')?.value
+            || document.querySelector('input[name="_token"]')?.value || '';
+        const proof = document.querySelector('input[name="cart_context"]')?.value || '';
+        const revision = document.querySelector('input[name="cart_revision"]')?.value || '';
+        if (!endpoint || !csrf) return;
+
+        const data = new FormData();
+        data.append('_token', csrf);
+        if (proof) data.append('cart_context', proof);
+        if (revision) data.append('cart_revision', revision);
+        if (nextQty === 0) {
+            data.append('scope', control.dataset.removeScope || 'device');
+        } else {
+            data.append('quantity', String(nextQty));
+        }
+
+        cartPending = true;
+        const buttons = document.querySelectorAll('[data-stepper-inc], [data-stepper-dec]');
+        buttons.forEach(b => { b.disabled = true; });
+        const epoch = cartEpoch;
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                body: data,
+                credentials: 'same-origin',
+                redirect: 'error',
+                headers: {Accept: 'application/json', 'X-Storefront-Cart-Html': '1'},
+            });
+            if (!response.ok) throw new Error();
+            const payload = await response.json();
+            if (typeof payload.proof === 'string' && payload.proof) {
+                document.querySelectorAll('input[name="cart_context"]').forEach(input => { input.value = payload.proof; });
+            }
+            if (typeof payload.revision === 'string' && payload.revision) {
+                document.querySelectorAll('input[name="cart_revision"]').forEach(input => { input.value = payload.revision; });
+            }
+            if (epoch === cartEpoch && Number.isInteger(payload.count)) {
+                cartSnapshot = null;
+                renderCartCount(payload.count);
+                syncProductControls(payload.quantities, payload.separate);
+                if (typeof payload.html === 'string' && payload.html && cartDialog) {
+                    try {
+                        const doc = new DOMParser().parseFromString(payload.html, 'text/html');
+                        applyCartDocument(cartDialog, doc, cartEpoch, payload.html);
+                    } catch {}
+                }
+                if (nextQty === 0) hideAddedBar();
+                commerce?.postMessage('cart-change');
+            }
+        } catch {
+            syncProductControls();
+        } finally {
+            cartPending = false;
+            buttons.forEach(b => { b.disabled = false; });
+            syncProductControls();
         }
     });
 

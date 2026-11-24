@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductFeedback;
 use App\Services\CustomerLogin;
 use App\Services\ProductPurchaseVerification;
+use App\Services\ShoppingCart;
 use App\Services\StoreCheckout;
 use App\Support\ProductSale;
 use Illuminate\Http\RedirectResponse;
@@ -84,7 +85,7 @@ class ProductController extends Controller
         ]);
     }
 
-    public function show(Request $request, Product $product, StoreCheckout $checkout, CustomerLogin $login, ProductPurchaseVerification $purchase): Response
+    public function show(Request $request, Product $product, StoreCheckout $checkout, CustomerLogin $login, ProductPurchaseVerification $purchase, ShoppingCart $cart): Response
     {
         abort_unless($product->is_published, 404);
 
@@ -151,6 +152,7 @@ class ProductController extends Controller
         }
         $sale = ProductSale::resolve($product, $inventory ? $inventory->available > 0 : null);
         $variantSales = $this->sales($variants, $checkout) + [$product->id => $sale];
+        $cartState = $cart->read($request);
 
         $response = response()->view('products.show', [
             'product' => $product,
@@ -160,6 +162,10 @@ class ProductController extends Controller
             'sale' => $sale,
             'inventory' => $inventory,
             'canAddToCart' => $sale === ProductSale::Online,
+            'cartQuantity' => (int) ($cartState['quantity'][$product->slug] ?? 0),
+            'cartProof' => $cartState['proof'],
+            'cartRevision' => $cartState['revision'],
+            'cartSeparate' => (bool) $cartState['separate'],
             'related' => $related,
             'relatedSales' => $this->sales($related, $checkout),
             'feedback' => $feedback,

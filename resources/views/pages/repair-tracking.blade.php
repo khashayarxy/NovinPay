@@ -2,13 +2,12 @@
 @section('title', 'پیگیری درخواست')
 @section('content')
 <div class="np-container public-section repair-track-page">
-    <div class="repair-track-shell">
-        <header class="store-page-intro">
-            <h1>پیگیری درخواست تعمیر</h1>
-            <p>کد پیگیری هشت‌رقمی و شماره موبایل ثبت‌شده را وارد کنید.</p>
-        </header>
+    <div class="repair-track-layout">
         <section class="public-panel" aria-labelledby="tracking-title">
-            <h2 id="tracking-title" class="sr-only">فرم بررسی وضعیت درخواست</h2>
+            <header class="store-page-intro">
+                <h1 id="tracking-title">پیگیری درخواست تعمیر</h1>
+                <p>کد پیگیری هشت‌رقمی و شماره موبایل ثبت‌شده را وارد کنید.</p>
+            </header>
             <x-form-errors />
             @if ($matched === false)
                 <div class="public-notice public-notice--error" role="status"><h2>درخواستی با این کد و شماره پیدا نشد.</h2><p>کد و شماره را بررسی کنید و دوباره تلاش کنید.</p></div>
@@ -31,10 +30,36 @@
                 </x-repair-field>
                 <div class="repair-entry-actions repair-track-actions">
                     <button type="submit" class="np-button np-button--primary">بررسی وضعیت <x-home.icon name="arrow-left" /></button>
-                    <a class="np-button np-button--outline" href="{{ route('repair') }}">ثبت درخواست تعمیر</a>
+                    <a class="public-inline-link" href="{{ route('repair') }}">ثبت درخواست تعمیر <x-home.icon name="arrow-left" /></a>
                 </div>
             </form>
         </section>
+
+        <aside class="repair-track-guide" aria-label="راهنمای وضعیت‌های تعمیر">
+            <h2>مراحل و راهنمای پیگیری تعمیر</h2>
+            <ol class="repair-track-guide__steps">
+                <li>
+                    <span class="repair-track-guide__num">۱</span>
+                    <div><strong>ثبت آنلاین و کد پیگیری:</strong> پس از ثبت فرم، کد ۸ رقمی به شما داده می‌شود و در تمام مراحل معتبر است.</div>
+                </li>
+                <li>
+                    <span class="repair-track-guide__num">۲</span>
+                    <div><strong>دریافت و عیب‌یابی فنی:</strong> پس از تحویل حضوری، ارسال پستی یا دریافت با پیک، دستگاه بررسی می‌شود.</div>
+                </li>
+                <li>
+                    <span class="repair-track-guide__num">۳</span>
+                    <div><strong>اعلام هزینه و تأیید شما:</strong> مبلغ دقیق و زمان تعمیر پیامک می‌شود و تنها با تأیید شما کار شروع می‌گردد.</div>
+                </li>
+                <li>
+                    <span class="repair-track-guide__num">۴</span>
+                    <div><strong>تعمیر، تست و تحویل نهایی:</strong> پس از اتمام تست، دستگاه آماده تحویل یا ارسال مجدد می‌شود.</div>
+                </li>
+            </ol>
+            <div class="repair-track-guide__links">
+                <a class="public-inline-link" href="{{ route('repair.track.recovery') }}">بازیابی کد پیگیری فراموش‌شده</a>
+                <a class="public-inline-link" href="{{ route('repair') }}">ثبت درخواست تعمیر جدید</a>
+            </div>
+        </aside>
     </div>
 </div>
 @endsection

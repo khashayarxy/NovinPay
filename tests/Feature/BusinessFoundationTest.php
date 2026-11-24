@@ -28,7 +28,7 @@ class BusinessFoundationTest extends TestCase
         $response->assertSee('aria-label="ناوبری اصلی"', false);
         $response->assertSee('href="#main-content"', false);
 
-        if (in_array($uri, ['/', '/repair', '/contact', '/repair/track'], true)) {
+        if (in_array($uri, ['/', '/repair', '/contact'], true)) {
             $response->assertSee(config('business.address'));
             $response->assertSee(config('business.hours.open'))->assertSee(config('business.hours.closed'));
             foreach (['https://balad.ir/p/PtbHeIpomT37HO', 'https://nshn.ir/c4_bvYA0OxCadU', 'https://maps.app.goo.gl/RSY3QKrJAMNiqPEB8'] as $url) {

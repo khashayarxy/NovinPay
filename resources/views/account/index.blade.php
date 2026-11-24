@@ -2,12 +2,21 @@
 @section('title', 'حساب کاربری')
 @section('content')
 @php
-    $nav = ['overview' => 'نمای کلی', 'repairs' => 'تعمیرات', 'orders' => 'سفارش‌ها', 'profile' => 'اطلاعات شخصی', 'addresses' => 'آدرس‌ها', 'security' => 'امنیت حساب'];
+    $nav = [
+        'overview' => 'نمای کلی',
+        'orders' => 'سفارش‌ها',
+        'repairs' => 'تعمیرات',
+        'reviews' => 'دیدگاه‌ها',
+        'addresses' => 'آدرس‌ها',
+        'profile' => 'اطلاعات شخصی',
+        'security' => 'امنیت حساب',
+    ];
+    $feedbackStatuses = ['approved' => 'منتشرشده', 'pending' => 'در انتظار بررسی', 'rejected' => 'تأییدنشده'];
 @endphp
 <div class="np-account np-container">
     <header class="np-account-banner">
         <div>
-            <p>حساب کاربری نوین‌پی</p>
+            <p class="np-account-banner__eyebrow">حساب کاربری نوین‌پی</p>
             <h1>{{ $section === 'overview' ? ($account->name ? 'سلام، '.$account->name : 'به حساب خود خوش آمدید') : $nav[$section] }}</h1>
         </div>
         <form method="post" action="{{ route('account.logout') }}">@csrf<button class="np-account-logout">خروج از حساب</button></form>
@@ -24,19 +33,56 @@
             @if(session('success'))<p class="np-account-notice" role="status">{{ session('success') }}</p>@endif
             @if($section === 'overview')
                 <div class="np-account-stats">
-                    @foreach(['requests' => 'درخواست تعمیر', 'active' => 'تعمیر فعال', 'orders' => 'سفارش'] as $key => $label)
+                    @foreach(['orders' => 'سفارش', 'active' => 'تعمیر فعال', 'requests' => 'درخواست تعمیر'] as $key => $label)
                         <a href="{{ route('account.index', ['section' => $key === 'orders' ? 'orders' : 'repairs']) }}">
                             <strong>{{ \App\Support\FaNumber::digits($counts[$key]) }}</strong><span>{{ $label }}</span>
                         </a>
                     @endforeach
                 </div>
                 <section class="np-account-card">
-                    <h2>دسترسی سریع</h2>
+                    <div class="np-account-card__heading">
+                        <h2>دسترسی سریع</h2>
+                    </div>
                     <div class="np-account-shortcuts">
+                        <a href="{{ route('repair') }}">ثبت درخواست تعمیر</a>
                         <a href="{{ route('repair.track') }}">پیگیری تعمیر</a>
                         <a href="{{ route('products.index') }}">مشاهده فروشگاه</a>
                         <a href="{{ route('account.index', ['section' => 'profile']) }}">{{ $complete ? 'ویرایش پروفایل' : 'تکمیل اطلاعات پروفایل' }}</a>
                     </div>
+                </section>
+            @endif
+
+            @if(in_array($section, ['overview', 'orders'], true))
+                <section class="np-account-card">
+                    <div class="np-account-card__heading">
+                        <h2>{{ $section === 'overview' ? 'سفارش‌های اخیر' : 'سابقه سفارش‌ها' }}</h2>
+                        <a class="np-account-link" href="{{ route('products.index') }}">مشاهده فروشگاه</a>
+                    </div>
+                    @forelse($orders as $order)
+                        <a class="np-account-row np-account-row--order" href="{{ route('account.orders.show', $order->public_id) }}">
+                            <span class="np-account-row__main">
+                                <span class="np-account-row__title">
+                                    کد سفارش <bdi class="np-latin-code" dir="ltr">{{ strtoupper(substr($order->public_id, 0, 8)) }}</bdi>
+                                </span>
+                                <span class="np-account-row__meta">
+                                    <span class="np-account-pill">{{ \App\Support\CustomerTimeline::orderStatus($order) }}</span>
+                                    <span class="np-account-dot" aria-hidden="true">·</span>
+                                    <span><x-finance-time :value="$order->created_at" /></span>
+                                    @if($order->lines->isNotEmpty())
+                                        <span class="np-account-dot" aria-hidden="true">·</span>
+                                        <span>{{ \App\Support\FaNumber::digits($order->lines->sum('quantity')) }} کالا</span>
+                                    @endif
+                                </span>
+                            </span>
+                            <span class="np-account-price">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\OrderMoney::minor($order->total))) }} <small>تومان</small></span>
+                        </a>
+                    @empty
+                        <div class="np-account-empty">
+                            <p>هنوز سفارش پرداخت‌شده‌ای ثبت نکرده‌اید. می‌توانید محصولات را در فروشگاه ببینید.</p>
+                            <a class="np-account-link" href="{{ route('products.index') }}">رفتن به فروشگاه ←</a>
+                        </div>
+                    @endforelse
+                    @if($section === 'orders'){{ $orders->links() }}@endif
                 </section>
             @endif
 
@@ -48,36 +94,72 @@
                     </div>
                     @foreach($repairs as $repair)
                         <a class="np-account-row" href="{{ route('account.repairs.show', $repair->public_id) }}">
-                            <span><strong>{{ $repair->device_model }}</strong><small>کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></small></span>
-                            <span class="np-account-tag">{{ \App\Support\CustomerTimeline::repairStatus($repair) }}</span>
+                            <span class="np-account-row__main">
+                                <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', (string) $repair->device_model))<bdi class="np-latin-code" dir="ltr">{{ $repair->device_model }}</bdi>@else{{ $repair->device_model }}@endif</span>
+                                <span class="np-account-row__meta">کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
+                            </span>
+                            <span class="np-account-pill">{{ \App\Support\CustomerTimeline::repairStatus($repair) }}</span>
                         </a>
                     @endforeach
                     @foreach($requests as $repair)
                         <a class="np-account-row" href="{{ route('account.repairs.request', $repair->tracking_reference) }}">
-                            <span><strong>{{ $repair->device_model }}</strong><small>کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></small></span>
-                            <span class="np-account-tag">درخواست ثبت شد</span>
+                            <span class="np-account-row__main">
+                                <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', (string) $repair->device_model))<bdi class="np-latin-code" dir="ltr">{{ $repair->device_model }}</bdi>@else{{ $repair->device_model }}@endif</span>
+                                <span class="np-account-row__meta">کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
+                            </span>
+                            <span class="np-account-pill">درخواست ثبت شد</span>
                         </a>
                     @endforeach
-                    @if($repairs->isEmpty() && $requests->isEmpty())<p>هنوز درخواست تعمیری در این حساب ثبت نشده است.</p>@endif
+                    @if($repairs->isEmpty() && $requests->isEmpty())
+                        <div class="np-account-empty">
+                            <p>هنوز درخواست تعمیری در این حساب ثبت نشده است.</p>
+                            <a class="np-account-link" href="{{ route('repair') }}">ثبت اولین درخواست تعمیر ←</a>
+                        </div>
+                    @endif
                     @if($section === 'repairs'){{ $repairs->links() }}{{ $requests->links() }}@endif
                 </section>
             @endif
 
-            @if(in_array($section, ['overview', 'orders'], true))
+            @if($section === 'reviews')
                 <section class="np-account-card">
                     <div class="np-account-card__heading">
-                        <h2>{{ $section === 'overview' ? 'سفارش‌های اخیر' : 'سابقه سفارش‌ها' }}</h2>
+                        <h2>دیدگاه‌ها و امتیازهای شما</h2>
                         <a class="np-account-link" href="{{ route('products.index') }}">فروشگاه</a>
                     </div>
-                    @forelse($orders as $order)
-                        <a class="np-account-row" href="{{ route('account.orders.show', $order->public_id) }}">
-                            <span><strong>کد سفارش <bdi dir="ltr">{{ strtoupper(substr($order->public_id, 0, 8)) }}</bdi> · {{ \App\Support\CustomerTimeline::orderStatus($order) }}</strong><small><x-finance-time :value="$order->created_at" /></small></span>
-                            <span class="np-account-tag">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\OrderMoney::minor($order->total))) }} تومان</span>
-                        </a>
+                    @forelse($reviews as $feedback)
+                        <article class="np-account-review">
+                            <div class="np-account-review__head">
+                                <div>
+                                    @if($feedback->product)
+                                        <a class="np-account-review__product" href="{{ route('products.show', $feedback->product->slug) }}">{{ $feedback->product->name }}</a>
+                                    @else
+                                        <span class="np-account-review__product">کالا</span>
+                                    @endif
+                                    <span class="np-account-row__meta">
+                                        <span>{{ $feedback->kind === 'question' ? 'پرسش' : 'دیدگاه' }}</span>
+                                        <span class="np-account-dot" aria-hidden="true">·</span>
+                                        <span><x-finance-time :value="$feedback->created_at" /></span>
+                                    </span>
+                                </div>
+                                <div class="np-account-review__badges">
+                                    @if($feedback->rating)
+                                        <span class="np-account-rating" aria-label="امتیاز {{ \App\Support\FaNumber::digits($feedback->rating) }} از ۵">★ {{ \App\Support\FaNumber::digits($feedback->rating) }}</span>
+                                    @endif
+                                    <span class="np-account-pill">{{ $feedbackStatuses[$feedback->status] ?? $feedback->status }}</span>
+                                </div>
+                            </div>
+                            <p class="np-account-review__body">{{ $feedback->body }}</p>
+                            @if($feedback->staff_reply)
+                                <p class="np-account-review__reply"><strong>پاسخ نوین‌پی:</strong> {{ $feedback->staff_reply }}</p>
+                            @endif
+                        </article>
                     @empty
-                        <p>هنوز سفارش پرداخت‌شده‌ای ثبت نکرده‌اید. می‌توانید محصولات را در فروشگاه ببینید.</p>
+                        <div class="np-account-empty">
+                            <p>هنوز دیدگاه یا پرسشی روی محصولات ثبت نکرده‌اید.</p>
+                            <a class="np-account-link" href="{{ route('products.index') }}">مشاهده محصولات ←</a>
+                        </div>
                     @endforelse
-                    @if($section === 'orders'){{ $orders->links() }}@endif
+                    @if($reviews instanceof \Illuminate\Contracts\Pagination\Paginator){{ $reviews->links() }}@endif
                 </section>
             @endif
 
@@ -107,17 +189,19 @@
                     <script type="application/json" id="iran-locations-data">@json(config('iran_locations', []))</script>
                     @forelse($addresses as $address)
                         <details class="np-account-address" @if($errors->any() && old('address_form_key') === $address->public_id) open @endif>
-                            <summary><strong>{{ $address->recipient }}</strong> · {{ $address->province }}، {{ $address->city }}</summary>
+                            <summary><span class="np-account-row__title">{{ $address->recipient }}</span> <span class="np-account-row__meta">· {{ $address->province }}، {{ $address->city }}</span></summary>
                             <x-account.address-form :address="$address" />
                             <form class="mt-4" method="post" action="{{ route('account.address.remove', $address->public_id) }}" data-confirm="این آدرس از فهرست شما حذف شود؟ نشانی ارسال‌های قبلی باقی می‌ماند.">
                                 @csrf<button class="np-account-link" type="submit">حذف آدرس</button>
                             </form>
                         </details>
                     @empty
-                        <p>هنوز آدرسی ذخیره نکرده‌اید.</p>
+                        <div class="np-account-empty">
+                            <p>هنوز آدرسی ذخیره نکرده‌اید.</p>
+                        </div>
                     @endforelse
                     <details class="np-account-address" @if($addresses->isEmpty() || ($errors->any() && old('address_form_key', 'new') === 'new')) open @endif>
-                        <summary>افزودن آدرس</summary>
+                        <summary>افزودن آدرس جدید</summary>
                         <x-account.address-form />
                     </details>
                 </section>

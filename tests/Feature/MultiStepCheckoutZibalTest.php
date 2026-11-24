@@ -141,7 +141,8 @@ class MultiStepCheckoutZibalTest extends TestCase
 
         $appJs = (string) file_get_contents(resource_path('js/app.js'));
         $this->assertStringNotContainsString('tile.openstreetmap.org', $appJs);
-        $this->assertStringContainsString('basemaps.cartocdn.com/rastertiles/voyager', $appJs);
+        $this->assertStringNotContainsString('server.arcgisonline.com', $appJs);
+        $this->assertStringNotContainsString('basemaps.cartocdn.com', $appJs);
         $this->assertStringContainsString('static.neshan.org/sdk/leaflet', $appJs);
 
         foreach (['pay/assets/vpn-warning.css', 'css/payment-flow.css'] as $paymentCssPath) {

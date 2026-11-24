@@ -13,12 +13,15 @@ use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Services\CustomerLogin;
 use App\Services\CustomerNotifications;
+use App\Services\LegacyCartHold;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
 use App\Support\RepairIdentity;
+use App\Support\RepairPhotoProcessor;
 use App\Support\RepairTracking;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,10 +40,166 @@ class RepairRequestController extends Controller
             $request->session()->put('repair_submission_token', bin2hex(random_bytes(32)));
         }
 
+        $authExpiresAt = (int) $request->session()->get('repair_auth_expires_at', 0);
+        if ($authExpiresAt > 0 && now()->timestamp > $authExpiresAt && $request->session()->has('repair_auth_challenge')) {
+            $request->session()->forget(['repair_auth_challenge', 'repair_auth_expires_at']);
+        }
+
         return view('pages.repair', [
             'brands' => RepairBrand::cases(),
             'submissionToken' => $request->session()->get('repair_submission_token'),
+            'iranLocations' => config('iran_locations', []),
+            'courierZones' => config('delivery.courier_zones', []),
+            'neshanWebKey' => (string) config('services.neshan.web_key', ''),
+            'authChallenge' => $request->session()->has('repair_auth_challenge'),
+            'authDisplayPhone' => $request->session()->get('repair_auth_phone_display'),
+            'authResendAt' => (int) $request->session()->get('repair_auth_resend_at', 0),
         ]);
+    }
+
+    public function sendAuth(Request $request, CustomerLogin $login): RedirectResponse|JsonResponse
+    {
+        $rawPhone = $request->input('contact_phone');
+        if ((! is_string($rawPhone) || trim($rawPhone) === '') && is_string($enc = $request->session()->get('repair_auth_phone_enc'))) {
+            try {
+                $rawPhone = Crypt::decryptString($enc);
+            } catch (\Throwable) {
+                $rawPhone = '';
+            }
+        }
+
+        $phone = RepairIdentity::phone($rawPhone);
+        if (! preg_match('/\A09[0-9]{9}\z/D', $phone)) {
+            $message = 'شماره موبایل ۱۱ رقمی معتبر با ۰۹ وارد کنید.';
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $message, 'errors' => ['contact_phone' => [$message]]], 422);
+            }
+
+            return redirect()->route('repair')->withErrors(['contact_phone' => $message]);
+        }
+
+        try {
+            $login->issue($phone, fn ($challenge) => $request->session()->put('repair_auth_challenge', $challenge));
+            $resendAt = now()->addSeconds(CustomerLogin::RESEND_SECONDS)->timestamp;
+            $displayPhone = FaNumber::digits($phone);
+            $request->session()->put([
+                'repair_auth_phone_enc' => Crypt::encryptString($phone),
+                'repair_auth_phone_display' => $displayPhone,
+                'repair_auth_resend_at' => $resendAt,
+                'repair_auth_expires_at' => now()->addMinutes(2)->timestamp,
+            ]);
+        } catch (HttpException $error) {
+            $retryAfter = (int) ($error->getHeaders()['Retry-After'] ?? CustomerLogin::RESEND_SECONDS);
+            if ($error->getStatusCode() === 429) {
+                $request->session()->put('repair_auth_resend_at', now()->addSeconds(max(1, $retryAfter))->timestamp);
+            }
+            $message = $error->getStatusCode() === 429
+                ? 'کمی صبر کنید و دوباره کد تأیید بخواهید.'
+                : 'ارسال کد تأیید در حال حاضر ممکن نیست. کمی بعد دوباره تلاش کنید.';
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => $message,
+                    'resend_at' => (int) $request->session()->get('repair_auth_resend_at', 0),
+                ], $error->getStatusCode());
+            }
+
+            return redirect()->route('repair')->withErrors(['contact_phone' => $message]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'phone' => $displayPhone,
+                'resend_at' => $resendAt,
+                'remaining' => max(0, $resendAt - now()->timestamp),
+            ]);
+        }
+
+        return redirect()->route('repair');
+    }
+
+    public function verifyAuth(Request $request, CustomerLogin $login): RedirectResponse|JsonResponse
+    {
+        $input = $request->input('code');
+        $normalized = is_string($input) ? FaNumber::normalizeDigits($input) : '';
+        $code = preg_replace('/\D+/', '', $normalized) ?? '';
+        $challenge = $request->session()->get('repair_auth_challenge');
+        if (! is_string($challenge) || ! preg_match('/\A[0-9]{6}\z/D', $code)) {
+            $message = 'کد تأیید شش‌رقمی را وارد کنید.';
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $message, 'errors' => ['code' => [$message]]], 422);
+            }
+
+            return redirect()->route('repair')->withErrors(['code' => $message]);
+        }
+
+        try {
+            $account = $login->verify($challenge, $code);
+        } catch (ValidationException $error) {
+            if ($request->expectsJson()) {
+                $first = collect($error->errors())->flatten()->first() ?: 'کد تأیید نادرست یا منقضی است.';
+
+                return response()->json(['ok' => false, 'message' => $first, 'errors' => $error->errors()], 422);
+            }
+
+            return redirect()->route('repair')->withErrors($error->errors());
+        }
+
+        if (! $account->is_active) {
+            $message = 'حساب کاربری غیرفعال است.';
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $message], 403);
+            }
+
+            return redirect()->route('repair')->withErrors(['code' => $message]);
+        }
+
+        app(LegacyCartHold::class)->rememberOriginalSession($request);
+        Auth::guard('customer')->login($account);
+        $request->session()->regenerate(true);
+        $request->session()->forget([
+            'repair_auth_challenge',
+            'repair_auth_phone_enc',
+            'repair_auth_phone_display',
+            'repair_auth_resend_at',
+            'repair_auth_expires_at',
+        ]);
+        $request->session()->put('customer_session_version', $account->session_version);
+        $request->session()->put('customer_otp_at', now()->timestamp);
+        if (! $request->session()->has('repair_submission_token')) {
+            $request->session()->put('repair_submission_token', bin2hex(random_bytes(32)));
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'redirect' => route('repair'),
+                'csrf_token' => csrf_token(),
+                'submission_token' => $request->session()->get('repair_submission_token'),
+                'phone' => FaNumber::digits($account->phone),
+                'customer_name' => $account->name,
+            ]);
+        }
+
+        return redirect()->route('repair');
+    }
+
+    public function resetAuth(Request $request): RedirectResponse|JsonResponse
+    {
+        $request->session()->forget([
+            'repair_auth_challenge',
+            'repair_auth_phone_enc',
+            'repair_auth_phone_display',
+            'repair_auth_resend_at',
+            'repair_auth_expires_at',
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return redirect()->route('repair');
     }
 
     public function start(): RedirectResponse
@@ -70,12 +229,33 @@ class RepairRequestController extends Controller
         if (! empty($data['accessories'])) {
             $repair->issue .= "\nلوازم همراه: ".implode('، ', array_map(fn ($accessory) => RepairRequest::ACCESSORIES[$accessory], $data['accessories']));
         }
+        $locationParts = array_filter([
+            trim((string) ($data['province'] ?? '')),
+            trim((string) ($data['city'] ?? '')),
+        ]);
+        if ($locationParts !== []) {
+            $repair->issue .= "\nاستان و شهر: ".implode(' - ', $locationParts);
+        }
+        if (! empty($data['handover_method'])) {
+            $repair->issue .= "\nنحوه تحویل دستگاه: ".RepairRequest::HANDOVER_METHODS[$data['handover_method']];
+        }
+        if (($data['handover_method'] ?? null) === 'doorstep_pickup') {
+            if (! empty($data['pickup_address'])) {
+                $repair->issue .= "\nنشانی تحویل در محل: ".trim($data['pickup_address']);
+            }
+            if (isset($data['pickup_latitude'], $data['pickup_longitude']) && $data['pickup_latitude'] !== '' && $data['pickup_longitude'] !== '') {
+                $repair->issue .= "\nموقعیت نقشه: ".number_format((float) $data['pickup_latitude'], 6, '.', '').', '.number_format((float) $data['pickup_longitude'], 6, '.', '');
+            }
+            if (! empty($data['responsive_phone'])) {
+                $repair->issue .= "\nشماره تماس پاسخگو: ".$data['responsive_phone'];
+            }
+        }
         $repair->status = RepairRequestStatus::OnlineSubmitted;
         $account = Auth::guard('customer')->user();
-        $photoPath = null;
+        $storedPaths = [];
         try {
             // The unique submission digest also prevents concurrent double submits.
-            DB::transaction(function () use ($repair, $account, $request, &$photoPath): void {
+            DB::transaction(function () use ($repair, $account, $request, &$storedPaths): void {
                 // A reset and a new request serialize on the same owner row.
                 $owner = CustomerAccount::query()->lockForUpdate()->find($account->id);
                 abort_unless($owner?->is_active && $owner->session_version === $request->session()->get('customer_session_version')
@@ -86,15 +266,25 @@ class RepairRequestController extends Controller
                 $repair->save();
                 if ($request->hasFile('device_photo')) {
                     $photoPath = $repair->photoPath();
-                    abort_unless($request->file('device_photo')->storeAs(dirname($photoPath), basename($photoPath), 'local'), 503);
+                    $compressed = RepairPhotoProcessor::compress($request->file('device_photo'));
+                    abort_unless($compressed['bytes'] !== '' && Storage::disk('local')->put($photoPath, $compressed['bytes']), 503);
+                    $storedPaths[] = $photoPath;
+                }
+                foreach (array_keys(RepairRequest::PHOTO_SIDES) as $side) {
+                    if ($request->hasFile("device_photos.{$side}")) {
+                        $compressed = RepairPhotoProcessor::compress($request->file("device_photos.{$side}"));
+                        $sidePath = $repair->sidePhotoPath($side, $compressed['extension']);
+                        abort_unless($compressed['bytes'] !== '' && Storage::disk('local')->put($sidePath, $compressed['bytes']), 503);
+                        $storedPaths[] = $sidePath;
+                    }
                 }
                 if ($owner->verified_at) {
                     app(CustomerNotifications::class)->record($owner->id, 'repair_registered', $repair->tracking_reference);
                 }
             });
         } catch (\Throwable $error) {
-            if ($photoPath !== null) {
-                Storage::disk('local')->delete($photoPath);
+            foreach ($storedPaths as $writtenPath) {
+                Storage::disk('local')->delete($writtenPath);
             }
             if ($error instanceof UniqueConstraintViolationException) {
                 return $this->duplicateResponse($request);
@@ -107,7 +297,8 @@ class RepairRequestController extends Controller
         app(UnifiedNotifier::class)->repairRequestSubmitted($repair);
 
         return redirect()->route('repair.confirmation')
-            ->with('repair_reference', $repair->tracking_reference);
+            ->with('repair_reference', $repair->tracking_reference)
+            ->with('repair_handover', $data['handover_method'] ?? null);
     }
 
     public function confirmation(Request $request): View|RedirectResponse

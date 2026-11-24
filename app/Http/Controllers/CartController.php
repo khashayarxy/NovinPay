@@ -558,6 +558,8 @@ class CartController extends Controller
                 'count' => $count,
                 'proof' => $viewData['proof'],
                 'revision' => $viewData['revision'],
+                'quantities' => $viewData['quantity'],
+                'separate' => (bool) $viewData['separate'],
                 'html' => view('components.storefront.cart-content', [...$viewData, 'drawer' => true])->render(),
             ]);
         }

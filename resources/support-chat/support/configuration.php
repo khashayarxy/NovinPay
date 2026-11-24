@@ -55,5 +55,58 @@ function support_widget_config(): array {
         'welcome'=>mb_substr(getenv('SUPPORT_WELCOME_MESSAGE')?:'سلام! چطور می‌توانیم کمکتان کنیم؟',0,250),
         'availability'=>mb_substr(getenv('SUPPORT_AVAILABILITY_TEXT')?:'پاسخ در همین گفتگو',0,120),
         'attachments'=>getenv('SUPPORT_ATTACHMENTS_ENABLED')==='1','typing'=>getenv('SUPPORT_TYPING_ENABLED')==='1','max_images'=>support_option_int('SUPPORT_ATTACHMENT_MAX_IMAGES',3,1,3)];
-    require_once __DIR__.'/knowledge.php';require_once __DIR__.'/branding.php';$extra=support_content_presentation();$logo=$extra['managed_logo']??null;unset($extra['managed_logo']);$config=array_replace($config,$extra);if($logo!==null)$config['logo']=$logo;$config['agents']=support_public_agents();return $config;
+    require_once __DIR__.'/knowledge.php';require_once __DIR__.'/branding.php';$extra=support_content_presentation();$logo=$extra['managed_logo']??null;unset($extra['managed_logo']);$config=array_replace($config,$extra);if($logo!==null)$config['logo']=$logo;$config['agents']=support_public_agents();
+    $bizChannels = function_exists('config') ? (array) config('business.channels', []) : [];
+    $bizPhone = (string) ($bizChannels['phone'] ?? (function_exists('config') ? config('business.phone', '09362896373') : '09362896373'));
+    $config['contact_channels'] = [
+        'phone' => $bizPhone,
+        'phone_display' => strtr($bizPhone, ['0'=>'۰','1'=>'۱','2'=>'۲','3'=>'۳','4'=>'۴','5'=>'۵','6'=>'۶','7'=>'۷','8'=>'۸','9'=>'۹']),
+        'phone_uri' => (string) ($bizChannels['phone_uri'] ?? 'tel:'.$bizPhone),
+        'sms_uri' => (string) ($bizChannels['sms_uri'] ?? 'sms:'.$bizPhone),
+    ];
+    $config['faq_items'] = [
+        [
+            'q' => 'چگونه دستگاه کارتخوان مناسب انتخاب و خریداری کنم؟',
+            'a' => 'در صفحه فروشگاه می‌توانید مدل‌های سیار و ثابت را مقایسه کنید و مشخصات فنی، باتری، آنتن‌دهی و گارانتی هر مدل را ببینید.',
+            'link' => '/products',
+            'link_label' => 'مشاهده فروشگاه',
+        ],
+        [
+            'q' => 'چطور وضعیت سفارش خرید خود را پیگیری کنم؟',
+            'a' => 'با ورود به حساب کاربری و بخش «سفارش‌ها» می‌توانید وضعیت پرداخت، آماده‌سازی و کد رهگیری مرسوله را مشاهده کنید.',
+            'link' => '/account?section=orders',
+            'link_label' => 'مشاهده سفارش‌ها',
+        ],
+        [
+            'q' => 'مراحل ثبت درخواست تعمیر کارتخوان چگونه است؟',
+            'a' => '۱) ثبت آنلاین و دریافت کد پیگیری، ۲) تحویل حضوری، ارسال پستی یا پیک در محل، ۳) عیب‌یابی فنی و اعلام هزینه دقیق با پیامک، ۴) پرداخت و تحویل نهایی دستگاه.',
+            'link' => '/repair',
+            'link_label' => 'ثبت درخواست تعمیر',
+        ],
+        [
+            'q' => 'حدود هزینه ارتقای کارتخوان 2G به 4G و سایر تعمیرات چقدر است؟',
+            'a' => 'ارتقای ماژول 2G به 4G حدود ۴٬۰۰۰٬۰۰۰ تومان برآورد می‌شود. هزینه دقیق و امکان‌پذیری فنی پس از بررسی کارشناس و پیش از شروع تعمیر اعلام می‌گردد.',
+            'link' => '/repair',
+            'link_label' => 'جزئیات و ثبت تعمیر',
+        ],
+        [
+            'q' => 'آیا امکان تحویل دستگاه در محل (پیک نوین‌پی) وجود دارد؟',
+            'a' => 'بله، در شهرهای تحت پوشش (شهریار، اندیشه، ملارد، قدس، کرج، فردیس و حومه) گزینهٔ تحویل در محل با انتخاب موقعیت روی نقشه فعال است. برای سایر شهرها ارسال با پست/تیپاکس یا تحویل حضوری در دسترس است.',
+            'link' => '/repair',
+            'link_label' => 'انتخاب شهر و ثبت تعمیر',
+        ],
+        [
+            'q' => 'کد پیگیری تعمیرات را فراموش کرده‌ام؛ چطور پیدا کنم؟',
+            'a' => 'از بخش بازیابی کد پیگیری با شماره موبایل خود وارد شوید تا تمام کدهای پیگیری ثبت‌شده با آن شماره نمایش داده شود.',
+            'link' => '/repair/track/recovery',
+            'link_label' => 'بازیابی کد پیگیری',
+        ],
+        [
+            'q' => 'نکات مهم هنگام ارسال پستی دستگاه برای تعمیر چیست؟',
+            'a' => 'سیم‌کارت شخصی و رول اضافه را خارج کنید، کد پیگیری را داخل بسته بنویسید، با ضربه‌گیر بسته‌بندی کنید و حتماً گزینه «بیمهٔ مرسوله» را فعال نمایید.',
+            'link' => '/repair',
+            'link_label' => 'راهنمای ارسال تعمیر',
+        ],
+    ];
+    return $config;
 }

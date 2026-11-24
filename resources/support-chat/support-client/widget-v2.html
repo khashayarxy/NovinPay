@@ -13,6 +13,10 @@
             </button>
         </div>
     </header>
+    <nav class="v2-tabs" role="tablist" aria-label="بخش‌های پشتیبانی">
+        <button type="button" class="v2-tab is-active" role="tab" id="supportTabChat" aria-selected="true" aria-controls="supportChatPane" data-support-tab="chat">گفت‌وگو</button>
+        <button type="button" class="v2-tab" role="tab" id="supportTabFaq" aria-selected="false" aria-controls="supportFaqPane" data-support-tab="faq">سوالات متداول و تماس</button>
+    </nav>
     <div class="chat-initial" id="initialForm" hidden>
         <input id="userName" type="text" aria-label="نام شما" placeholder="نام (اختیاری)" maxlength="200" autocomplete="name">
         <input id="userEmail" type="email" aria-label="ایمیل (اختیاری)" placeholder="ایمیل (اختیاری)" aria-describedby="supportEmailHint" autocomplete="email" maxlength="254">
@@ -21,7 +25,7 @@
         <button class="btn-start-chat" type="button" onclick="startChat()">ذخیره اطلاعات</button>
     </div>
     <div class="error-msg" id="errorMsg" role="alert" aria-live="assertive" tabindex="-1" style="display:none"></div>
-    <section class="support-conversation" data-support-transcript>
+    <section class="support-conversation" id="supportChatPane" role="tabpanel" aria-labelledby="supportTabChat" data-support-transcript>
         <section id="supportInit" class="support-init-status" role="status" aria-live="polite">
             <span class="support-init-dots" aria-hidden="true"><i></i><i></i><i></i></span>
             <span data-init-text>در حال آماده‌سازی گفتگو...</span>
@@ -29,6 +33,18 @@
             <small data-init-reference></small>
         </section>
         <div class="chat-messages" id="messages"></div>
+    </section>
+    <section class="v2-faq-pane" id="supportFaqPane" role="tabpanel" aria-labelledby="supportTabFaq" hidden>
+        <div class="v2-faq-search-wrap">
+            <input type="search" class="v2-faq-search" id="supportFaqSearch" aria-label="جستجو در سوالات متداول" placeholder="جستجو در سوالات متداول (کارتخوان، تعمیر، سفارش)…">
+        </div>
+        <div class="v2-faq-list" id="supportFaqList"></div>
+        <p class="v2-faq-empty" id="supportFaqEmpty" hidden>موردی با این عبارت پیدا نشد. می‌توانید پیام خود را در بخش گفت‌وگو ارسال کنید.</p>
+        <button type="button" class="v2-faq-to-chat" id="supportFaqToChat">سوال شما در فهرست نبود؟ ارسال پیام در گفت‌وگو</button>
+        <div class="v2-channels" id="supportChannels" aria-label="تماس با پشتیبانی">
+            <h5 class="v2-channels__title">تماس و پیامک با نوین‌پی</h5>
+            <div class="v2-channels__phone-row" id="supportPhoneRow"></div>
+        </div>
     </section>
     <div class="chat-input-area" id="inputArea">
         <div class="chat-input-row">

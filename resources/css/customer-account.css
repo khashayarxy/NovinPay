@@ -275,8 +275,18 @@
 }
 @media (prefers-reduced-motion: reduce) { .np-otp__slots span { transition: none; } }
 
-.np-account-form { display: grid; gap: .4rem; max-width: 34rem; margin-block: 1rem; }
-.np-account-form label { font-weight: 500; margin-top: .35rem; }
+.np-account-form { display: grid; gap: .6rem; max-width: 38rem; margin-block: 1rem; }
+.np-account-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+.np-account-form__field { display: grid; gap: .35rem; align-content: start; min-width: 0; }
+.np-account-form label { font-weight: 500; margin-top: .25rem; }
+.np-account-form__field label { margin-top: 0; }
+.np-latin-code,
+.np-order-code bdi {
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+}
 .np-account-form input, .np-account-form textarea, .np-account-form select {
     width: 100%;
     min-height: 48px;
@@ -376,66 +386,99 @@
 .np-account-notice { padding: .7rem .9rem; border: 1px solid #c6dbf3; border-radius: .7rem; background: var(--account-wash); }
 .np-account-enter { animation: np-account-in 190ms ease-out both; }
 
-.np-account { padding-block: 1.5rem 4rem; }
+.np-account { padding-block: 1.25rem 3.5rem; }
+.np-account h1 { font-size: clamp(1.25rem, 3vw, 1.65rem); font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 .np-account-banner {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: .8rem;
     flex-wrap: wrap;
-    border-radius: 1.2rem;
-    padding: clamp(1rem, 4vw, 2.4rem);
+    border-radius: 1rem;
+    padding: clamp(1rem, 2.8vw, 1.55rem) clamp(1.1rem, 3vw, 1.85rem);
     color: white;
-    background: linear-gradient(125deg, #103364, #1559a7);
+    background: linear-gradient(130deg, #103364, #1757a3);
 }
-.np-account-banner h1 { color: white; }
-.np-account-banner p { color: #e2efff; }
-.np-account-logout { padding: .35rem .85rem; border: 1px solid #b9d5f6; }
+.np-account-banner__eyebrow { font-size: .82rem; font-weight: 400; color: #dbeafe; margin: 0 0 .2rem; }
+.np-account-banner h1 { color: white; margin: 0; }
+.np-account-banner p { color: #e2efff; font-weight: 400; }
+.np-account-banner__total { text-align: end; }
+.np-account-banner__total span { display: block; font-size: .78rem; color: #dbeafe; font-weight: 400; }
+.np-account-banner__total strong { font-size: 1.15rem; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.np-account-back { font-size: .86rem; font-weight: 500; min-height: 36px; }
+.np-account-logout { padding: .35rem .85rem; border: 1px solid #b9d5f6; font-weight: 500; font-size: .86rem; }
 .np-account-logout:hover { background: #ffffff22; }
 .np-account-logout:focus-visible { outline-color: white; }
-.np-account-layout { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 1rem; margin-top: 1rem; align-items: start; }
+.np-account-layout { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr); gap: 1rem; margin-top: 1rem; align-items: start; }
 .np-account-nav, .np-account-card, .np-account-stats a {
-    border: 1px solid var(--account-line);
+    border: 1px solid #e6edf5;
     background: white;
-    border-radius: 1rem;
+    border-radius: .95rem;
 }
-.np-account-nav { display: grid; gap: .15rem; padding: .55rem; }
-.np-account-nav a { display: flex; align-items: center; min-height: 44px; border-radius: .65rem; padding: .45rem .75rem; }
+.np-account-nav { display: grid; gap: .15rem; padding: .45rem; }
+.np-account-nav a { display: flex; align-items: center; min-height: 42px; border-radius: .6rem; padding: .4rem .75rem; font-size: .9rem; font-weight: 400; color: #334e68; }
 .np-account-nav a:hover, .np-account-nav [aria-current=page] { color: var(--account-blue); background: var(--account-wash); }
-.np-account-nav [aria-current=page] { font-weight: 700; }
-.np-account-content, .np-account-detail { display: grid; gap: 1rem; }
+.np-account-nav [aria-current=page] { font-weight: 600; }
+.np-account-content, .np-account-detail { display: grid; gap: .9rem; }
 .np-account-content { min-width: 0; }
-.np-account-detail { max-width: 58rem; }
+.np-account-detail { max-width: 54rem; }
 .np-account-detail > a { justify-self: start; }
-.np-account-card { padding: clamp(1rem, 3vw, 1.65rem); }
-.np-account-card h2 { font-size: 1.23rem; font-weight: 700; }
-.np-account-card__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem 1rem; }
+.np-account-card { padding: clamp(1rem, 2.5vw, 1.45rem); }
+.np-account-card h2 { font-size: 1.02rem; font-weight: 600; color: #102a43; margin: 0 0 .35rem; }
+.np-account-card__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem 1rem; margin-bottom: .4rem; }
+.np-account-card__heading h2 { margin: 0; }
+.np-account-link { font-weight: 500; font-size: .86rem; min-height: 36px; }
 .np-account-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
 .np-account-stats a {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem;
-    padding: clamp(.85rem, 2.2vw, 1.35rem); text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2rem;
+    padding: clamp(.75rem, 2vw, 1.1rem); text-align: center;
 }
 .np-account-stats a:hover { background: var(--account-wash); }
 .np-account-stats strong {
-    color: var(--account-blue); font-size: clamp(1.75rem, 3.2vw, 2.25rem);
+    color: var(--account-blue); font-size: clamp(1.35rem, 2.6vw, 1.75rem);
     font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums;
 }
-.np-account-stats span { font-size: .88rem; color: var(--account-muted); font-weight: 500; }
-.np-account-shortcuts { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .75rem; }
-.np-account-shortcuts a { display: inline-flex; align-items: center; min-height: 44px; padding: .4rem .85rem; border-radius: .65rem; background: var(--account-wash); color: var(--account-blue); font-weight: 700; }
-.np-account-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem .8rem; padding: .7rem 0; border-bottom: 1px solid var(--account-line); }
-a.np-account-row:hover { color: var(--account-blue); }
-.np-account-row strong, .np-account-row small { display: block; overflow-wrap: anywhere; }
-.np-account-row small { color: var(--account-muted); }
-.np-account-tag { display: inline-block; color: var(--account-blue); border-radius: .45rem; background: var(--account-wash); padding: .15rem .5rem; font-size: .82rem; }
+.np-account-stats span { font-size: .82rem; color: var(--account-muted); font-weight: 400; }
+.np-account-shortcuts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .55rem; }
+.np-account-shortcuts a { display: inline-flex; align-items: center; min-height: 40px; padding: .35rem .8rem; border-radius: .6rem; background: #f4f8fd; border: 1px solid #e2edf8; color: #1e3a5f; font-size: .86rem; font-weight: 500; }
+.np-account-shortcuts a:hover { background: var(--account-wash); color: var(--account-blue); }
+.np-account-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .9rem; padding: .8rem 0; border-bottom: 1px solid #edf2f7; }
+.np-account-row:last-of-type { border-bottom: 0; }
+a.np-account-row:hover .np-account-row__title { color: var(--account-blue); }
+.np-account-row__main { display: grid; gap: .2rem; min-width: 0; }
+.np-account-row__title { display: block; font-size: .92rem; font-weight: 500; color: #102a43; overflow-wrap: anywhere; }
+.np-account-row__meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .35rem; font-size: .8rem; font-weight: 400; color: var(--account-muted); }
+.np-account-dot { color: #cbd5e1; }
+.np-account-pill { display: inline-flex; align-items: center; color: #075da6; border-radius: 999px; background: #eff6ff; padding: .1rem .55rem; font-size: .76rem; font-weight: 500; }
+.np-account-price { font-size: .94rem; font-weight: 600; color: #0b2239; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.np-account-price small { font-size: .76rem; font-weight: 400; color: var(--account-muted); }
+.np-account-row strong, .np-account-row small { overflow-wrap: anywhere; }
+.np-account-tag { display: inline-block; color: var(--account-blue); border-radius: .45rem; background: var(--account-wash); padding: .15rem .5rem; font-size: .8rem; font-weight: 500; }
+.np-account-empty { padding: 1.15rem .25rem .4rem; color: var(--account-muted); font-size: .88rem; font-weight: 400; }
+.np-account-empty p { margin: 0 0 .45rem; }
+.np-account-review { padding: .85rem 0; border-bottom: 1px solid #edf2f7; }
+.np-account-review:last-of-type { border-bottom: 0; }
+.np-account-review__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.np-account-review__product { display: block; font-size: .92rem; font-weight: 600; color: #102a43; text-decoration: none; }
+.np-account-review__product:hover { color: var(--account-blue); }
+.np-account-review__badges { display: inline-flex; align-items: center; gap: .4rem; }
+.np-account-rating { font-size: .8rem; font-weight: 600; color: #b45309; background: #fffbeb; border-radius: 999px; padding: .1rem .5rem; }
+.np-account-review__body { margin: .45rem 0 0; font-size: .88rem; font-weight: 400; color: #334e68; line-height: 1.75; }
+.np-account-review__reply { margin: .5rem 0 0; padding: .55rem .75rem; border-radius: .6rem; background: #f8fafc; font-size: .82rem; color: #486581; }
+.np-account-kv { display: grid; gap: 0; margin: .35rem 0 0; }
+.np-account-kv > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .35rem 1rem; padding: .6rem 0; border-bottom: 1px solid #edf2f7; }
+.np-account-kv > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.np-account-kv dt { font-size: .84rem; font-weight: 400; color: var(--account-muted); }
+.np-account-kv dd { margin: 0; font-size: .88rem; font-weight: 500; color: #102a43; overflow-wrap: anywhere; }
 .np-account-reference { font-size: .82rem; overflow-wrap: anywhere; }
 #account-copy-status:empty { margin:0; }
-.np-account-address { margin-top: .75rem; border-top: 1px solid var(--account-line); }
-.np-account-address summary { cursor: pointer; padding: .65rem .15rem; }
-.np-account-facts { display: grid; gap: .7rem; margin-top: .75rem; }
-.np-account-facts dt { font-size: .88rem; color: var(--account-muted); }
-.np-account-facts dd { overflow-wrap: anywhere; }
-.np-account-total { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .35rem; }
+.np-account-address { margin-top: .5rem; border-top: 1px solid #edf2f7; }
+.np-account-address summary { cursor: pointer; padding: .7rem .15rem; font-weight: 500; }
+.np-account-facts { display: grid; gap: .6rem; margin-top: .65rem; }
+.np-account-facts dt { font-size: .84rem; font-weight: 400; color: var(--account-muted); }
+.np-account-facts dd { overflow-wrap: anywhere; font-weight: 500; }
+.np-account-total { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: .35rem; margin-top: .65rem; padding-top: .75rem; border-top: 1px solid #e2e8f0; font-size: .92rem; color: #486581; }
+.np-account-total strong { font-size: 1.02rem; font-weight: 700; color: #0b2239; font-variant-numeric: tabular-nums; }
 .np-timeline { margin-top: .85rem; }
 @media (prefers-reduced-motion: no-preference) {
     .np-timeline li { animation: np-account-in .22s ease-out both; }
@@ -458,6 +501,7 @@ a.np-account-row:hover { color: var(--account-blue); }
 }
 
 @media (max-width: 720px) {
+    .np-account-form__grid { grid-template-columns: 1fr; }
     .np-auth { display: block; min-height: 0; margin-block: 1.25rem; }
     .np-auth__aside { display: none; }
     .np-account-layout { grid-template-columns: minmax(0, 1fr); }

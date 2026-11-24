@@ -7,6 +7,13 @@ export function initMobileNavigation() {
     const mobile = window.matchMedia('(max-width: 850px)');
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     const scrollOwner = Symbol('mobile navigation');
+    const syncTogglePosition = () => {
+        const rect = toggle.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            dialog.style.setProperty('--np-drawer-toggle-top', `${Math.max(8, Math.round(rect.top))}px`);
+            dialog.style.setProperty('--np-drawer-toggle-right', `${Math.max(12, Math.round(window.innerWidth - rect.right))}px`);
+        }
+    };
     const shared = window.StorefrontOverlays;
     if (shared) {
         const closeButton = dialog.querySelector('[data-navigation-close]');
@@ -26,6 +33,7 @@ export function initMobileNavigation() {
         });
         toggle.addEventListener('click', () => {
             if (!mobile.matches) return;
+            syncTogglePosition();
             header.dispatchEvent(new Event('mobile-navigation:open'));
             shared.open(dialog, toggle);
         });
@@ -60,6 +68,7 @@ export function initMobileNavigation() {
     };
     toggle.addEventListener('click', () => {
         if (!mobile.matches || dialog.open) return;
+        syncTogglePosition();
         header.dispatchEvent(new Event('mobile-navigation:open'));
         if (window.StorefrontScrollLock) {
             window.StorefrontScrollLock.acquire(scrollOwner);

@@ -2,12 +2,15 @@
 @section('title', 'جزئیات سفارش')
 @section('content')
 <div class="np-account np-account-detail np-container">
-    <a class="np-account-link" href="{{ route('account.index', ['section' => 'orders']) }}">بازگشت به سفارش‌ها</a>
-    <header class="np-account-banner">
+    <a class="np-account-link np-account-back" href="{{ route('account.index', ['section' => 'orders']) }}">→ بازگشت به سفارش‌ها</a>
+    <header class="np-account-banner np-account-banner--compact">
         <div>
-            <p>جزئیات سفارش · کد <bdi dir="ltr">{{ strtoupper(substr($order->public_id, 0, 8)) }}</bdi></p>
+            <p class="np-account-banner__eyebrow">جزئیات سفارش · <span class="np-order-code">کد <bdi dir="ltr">{{ strtoupper(substr($order->public_id, 0, 8)) }}</bdi></span> · <x-finance-time :value="$order->created_at" /></p>
             <h1>{{ \App\Support\CustomerTimeline::orderStatus($order, $plan) }}</h1>
-            <p><x-finance-time :value="$order->created_at" /></p>
+        </div>
+        <div class="np-account-banner__total">
+            <span>مبلغ کل</span>
+            <strong>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($order->total))) }} تومان</strong>
         </div>
     </header>
     <section class="np-account-card">
@@ -18,13 +21,19 @@
         <h2>کالاهای سفارش</h2>
         @forelse($order->lines as $line)
             <div class="np-account-row">
-                <span><strong>{{ $line->description }}</strong><small>{{ \App\Support\FaNumber::digits($line->quantity) }} عدد · هر عدد {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($line->unit_price))) }} تومان</small></span>
-                <span class="np-account-tag">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($line->line_total))) }} تومان</span>
+                <span class="np-account-row__main">
+                    <span class="np-account-row__title">{{ $line->description }}</span>
+                    <span class="np-account-row__meta">{{ \App\Support\FaNumber::digits($line->quantity) }} عدد · واحد {{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($line->unit_price))) }} تومان</span>
+                </span>
+                <span class="np-account-price">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($line->line_total))) }} <small>تومان</small></span>
             </div>
         @empty
-            <p>کالایی برای این سفارش ثبت نشده است.</p>
+            <div class="np-account-empty"><p>کالایی برای این سفارش ثبت نشده است.</p></div>
         @endforelse
-        <p class="np-account-total">جمع سفارش <strong>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($order->total))) }} تومان</strong></p>
+        <div class="np-account-total">
+            <span>جمع سفارش</span>
+            <strong>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($order->total))) }} تومان</strong>
+        </div>
     </section>
     <x-account.settlement :document="$document" :plan="$plan" />
 </div>

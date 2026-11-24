@@ -59,11 +59,12 @@ class PublicPagesTest extends TestCase
         $response = $this->get('/repair');
 
         $response->assertOk();
-        $response->assertSeeInOrder(['پیش از مراجعه کد پیگیری بگیرید', 'دستگاه را حضوری تحویل دهید']);
-        $response->assertDontSee('action="'.route('repair.store').'"', false);
-        $response->assertSee('href="'.route('repair.start').'"', false)
-            ->assertSee('برای ثبت درخواست، شماره موبایل خود را تأیید کنید.');
-        $response->assertSee('ثبت درخواست تعمیر کارتخوان');
+        $response->assertSee('data-repair-stepper', false)
+            ->assertSee('data-repair-inline-auth', false)
+            ->assertSee(route('repair.auth.send'), false)
+            ->assertDontSee('به شماره موبایل خود دسترسی ندارید؟')
+            ->assertDontSee('repair-overview-strip')
+            ->assertSee('ثبت درخواست تعمیر کارتخوان');
     }
 
     public function test_contact_page_displays_official_business_details(): void
@@ -78,7 +79,14 @@ class PublicPagesTest extends TestCase
 
     public function test_legal_pages_do_not_publish_final_policies(): void
     {
-        $this->get('/terms')->assertOk()->assertSee('پیش‌نویس');
-        $this->get('/privacy')->assertOk()->assertSee('پیش‌نویس');
+        $this->get('/terms')->assertOk()
+            ->assertSee('شرایط استفاده از خدمات نوین‌پی')
+            ->assertDontSee('پیش‌نویس')
+            ->assertDontSee('نیازمند تأیید مالک');
+        $this->get('/privacy')->assertOk()
+            ->assertSee('حریم خصوصی کاربران')
+            ->assertDontSee('پیش‌نویس')
+            ->assertDontSee('نیازمند تأیید مالک')
+            ->assertDontSee('DB-IP');
     }
 }
