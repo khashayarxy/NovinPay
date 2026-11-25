@@ -223,8 +223,8 @@
                     <h2>آدرس‌های ذخیره‌شده</h2>
                     <script type="application/json" id="iran-locations-data">@json(config('iran_locations', []))</script>
                     @forelse($addresses as $address)
-                        <details class="np-account-address" @if($errors->any() && old('address_form_key') === $address->public_id) open @endif>
-                            <summary class="np-account-address__summary">
+                        <section class="np-account-address">
+                            <h3 class="np-account-address__summary">
                                 <span class="np-account-address__head">
                                     <span class="np-account-address__top">
                                         <span class="np-account-row__title">{{ $address->recipient }}</span>
@@ -233,12 +233,12 @@
                                     <span class="np-account-address__preview">{{ \Illuminate\Support\Str::limit($address->address, 90) }}</span>
                                 </span>
                                 <svg class="np-account-address__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-                            </summary>
+                            </h3>
                             <x-account.address-form :address="$address" />
                             <form class="mt-4" method="post" action="{{ route('account.address.remove', $address->public_id) }}" data-confirm="این آدرس از فهرست شما حذف شود؟ نشانی ارسال‌های قبلی باقی می‌ماند.">
                                 @csrf<button class="np-account-link" type="submit">حذف آدرس</button>
                             </form>
-                        </details>
+                        </section>
                     @empty
                         <div class="np-account-empty">
                             <p>هنوز آدرسی ذخیره نکرده‌اید.</p>

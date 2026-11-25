@@ -14,7 +14,7 @@ final class BackupReporter
     ) {}
 
     /**
-     * @param  array{status?: ?string, path?: ?string, size?: ?int, note?: ?string}  $options
+     * @param  array{status?: ?string, path?: ?string, size?: ?int, note?: ?string, force?: bool}  $options
      * @return array<string, mixed>
      */
     public function report(array $options = []): array
@@ -86,7 +86,7 @@ final class BackupReporter
             default => '🚨',
         };
         $statusLabel = match ($status) {
-            'ok' => 'سالم و به‌روز',
+            'ok' => 'فایل بکاپ به‌روز',
             'stale' => 'قدیمی (خارج از بازه مجاز)',
             'missing' => 'بکاپ یافت نشد',
             default => 'ناموفق',
@@ -104,11 +104,14 @@ final class BackupReporter
         }
 
         $message = implode("\n", $lines);
-        $this->topics->send('backups', $message, 'backup_report:'.$status.':'.now()->format('YmdH'));
+        $snapshot['notification_sent'] = $this->topics->send('backups', $message,
+            ($options['force'] ?? false) ? null : 'backup_report:'.$status.':'.$fileName.':'.$modifiedAt.':'.now()->format('YmdH'));
 
         if ($status !== 'ok') {
             $this->topics->send('errors', "🚨 هشدار بکاپ ({$statusLabel})\n{$message}", 'backup_error:'.$status.':'.now()->format('YmdH'));
         }
+
+        $this->metrics->storeLatestBackup($snapshot);
 
         return $snapshot;
     }
@@ -122,16 +125,13 @@ final class BackupReporter
             return ['file' => null, 'size_bytes' => null, 'modified_at' => null, 'age_hours' => null];
         }
 
+        if (is_link($path)) {
+            return ['file' => null, 'size_bytes' => null, 'modified_at' => null, 'age_hours' => null];
+        }
+        $specific = null;
         if (is_file($path)) {
-            $mtime = filemtime($path);
-            $carbon = $mtime ? Carbon::createFromTimestamp($mtime) : null;
-
-            return [
-                'file' => basename($path),
-                'size_bytes' => (int) (filesize($path) ?: 0),
-                'modified_at' => $carbon?->toIso8601String(),
-                'age_hours' => $carbon ? round($carbon->diffInMinutes(now()) / 60, 2) : null,
-            ];
+            $specific = realpath($path);
+            $path = dirname($path);
         }
 
         if (! is_dir($path)) {
@@ -140,20 +140,35 @@ final class BackupReporter
 
         $latestFile = null;
         $latestMtime = -1;
-        $entries = @scandir($path);
-        if (! is_array($entries)) {
-            return ['file' => null, 'size_bytes' => null, 'modified_at' => null, 'age_hours' => null];
-        }
-
-        foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..') {
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY,
+            \RecursiveIteratorIterator::CATCH_GET_CHILD,
+        );
+        $iterator->setMaxDepth(3);
+        foreach ($iterator as $entry) {
+            if ($entry->isLink() || ! $entry->isFile() || ! $this->isArchive($entry->getPathname())) {
                 continue;
             }
-            $full = rtrim($path, '/\\').DIRECTORY_SEPARATOR.$entry;
-            if (! is_file($full)) {
+            $full = $entry->getPathname();
+            if ($specific !== null && realpath($full) !== $specific) {
                 continue;
             }
-            $mtime = filemtime($full) ?: 0;
+            $mtime = $entry->getMTime();
+            // A copied archive's mtime can be newer than its actual snapshot.
+            if (basename($full) === 'backup.npb') {
+                $receiptPath = dirname($full).DIRECTORY_SEPARATOR.'receipt.json';
+                if (! is_file($receiptPath) || is_link($receiptPath) || filesize($receiptPath) > 65536) {
+                    continue;
+                }
+                $receipt = json_decode((string) file_get_contents($receiptPath), true);
+                if (($receipt['result'] ?? null) !== 'BACKUP_AND_DISPOSABLE_RESTORE_PASS'
+                    || ($receipt['archiveBytes'] ?? null) !== $entry->getSize()
+                    || ! is_int($receipt['snapshotUnix'] ?? null) || $receipt['snapshotUnix'] > now()->timestamp + 5) {
+                    continue;
+                }
+                $mtime = $receipt['snapshotUnix'];
+            }
             if ($mtime > $latestMtime) {
                 $latestMtime = $mtime;
                 $latestFile = $full;
@@ -172,5 +187,10 @@ final class BackupReporter
             'modified_at' => $carbon->toIso8601String(),
             'age_hours' => round($carbon->diffInMinutes(now()) / 60, 2),
         ];
+    }
+
+    private function isArchive(string $path): bool
+    {
+        return preg_match('/(?:\.npb|\.sql(?:\.gz)?|\.(?:tar|tar\.gz|tgz|zip)(?:\.enc)?|\.sql\.gz\.enc)\z/i', $path) === 1;
     }
 }

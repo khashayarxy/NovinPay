@@ -15,7 +15,7 @@ export function profileSettings({api,current,updated,reauthenticate,warn,pending
   if(pending($('accounts')))return;
   const version=++directoryEpoch;$('accounts').setAttribute('aria-busy','true');$('accounts').textContent='دریافت حساب‌ها…';let rows;try{rows=(await api('operator_accounts')).accounts;}catch(e){if(version===directoryEpoch){$('accounts').textContent='دریافت حساب‌ها انجام نشد.';$('accounts').setAttribute('aria-busy','false');}throw e;}if(version!==directoryEpoch||current()?.role!=='administrator')return;$('accounts').replaceChildren();
   for(const p of rows){
-   const card=document.createElement('details');card.className='account-card';const heading=document.createElement('summary'),icon=document.createElement('span'),copy=document.createElement('span');icon.className='account-avatar';avatar(icon,p);copy.textContent=p.name+' · '+(p.role==='administrator'?'مدیر':'پشتیبان')+(p.active?'':' · غیرفعال');heading.append(icon,copy);card.append(heading);
+   const card=document.createElement('section');card.className='account-card';const heading=document.createElement('h3'),icon=document.createElement('span'),copy=document.createElement('span');icon.className='account-avatar';avatar(icon,p);copy.textContent=p.name+' · '+(p.role==='administrator'?'مدیر':'پشتیبان')+(p.active?'':' · غیرفعال');heading.append(icon,copy);card.append(heading);
    const identity=document.createElement('small');identity.textContent=p.username;identity.dir='ltr';card.append(identity);
    const name=field('نام نمایشی',p.name);name.input.required=true;
    const role=document.createElement('select');role.setAttribute('aria-label','نقش '+p.name);for(const [v,t] of [['support','پشتیبان'],['administrator','مدیر']])role.add(new Option(t,v));role.value=p.role;

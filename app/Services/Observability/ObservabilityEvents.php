@@ -21,7 +21,7 @@ final class ObservabilityEvents
     public function payment(string $stage, PaymentAttempt $attempt, ?string $note = null): void
     {
         try {
-            $toman = intdiv((int) $attempt->amount_minor, 10);
+            $toman = intdiv((int) $attempt->amount_minor, 100);
             $shortId = strtoupper(substr((string) $attempt->public_id, 0, 8));
             $track = $attempt->track_id ?: '—';
 
@@ -48,18 +48,18 @@ final class ObservabilityEvents
                 'retry' => '🔁 تلاش مجدد برای پرداخت',
                 'review', 'mismatch' => '⚠️ مغایرت / نیازمند بررسی پرداخت',
                 'uncertain' => '⏳ وضعیت نامشخص درگاه',
-                default => "💳 رویداد پرداخت ({$stage})",
+                default => '💳 رویداد پرداخت',
             };
 
             $lines = [
                 $label,
                 "شناسه تلاش: #{$shortId}",
                 'مبلغ: '.number_format($toman).' تومان',
-                "وضعیت: {$attempt->state}",
+                'وضعیت: '.self::label($attempt->state),
                 "کد رهگیری زیبال: {$track}",
             ];
             if ($note) {
-                $lines[] = 'جزئیات: '.$note;
+                $lines[] = 'جزئیات: '.self::label($note);
             }
 
             $this->topics->send('payments', implode("\n", $lines), "pay:{$stage}:{$shortId}");
@@ -75,17 +75,22 @@ final class ObservabilityEvents
         }
     }
 
-    public function orderStatusChanged(SalesOrder $order, ?string $from, string $to): void
+    public function orderStatusChanged(SalesOrder $order, ?string $from, string $to, bool $fullConfirmation = false): void
     {
         try {
             $shortId = strtoupper(substr((string) $order->public_id, 0, 8));
             $this->metrics->increment("orders.status.{$to}");
+            if ($to === 'confirmed' && $fullConfirmation) {
+                return;
+            }
 
-            $fromLabel = $from ?: 'جدید';
+            $fromLabel = SalesOrder::STATUSES[$from] ?? 'جدید';
+            $toLabel = SalesOrder::STATUSES[$to] ?? 'به‌روزرسانی سفارش';
             $this->topics->send(
                 'orders',
-                "📦 تغییر وضعیت سفارش #{$shortId}\nاز: {$fromLabel} ← به: {$to}",
+                "📦 تغییر وضعیت سفارش #{$shortId}\nاز: {$fromLabel}\nبه: {$toLabel}",
                 "order_status:{$shortId}:{$to}",
+                adminUrl: route('admin.orders.show', $order),
             );
         } catch (Throwable) {
         }
@@ -166,11 +171,15 @@ final class ObservabilityEvents
     {
         try {
             $this->metrics->recordSms($category, $outcome, $provider, $event);
+            $categoryLabel = self::label($category);
+            $outcomeLabel = self::label($outcome);
+            $providerLabel = self::label($provider);
+            $eventLabel = self::label($event);
 
             if ($outcome !== 'accepted') {
                 $this->topics->send(
                     'sms',
-                    "⚠️ خطا در ارسال پیامک\nدسته: {$category}\nرویداد: {$event}\nسرویس‌دهنده: {$provider}\nنتیجه: {$outcome}",
+                    "⚠️ خطا در ارسال پیامک\nدسته: {$categoryLabel}\nرویداد: {$eventLabel}\nسرویس‌دهنده: {$providerLabel}\nنتیجه: {$outcomeLabel}",
                     "sms_fail:{$category}:{$event}:{$outcome}",
                 );
 
@@ -180,7 +189,7 @@ final class ObservabilityEvents
             if ($category !== 'otp') {
                 $this->topics->send(
                     'sms',
-                    "📨 ارسال پیامک موفق\nدسته: {$category}\nرویداد: {$event}\nسرویس‌دهنده: {$provider}",
+                    "📨 ارسال پیامک موفق\nدسته: {$categoryLabel}\nرویداد: {$eventLabel}\nسرویس‌دهنده: {$providerLabel}",
                     "sms_ok:{$category}:{$event}:".now()->format('YmdHi'),
                     30,
                 );
@@ -223,12 +232,50 @@ final class ObservabilityEvents
                 $noteLine = $reason !== '' ? "\nتوضیح: ".mb_substr($reason, 0, 120) : '';
                 $this->topics->send(
                     'inventory',
-                    "📊 تغییر موجودی انبار ({$kind})\nکالا: {$item->name}\nSKU: {$item->sku}\nتغییر: {$sign} | موجودی آزاد: {$available}{$noteLine}",
+                    '📊 تغییر موجودی انبار ('.self::label($kind).")\nکالا: {$item->name}\nشناسه کالا: {$item->sku}\nتغییر: {$sign} | موجودی آزاد: {$available}{$noteLine}",
                     "inv_chg:{$item->id}:{$kind}:{$available}",
                     60,
                 );
             }
         } catch (Throwable) {
         }
+    }
+
+    private static function label(string $value): string
+    {
+        return match ($value) {
+            'pending', 'requesting', 'started' => 'در انتظار پرداخت',
+            'processing' => 'در حال بررسی',
+            'settled' => 'تسویه‌شده',
+            'failed', 'rejected', 'request_rejected' => 'ناموفق',
+            'review', 'mismatch' => 'نیازمند بررسی',
+            'uncertain', 'unconfirmed', 'unexpected_response' => 'نتیجه نامشخص',
+            'cancelled', 'canceled', 'gateway_canceled' => 'لغوشده',
+            'accepted' => 'پذیرفته‌شده توسط سرویس‌دهنده',
+            'ippanel' => 'آی‌پی‌پنل',
+            'panelchi' => 'پنل‌چی',
+            'otp', 'customer_otp' => 'کد تأیید',
+            'alert', 'admin_alert' => 'هشدار مدیریتی',
+            'order' => 'سفارش',
+            'repair' => 'تعمیر',
+            'pattern_notification', 'notification' => 'اطلاع‌رسانی',
+            'order_confirmed' => 'تأیید سفارش',
+            'order_preparing' => 'آماده‌سازی سفارش',
+            'order_shipped' => 'ارسال سفارش',
+            'order_pickup_ready' => 'آمادهٔ تحویل حضوری',
+            'order_cancelled' => 'لغو سفارش',
+            'repair_created' => 'ثبت تعمیر',
+            'repair_payment' => 'پرداخت تعمیر',
+            'repair_status' => 'تغییر مرحلهٔ تعمیر',
+            'repair_cancelled' => 'لغو تعمیر',
+            'insufficient_credit' => 'اعتبار ناکافی',
+            'authentication_or_permission' => 'خطای دسترسی سرویس‌دهنده',
+            'transport_or_response', 'provider_unavailable' => 'اختلال ارتباط با سرویس‌دهنده',
+            'provider_rate_limited' => 'محدودیت تعداد درخواست',
+            'receive' => 'دریافت',
+            'adjust' => 'اصلاح',
+            'dispatch' => 'خروج',
+            default => preg_match('/\A[a-z0-9_]+\z/i', $value) ? 'نیازمند بررسی در پنل مدیریت' : $value,
+        };
     }
 }

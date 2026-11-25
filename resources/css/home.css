@@ -326,11 +326,11 @@
     .np-mobile-drawer__heading { display: flex; flex: none; align-items: center; justify-content: flex-start; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #e6eff7; }
     .np-mobile-drawer nav { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: none; -ms-overflow-style: none; }
     .np-mobile-drawer nav::-webkit-scrollbar { display: none; }
-    .np-mobile-drawer nav > a, .np-drawer-categories > summary { display: flex; align-items: center; min-height: 46px; gap: 11px; padding: 10px 12px; border-radius: 11px; font-size: 14px; font-weight: 500; line-height: 1.6; color: #163a61; list-style: none; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
-    .np-drawer-categories > summary::-webkit-details-marker { display: none; }
+    .np-mobile-drawer nav > a, .np-drawer-categories > h3 { display: flex; align-items: center; min-height: 46px; gap: 11px; padding: 10px 12px; border-radius: 11px; font-size: 14px; font-weight: 500; line-height: 1.6; color: #163a61; list-style: none; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+    .np-drawer-categories > h3::-webkit-details-marker { display: none; }
     .np-mobile-drawer nav :is(.np-icon, .np-nav-icon) { width: 20px; height: 20px; flex: 0 0 20px; color: #546e85; }
-    .np-mobile-drawer nav > a:hover, .np-drawer-categories > summary:hover, .np-mobile-drawer nav > a[aria-current] { background: #eff7ff; color: var(--color-brand-700); }
-    .np-mobile-drawer nav > a:hover :is(.np-icon, .np-nav-icon), .np-drawer-categories > summary:hover :is(.np-icon, .np-nav-icon), .np-mobile-drawer nav > a[aria-current] :is(.np-icon, .np-nav-icon) { color: var(--color-brand-700); }
+    .np-mobile-drawer nav > a:hover, .np-drawer-categories > h3:hover, .np-mobile-drawer nav > a[aria-current] { background: #eff7ff; color: var(--color-brand-700); }
+    .np-mobile-drawer nav > a:hover :is(.np-icon, .np-nav-icon), .np-drawer-categories > h3:hover :is(.np-icon, .np-nav-icon), .np-mobile-drawer nav > a[aria-current] :is(.np-icon, .np-nav-icon) { color: var(--color-brand-700); }
     .np-mobile-drawer nav > a[aria-current="page"] { font-weight: 700; box-shadow: inset -3px 0 var(--color-brand-500); }
     .np-drawer-arrow { margin-inline-start: auto; width: 15px; height: 15px; flex: none; color: #7d92a6; }
     .np-drawer-chevron { margin-inline-start: auto; width: 18px; height: 18px; flex: none; color: #6c8296; transition: transform 180ms ease, color 140ms ease; }
@@ -578,3 +578,6 @@
     .np-mobile-drawer[open]::backdrop,
     .np-mobile-drawer.is-closing::backdrop { animation: none; }
 }
+
+.np-customer-menu:not([open]) > nav { display: none; }
+.np-customer-menu > button { cursor: pointer; }

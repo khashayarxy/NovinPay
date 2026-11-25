@@ -254,3 +254,29 @@ a:focus-visible { outline: 2px solid #075da6; outline-offset: 3px; }
     font-weight: 600;
     text-underline-offset: .22em;
 }
+
+/* Shared payment pages use the same blue identity at every viewport. */
+body.t-blue {
+    --bg1: #f0f9ff; --bg2: #e0f2fe; --g1: #0077ff; --g2: #0284c7;
+    --ring: #7dd3fc; --glow: rgb(2 132 199 / 20%); --title: #075da6;
+    --btn1: #0077ff; --btn2: #0284c7;
+}
+
+.payment-warning-shell .info-box.warn { background: #fffbeb; border-color: #fcd34d; }
+.payment-warning-shell .info-box.warn p { color: #92400e; }
+body:has(.payment-warning-shell) { font-variant-numeric: tabular-nums; }
+.payment-warning-shell .container { min-inline-size: 0; }
+.payment-warning-shell .row { gap: .5rem; flex-wrap: wrap; }
+.payment-warning-shell .row > * { min-inline-size: 0; max-inline-size: 100%; overflow-wrap: anywhere; }
+.payment-warning-shell .row > :last-child { margin-inline-start: auto; }
+.payment-warning-shell :is(.np-latin, bdi) { unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+.payment-warning-shell .btn-group { flex-wrap: wrap; }
+.payment-warning-shell .btn-group > *, .payment-warning-shell .btn-group form { min-inline-size: 0; max-inline-size: 100%; }
+@media (max-width: 390px) {
+    body:has(.payment-warning-shell) { padding: 12px; }
+    .payment-warning-shell .container { padding: 28px 18px; border-radius: 22px; }
+    .payment-warning-shell h1 { font-size: 1.25rem; }
+    .payment-warning-shell .rows { font-size: .85rem; }
+    .payment-warning-shell .btn-group { flex-direction: column; }
+    .payment-warning-shell .btn-group > *, .payment-warning-shell .btn-group .btn { width: 100%; }
+}

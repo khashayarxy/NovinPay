@@ -102,6 +102,10 @@ class AppServiceProvider extends ServiceProvider
                 if ($recording || $query->time < $slowQueryThreshold) {
                     return;
                 }
+                if (preg_match('/\bcache_locks\b/i', $query->sql)
+                    && $query->time < max(5000, $slowQueryThreshold * 10)) {
+                    return;
+                }
 
                 $recording = true;
                 try {

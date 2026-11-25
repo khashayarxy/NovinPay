@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="{{ versioned_asset('css/payment-flow.css') }}">
     <link rel="stylesheet" href="{{ versioned_asset('pay/assets/pay.css') }}">
 </head>
-<body class="t-indigo">
+<body class="t-blue">
     <main class="payment-warning-shell">
         <div class="payment-warning-brand"><x-home.wordmark /></div>
         <section class="container" aria-labelledby="payment-title">
@@ -32,14 +32,13 @@
 
             @if($indeterminate)
                 <h1 id="payment-title">وضعیت وی‌پی‌ان قابل تأیید نیست</h1>
-                <p class="lead">قواعد مسیریابی یا استثناهای وی‌پی‌ان ممکن است اتصال به نوین‌پی و زیبال را از مسیرهای متفاوتی عبور دهند.</p>
-                <div class="info-box"><p>اگر درگاه باز نشد، موقتاً وی‌پی‌ان را خاموش کنید یا استثناهای زیبال و درگاه پرداخت را بررسی کنید.</p></div>
+                <div class="info-box warn"><p>در صورت باز نشدن درگاه، وی‌پی‌ان را موقتاً خاموش کنید و دوباره تلاش کنید.</p></div>
                 <x-payment-issue-actions :retry-url="$gatewayUrl" referrer-policy="origin" variant="vpn" />
             @else
-                <h1 id="payment-title">{{ $isSim ? 'در حال انتقال به شبیه‌ساز درگاه زیبال…' : 'در حال انتقال به درگاه پرداخت…' }}</h1>
-                <p class="lead">{{ $isSim ? 'شبیه‌ساز لوکال برای تست سناریوهای پرداخت آماده است.' : 'لطفاً چند لحظه صبر کنید؛ به درگاه پرداخت منتقل می‌شوید.' }}</p>
+                <h1 id="payment-title">انتقال امن به درگاه پرداخت</h1>
+
                 <div class="bar" aria-hidden="true"></div>
-                <p class="hint">اتصال شما با درگاه پرداخت، امن و رمزگذاری‌شده است.</p>
+
                 @if (! empty($sourceCode) || $amountDisplay !== null)
                     <div class="rows">
                         @if (! empty($sourceCode))

@@ -2,8 +2,8 @@
     $details = $product->product_details ?? [];
     $hasVariantValues = filled(old('variant_family', $product->variant_family)) || filled(old('color_swatch', $product->color_swatch)) || $errors->hasAny(['variant_family', 'color_swatch']);
 @endphp
-<details class="admin-section admin-advanced-details space-y-4" @if($hasVariantValues) open @endif>
-    <summary>گزینه‌های رنگ محصول (اختیاری)</summary>
+<section class="admin-section admin-advanced-details space-y-4" >
+    <h2>گزینه‌های رنگ محصول (اختیاری)</h2>
     <p class="text-xs leading-6 text-slate-500">برای اتصال رنگ‌های یک مدل، شناسهٔ گروه یکسان وارد کنید. هر رنگ، محصول و موجودی مستقل خود را دارد.</p>
     <div class="grid gap-4 sm:grid-cols-2">
         <div>
@@ -17,9 +17,9 @@
                 value="{{ old('color_swatch', $product->color_swatch) }}" placeholder="#171b21">
         </div>
     </div>
-</details>
-<details class="admin-section admin-advanced-details space-y-4">
-    <summary>توضیحات و گروه‌های مشخصات فنی (اختیاری)</summary>
+</section>
+<section class="admin-section admin-advanced-details space-y-4">
+    <h2>توضیحات و گروه‌های مشخصات فنی (اختیاری)</h2>
     <p class="text-xs leading-6 text-slate-500">هر ویژگی را در یک سطر با قالب «عنوان: مقدار» بنویسید. موارد تأییدنشده را خالی بگذارید.</p>
     <div>
         <label class="label" for="key_features">ویژگی‌های کلیدی تکمیلی در مشخصات</label>
@@ -45,9 +45,9 @@
             </div>
         @endforeach
     </div>
-</details>
-<details class="admin-section admin-advanced-details space-y-4">
-    <summary>سئو، منبع فنی و محصولات مرتبط (اختیاری)</summary>
+</section>
+<section class="admin-section admin-advanced-details space-y-4">
+    <h2>سئو، منبع فنی و محصولات مرتبط (اختیاری)</h2>
     <div>
         <label class="label" for="verification_notes">یادداشت بررسی مشخصات (فقط پنل مدیریت)</label>
         <textarea class="input" id="verification_notes" name="verification_notes" rows="4" maxlength="2500">{{ old('verification_notes', $details['verification_notes'] ?? '') }}</textarea>
@@ -58,4 +58,4 @@
             <input class="input" id="{{ $field }}" name="{{ $field }}" value="{{ old($field, $details[$field] ?? '') }}">
         </div>
     @endforeach
-</details>
+</section>

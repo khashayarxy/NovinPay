@@ -68,12 +68,12 @@
 .admin-nav-group { min-width:0; }
 .admin-nav-section { position:relative; }
 .admin-nav-children { margin:4px 16px 6px 0; border-inline-start:1px solid #4a5c73; padding-inline-start:8px; display:grid; gap:2px; }
-.admin-nav :is(a, summary) {
+.admin-nav :is(a, button) {
     display:flex; align-items:center; gap:10px; min-height:42px; padding:7px 10px;
     border-radius:var(--admin-radius-control); color:var(--admin-rail-muted); font-size:13px;
     font-weight:500; transition:background-color .14s ease,color .14s ease;
 }
-.admin-nav :is(a, summary):hover { background:var(--admin-rail-hover); color:#fff; }
+.admin-nav :is(a, button):hover { background:var(--admin-rail-hover); color:#fff; }
 .admin-nav-group-trigger { width:100%; justify-content:space-between; cursor:pointer; }
 .admin-nav-group-label { display:inline-flex; align-items:center; gap:10px; min-width:0; }
 .admin-nav-chevron-svg { flex:none; color:var(--admin-rail-muted); transition:transform .16s ease, color .16s ease; }
@@ -746,3 +746,7 @@
 .product-report-toggle:hover { color: #0f172a; text-decoration: underline; }
 .product-report-panel { margin-top: 8px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; }
 .product-report-panel[hidden] { display: none; }
+
+.admin-nav-group:not([open]) > .admin-nav-children { display: none; }
+.admin-nav-group-trigger { text-align: start; font: inherit; background: transparent; border: 0; }
+.repair-action-detail > h2 { padding: .75rem; font-weight: 700; }

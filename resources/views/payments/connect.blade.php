@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="{{ versioned_asset('pay/assets/pay.css') }}">
     <script src="{{ versioned_asset('pay/assets/vpn-warning.js') }}" defer></script>
 </head>
-<body class="t-indigo">
+<body class="t-blue">
     <main class="payment-warning-shell">
         <div class="payment-warning-brand"><x-home.wordmark /></div>
         <section class="container" aria-labelledby="payment-title">
@@ -32,10 +32,10 @@
                         <svg viewBox="0 0 24 24"><path pathLength="20" d="M7 11V8a5 5 0 0 1 10 0v3"/><path pathLength="20" d="M6 11h12v9H6z"/></svg>
                     </div>
                 </div>
-                <h1 id="payment-title"><span id="goTitle">{{ $verifySplitVpn ? 'در حال بررسی اتصال…' : 'انتقال به درگاه پرداخت' }}</span></h1>
-                <p class="lead" id="goLead" aria-live="polite">{{ $verifySplitVpn ? 'لطفاً چند لحظه صبر کنید.' : 'درگاه پرداخت فقط از داخل ایران در دسترس است.' }}</p>
+                <h1 id="payment-title"><span id="goTitle">{{ $verifySplitVpn ? 'در حال بررسی اتصال…' : 'انتقال امن به درگاه پرداخت' }}</span></h1>
+                <p class="lead" id="goLead" aria-live="polite">{{ $verifySplitVpn ? 'لطفاً چند لحظه صبر کنید.' : '' }}</p>
                 <div class="bar" aria-hidden="true"></div>
-                <p class="hint">اتصال شما با درگاه پرداخت، امن و رمزگذاری‌شده است.</p>
+
                 <div class="info-box" id="vpnBox" role="status" @if($verifySplitVpn) hidden @endif>
                     <p><strong>اتصال از خارج ایران تشخیص داده شد.</strong> وی‌پی‌ان را خاموش کنید و دوباره تلاش کنید.</p>
                 </div>

@@ -203,7 +203,7 @@ class SharedPaymentsTest extends TestCase
         $this->getJson($connect)->assertOk()->assertExactJson(['ir' => null]);
         $this->get('/pay/index.html?pay_url=https://elsewhere.test')->assertNotFound();
         $this->get('/pay/index.html?'.http_build_query(['pay_url' => 'https://gateway.zibal.ir/start/501']))->assertRedirect($connect);
-        $this->get($result)->assertOk()->assertSee('پرداخت سفارش')->assertSee($connect);
+        $this->get($result)->assertOk()->assertSee('نتیجهٔ پرداخت در انتظار تأیید است')->assertSee($connect);
         $this->getJson(route('payments.status', $attempt->public_id))->assertExactJson(['status' => 'processing']);
         $this->get(route('payments.connect', (string) Str::uuid()))->assertNotFound();
         Http::assertSentCount(1);
@@ -232,7 +232,7 @@ class SharedPaymentsTest extends TestCase
         $this->actingAs($this->account, 'customer')->withSession(['customer_session_version' => 1]);
         $this->get(route('payments.gateway', $attempt->public_id))->assertRedirect($result);
         $this->getJson(route('payments.connect', $attempt->public_id))->assertConflict()->assertExactJson([]);
-        $this->get($result)->assertOk()->assertSee('پرداخت تأیید شد');
+        $this->get($result)->assertOk()->assertSee('پرداخت با موفقیت انجام شد');
         $this->getJson(route('payments.status', $attempt->public_id))->assertExactJson(['status' => 'success']);
         Http::assertSentCount(2);
         $this->assertDatabaseCount('payment_transactions', 1);
@@ -264,7 +264,7 @@ class SharedPaymentsTest extends TestCase
         $attempt = PaymentAttempt::query()->sole();
         $result = route('payments.result', $attempt->public_id);
         $this->get(route('payments.callback', ['trackId' => 501, 'orderId' => $attempt->public_id]))->assertRedirect($result);
-        $this->get($result)->assertOk()->assertSee('پرداخت تعمیر')->assertSee('پیگیری تعمیر')
+        $this->get($result)->assertOk()->assertSee('پرداخت با موفقیت انجام شد')->assertSee('پیگیری تعمیر')
             ->assertSee(route('account.repairs.show', $case->public_id));
         $this->assertSame($document->charged_minor, $document->fresh()->paid_minor);
         $this->assertDatabaseCount('payment_transactions', 1);

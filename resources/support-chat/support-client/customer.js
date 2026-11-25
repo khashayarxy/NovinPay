@@ -51,7 +51,7 @@ export async function mountCustomer({shellFactory=customerShell,transcriptRender
     d.win.setAttribute('aria-busy','true');
     const startButton=d.win.querySelector('.btn-start-chat');startButton.disabled=true;
     let engine,revision=0,lastQueuedRevision=-1,selection=0,initializing=null,hasConversation=false,preparing=false,composerLocked=false;
-    const contact=document.createElement('details');contact.className='support-contact';const contactTitle=document.createElement('summary');contactTitle.textContent='اطلاعات اختیاری';contact.append(contactTitle,d.init);menu.body.prepend(contact);d.init.hidden=false;d.init.style.display='flex';
+    const contact=document.createElement('section');contact.className='support-contact';const contactTitle=document.createElement('h3');contactTitle.textContent='اطلاعات اختیاری';contact.append(contactTitle,d.init);menu.body.prepend(contact);d.init.hidden=false;d.init.style.display='flex';
     document.getElementById('userName').required=false;
     const welcome=document.createElement('p');welcome.className='support-welcome';welcome.textContent=globalThis.SupportWidgetConfig?.welcome||'سلام! چطور می‌توانیم کمکتان کنیم؟';region.prepend(welcome);
     let welcomeEpisode=null,welcomeHasMessages=false;

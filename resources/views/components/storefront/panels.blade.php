@@ -8,14 +8,14 @@
         <h2 id="category-title">فروشگاه {{ config('business.name') }}</h2>
         <a class="menu-row" href="{{ route('home') }}" @if (request()->routeIs('home')) aria-current="page" @endif><x-storefront.icon name="home" /><span>صفحه اصلی</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
         <a class="menu-row" href="{{ route('products.index') }}" @if (request()->routeIs('products.index') && ! $activeCategory) aria-current="page" @endif><x-storefront.icon name="shop" /><span>همهٔ محصولات</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
-        <details class="category-group" open>
-            <summary><x-storefront.icon name="categories" /><span>دسته‌بندی محصولات</span><x-storefront.icon name="chevron-down" class="category-chevron" /></summary>
+        <section class="category-group">
+            <h3><x-storefront.icon name="categories" /><span>دسته‌بندی محصولات</span></h3>
             <div class="category-sublist">
                 @foreach (\App\Enums\ProductCategory::storefrontCases() as $category)
                     <a href="{{ route('products.index', ['category' => $category->value]) }}" @if ($activeCategory === $category->value) aria-current="page" @endif><span>{{ $category->label() }}</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
                 @endforeach
             </div>
-        </details>
+        </section>
         <a class="menu-row" href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif><x-storefront.icon name="repair" /><span>تعمیرات کارتخوان</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
         <a class="menu-row" href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif><x-storefront.icon name="search" /><span>پیگیری تعمیرات</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
         <a class="menu-row" href="{{ route('articles.index') }}" @if (request()->routeIs('articles.*')) aria-current="page" @endif><x-storefront.icon name="book" /><span>مقالات و آموزش‌ها</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>

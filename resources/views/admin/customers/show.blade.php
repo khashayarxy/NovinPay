@@ -7,11 +7,11 @@
 <header class="admin-page-heading"><div><p class="admin-eyebrow">پروفایل مشتری · نسخهٔ {{ \App\Support\FaNumber::digits($customer->version) }}</p><h1>{{ $contact ? $customer->name : 'پروفایل با اطلاعات محدود' }}</h1><p class="crm-code">{{ $customer->public_id }}</p></div><div class="admin-actions"><a class="admin-text-link" href="{{ route('admin.customers.index') }}">دفتر مشتریان ←</a>@if(!$customer->merged_into_id) @can('customers.manage') @can('customers.contact')<a class="btn btn-secondary" href="{{ route('admin.customers.edit', $customer) }}">ویرایش / بایگانی</a>@endcan @endcan @endif</div></header>
 <x-admin.errors/>
 @if($contact && $customer->is_active && !$customer->merged_into_id) @can('customers.link')
-<details class="admin-panel mb-6"><summary>اتصال حساب کاربری مشتری</summary>
+<section class="admin-panel mb-6"><h2>اتصال حساب کاربری مشتری</h2>
 @if($accountIdentifier)
     <dl class="admin-definition"><div><dt>شناسه حساب متصل</dt><dd><bdi dir="ltr">{{ $accountIdentifier }}</bdi></dd></div></dl>
 @endif
-<form method="post" action="{{ route('admin.customer-accounts.link') }}">@csrf<input type="hidden" name="customer" value="{{ $customer->public_id }}"><x-operation-field name="account" label="شناسهٔ حساب اعلام‌شده توسط مشتری" :maxlength="36"/><x-operation-field name="password" label="رمز عبور فعلی شما" type="password"/><label class="admin-checkbox"><input type="checkbox" name="identity_confirmed" value="1" required> هویت مشتری و اجازهٔ نمایش این سوابق را مستقل از شماره موبایل بررسی کرده‌ام.</label><button class="btn btn-primary">تأیید اتصال سوابق</button></form></details>
+<form method="post" action="{{ route('admin.customer-accounts.link') }}">@csrf<input type="hidden" name="customer" value="{{ $customer->public_id }}"><x-operation-field name="account" label="شناسهٔ حساب اعلام‌شده توسط مشتری" :maxlength="36"/><x-operation-field name="password" label="رمز عبور فعلی شما" type="password"/><label class="admin-checkbox"><input type="checkbox" name="identity_confirmed" value="1" required> هویت مشتری و اجازهٔ نمایش این سوابق را مستقل از شماره موبایل بررسی کرده‌ام.</label><button class="btn btn-primary">تأیید اتصال سوابق</button></form></section>
 @endcan @endif
 <nav class="admin-actions repair-jump-links" aria-label="میانبرهای پروفایل"><a class="admin-text-link" href="#customer-history">سوابق مرتبط ↓</a>@if($canOperate)<a class="admin-text-link" href="#customer-actions">عملیات پروفایل ↓</a>@endif</nav>
 <div @class(['crm-two-column' => $hasSideContent, 'repair-main-stack' => !$hasSideContent])><div class="repair-main-stack">
@@ -43,9 +43,9 @@
 </x-crm-operation>@endcan @endcan
 @if($notes) @can('customers.manage')<x-crm-operation :action="route('admin.customers.note', $customer)" :version="$customer->version" title="یادداشت داخلی"><x-operation-field name="body" label="یادداشت خصوصی مشتری" kind="textarea"/><p class="admin-hint">رمز عبور، اطلاعات بانکی یا مدرک غیرضروری وارد نکنید. یادداشت پس از ثبت قابل تغییر نیست.</p><button class="btn btn-secondary" type="submit">ثبت یادداشت</button></x-crm-operation>@endcan @endif
 @can('customers.reconcile') @can('customers.manage') @can('customers.link') @can('customers.notes') @can('customers.contact')
-<section class="admin-panel"><details><summary>تطبیق پروفایل تکراری</summary><p class="admin-hint mt-4">اتصال‌های تعمیر و مشاوره به مقصد منتقل و این پروفایل فقط خواندنی می‌شود. ارتباط تاریخی سفارش‌های فروش تغییر نمی‌کند. نام، شماره، یادداشت‌های قبلی و اطلاعات تعمیرات بازنویسی نمی‌شود. مقصد را جداگانه باز و نسخهٔ جاری آن را بررسی کنید.</p>
+<section class="admin-panel"><section><h2>تطبیق پروفایل تکراری</h2><p class="admin-hint mt-4">اتصال‌های تعمیر و مشاوره به مقصد منتقل و این پروفایل فقط خواندنی می‌شود. ارتباط تاریخی سفارش‌های فروش تغییر نمی‌کند. نام، شماره، یادداشت‌های قبلی و اطلاعات تعمیرات بازنویسی نمی‌شود. مقصد را جداگانه باز و نسخهٔ جاری آن را بررسی کنید.</p>
 <form class="admin-form mt-4" method="post" action="{{ route('admin.customers.reconcile', $customer) }}">@csrf<input type="hidden" name="version" value="{{ $customer->version }}"><x-operation-field name="destination" label="شناسهٔ کامل پروفایل مقصد" :maxlength="36"/><x-operation-field name="destination_version" label="نسخهٔ جاری پروفایل مقصد" type="number"/><x-operation-field name="reason" label="دلیل و مرجع احراز یکسان بودن هویت؛ خصوصی" kind="textarea" :maxlength="1000"/><label class="admin-checkbox"><input type="checkbox" name="identity_reviewed" value="1" required> هر دو شخص را یک هویت واحد احراز کرده‌ام؛ فقط بر شمارهٔ مشترک تکیه نکرده‌ام و انتقال اتصال‌ها را تأیید می‌کنم.</label><button class="btn btn-secondary" type="submit">انتقال ارتباط‌ها و بایگانی این پروفایل</button></form>
-</details></section>@endcan @endcan @endcan @endcan @endcan
+</section></section>@endcan @endcan @endcan @endcan @endcan
 @endif
 </aside></div>
 @endsection

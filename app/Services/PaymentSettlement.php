@@ -81,7 +81,7 @@ class PaymentSettlement
                 $order->version++;
                 $order->save();
                 $orderSnapshot = clone $order;
-                DB::afterCommit(static fn () => app(ObservabilityEvents::class)->orderStatusChanged($orderSnapshot, $previousStatus, 'confirmed'));
+                DB::afterCommit(static fn () => app(ObservabilityEvents::class)->orderStatusChanged($orderSnapshot, $previousStatus, 'confirmed', fullConfirmation: true));
             }
         }
 

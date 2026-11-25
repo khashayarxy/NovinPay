@@ -28,7 +28,7 @@ final class TelegramSalesInventoryReportCommand extends Command
             ->where('state', 'settled')
             ->where('verified_at', '>=', $since);
         $paidCount = (clone $settledPayments)->count();
-        $revenueToman = intdiv((int) (clone $settledPayments)->sum('amount_minor'), 10);
+        $revenueToman = intdiv((int) (clone $settledPayments)->sum('amount_minor'), 100);
 
         $salesLines = [
             "📈 گزارش دوره‌ای فروش ({$hours} ساعت اخیر)",

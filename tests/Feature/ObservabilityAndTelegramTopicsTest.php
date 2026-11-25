@@ -2,17 +2,23 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\AttachIncidentId;
 use App\Models\AdminAccount;
 use App\Models\InventoryItem;
+use App\Models\PaymentAttempt;
+use App\Models\SalesOrder;
 use App\Models\User;
+use App\Services\Observability\BackupReporter;
 use App\Services\Observability\ObservabilityEvents;
 use App\Services\Observability\ObservabilityMetrics;
 use App\Services\Observability\SystemHealthService;
 use App\Services\Observability\TelegramTopicNotifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -20,6 +26,86 @@ use Tests\TestCase;
 class ObservabilityAndTelegramTopicsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_backup_delivery_failure_is_visible_and_manual_force_bypasses_dedupe(): void
+    {
+        $this->enableTelegramTopics();
+        Http::fakeSequence()->push(['ok' => false], 403)->push(['ok' => true]);
+        $options = ['status' => 'ok', 'path' => '/private/fixture.tar.gz.enc', 'size' => 100];
+        $this->assertFalse(app(BackupReporter::class)->report($options)['notification_sent']);
+        $this->assertFalse(app(BackupReporter::class)->report($options)['notification_sent']);
+        $this->assertTrue(app(BackupReporter::class)->report([...$options, 'force' => true])['notification_sent']);
+        Http::assertSentCount(2);
+        Http::assertNotSent(fn ($request) => $request['message_thread_id'] === 17);
+    }
+
+    public function test_routine_redirects_are_filtered_but_slow_successful_requests_still_alert(): void
+    {
+        $this->enableTelegramTopics();
+        Http::fake(['*' => Http::response(['ok' => true])]);
+        config(['observability.performance.slow_request_ms' => 1]);
+        $middleware = app(AttachIncidentId::class);
+        $next = function ($response) {
+            usleep(5000);
+
+            return $response;
+        };
+        $middleware->handle(Request::create('/payments/fixture/gateway'), fn () => $next(redirect('/fixture', 303)));
+        Http::assertNothingSent();
+        $middleware->handle(Request::create('/products'), fn () => $next(response('fixture')));
+        Http::assertSentCount(1);
+    }
+
+    public function test_raw_confirmed_transition_is_suppressed_without_losing_metrics(): void
+    {
+        $this->enableTelegramTopics();
+        Http::fake(['*' => Http::response(['ok' => true])]);
+        $order = new SalesOrder;
+        $order->public_id = (string) Str::uuid();
+        app(ObservabilityEvents::class)->orderStatusChanged($order, 'draft', 'confirmed', fullConfirmation: true);
+        Http::assertNothingSent();
+        $this->assertSame(1, app(ObservabilityMetrics::class)->get('orders.status.confirmed'));
+    }
+
+    public function test_nested_backup_discovery_uses_receipts_and_ignores_recent_metadata(): void
+    {
+        $this->enableTelegramTopics();
+        Http::fake(['*' => Http::response(['ok' => true])]);
+        $root = storage_path('framework/testing/backup-topic-'.Str::uuid());
+        mkdir($root.'/recovery-fixture', 0700, true);
+        try {
+            file_put_contents($root.'/recovery-fixture/backup.npb', 'encrypted-fixture');
+            file_put_contents($root.'/recovery-fixture/receipt.json', json_encode([
+                'result' => 'BACKUP_AND_DISPOSABLE_RESTORE_PASS', 'archiveBytes' => 17,
+                'snapshotUnix' => now()->subHours(73)->timestamp,
+            ], JSON_THROW_ON_ERROR));
+            file_put_contents($root.'/new-metadata.json', '{}');
+            $report = app(BackupReporter::class)->report(['path' => $root]);
+            $this->assertSame('stale', $report['status']);
+            $this->assertSame('backup.npb', $report['file']);
+            $this->assertTrue($report['notification_sent']);
+            Http::assertSent(fn ($request) => $request['message_thread_id'] === 18);
+            Http::assertSent(fn ($request) => $request['message_thread_id'] === 17);
+        } finally {
+            File::deleteDirectory($root);
+        }
+    }
+
+    public function test_topic_admin_link_is_a_button_and_payment_amount_is_toman(): void
+    {
+        $this->enableTelegramTopics();
+        config(['app.url' => 'https://novinpaypos.test']);
+        Http::fake(['*' => Http::response(['ok' => true])]);
+        $url = 'https://novinpaypos.test/admin/orders/fixture';
+        app(TelegramTopicNotifier::class)->send('orders', "سفارش\n".$url, adminUrl: $url);
+        Http::assertSent(fn ($request) => ! str_contains($request['text'], '/admin/orders')
+            && $request['reply_markup']['inline_keyboard'][0][0]['url'] === $url);
+        $attempt = new PaymentAttempt;
+        $attempt->forceFill(['public_id' => '12345678-fixture', 'state' => 'settled', 'amount_minor' => 8500000]);
+        app(ObservabilityEvents::class)->payment('settled', $attempt);
+        Http::assertSent(fn ($request) => str_contains($request['text'], '85,000 تومان')
+            && str_contains($request['text'], 'تسویه‌شده') && ! str_contains($request['text'], 'settled'));
+    }
 
     private function enableTelegramTopics(): void
     {
@@ -210,7 +296,7 @@ class ObservabilityAndTelegramTopicsTest extends TestCase
 
         Http::assertSent(fn (HttpRequest $request) => ($request['message_thread_id'] ?? null) === 15
             && str_contains((string) ($request['text'] ?? ''), 'خطا در ارسال پیامک')
-            && str_contains((string) ($request['text'] ?? ''), 'repair_created'));
+            && str_contains((string) ($request['text'] ?? ''), 'ثبت تعمیر'));
     }
 
     public function test_backup_sales_inventory_and_daily_digest_commands_route_to_correct_topics(): void
@@ -272,7 +358,7 @@ class ObservabilityAndTelegramTopicsTest extends TestCase
         // 4) Daily digest -> digest (20)
         $this->assertSame(0, Artisan::call('novinpay:telegram-daily-digest'));
 
-        Http::assertSent(fn (HttpRequest $r) => ($r['message_thread_id'] ?? null) === 18 && str_contains((string) $r['text'], 'سالم و به‌روز'));
+        Http::assertSent(fn (HttpRequest $r) => ($r['message_thread_id'] ?? null) === 18 && str_contains((string) $r['text'], 'فایل بکاپ به‌روز'));
         Http::assertSent(fn (HttpRequest $r) => ($r['message_thread_id'] ?? null) === 17 && str_contains((string) $r['text'], 'هشدار بکاپ'));
         Http::assertSent(fn (HttpRequest $r) => ($r['message_thread_id'] ?? null) === 12 && str_contains((string) $r['text'], 'گزارش دوره‌ای فروش'));
         Http::assertSent(fn (HttpRequest $r) => ($r['message_thread_id'] ?? null) === 16 && str_contains((string) $r['text'], 'POS-OOS-01') && str_contains((string) $r['text'], 'POS-LOW-02'));

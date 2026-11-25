@@ -48,8 +48,16 @@ final class TelegramTopicNotifier
         string $text,
         ?string $dedupeKey = null,
         ?int $throttleSeconds = null,
+        ?string $adminUrl = null,
     ): bool {
         if (! $this->enabledFor($topic)) {
+            Log::notice('Telegram topic notification skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+
+            return false;
+        }
+        if ($this->threadId($topic) === null) {
+            Log::warning('Telegram topic notification skipped', ['topic' => $topic, 'reason' => 'missing_topic_id']);
+
             return false;
         }
 
@@ -82,6 +90,15 @@ final class TelegramTopicNotifier
         ];
         if ($threadId !== null) {
             $payload['message_thread_id'] = $threadId;
+        }
+        $adminUrl ??= preg_match('~https?://[^\s]+/admin/[^\s]*~u', $clean, $match) ? $match[0] : null;
+        $parts = $adminUrl ? parse_url($adminUrl) : null;
+        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+        if (is_array($parts) && ($parts['host'] ?? null) === $appHost
+            && ($parts['scheme'] ?? '') === 'https' && str_starts_with($parts['path'] ?? '', '/admin/')
+            && ! isset($parts['user']) && ! isset($parts['pass']) && ! isset($parts['query']) && ! isset($parts['fragment'])) {
+            $payload['text'] = mb_substr(trim(str_replace($adminUrl, '', $clean)), 0, 3900);
+            $payload['reply_markup'] = ['inline_keyboard' => [[['text' => 'مشاهده در پنل مدیریت', 'url' => $adminUrl]]]];
         }
 
         try {

@@ -74,17 +74,17 @@
                     </a>
                 @else
                     <div @class(['admin-nav-section', 'admin-nav-current' => $current])>
-                        <details class="admin-nav-group" @if($current) open @endif>
-                            <summary class="admin-nav-group-trigger">
+                        <div class="admin-nav-group" @if($current) open @endif>
+                            <button type="button" class="admin-nav-group-trigger" aria-expanded="{{ $current ? 'true' : 'false' }}">
                                 <span class="admin-nav-group-label"><x-home.icon :name="$icon" /><span>{{ $label }}</span></span>
                                 <svg class="admin-nav-chevron-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-                            </summary>
+                            </button>
                             <div class="admin-nav-children">
                                 @foreach($visible as [$ability, $route, $active, $text])
                                     <a href="{{ route($route) }}" @if(request()->routeIs(...(array) $active)) aria-current="page" @endif>{{ $text }}</a>
                                 @endforeach
                             </div>
-                        </details>
+                        </div>
                     </div>
                 @endif
             @endforeach

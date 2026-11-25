@@ -219,8 +219,8 @@
     </nav>
 </section>
 
-<details class="admin-panel mt-3 repair-history-details">
-    <summary><span>سوابق پرونده <span class="admin-muted">({{ \App\Support\FaNumber::digits($events->total()) }} مورد)</span></span></summary>
+<section class="admin-panel mt-3 repair-history-details">
+    <h2><span>سوابق پرونده <span class="admin-muted">({{ \App\Support\FaNumber::digits($events->total()) }} مورد)</span></span></h2>
     <ol class="repair-history">
     @forelse($events as $event)
         @php
@@ -254,7 +254,7 @@
     @endforelse
     </ol>
     {{ $events->links() }}
-</details>
+</section>
 @else
 <p>برای مشاهده اطلاعات مشتری، دسترسی لازم است.</p>
 @endif

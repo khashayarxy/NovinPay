@@ -877,7 +877,7 @@
     }
 
     document.querySelector('[data-customer-header]')?.addEventListener('click', event => {
-        const trigger = event.target.closest('[data-customer-menu] summary');
+        const trigger = event.target.closest('[data-customer-menu] [data-customer-toggle]');
         if (!trigger || !matchMedia('(max-width: 850px)').matches
             || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         const dashboardLink = trigger.closest('[data-customer-menu]')?.querySelector('nav a[href]');

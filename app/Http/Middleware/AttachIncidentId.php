@@ -30,7 +30,8 @@ final class AttachIncidentId
 
         $durationMs = (int) round((hrtime(true) - $started) / 1_000_000);
         $threshold = (int) config('observability.performance.slow_request_ms', 2000);
-        if ($threshold > 0 && $durationMs >= $threshold) {
+        $anomalousRedirect = $response->isRedirection() && $durationMs >= max(10000, $threshold * 5);
+        if ($threshold > 0 && $durationMs >= $threshold && (! $response->isRedirection() || $anomalousRedirect)) {
             $path = '/'.ltrim($request->path(), '/');
             Log::channel('performance')->warning('Slow HTTP request detected', [
                 'incident_id' => $incidentId,

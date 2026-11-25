@@ -11,8 +11,8 @@ export async function recoveryRequest(data){
     }return result;
 }
 export function recoveryControls(parent,{current,conversation,beforeSwitch,restart,warn,done=()=>{}}) {
-    const panel=document.createElement('details');panel.className='support-secret-recovery';panel.hidden=true;
-    const title=document.createElement('summary');title.textContent='بازیابی با کد ذخیره‌شده';
+    const panel=document.createElement('section');panel.className='support-secret-recovery';panel.hidden=true;
+    const title=document.createElement('h3');title.textContent='بازیابی با کد ذخیره‌شده';
     const help=document.createElement('p');help.textContent='کد ذخیره‌شدهٔ همین گفتگو را وارد کنید.';
     const input=document.createElement('input');input.type='password';input.autocomplete='off';input.maxLength=80;input.spellcheck=false;input.setAttribute('aria-label','کد بازیابی گفتگو');input.placeholder='کد بازیابی گفتگو';
     const recover=document.createElement('button');recover.type='button';recover.textContent='بازیابی با کد';

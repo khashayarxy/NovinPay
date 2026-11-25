@@ -10,8 +10,8 @@ export function initCustomerNavigation() {
     const close = (restoreFocus = false) => {
         if (!menu) return;
         menu.open = false;
-        menu.querySelector('summary').setAttribute('aria-expanded', 'false');
-        if (restoreFocus) menu.querySelector('summary').focus({ preventScroll: true });
+        menu.querySelector('[data-customer-toggle], summary').setAttribute('aria-expanded', 'false');
+        if (restoreFocus) menu.querySelector('[data-customer-toggle], summary').focus({ preventScroll: true });
     };
 
     const bindMenu = () => {
@@ -19,7 +19,17 @@ export function initCustomerNavigation() {
         if (!menu || menu.dataset.bound) return;
         menu.dataset.bound = 'true';
         const current = menu;
-        const toggle = current.querySelector('summary');
+        const toggle = current.querySelector('[data-customer-toggle], summary');
+        if (current.tagName !== 'DETAILS') {
+            Object.defineProperty(current, 'open', {
+                get: () => current.hasAttribute('open'),
+                set: (value) => {
+                    current.toggleAttribute('open', value);
+                    current.dispatchEvent(new Event('toggle'));
+                },
+            });
+            toggle.addEventListener('click', () => { current.open = !current.open; });
+        }
         close();
         current.addEventListener('toggle', () => {
             toggle.setAttribute('aria-expanded', String(current.open));
@@ -74,7 +84,7 @@ export function initCustomerNavigation() {
             close();
             current.replaceWith(next);
             bindMenu();
-            if (restoreFocus) host.querySelector('summary, a')?.focus({ preventScroll: true });
+            if (restoreFocus) host.querySelector('[data-customer-toggle], summary, a')?.focus({ preventScroll: true });
         } catch {
             // A transient lookup failure must not replace the server-rendered state.
         } finally {
