@@ -220,10 +220,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const presetButtons = [...repairStepper.querySelectorAll('[data-issue-preset]')];
         const upgradeEstimateBox = repairStepper.querySelector('[data-upgrade-estimate]');
         const summaryDevice = repairStepper.querySelector('[data-summary-device]');
+        const summaryAccessories = repairStepper.querySelector('[data-summary-accessories]');
         const summaryIssue = repairStepper.querySelector('[data-summary-issue]');
+        const summaryContact = repairStepper.querySelector('[data-summary-contact]');
         const summaryHandover = repairStepper.querySelector('[data-summary-handover]');
-        const draftKey = repairStepper.dataset.draftKey || 'np_repair_draft_v2';
-        let currentStep = Math.min(3, Math.max(1, Number(repairStepper.dataset.initialStep || 1)));
+        const submitBtn = repairStepper.querySelector('[data-repair-submit]');
+        const draftKey = repairStepper.dataset.draftKey || 'np_repair_draft_v3';
+        let currentStep = Math.min(4, Math.max(1, Number(repairStepper.dataset.initialStep || 1)));
+        const faDigitsGlobal = (val) => String(val).replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
+        const normalizeDigitsGlobal = (val) => String(val || '')
+            .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+            .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
 
         let iranLocations = {};
         let courierZones = {};
@@ -246,14 +253,105 @@ document.addEventListener('DOMContentLoaded', () => {
             device_model: modelInput,
             device_serial: serialInput,
             issue: issueInput,
-            province: provinceSelect,
-            city: citySelect,
+            province: repairStepper.querySelector('#repair_province_search') || provinceSelect,
+            city: repairStepper.querySelector('#repair_city_search') || citySelect,
             pickup_address: pickupAddressInput,
             responsive_phone: responsivePhoneInput,
             customer_name: nameInput,
-            repair_auth_phone: repairStepper.querySelector('#repair_auth_phone'),
+            contact_phone: contactPhoneInput,
+            repair_auth_phone: contactPhoneInput,
             repair_auth_code: repairStepper.querySelector('#repair_auth_code'),
         };
+
+        const searchableWidgets = new Map();
+        const initSearchableSelect = (key, selectEl) => {
+            const wrapper = repairStepper.querySelector(`[data-searchable-select="${key}"]`);
+            if (!(wrapper instanceof HTMLElement) || !(selectEl instanceof HTMLSelectElement)) return null;
+            const inputEl = wrapper.querySelector('[data-ss-input]');
+            const listEl = wrapper.querySelector('[data-ss-list]');
+            if (!(inputEl instanceof HTMLInputElement) || !(listEl instanceof HTMLElement)) return null;
+
+            const getOptions = () => [...selectEl.options].filter((o) => o.value !== '');
+            const syncInputFromSelect = () => {
+                inputEl.value = selectEl.value || '';
+                if (key === 'city') {
+                    inputEl.placeholder = provinceSelect?.value ? 'جستجو یا انتخاب شهر…' : 'ابتدا استان را انتخاب کنید…';
+                }
+            };
+            const closeList = () => {
+                listEl.hidden = true;
+                inputEl.setAttribute('aria-expanded', 'false');
+            };
+            const renderList = (query = '') => {
+                const q = query.trim().toLowerCase();
+                const opts = getOptions().filter((o) => !q || o.textContent.toLowerCase().includes(q));
+                listEl.innerHTML = '';
+                if (opts.length === 0) {
+                    const empty = document.createElement('li');
+                    empty.className = 'np-searchable-select__empty';
+                    empty.textContent = getOptions().length === 0 ? 'ابتدا استان را انتخاب کنید' : 'موردی یافت نشد';
+                    listEl.append(empty);
+                } else {
+                    opts.forEach((opt) => {
+                        const li = document.createElement('li');
+                        li.className = 'np-searchable-select__option';
+                        li.setAttribute('role', 'option');
+                        li.setAttribute('aria-selected', String(opt.value === selectEl.value));
+                        li.textContent = opt.textContent;
+                        li.addEventListener('mousedown', (ev) => {
+                            ev.preventDefault();
+                            selectEl.value = opt.value;
+                            inputEl.value = opt.textContent;
+                            closeList();
+                            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        });
+                        listEl.append(li);
+                    });
+                }
+                listEl.hidden = false;
+                inputEl.setAttribute('aria-expanded', 'true');
+            };
+
+            inputEl.addEventListener('focus', () => renderList(''));
+            inputEl.addEventListener('click', () => renderList(''));
+            inputEl.addEventListener('input', () => {
+                const exact = getOptions().find((o) => o.textContent.trim() === inputEl.value.trim());
+                if (exact && selectEl.value !== exact.value) {
+                    selectEl.value = exact.value;
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                } else if (!inputEl.value.trim() && selectEl.value !== '') {
+                    selectEl.value = '';
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                renderList(inputEl.value);
+            });
+            inputEl.addEventListener('blur', () => {
+                window.setTimeout(() => {
+                    closeList();
+                    syncInputFromSelect();
+                }, 140);
+            });
+            inputEl.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Escape') {
+                    closeList();
+                    syncInputFromSelect();
+                } else if (ev.key === 'Enter' && !listEl.hidden) {
+                    const first = listEl.querySelector('.np-searchable-select__option');
+                    if (first) {
+                        ev.preventDefault();
+                        first.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                    }
+                }
+            });
+
+            const api = { syncInputFromSelect, closeList };
+            searchableWidgets.set(key, api);
+            syncInputFromSelect();
+            return api;
+        };
+
+        initSearchableSelect('province', provinceSelect);
+        initSearchableSelect('city', citySelect);
 
         const setFieldError = (fieldName, message) => {
             const slot = repairStepper.querySelector(`[data-field-error="${fieldName}"]`);
@@ -353,40 +451,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (city === targetCity) opt.selected = true;
                 citySelect.append(opt);
             });
+            searchableWidgets.get('province')?.syncInputFromSelect();
+            searchableWidgets.get('city')?.syncInputFromSelect();
             syncPickupAvailability();
         };
 
         const syncSummary = () => {
             const brand = brandRadios.find((r) => r.checked)?.value || '';
             const model = (modelInput?.value || '').trim();
+            const serial = (serialInput?.value || '').trim();
+            const accessories = [...repairStepper.querySelectorAll('input[name="accessories[]"]:checked')]
+                .map((cb) => cb.closest('label')?.querySelector('.repair-choice-card__title')?.textContent?.trim() || '')
+                .filter(Boolean);
             const issue = (issueInput?.value || '').trim();
+            const name = (nameInput?.value || '').trim();
+            const phone = (contactPhoneInput?.value || '').trim();
             const province = provinceSelect?.value || '';
             const city = citySelect?.value || '';
             const method = handoverRadios.find((r) => r.checked && !r.disabled)?.value || '';
-            if (summaryDevice) summaryDevice.textContent = [brand, model].filter(Boolean).join(' — ') || '—';
-            if (summaryIssue) summaryIssue.textContent = issue.length > 90 ? `${issue.slice(0, 90)}…` : (issue || '—');
+            if (summaryDevice) summaryDevice.textContent = [brand, model, serial ? `سریال ${serial}` : ''].filter(Boolean).join(' — ') || '—';
+            if (summaryAccessories) summaryAccessories.textContent = accessories.length > 0 ? accessories.join('، ') : 'بدون لوازم اضافه';
+            if (summaryIssue) summaryIssue.textContent = issue.length > 110 ? `${issue.slice(0, 110)}…` : (issue || '—');
+            if (summaryContact) summaryContact.textContent = [name, phone ? faDigitsGlobal(phone) : ''].filter(Boolean).join(' · ') || '—';
             if (summaryHandover) {
                 const loc = [province, city].filter(Boolean).join('، ');
                 const modeLabel = handoverLabels[method] || '';
                 summaryHandover.textContent = [loc, modeLabel].filter(Boolean).join(' — ') || '—';
             }
+            const phonePreview = repairStepper.querySelector('[data-auth-phone-preview]');
+            if (phonePreview) phonePreview.textContent = phone ? faDigitsGlobal(phone) : '—';
         };
 
         const scrollToFormTop = (el) => {
             if (!(el instanceof HTMLElement)) return;
-            const header = document.querySelector('header.np-header, header[role="banner"], .site-header');
-            const headerHeight = header instanceof HTMLElement ? header.getBoundingClientRect().height : 72;
-            const offset = Math.max(80, Math.min(96, Math.round(headerHeight) + 16));
             const rect = el.getBoundingClientRect();
-            if (rect.top < offset || rect.top > offset + 24) {
+            if (rect.top < 0) {
+                const header = document.querySelector('header.np-header, header[role="banner"], .site-header');
+                const headerHeight = header instanceof HTMLElement ? header.getBoundingClientRect().height : 72;
+                const offset = Math.max(76, Math.min(96, Math.round(headerHeight) + 12));
                 const targetY = Math.max(0, window.scrollY + rect.top - offset);
                 const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
                 window.scrollTo({ top: targetY, behavior: reduced ? 'auto' : 'smooth' });
             }
         };
 
+        let lastAutoOtpPhone = '';
         const goToStep = (step, { scroll = false } = {}) => {
-            currentStep = step;
+            currentStep = Math.min(4, Math.max(1, step));
             showAlert('');
             steps.forEach((panel) => {
                 panel.hidden = Number(panel.dataset.step) !== currentStep;
@@ -397,8 +508,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.toggleAttribute('data-step-done', idx < currentStep);
             });
             if (currentStep === 3) {
-                syncSummary();
                 syncHandoverPanels();
+            }
+            if (currentStep === 4) {
+                syncSummary();
+                if (repairStepper.dataset.isGuest === '1') {
+                    const normalizedPhone = normalizeDigitsGlobal(contactPhoneInput?.value || '').replace(/\D+/g, '');
+                    const otpStepEl = repairStepper.querySelector('[data-auth-step="otp"]');
+                    if (/^09\d{9}$/.test(normalizedPhone) && normalizedPhone !== lastAutoOtpPhone && otpStepEl?.hidden) {
+                        lastAutoOtpPhone = normalizedPhone;
+                        repairStepper.querySelector('[data-auth-send-btn]')?.click();
+                    }
+                }
             }
             if (scroll) {
                 scrollToFormTop(repairStepper.closest('.public-panel') || repairStepper);
@@ -428,15 +549,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     return false;
                 }
             } else if (step === 3) {
+                const name = (nameInput?.value || '').trim();
+                if (name.length < 2) {
+                    setFieldError('customer_name', 'لطفاً نام و نام خانوادگی را وارد کنید.');
+                    nameInput?.focus();
+                    return false;
+                }
+                const normalizedPhone = normalizeDigitsGlobal(contactPhoneInput?.value || '').replace(/\D+/g, '');
+                if (!/^09\d{9}$/.test(normalizedPhone)) {
+                    setFieldError('contact_phone', 'شماره موبایل ۱۱ رقمی معتبر با ۰۹ وارد کنید.');
+                    contactPhoneInput?.focus();
+                    return false;
+                }
                 const method = handoverRadios.find((r) => r.checked && !r.disabled)?.value || '';
                 if (!provinceSelect?.value) {
                     setFieldError('province', 'لطفاً استان را انتخاب کنید.');
-                    provinceSelect?.focus();
+                    fieldInputMap.province?.focus();
                     return false;
                 }
                 if (!citySelect?.value) {
                     setFieldError('city', 'لطفاً شهر را انتخاب کنید.');
-                    citySelect?.focus();
+                    fieldInputMap.city?.focus();
                     return false;
                 }
                 if (!method) {
@@ -452,22 +585,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         return false;
                     }
                 }
+            } else if (step === 4) {
                 if (repairStepper.dataset.isGuest === '1') {
-                    const inlinePhone = repairStepper.querySelector('#repair_auth_phone');
                     const inlineOtpStep = repairStepper.querySelector('[data-auth-step="otp"]');
                     if (inlineOtpStep && !inlineOtpStep.hidden) {
-                        setFieldError('repair_auth_code', 'لطفاً ابتدا کد تأیید ۶ رقمی را وارد و تأیید کنید.');
+                        setFieldError('repair_auth_code', 'لطفاً کد تأیید ۶ رقمی را وارد کنید.');
                         repairStepper.querySelector('#repair_auth_code')?.focus();
                     } else {
                         setFieldError('repair_auth_phone', 'برای ثبت نهایی، ابتدا شماره موبایل خود را تأیید کنید.');
-                        inlinePhone?.focus();
                     }
-                    return false;
-                }
-                const name = (nameInput?.value || '').trim();
-                if (name.length < 2) {
-                    setFieldError('customer_name', 'لطفاً نام و نام خانوادگی را وارد کنید.');
-                    nameInput?.focus();
                     return false;
                 }
             }
@@ -580,10 +706,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             sendBtn?.addEventListener('click', async () => {
                 setFieldError('repair_auth_phone', '');
-                const raw = normalizeDigits(phoneInput?.value || '').replace(/\D+/g, '');
+                const raw = normalizeDigits(contactPhoneInput?.value || phoneInput?.value || '').replace(/\D+/g, '');
                 if (!/^09\d{9}$/.test(raw)) {
-                    setFieldError('repair_auth_phone', 'شماره موبایل ۱۱ رقمی معتبر با ۰۹ وارد کنید.');
-                    phoneInput?.focus();
+                    setFieldError('repair_auth_phone', 'شماره موبایل ۱۱ رقمی معتبر با ۰۹ در مرحلهٔ قبل وارد کنید.');
+                    goToStep(3, { scroll: true });
+                    contactPhoneInput?.focus();
                     return;
                 }
                 sendBtn.disabled = true;
@@ -646,16 +773,20 @@ document.addEventListener('DOMContentLoaded', () => {
             changePhoneBtn?.addEventListener('click', async () => {
                 webOtpController?.abort();
                 stopCountdown();
+                lastAutoOtpPhone = '';
                 setFieldError('repair_auth_code', '');
                 setFieldError('repair_auth_phone', '');
                 try { await postAuth(resetUrl, {}); } catch {}
                 if (otpStep) otpStep.hidden = true;
                 if (phoneStep) phoneStep.hidden = false;
                 if (codeInput) codeInput.value = '';
-                phoneInput?.focus();
+                goToStep(3, { scroll: true });
+                contactPhoneInput?.focus();
             });
 
-            verifyBtn?.addEventListener('click', async () => {
+            let verifyingOtp = false;
+            const performOtpVerify = async () => {
+                if (verifyingOtp) return;
                 setFieldError('repair_auth_code', '');
                 const code = normalizeDigits(codeInput?.value || '').replace(/\D+/g, '');
                 if (!/^\d{6}$/.test(code)) {
@@ -663,7 +794,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     codeInput?.focus();
                     return;
                 }
-                verifyBtn.disabled = true;
+                verifyingOtp = true;
+                if (verifyBtn) verifyBtn.disabled = true;
                 try {
                     const { ok, data } = await postAuth(verifyUrl, { code });
                     if (!ok) {
@@ -676,21 +808,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     repairStepper.dataset.isGuest = '0';
                     if (csrfInput && data.csrf_token) csrfInput.value = data.csrf_token;
                     if (submissionTokenInput && data.submission_token) submissionTokenInput.value = data.submission_token;
-                    if (contactPhoneInput && data.phone) contactPhoneInput.value = data.phone;
+                    if (contactPhoneInput && data.phone) {
+                        contactPhoneInput.value = data.phone;
+                        contactPhoneInput.readOnly = true;
+                    }
                     if (nameInput && !nameInput.value.trim() && data.customer_name) nameInput.value = data.customer_name;
                     if (phoneStep) phoneStep.hidden = true;
                     if (otpStep) otpStep.hidden = true;
                     const headEl = inlineAuth.querySelector('.repair-inline-auth-box__head');
                     if (headEl) headEl.hidden = true;
                     if (verifiedBadge) verifiedBadge.hidden = false;
+                    if (submitBtn) submitBtn.hidden = false;
                     saveDraft();
-                    if (typeof repairStepper._reverseGeocodeIfPinned === 'function') {
-                        repairStepper._reverseGeocodeIfPinned();
+                    // Auto-submit the repair request right after OTP verification succeeds
+                    if (validateStep(1) && validateStep(2) && validateStep(3)) {
+                        repairStepper.requestSubmit ? repairStepper.requestSubmit() : repairStepper.submit();
                     }
                 } catch {
                     setFieldError('repair_auth_code', 'خطا در تأیید کد. لطفاً دوباره تلاش کنید.');
                 } finally {
-                    verifyBtn.disabled = false;
+                    verifyingOtp = false;
+                    if (verifyBtn) verifyBtn.disabled = false;
+                }
+            };
+
+            verifyBtn?.addEventListener('click', performOtpVerify);
+            codeInput?.addEventListener('input', () => {
+                const digits = normalizeDigits(codeInput.value || '').replace(/\D+/g, '');
+                if (digits.length === 6) {
+                    performOtpVerify();
                 }
             });
         }
@@ -733,7 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pickupAddressInput?.addEventListener('input', () => { addrEdited = (pickupAddressInput.value || '').trim().length > 0; });
 
             const runReverseGeocode = (fLat, fLng) => {
-                if (!reverseUrl || !pickupAddressInput || addrEdited || repairStepper.dataset.isGuest === '1') return;
+                if (!reverseUrl) return;
                 if (geocodeTimer) window.clearTimeout(geocodeTimer);
                 geocodeTimer = window.setTimeout(() => {
                     const url = new URL(reverseUrl, window.location.origin);
@@ -742,12 +888,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.fetch(url.href, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
                         .then((r) => (r.ok ? r.json() : null))
                         .then((data) => {
-                            if (!addrEdited && data?.ok && typeof data.address === 'string' && data.address.trim()) {
-                                pickupAddressInput.value = data.address.slice(0, pickupAddressInput.maxLength || 500);
-                                saveDraft();
+                            if (!data?.ok) return;
+                            if (data.province && provinceSelect && [...provinceSelect.options].some((o) => o.value === data.province)) {
+                                provinceSelect.value = data.province;
+                                populateRepairCities(data.city || '');
                             }
+                            if (pickupAddressInput && typeof data.address === 'string' && data.address.trim()) {
+                                pickupAddressInput.value = data.address.slice(0, pickupAddressInput.maxLength || 500);
+                                setFieldError('pickup_address', '');
+                            }
+                            saveDraft();
                         }).catch(() => {});
-                }, 250);
+                }, 220);
             };
 
             const updateCoords = (la, ln, triggerReverse = false) => {
@@ -848,9 +1000,28 @@ document.addEventListener('DOMContentLoaded', () => {
         repairStepper.addEventListener('input', saveDraft);
         repairStepper.addEventListener('change', saveDraft);
 
+        indicators.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const target = Number(btn.dataset.stepIndicator || 1);
+                if (target === currentStep) return;
+                if (target < currentStep) {
+                    goToStep(target, { scroll: true });
+                    return;
+                }
+                for (let s = currentStep; s < target; s += 1) {
+                    if (!validateStep(s)) {
+                        goToStep(s, { scroll: true });
+                        validateStep(s);
+                        return;
+                    }
+                }
+                goToStep(target, { scroll: true });
+            });
+        });
+
         repairStepper.querySelectorAll('[data-step-next]').forEach((btn) => {
             btn.addEventListener('click', () => {
-                if (validateStep(currentStep)) goToStep(Math.min(3, currentStep + 1), { scroll: true });
+                if (validateStep(currentStep)) goToStep(Math.min(4, currentStep + 1), { scroll: true });
             });
         });
 
@@ -859,10 +1030,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         repairStepper.addEventListener('submit', (event) => {
-            for (const step of [1, 2, 3]) {
+            for (const step of [1, 2, 3, 4]) {
                 if (!validateStep(step)) {
                     event.preventDefault();
-                    goToStep(step);
+                    goToStep(step, { scroll: true });
                     validateStep(step);
                     return;
                 }
@@ -1249,6 +1420,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.querySelectorAll('[data-copy-shipping]').forEach((button) => {
+        const defaultLabel = button.textContent?.trim() || 'کپی اطلاعات ارسال';
+        const copiedLabel = button.dataset.copiedLabel || 'اطلاعات کپی شد';
+        let resetTimer = null;
         button.addEventListener('click', async () => {
             const text = button.dataset.copyText || '';
             const statusId = button.getAttribute('aria-describedby');
@@ -1268,7 +1442,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.execCommand('copy');
                     helper.remove();
                 }
-                if (status) status.textContent = 'اطلاعات ارسال کپی شد.';
+                button.textContent = copiedLabel;
+                button.classList.add('is-copied');
+                if (status) status.textContent = copiedLabel;
+                if (resetTimer) window.clearTimeout(resetTimer);
+                resetTimer = window.setTimeout(() => {
+                    button.textContent = defaultLabel;
+                    button.classList.remove('is-copied');
+                }, 2600);
             } catch {
                 if (status) status.textContent = 'کپی خودکار انجام نشد؛ لطفاً متن را دستی کپی کنید.';
             }
@@ -2458,6 +2639,164 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         radios.forEach((radio) => radio.addEventListener('change', sync));
         sync();
     });
+
+    // Product comparison "Show differences only" toggle
+    const compareDiffToggle = document.querySelector('[data-compare-diff-toggle]');
+    const compareBoard = document.querySelector('[data-compare-board]');
+    if (compareDiffToggle instanceof HTMLInputElement && compareBoard instanceof HTMLElement) {
+        const noDiffNotice = document.querySelector('[data-compare-no-diff]');
+        const syncCompareDiff = () => {
+            const onlyDiff = compareDiffToggle.checked;
+            compareBoard.classList.toggle('is-diff-only', onlyDiff);
+            let visibleCount = 0;
+            const rows = [...compareBoard.querySelectorAll('[data-compare-row]')];
+            rows.forEach((row) => {
+                const show = !onlyDiff || row.dataset.diff === '1';
+                row.hidden = !show;
+                if (show) visibleCount += 1;
+            });
+            compareBoard.querySelectorAll('[data-compare-group]').forEach((groupRow) => {
+                let sibling = groupRow.nextElementSibling;
+                let hasVisible = false;
+                while (sibling && !sibling.hasAttribute('data-compare-group')) {
+                    if (sibling.hasAttribute('data-compare-row') && !sibling.hidden) {
+                        hasVisible = true;
+                        break;
+                    }
+                    sibling = sibling.nextElementSibling;
+                }
+                groupRow.hidden = !hasVisible;
+            });
+            if (noDiffNotice instanceof HTMLElement) {
+                noDiffNotice.hidden = !(onlyDiff && visibleCount === 0);
+            }
+        };
+        compareDiffToggle.addEventListener('change', syncCompareDiff);
+        syncCompareDiff();
+    }
+
+    // In-page handover change modal on account repair details
+    const handoverModal = document.querySelector('[data-handover-modal]');
+    if (handoverModal instanceof HTMLDialogElement) {
+        const form = handoverModal.querySelector('[data-repair-handover-form]');
+        const modalMap = handoverModal.querySelector('[data-repair-modal-map]');
+        let modalNeshanMap = null;
+        let modalNeshanMarker = null;
+        let modalMapBooting = false;
+
+        const initModalMap = () => {
+            if (!(modalMap instanceof HTMLElement)) return;
+            const pickupFields = handoverModal.querySelector('[data-handover-pickup-fields]');
+            if (pickupFields instanceof HTMLElement && pickupFields.hidden) return;
+            const viewport = modalMap.querySelector('[data-map-viewport]');
+            const tilesEl = modalMap.querySelector('[data-map-tiles]');
+            const fallbackPin = modalMap.querySelector('[data-map-fallback-pin]');
+            const coordsEl = modalMap.querySelector('[data-map-coords]');
+            const latInput = modalMap.querySelector('[data-map-lat]');
+            const lngInput = modalMap.querySelector('[data-map-lng]');
+            const addrInput = form?.querySelector('[data-handover-address]');
+            const reverseUrl = form?.dataset.reverseGeocodeUrl || '';
+            const neshanKey = (modalMap.dataset.neshanKey || '').trim();
+            if (!viewport || !tilesEl || viewport.offsetWidth === 0) return;
+
+            if (modalNeshanMap) {
+                modalNeshanMap.invalidateSize(true);
+                return;
+            }
+            if (modalMapBooting) return;
+            modalMapBooting = true;
+
+            let lat = parseFloat(latInput?.value || modalMap.dataset.defaultLat || '35.6597') || 35.6597;
+            let lng = parseFloat(lngInput?.value || modalMap.dataset.defaultLng || '51.0592') || 51.0592;
+            let zoom = 14;
+            let geoTimer = null;
+
+            const updateModalCoords = (la, ln, triggerReverse = false) => {
+                lat = Math.max(-85, Math.min(85, la));
+                lng = Math.max(-180, Math.min(180, ln));
+                const fLat = lat.toFixed(6);
+                const fLng = lng.toFixed(6);
+                if (latInput) latInput.value = fLat;
+                if (lngInput) lngInput.value = fLng;
+                if (coordsEl) coordsEl.textContent = `${fLat}, ${fLng}`;
+                if (modalNeshanMarker && typeof modalNeshanMarker.setLatLng === 'function') {
+                    modalNeshanMarker.setLatLng([lat, lng]);
+                }
+                if (triggerReverse && reverseUrl) {
+                    if (geoTimer) window.clearTimeout(geoTimer);
+                    geoTimer = window.setTimeout(() => {
+                        const url = new URL(reverseUrl, window.location.origin);
+                        url.searchParams.set('lat', fLat);
+                        url.searchParams.set('lng', fLng);
+                        window.fetch(url.href, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                            .then((r) => (r.ok ? r.json() : null))
+                            .then((data) => {
+                                if (data?.ok && addrInput instanceof HTMLTextAreaElement && typeof data.address === 'string' && data.address.trim()) {
+                                    addrInput.value = data.address.slice(0, addrInput.maxLength || 400);
+                                }
+                            }).catch(() => {});
+                    }, 220);
+                }
+            };
+
+            mountNeshanMapWidget({
+                tilesEl,
+                fallbackPin,
+                neshanKey,
+                lat,
+                lng,
+                zoom,
+                onMove: (nextLat, nextLng) => updateModalCoords(nextLat, nextLng, true),
+            }).then((instance) => {
+                modalMapBooting = false;
+                if (!instance) return;
+                modalNeshanMap = instance.map;
+                modalNeshanMarker = instance.marker;
+                modalNeshanMap.invalidateSize(true);
+            });
+
+            modalMap.querySelectorAll('[data-map-zoom]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    zoom = btn.dataset.mapZoom === 'in' ? Math.min(18, zoom + 1) : Math.max(5, zoom - 1);
+                    if (modalNeshanMap) modalNeshanMap.setZoom(zoom);
+                });
+            });
+            modalMap.querySelector('[data-map-locate]')?.addEventListener('click', () => {
+                if (!navigator.geolocation) return;
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    zoom = 15;
+                    updateModalCoords(pos.coords.latitude, pos.coords.longitude, true);
+                    if (modalNeshanMap) modalNeshanMap.setView([lat, lng], zoom);
+                }, () => {}, { timeout: 8000 });
+            });
+        };
+
+        const openModal = () => {
+            if (!handoverModal.open) {
+                handoverModal.showModal();
+            }
+            window.requestAnimationFrame(initModalMap);
+        };
+        const closeModal = () => {
+            if (handoverModal.open) handoverModal.close();
+        };
+
+        document.querySelectorAll('[data-open-handover-modal]').forEach((btn) => {
+            btn.addEventListener('click', openModal);
+        });
+        handoverModal.querySelectorAll('[data-close-handover-modal]').forEach((btn) => {
+            btn.addEventListener('click', closeModal);
+        });
+        handoverModal.addEventListener('click', (event) => {
+            if (event.target === handoverModal) closeModal();
+        });
+        handoverModal.querySelectorAll('[data-handover-radio]').forEach((radio) => {
+            radio.addEventListener('change', () => window.requestAnimationFrame(initModalMap));
+        });
+        if (handoverModal.dataset.autoOpen === '1') {
+            openModal();
+        }
+    }
 
     document.querySelectorAll('[data-toggle-handover-editor]').forEach((btn) => {
         btn.addEventListener('click', () => {

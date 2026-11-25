@@ -17,6 +17,7 @@ use App\Support\AdminHistory;
 use App\Support\AdminRepairMoney;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 
 final class SimpleRepairRecords
 {
@@ -71,10 +72,19 @@ final class SimpleRepairRecords
             AdminHistory::record($action, 'repair_case', $case->id, $actor->id);
 
             $statusChanged = $before !== $case->status;
+            $costUpdatedOnReady = $case->status === RepairStage::Ready && $beforePrice !== $case->repair_price_toman;
             if ($statusChanged) {
                 DB::afterCommit(fn () => app(UnifiedNotifier::class)->repairStagePattern($case));
             }
-            $costUpdatedOnReady = $case->status === RepairStage::Ready && $beforePrice !== $case->repair_price_toman;
+            if (($statusChanged && $case->status === RepairStage::Ready) || $costUpdatedOnReady) {
+                $unpaidDoc = $this->document($case);
+                if ($unpaidDoc && ($unpaidDoc->charged_minor - $unpaidDoc->paid_minor) > 0) {
+                    $paymentUrl = URL::temporarySignedRoute('payments.repair.link', now()->addDays(14), [
+                        'repair' => $case->public_id,
+                    ]);
+                    DB::afterCommit(fn () => app(UnifiedNotifier::class)->repairPaymentLinkGenerated($case, $unpaidDoc, $paymentUrl));
+                }
+            }
             if (($statusChanged && in_array($case->status, [RepairStage::Ready, RepairStage::Delivered, RepairStage::Returned], true)) || $costUpdatedOnReady) {
                 $notifyPayload = [
                     'status_label' => $case->status->label(),

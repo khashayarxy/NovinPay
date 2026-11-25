@@ -212,8 +212,40 @@
 
 /* Compact public navigation and the owner-supplied illustrative hero. */
 .np-header__inner { position: relative; min-height: 68px; padding-block: 10px; }
-.np-nav a { padding-inline: 10px; border-radius: 7px; }
-.np-nav a:hover, .np-nav [aria-current] { background: #f2f7fc; text-decoration: none; }
+.np-nav > a,
+.np-nav__trigger {
+    position: relative;
+    padding-inline: 10px;
+    border-radius: 8px;
+    transition: color 150ms ease, background-color 150ms ease;
+}
+.np-nav > a:hover,
+.np-nav__trigger:hover {
+    color: var(--color-brand-700);
+    background: #f5f9fe;
+    text-decoration: none;
+}
+.np-nav > a[aria-current="page"],
+.np-nav__trigger[aria-current="page"] {
+    background: transparent;
+    color: var(--color-brand-700);
+    font-weight: 700;
+}
+.np-nav > a[aria-current="page"]:hover,
+.np-nav__trigger[aria-current="page"]:hover {
+    background: transparent;
+}
+.np-nav > a[aria-current="page"]::after,
+.np-nav__trigger[aria-current="page"]::after {
+    content: '';
+    position: absolute;
+    inset-inline: 10px;
+    bottom: 5px;
+    height: 2.5px;
+    border-radius: 999px;
+    background: var(--color-brand-500);
+}
+.np-nav__dropdown--compact { min-width: 210px; }
 .np-nav__item--dropdown { position: relative; display: inline-flex; align-items: center; }
 .np-nav__item--dropdown::after { content: ''; position: absolute; inset-inline: -10px; top: 100%; height: 14px; }
 .np-nav__trigger { display: inline-flex; align-items: center; gap: 4px; }
@@ -411,19 +443,31 @@
 .np-footer__links {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, max-content));
-    gap: 6px 24px;
+    gap: 8px 10px;
 }
 .np-footer__links a {
     display: inline-flex;
     align-items: center;
-    min-height: 36px;
-    color: #365574;
+    gap: 6px;
+    min-height: 40px;
+    padding: 6px 13px;
+    border: 1px solid #dce7f2;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgb(15 23 42 / 3%);
+    color: #254566;
     font-size: 13px;
     font-weight: 500;
     text-decoration: none;
-    transition: color .14s ease;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
 }
-.np-footer__links a:hover { color: var(--color-brand-700); text-decoration: underline; text-underline-offset: 4px; }
+.np-footer__links a:hover {
+    color: var(--color-brand-700);
+    border-color: #93c5fd;
+    background: #f8fbff;
+    transform: translateY(-1px);
+    text-decoration: none;
+}
 .np-footer__brand {
     display: flex;
     flex-direction: row;

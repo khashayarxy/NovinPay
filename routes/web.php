@@ -145,6 +145,7 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/r/{code}', [RepairRequestController::class, 'tracking'])
         ->where('code', '[1-9][0-9]{7}')->middleware('throttle:60,1')->name('repair.track.short');
     Route::get('/repair/track/recovery', [RepairRequestController::class, 'recovery'])->name('repair.track.recovery');
+    Route::get('/repair/reverse-geocode', [RepairRequestController::class, 'reverseGeocode'])->middleware('throttle:30,1')->name('repair.reverse-geocode');
     Route::get('/repair/track/recovery/{reference}', [RepairRequestController::class, 'recoveredTracking'])
         ->where('reference', '[A-Za-z0-9-]{1,35}')->middleware('throttle:repair-track')->name('repair.track.recovered');
     Route::post('/repair/track/recovery/send', [RepairRequestController::class, 'sendRecovery'])->middleware('throttle:customer-otp')->name('repair.track.recovery.send');

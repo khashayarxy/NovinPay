@@ -72,7 +72,7 @@
                             <dl class="np-account-facts">
                                 <div><dt>آدرس گیرنده</dt><dd>{{ config('business.address') }}</dd></div>
                                 <div><dt>شماره تماس</dt><dd><a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></dd></div>
-                                <div><dt>کد پستی</dt><dd dir="ltr">۳۳۵۱۶۱۱۸۲۸</dd></div>
+                                <div><dt>کد پستی</dt><dd class="np-fact-rtl-num"><bdi dir="ltr">۳۳۵۱۶۱۱۸۲۸</bdi></dd></div>
                             </dl>
                         @elseif ($currentHandover === 'in_person')
                             <p>لطفاً دستگاه را همراه با کد پیگیری به فروشگاه نوین‌پی تحویل دهید:</p>
@@ -96,16 +96,20 @@
                             $handoverEditorOpen = $errors->hasAny(['handover_method', 'pickup_address', 'responsive_phone']);
                         @endphp
                         <div style="margin-top: 14px;">
-                            <button type="button" class="np-button np-button--outline" data-toggle-handover-editor aria-controls="repair-handover-editor" aria-expanded="{{ $handoverEditorOpen ? 'true' : 'false' }}">تغییر نحوهٔ تحویل</button>
+                            <button type="button" class="np-button np-button--outline" data-open-handover-modal aria-controls="repair-handover-modal" aria-haspopup="dialog">تغییر نحوهٔ تحویل</button>
                         </div>
 
-                        <div id="repair-handover-editor" data-handover-editor-panel @unless($handoverEditorOpen) hidden @endunless style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
-                            <form method="post" action="{{ route('account.repairs.request.handover', $repair->tracking_reference) }}" class="public-form" data-repair-handover-form>
+                        <dialog id="repair-handover-modal" class="np-handover-modal" data-handover-modal @if($handoverEditorOpen) data-auto-open="1" @endif aria-labelledby="handover-modal-title">
+                            <div class="np-handover-modal__head">
+                                <h3 id="handover-modal-title">تغییر نحوهٔ تحویل دستگاه</h3>
+                                <button type="button" class="np-handover-modal__close" data-close-handover-modal aria-label="بستن پنجره">×</button>
+                            </div>
+                            <form method="post" action="{{ route('account.repairs.request.handover', $repair->tracking_reference) }}" class="public-form np-handover-modal__body" data-repair-handover-form data-reverse-geocode-url="{{ route('repair.reverse-geocode') }}">
                                 @csrf
                                 @method('PATCH')
-                                <div style="display:grid;gap:8px;margin-bottom:12px;">
+                                <div class="np-handover-modal__options">
                                     @foreach ($availableHandoverMethods as $key => $label)
-                                        <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #d5e5f5;border-radius:10px;cursor:pointer;background:#f8fbff;">
+                                        <label class="repair-choice-card repair-choice-card--handover-modal">
                                             <input type="radio" name="handover_method" value="{{ $key }}" @checked($currentHandover === $key) data-handover-radio>
                                             <span>{{ $label }}</span>
                                         </label>
@@ -114,20 +118,41 @@
 
                                 @if ($courierEligible ?? false)
                                     <div data-handover-pickup-fields @if($currentHandover !== 'doorstep_pickup') hidden @endif>
+                                        <div class="checkout-map repair-pickup-map" data-repair-modal-map data-neshan-key="{{ $neshanWebKey ?? '' }}" data-default-lat="{{ old('pickup_latitude', $parsed['pickup_lat'] ?? '35.6597') ?: '35.6597' }}" data-default-lng="{{ old('pickup_longitude', $parsed['pickup_lng'] ?? '51.0592') ?: '51.0592' }}">
+                                            <div class="checkout-map__header">
+                                                <span>موقعیت تحویل روی نقشه</span>
+                                                <div class="checkout-map__controls">
+                                                    <button type="button" class="checkout-map__btn" data-map-locate title="موقعیت فعلی من">موقعیت من</button>
+                                                    <button type="button" class="checkout-map__btn" data-map-zoom="in" aria-label="بزرگ‌نمایی">+</button>
+                                                    <button type="button" class="checkout-map__btn" data-map-zoom="out" aria-label="کوچک‌نمایی">−</button>
+                                                </div>
+                                            </div>
+                                            <div class="checkout-map__viewport" data-map-viewport tabindex="0" role="application" aria-label="انتخاب موقعیت روی نقشه">
+                                                <div class="checkout-map__tiles" data-map-tiles></div>
+                                                <div class="checkout-map__pin" data-map-fallback-pin aria-hidden="true"></div>
+                                            </div>
+                                            <div class="checkout-map__footer">
+                                                <span class="checkout-map__coords" data-map-coords dir="ltr">{{ ($parsed['pickup_lat'] ?? '') && ($parsed['pickup_lng'] ?? '') ? ($parsed['pickup_lat'].', '.$parsed['pickup_lng']) : '۳۵.۶۵۹۷, ۵۱.۰۵۹۲' }}</span>
+                                                <span class="checkout-map__attr">© نقشه نشان</span>
+                                            </div>
+                                            <input type="hidden" name="pickup_latitude" value="{{ old('pickup_latitude', $parsed['pickup_lat'] ?? '') }}" data-handover-lat data-map-lat>
+                                            <input type="hidden" name="pickup_longitude" value="{{ old('pickup_longitude', $parsed['pickup_lng'] ?? '') }}" data-handover-lng data-map-lng>
+                                        </div>
                                         <x-repair-field name="pickup_address" label="نشانی کامل تحویل به پیک">
-                                            <textarea id="pickup_address" name="pickup_address" class="input" rows="2" maxlength="400" placeholder="خیابان، کوچه، پلاک، واحد">{{ old('pickup_address', $parsed['pickup_address'] ?? '') }}</textarea>
+                                            <textarea id="pickup_address" name="pickup_address" class="input" rows="2" maxlength="400" placeholder="خیابان، کوچه، پلاک، واحد" data-handover-address>{{ old('pickup_address', $parsed['pickup_address'] ?? '') }}</textarea>
                                         </x-repair-field>
                                         <x-repair-field name="responsive_phone" label="شماره تماس پاسخگو (اختیاری)" :required="false">
                                             <input id="responsive_phone" name="responsive_phone" type="tel" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" value="{{ old('responsive_phone', $parsed['responsive_phone'] ?? '') }}">
                                         </x-repair-field>
-                                        <input type="hidden" name="pickup_latitude" value="{{ old('pickup_latitude', $parsed['pickup_lat'] ?? '') }}" data-handover-lat>
-                                        <input type="hidden" name="pickup_longitude" value="{{ old('pickup_longitude', $parsed['pickup_lng'] ?? '') }}" data-handover-lng>
                                     </div>
                                 @endif
 
-                                <button type="submit" class="np-button np-button--primary">ذخیرهٔ نحوهٔ تحویل</button>
+                                <div class="np-handover-modal__actions">
+                                    <button type="submit" class="np-button np-button--primary">ذخیرهٔ نحوهٔ تحویل</button>
+                                    <button type="button" class="np-button np-button--outline" data-close-handover-modal>انصراف</button>
+                                </div>
                             </form>
-                        </div>
+                        </dialog>
                     </section>
                 @else
                     <x-account.settlement :document="$document" :plan="$plan" :paid-at-display="$paidAtDisplay ?? null" />

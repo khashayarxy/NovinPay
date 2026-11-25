@@ -17,6 +17,7 @@ use App\Services\IpPanel;
 use App\Services\Observability\TelegramTopicNotifier;
 use App\Support\FaNumber;
 use App\Support\RepairPaymentCode;
+use App\Support\RepairTracking;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -192,7 +193,14 @@ final class UnifiedNotifier
             $costText = $costToman !== null ? FaNumber::digits(number_format($costToman)).' تومان' : 'ثبت نشده';
 
             if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
-                $params = ['code' => $ref, 'status' => $statusLabel];
+                $repairLink = RepairTracking::url($ref);
+                $doc = FinancialDocument::query()->where('repair_case_id', $case->id)->first();
+                if ($doc && ($doc->charged_minor - $doc->paid_minor) > 0) {
+                    $repairLink = route('payments.repair.short', [
+                        'code' => RepairPaymentCode::issue($case->public_id, now()->addDays(14)->timestamp),
+                    ]);
+                }
+                $params = ['code' => $ref, 'status' => $statusLabel, 'link' => $repairLink];
                 if ($costToman !== null) {
                     $params['cost'] = (string) $costToman;
                 }

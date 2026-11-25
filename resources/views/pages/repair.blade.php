@@ -26,13 +26,17 @@
     $responsivePhone = is_string($responsivePhone) ? $responsivePhone : '';
     $customerName = old('customer_name', auth('customer')->user()?->name ?? '');
     $customerName = is_string($customerName) ? $customerName : '';
+    $customerPhone = old('contact_phone', auth('customer')->user()?->phone ?? ($authDisplayPhone ?? ''));
+    $customerPhone = is_string($customerPhone) ? $customerPhone : '';
     $initialStep = 1;
     if ($errors->hasAny(['device_brand', 'device_model', 'device_serial', 'accessories', 'accessories.*'])) {
         $initialStep = 1;
     } elseif ($errors->hasAny(['issue'])) {
         $initialStep = 2;
-    } elseif ($errors->hasAny(['customer_name', 'contact_phone', 'province', 'city', 'handover_method', 'pickup_address', 'responsive_phone', 'submission_token'])) {
+    } elseif ($errors->hasAny(['customer_name', 'contact_phone', 'province', 'city', 'handover_method', 'pickup_address', 'responsive_phone'])) {
         $initialStep = 3;
+    } elseif ($errors->hasAny(['submission_token', 'code'])) {
+        $initialStep = 4;
     }
     $issuePresets = [
         ['چاپگر و رول کاغذ', 'printer', false],
@@ -45,19 +49,20 @@
     ];
     $authRemaining = max(0, (int) ($authResendAt ?? 0) - now()->timestamp);
 @endphp
+<div class="repair-entry-bg">
 <div class="np-container public-section repair-entry">
     <div class="repair-entry-shell">
         <header class="store-page-intro repair-hero-intro">
             <div class="repair-hero-intro__row">
                 <div>
                     <h1>ثبت درخواست تعمیر کارتخوان</h1>
-                    <p>در سه مرحلهٔ ساده درخواست خود را ثبت کنید و کد پیگیری بگیرید.</p>
+                    <p>در چهار مرحلهٔ ساده درخواست خود را ثبت کنید و کد پیگیری بگیرید.</p>
                 </div>
                 <a class="public-inline-link" href="{{ route('repair.track') }}">پیگیری درخواست قبلی <x-home.icon name="arrow-left" /></a>
             </div>
         </header>
 
-        <div class="repair-entry-layout repair-entry-layout--single">
+        <div class="repair-entry-grid">
         <section class="public-panel repair-stepper-panel" aria-label="ثبت درخواست تعمیر">
             <x-form-errors />
 
@@ -68,30 +73,42 @@
                   data-repair-stepper
                   data-initial-step="{{ $initialStep }}"
                   data-is-guest="{{ $isGuest ? '1' : '0' }}"
-                  data-reverse-geocode-url="{{ route('cart.checkout.reverse-geocode') }}"
-                  data-draft-key="np_repair_draft_v2"
+                  data-reverse-geocode-url="{{ route('repair.reverse-geocode') }}"
+                  data-draft-key="np_repair_draft_v3"
                   novalidate>
                 @csrf
                 <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
 
-                <ol class="repair-progress" aria-label="مراحل ثبت درخواست تعمیر">
-                    <li class="repair-progress__item" data-step-indicator="1" aria-current="{{ $initialStep === 1 ? 'step' : 'false' }}">
-                        <span class="repair-progress__num">۱</span>
-                        <span class="repair-progress__label">مشخصات دستگاه</span>
+                <ol class="repair-progress repair-progress--4" aria-label="مراحل ثبت درخواست تعمیر">
+                    <li>
+                        <button type="button" class="repair-progress__item" data-step-indicator="1" aria-current="{{ $initialStep === 1 ? 'step' : 'false' }}">
+                            <span class="repair-progress__num">۱</span>
+                            <span class="repair-progress__label">مشخصات دستگاه</span>
+                        </button>
                     </li>
-                    <li class="repair-progress__item" data-step-indicator="2" aria-current="{{ $initialStep === 2 ? 'step' : 'false' }}">
-                        <span class="repair-progress__num">۲</span>
-                        <span class="repair-progress__label">شرح مشکل</span>
+                    <li>
+                        <button type="button" class="repair-progress__item" data-step-indicator="2" aria-current="{{ $initialStep === 2 ? 'step' : 'false' }}">
+                            <span class="repair-progress__num">۲</span>
+                            <span class="repair-progress__label">مشکل دستگاه</span>
+                        </button>
                     </li>
-                    <li class="repair-progress__item" data-step-indicator="3" aria-current="{{ $initialStep === 3 ? 'step' : 'false' }}">
-                        <span class="repair-progress__num">۳</span>
-                        <span class="repair-progress__label">اطلاعات تماس و ثبت</span>
+                    <li>
+                        <button type="button" class="repair-progress__item" data-step-indicator="3" aria-current="{{ $initialStep === 3 ? 'step' : 'false' }}">
+                            <span class="repair-progress__num">۳</span>
+                            <span class="repair-progress__label">اطلاعات تماس و تحویل</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="repair-progress__item" data-step-indicator="4" aria-current="{{ $initialStep === 4 ? 'step' : 'false' }}">
+                            <span class="repair-progress__num">۴</span>
+                            <span class="repair-progress__label">بازبینی و ثبت نهایی</span>
+                        </button>
                     </li>
                 </ol>
 
                 <p class="repair-step-alert" data-step-alert role="alert" hidden></p>
 
-                {{-- Step 1: Brand & Model --}}
+                {{-- Step 1: Device Details --}}
                 <div class="repair-step" data-step="1" @if($initialStep !== 1) hidden @endif>
                     <div class="repair-step__head">
                         <h2>مشخصات دستگاه</h2>
@@ -139,7 +156,7 @@
                 {{-- Step 2: Issue Selection --}}
                 <div class="repair-step" data-step="2" @if($initialStep !== 2) hidden @endif>
                     <div class="repair-step__head">
-                        <h2>شرح مشکل</h2>
+                        <h2>مشکل دستگاه</h2>
                         <p>موضوع اصلی مشکل را انتخاب کنید و توضیح کوتاهی دربارهٔ ایراد دستگاه بنویسید.</p>
                     </div>
                     <div class="repair-issue-grid" role="group" aria-label="مشکلات رایج دستگاه">
@@ -167,36 +184,56 @@
                     </div>
                 </div>
 
-                {{-- Step 3: Location, Handover, Inline OTP (for guests), Contact & Submit --}}
+                {{-- Step 3: Contact, Searchable Location & Handover --}}
                 <div class="repair-step" data-step="3" @if($initialStep !== 3) hidden @endif>
                     <div class="repair-step__head">
-                        <h2>موقعیت، روش تحویل و اطلاعات تماس</h2>
-                        <p>استان و شهر خود را انتخاب کنید تا روش‌های در دسترس تحویل نمایش داده شوند.</p>
+                        <h2>اطلاعات تماس و تحویل</h2>
+                        <p>مشخصات تماس، استان و شهر و نحوهٔ تحویل دستگاه را وارد کنید.</p>
+                    </div>
+
+                    <div class="public-form__grid">
+                        <x-repair-field name="customer_name" label="نام و نام خانوادگی">
+                            <input id="customer_name" name="customer_name" value="{{ $customerName }}" class="input" autocomplete="name" required minlength="2" maxlength="100" placeholder="مثلاً علی رضایی" aria-invalid="{{ $errors->has('customer_name') ? 'true' : 'false' }}" aria-describedby="customer_name-feedback">
+                        </x-repair-field>
+                        <x-repair-field name="contact_phone" label="شماره موبایل">
+                            <input @if(!$isGuest) readonly @endif value="{{ $customerPhone !== '' ? \App\Support\FaNumber::digits($customerPhone) : '' }}" type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel-national" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
+                            @if(!$isGuest)
+                                <p class="public-hint">شماره موبایل حساب کاربری شما تأیید شده است.</p>
+                            @endif
+                        </x-repair-field>
                     </div>
 
                     <div class="repair-location-block" data-repair-location>
                         <div class="public-form__grid">
                             <div class="public-field">
-                                <label for="repair_province">استان <span aria-hidden="true">*</span></label>
-                                <select id="repair_province" name="province" class="input" data-repair-province aria-invalid="{{ $errors->has('province') ? 'true' : 'false' }}">
-                                    <option value="">انتخاب استان...</option>
-                                    @foreach (array_keys($iranLocations) as $provinceName)
-                                        <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
-                                    @endforeach
-                                </select>
+                                <label for="repair_province_search">استان <span aria-hidden="true">*</span></label>
+                                <div class="np-searchable-select" data-searchable-select="province">
+                                    <input type="text" id="repair_province_search" class="input np-searchable-select__input" placeholder="جستجو یا انتخاب استان…" autocomplete="off" value="{{ $selectedProvince }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_province_list">
+                                    <ul id="repair_province_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
+                                    <select id="repair_province" name="province" class="sr-only" tabindex="-1" data-repair-province aria-invalid="{{ $errors->has('province') ? 'true' : 'false' }}">
+                                        <option value="">انتخاب استان...</option>
+                                        @foreach (array_keys($iranLocations) as $provinceName)
+                                            <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 <p class="public-field-error" data-field-error="province" role="alert" @unless($errors->has('province')) hidden @endunless>@error('province'){{ $message }}@enderror</p>
                             </div>
                             <div class="public-field">
-                                <label for="repair_city">شهر <span aria-hidden="true">*</span></label>
-                                <select id="repair_city" name="city" class="input" data-repair-city data-selected-city="{{ $selectedCity }}" aria-invalid="{{ $errors->has('city') ? 'true' : 'false' }}">
-                                    <option value="">ابتدا استان را انتخاب کنید...</option>
-                                </select>
+                                <label for="repair_city_search">شهر <span aria-hidden="true">*</span></label>
+                                <div class="np-searchable-select" data-searchable-select="city">
+                                    <input type="text" id="repair_city_search" class="input np-searchable-select__input" placeholder="ابتدا استان را انتخاب کنید…" autocomplete="off" value="{{ $selectedCity }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_city_list">
+                                    <ul id="repair_city_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
+                                    <select id="repair_city" name="city" class="sr-only" tabindex="-1" data-repair-city data-selected-city="{{ $selectedCity }}" aria-invalid="{{ $errors->has('city') ? 'true' : 'false' }}">
+                                        <option value="">ابتدا استان را انتخاب کنید...</option>
+                                    </select>
+                                </div>
                                 <p class="public-field-error" data-field-error="city" role="alert" @unless($errors->has('city')) hidden @endunless>@error('city'){{ $message }}@enderror</p>
                             </div>
                         </div>
 
                         <div class="repair-handover-section" data-handover-section>
-                            <p class="label">نحوهٔ تحویل دستگاه به نوین‌پی</p>
+                            <h3 class="repair-handover-title">نحوهٔ تحویل دستگاه به نوین‌پی <span class="required-mark">*</span></h3>
                             <p class="repair-handover-hint" data-handover-hint>پس از انتخاب استان و شهر، روش‌های در دسترس برای منطقهٔ شما فعال می‌شود.</p>
                             <div class="repair-handover-grid" role="radiogroup" aria-label="نحوهٔ تحویل دستگاه">
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="self_ship">
@@ -218,38 +255,10 @@
                             <p class="public-field-error" data-field-error="handover_method" role="alert" @unless($errors->has('handover_method')) hidden @endunless>@error('handover_method'){{ $message }}@enderror</p>
                         </div>
 
-                        {{-- Conditional Details: Self-Ship --}}
-                        <div class="repair-handover-panel repair-handover-panel--office" data-handover-panel="self_ship" hidden>
-                            <h3>نشانی و راهنمای ارسال پستی / تیپاکس</h3>
-                            <dl class="repair-shipping-details">
-                                <div>
-                                    <dt>آدرس گیرنده:</dt>
-                                    <dd>{{ config('business.address') }}</dd>
-                                </div>
-                                <div>
-                                    <dt>شماره موبایل:</dt>
-                                    <dd><a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></dd>
-                                </div>
-                                <div>
-                                    <dt>کد پستی:</dt>
-                                    <dd dir="ltr">۳۳۵۱۶۱۱۸۲۸</dd>
-                                </div>
-                            </dl>
-                            <div class="repair-shipping-copy-row">
-                                <button type="button"
-                                        class="btn btn-secondary btn-sm repair-shipping-copy-btn"
-                                        data-copy-shipping
-                                        data-copy-text="آدرس گیرنده: {{ config('business.address') }}&#10;شماره موبایل: {{ \App\Support\FaNumber::digits(config('business.phone')) }}&#10;کد پستی: ۳۳۵۱۶۱۱۸۲۸"
-                                        aria-describedby="repair-shipping-copy-status">کپی اطلاعات ارسال</button>
-                                <span id="repair-shipping-copy-status" class="repair-shipping-copy-status" role="status" aria-live="polite"></span>
-                            </div>
-                            <ul class="repair-checklist">
-                                <li>سیم‌کارت شخصی، رول اضافه و لوازم غیرضروری را پیش از ارسال از دستگاه خارج کنید.</li>
-                                <li>دستگاه را درون جعبه و با ضربه‌گیر مناسب بسته‌بندی کنید و کد پیگیری را داخل بسته بنویسید.</li>
-                            </ul>
-                            <p class="repair-insurance-alert">
-                                <strong>یادآوری مهم بیمه مرسوله:</strong> هنگام تحویل بسته به پست یا تیپاکس، حتماً گزینهٔ <strong>«بیمهٔ مرسوله»</strong> را معادل ارزش واقعی دستگاه فعال کنید.
-                            </p>
+                        {{-- Conditional Details: Self-Ship (Concise 1-line note in Step 3) --}}
+                        <div class="repair-handover-note" data-handover-panel="self_ship" hidden>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                            <span>نشانی دقیق ارسال پستی و راهنمای بسته‌بندی بلافاصله پس از ثبت نهایی نمایش داده می‌شود.</span>
                         </div>
 
                         {{-- Conditional Details: In-Person Drop-Off --}}
@@ -300,11 +309,24 @@
                             </div>
                             <div class="public-field">
                                 <label for="responsive_phone">شماره تماس پاسخگو جهت هماهنگی پیک (اختیاری)</label>
-                                <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" placeholder="در صورت تفاوت با شماره حساب، مثلاً ۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
+                                <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" placeholder="در صورت تفاوت با شماره اصلی، مثلاً ۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
                                 <p class="public-hint">اگر فرد دیگری دستگاه را تحویل پیک می‌دهد، شماره پاسخگو را اینجا وارد کنید.</p>
                                 <p class="public-field-error" data-field-error="responsive_phone" role="alert" @unless($errors->has('responsive_phone')) hidden @endunless>@error('responsive_phone'){{ $message }}@enderror</p>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="repair-step-actions">
+                        <button type="button" class="np-button np-button--primary" data-step-next>بازبینی و مرحلهٔ پایانی <x-home.icon name="arrow-left" /></button>
+                        <button type="button" class="np-button np-button--outline" data-step-prev>مرحلهٔ قبل</button>
+                    </div>
+                </div>
+
+                {{-- Step 4: Review, OTP (for guests) & Final Submit --}}
+                <div class="repair-step" data-step="4" @if($initialStep !== 4) hidden @endif>
+                    <div class="repair-step__head">
+                        <h2>بازبینی و ثبت نهایی</h2>
+                        <p>{{ $isGuest ? 'اطلاعات زیر را بررسی کنید و با وارد کردن کد تأیید پیامکی درخواست خود را ثبت کنید.' : 'اطلاعات زیر را بررسی کنید و درخواست تعمیر را ثبت نهایی کنید.' }}</p>
                     </div>
 
                     <div class="repair-summary-box" data-repair-summary>
@@ -313,8 +335,16 @@
                             <strong class="np-latin-mixed" data-summary-device>—</strong>
                         </div>
                         <div class="repair-summary-box__item">
+                            <span>لوازم همراه</span>
+                            <strong data-summary-accessories>بدون لوازم اضافه</strong>
+                        </div>
+                        <div class="repair-summary-box__item">
                             <span>شرح مشکل</span>
                             <strong data-summary-issue>—</strong>
+                        </div>
+                        <div class="repair-summary-box__item">
+                            <span>نام و موبایل</span>
+                            <strong data-summary-contact>—</strong>
                         </div>
                         <div class="repair-summary-box__item">
                             <span>تحویل و موقعیت</span>
@@ -330,25 +360,22 @@
                              data-reset-url="{{ route('repair.auth.reset') }}"
                              data-resend-remaining="{{ $authRemaining }}">
                             <div class="repair-inline-auth-box__head">
-                                <h3>تأیید شماره موبایل جهت دریافت کد پیگیری</h3>
-                                <p>برای ارسال پیامک وضعیت تعمیر و ثبت نهایی، شماره موبایل خود را تأیید کنید.</p>
+                                <h3>تأیید پیامکی شماره موبایل</h3>
+                                <p>کد ۶ رقمی به شمارهٔ واردشده ارسال می‌شود و بلافاصله پس از وارد کردن، درخواست شما ثبت خواهد شد.</p>
                             </div>
 
                             <div class="repair-inline-auth__step" data-auth-step="phone" @if(!empty($authChallenge)) hidden @endif>
-                                <div class="public-field">
-                                    <label for="repair_auth_phone">شماره موبایل <span aria-hidden="true">*</span></label>
-                                    <div class="repair-inline-auth__row">
-                                        <input id="repair_auth_phone" type="tel" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel-national" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹">
-                                        <button type="button" class="np-button np-button--primary" data-auth-send-btn>ارسال کد تأیید</button>
-                                    </div>
-                                    <p class="public-field-error" data-field-error="repair_auth_phone" role="alert" hidden></p>
+                                <div class="repair-inline-auth__row">
+                                    <span class="repair-auth-target">شماره موبایل: <strong dir="ltr" data-auth-phone-preview>—</strong></span>
+                                    <button type="button" class="np-button np-button--primary" data-auth-send-btn>ارسال کد تأیید</button>
                                 </div>
+                                <p class="public-field-error" data-field-error="repair_auth_phone" role="alert" hidden></p>
                             </div>
 
                             <div class="repair-inline-auth__step" data-auth-step="otp" @if(empty($authChallenge)) hidden @endif>
                                 <div class="repair-recovery-phone-bar">
                                     <span>کد تأیید به شماره <strong dir="ltr" data-auth-phone-display>{{ $authDisplayPhone ?? '' }}</strong> ارسال شد.</span>
-                                    <button type="button" class="repair-recovery-edit-btn" data-auth-change-phone>تغییر شماره موبایل</button>
+                                    <button type="button" class="repair-recovery-edit-btn" data-auth-change-phone>ویرایش شماره</button>
                                 </div>
                                 @if (app()->isLocal())
                                     <p class="public-field-hint" data-local-dev-otp @if(empty($localDevOtp)) hidden @endif style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;margin-block-end:10px;">
@@ -358,8 +385,8 @@
                                 <div class="public-field">
                                     <label for="repair_auth_code">کد تأیید شش‌رقمی <span aria-hidden="true">*</span></label>
                                     <div class="repair-inline-auth__row">
-                                        <input id="repair_auth_code" type="text" class="input" dir="ltr" inputmode="numeric" data-digits-only="6" autocomplete="one-time-code" maxlength="6" placeholder="۱۲۳۴۵۶">
-                                        <button type="button" class="np-button np-button--primary" data-auth-verify-btn>تأیید شماره</button>
+                                        <input id="repair_auth_code" type="text" class="input repair-otp-input" dir="ltr" inputmode="numeric" data-digits-only="6" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+                                        <button type="button" class="np-button np-button--primary" data-auth-verify-btn>تأیید و ثبت درخواست</button>
                                     </div>
                                     <p class="public-field-error" data-field-error="repair_auth_code" role="alert" hidden></p>
                                 </div>
@@ -369,20 +396,12 @@
                                 </div>
                             </div>
 
-                            <p class="repair-inline-auth__verified" data-auth-verified hidden>✓ شماره موبایل شما تأیید شد. اکنون می‌توانید درخواست را ثبت نهایی کنید.</p>
+                            <p class="repair-inline-auth__verified" data-auth-verified hidden>✓ شماره موبایل شما تأیید شد. در حال ثبت نهایی درخواست…</p>
                         </div>
                     @endif
 
-                    <div class="public-form__grid">
-                        <x-repair-field name="customer_name" label="نام و نام خانوادگی">
-                            <input id="customer_name" name="customer_name" value="{{ $customerName }}" class="input" autocomplete="name" required minlength="2" maxlength="100" aria-invalid="{{ $errors->has('customer_name') ? 'true' : 'false' }}" aria-describedby="customer_name-feedback">
-                        </x-repair-field>
-                        <x-repair-field name="contact_phone" label="شماره موبایل" :required="false">
-                            <input readonly value="{{ \App\Support\FaNumber::digits(auth('customer')->user()?->phone ?? '') }}" type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel" maxlength="11" placeholder="پس از تأیید شماره ثبت می‌شود" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
-                        </x-repair-field>
-                    </div>
                     <div class="repair-step-actions">
-                        <button class="np-button np-button--primary" type="submit" data-repair-submit>ثبت درخواست تعمیر <x-home.icon name="arrow-left" /></button>
+                        <button class="np-button np-button--primary" type="submit" data-repair-submit @if($isGuest) hidden @endif>ثبت نهایی درخواست تعمیر <x-home.icon name="arrow-left" /></button>
                         <button type="button" class="np-button np-button--outline" data-step-prev>مرحلهٔ قبل</button>
                     </div>
                 </div>
@@ -390,7 +409,69 @@
             <script type="application/json" id="repair-iran-locations">@json($iranLocations)</script>
             <script type="application/json" id="repair-courier-zones">@json($courierZones)</script>
         </section>
+
+        {{-- Desktop Left Branding & Guarantees Panel --}}
+        <aside class="repair-trust-aside" aria-label="مزایا و تضمین خدمات تعمیر نوین‌پی">
+            <div class="repair-trust-card">
+                <div class="repair-trust-card__art" aria-hidden="true">
+                    <svg viewBox="0 0 240 165" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="20" y="14" width="200" height="136" rx="22" fill="url(#npRepairBg)"/>
+                        <rect x="74" y="26" width="92" height="112" rx="14" fill="#fff" stroke="#bfdbfe" stroke-width="2"/>
+                        <rect x="86" y="40" width="68" height="36" rx="7" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+                        <path d="M104 58l10 10 22-22" stroke="#098cf7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <rect x="88" y="88" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="111" y="88" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="134" y="88" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="88" y="104" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="111" y="104" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="134" y="104" width="18" height="10" rx="3" fill="#93c5fd"/>
+                        <rect x="88" y="120" width="64" height="8" rx="4" fill="#098cf7"/>
+                        <circle cx="176" cy="48" r="18" fill="#098cf7"/>
+                        <path d="M170 48h12M176 42v12" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+                        <defs>
+                            <linearGradient id="npRepairBg" x1="20" y1="14" x2="220" y2="150" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#e0f2fe"/>
+                                <stop offset="1" stop-color="#eff6ff"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <span class="repair-trust-card__eyebrow">مرکز تخصصی تعمیرات نوین‌پی</span>
+                <h2>تعمیر مطمئن، شفاف و با ضمانت</h2>
+                <ul class="repair-trust-list">
+                    <li>
+                        <span class="repair-trust-list__icon" aria-hidden="true"><x-home.icon name="shield-check" /></span>
+                        <div>
+                            <strong>عیب‌یابی تخصصی و شفاف</strong>
+                            <p>بررسی دقیق سخت‌افزار، چاپگر، باتری و ماژول ارتباطی توسط کارشناسان مجرب.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="repair-trust-list__icon" aria-hidden="true"><x-home.icon name="tool" /></span>
+                        <div>
+                            <strong>اعلام هزینه پیش از شروع تعمیر</strong>
+                            <p>هیچ هزینه‌ای بدون اطلاع و تأیید قبلی شما انجام نمی‌شود.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="repair-trust-list__icon" aria-hidden="true"><x-home.icon name="check" /></span>
+                        <div>
+                            <strong>قطعات اصلی و تست کامل</strong>
+                            <p>تمام دستگاه‌ها پس از تعمیر، زیر بار تراکنش واقعی و تست چاپگر قرار می‌گیرند.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="repair-trust-list__icon" aria-hidden="true"><x-home.icon name="phone" /></span>
+                        <div>
+                            <strong>پیگیری آنلاین و پیامکی در هر مرحله</strong>
+                            <p>از لحظه پذیرش تا آماده تحویل شدن، وضعیت پرونده به‌صورت لحظه‌ای اطلاع‌رسانی می‌شود.</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </aside>
         </div>
     </div>
+</div>
 </div>
 @endsection

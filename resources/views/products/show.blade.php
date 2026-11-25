@@ -19,14 +19,7 @@
         foreach (\App\Models\Product::SPEC_GROUPS as $key => $heading) {
             $specRows[$key] = \App\Models\Product::specificationRows($details['groups'][$key] ?? null);
         }
-        $publicSpecLabel = static fn (string $label) => match ($label) {
-            'شبکهٔ سلولی در کاتالوگ', 'شبکه سلولی در کاتالوگ' => 'شبکه‌های ارتباطی مدل',
-            'باتری اسمیِ مدل', 'باتری اسمی مدل' => 'باتری مدل (ظرفیت اسمی)',
-            'کارت‌خوان در کاتالوگ', 'کارتخوان در کاتالوگ' => 'روش‌های خواندن کارت در این مدل',
-            'عرض کاغذ' => 'عرض کاغذ رسید',
-            'قطر رول' => 'قطر رول کاغذ',
-            default => $label,
-        };
+        $publicSpecLabel = static fn (string $label) => \App\Models\Product::publicSpecLabel($label);
         $serviceRows = $specRows['services'];
         unset($specRows['services']);
         $highlights = \App\Models\Product::specificationRows($details['key_features'] ?? null);
@@ -69,7 +62,7 @@
         $hasSectionNav = count($sections) > 1;
     @endphp
     <div class="storefront-content">
-        <nav class="breadcrumb" aria-label="مسیر صفحه"><a href="{{ route('home') }}">خانه</a><span aria-hidden="true">/</span><a href="{{ route('products.index') }}">فروشگاه</a><span aria-hidden="true">/</span><span aria-current="page">{{ \App\Support\LatinText::html($product->name) }}</span></nav>
+        <nav class="breadcrumb" aria-label="مسیر صفحه"><a href="{{ route('home') }}">خانه</a><span aria-hidden="true">/</span><a href="{{ route('products.index') }}">فروشگاه</a><span aria-hidden="true">/</span><span aria-current="page">{{ \App\Support\LatinText::html($product->displayName()) }}</span></nav>
         <div class="product-layout">
             @include('products._gallery')
             <div class="product-overview">
@@ -84,7 +77,7 @@
                             <a class="public-inline-link product-compare-link" href="{{ route('products.compare', ['products' => [$product->slug]]) }}"><x-storefront.icon name="compare" /> مقایسهٔ محصول</a>
                         @endif
                     </div>
-                    <h1 id="product-title">{{ \App\Support\LatinText::html($product->name) }}</h1>
+                    <h1 id="product-title">{{ \App\Support\LatinText::html($product->displayName()) }}</h1>
                     @if ($product->model && !str_contains($product->name, $product->model))<p class="model"><bdi class="np-latin" dir="ltr">{{ $product->model }}</bdi></p>@endif
                     @include('products._colors')
                 </section>
@@ -129,15 +122,10 @@
                 </div>
             @endif
         </div>
-        @if ($related->isNotEmpty() || ($isTerminal && !$product->is_sample))
+        @if ($related->isNotEmpty())
             <section class="related card" id="product-related" aria-labelledby="related-heading">
                 <h2 id="related-heading">کالاهای مرتبط</h2>
-                @if ($related->isNotEmpty())
-                    <div class="public-product-grid">@foreach ($related as $item)<x-product-card :product="$item" :sale="$relatedSales[$item->id]" />@endforeach</div>
-                @else
-                    <p class="related-empty">محصول مشابهی برای نمایش وجود ندارد.</p>
-                    <a class="public-inline-link" href="{{ route('products.index') }}">مشاهدهٔ همهٔ محصولات</a>
-                @endif
+                <div class="public-product-grid">@foreach ($related as $item)<x-product-card :product="$item" :sale="$relatedSales[$item->id]" />@endforeach</div>
             </section>
         @elseif (!$product->is_sample)
             <div class="mt-4">

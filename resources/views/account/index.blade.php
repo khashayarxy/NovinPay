@@ -104,7 +104,16 @@
                         @endif
                     </div>
                     @foreach($repairs as $repair)
-                        @php($deviceLabel = \App\Support\RepairIdentity::deviceLabel($repair->device_brand, $repair->device_model))
+                        @php
+                            $deviceLabel = \App\Support\RepairIdentity::deviceLabel($repair->device_brand, $repair->device_model);
+                            $repairStatusLabel = \App\Support\CustomerTimeline::repairStatus($repair);
+                            $repairTone = match ($repair->status) {
+                                \App\Enums\RepairStage::Ready, \App\Enums\RepairStage::Repaired, \App\Enums\RepairStage::Delivered => 'success',
+                                \App\Enums\RepairStage::WaitingApproval => 'warning',
+                                \App\Enums\RepairStage::ReturnPending, \App\Enums\RepairStage::Returned => 'danger',
+                                default => 'info',
+                            };
+                        @endphp
                         <a class="np-account-row" href="{{ route('account.repairs.show', $repair->public_id) }}">
                             <span class="np-account-row__main">
                                 <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', $deviceLabel))<bdi class="np-latin-code" dir="ltr">{{ $deviceLabel }}</bdi>@else{{ $deviceLabel }}@endif</span>
@@ -115,7 +124,7 @@
                                 </span>
                             </span>
                             <span class="np-account-row__end">
-                                <span class="np-account-pill">{{ \App\Support\CustomerTimeline::repairStatus($repair) }}</span>
+                                <span class="np-account-pill np-account-pill--{{ $repairTone }}">{{ $repairStatusLabel }}</span>
                                 <svg class="np-account-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
                             </span>
                         </a>
@@ -132,7 +141,7 @@
                                 </span>
                             </span>
                             <span class="np-account-row__end">
-                                <span class="np-account-pill">درخواست ثبت شد</span>
+                                <span class="np-account-pill np-account-pill--info">درخواست ثبت شد</span>
                                 <svg class="np-account-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
                             </span>
                         </a>

@@ -42,6 +42,45 @@ class Product extends Model
         'printer' => 'چاپگر', 'physical' => 'مشخصات فیزیکی', 'services' => 'فروش و خدمات',
     ];
 
+    public static function publicSpecLabel(string $label): string
+    {
+        return match (trim($label)) {
+            'شبکهٔ سلولی در کاتالوگ', 'شبکه سلولی در کاتالوگ' => 'شبکه‌های ارتباطی',
+            'باتری اسمیِ مدل', 'باتری اسمی مدل' => 'باتری مدل (ظرفیت اسمی)',
+            'کارت‌خوان در کاتالوگ', 'کارتخوان در کاتالوگ' => 'روش‌های خواندن کارت',
+            'عرض کاغذ' => 'عرض کاغذ رسید',
+            'قطر رول' => 'قطر رول کاغذ',
+            default => trim($label),
+        };
+    }
+
+    public function displayName(): string
+    {
+        $name = trim((string) $this->name);
+        if ($name === '') {
+            return '';
+        }
+
+        $colorTokens = [
+            'Black', 'White', 'Blue', 'Red', 'Gray', 'Grey', 'Silver', 'Green', 'Gold', 'Yellow', 'Orange', 'Purple', 'Navy',
+            'مشکی', 'سیاه', 'سفید', 'آبی', 'قرمز', 'خاکستری', 'طوسی', 'نقره‌ای', 'نقره ای', 'سبز', 'طلایی', 'زرد', 'نارنجی', 'سرمه‌ای',
+        ];
+        if (is_string($this->color) && trim($this->color) !== '') {
+            array_unshift($colorTokens, trim($this->color));
+        }
+        $escaped = array_map(static fn (string $c): string => preg_quote($c, '/'), array_unique($colorTokens));
+        $pattern = '/(?:\s*[-–—|·]\s*|\s+)(?:'.implode('|', $escaped).')(?=\s*(?:\(|$))/iu';
+        $cleaned = preg_replace($pattern, '', $name) ?? $name;
+        $cleaned = preg_replace('/\s{2,}/u', ' ', trim($cleaned)) ?? trim($cleaned);
+
+        // Ensure leading network tag like "(4G) Newland ME31" renders after model: "Newland ME31 (4G)"
+        if (preg_match('/\A(\((?:2G|3G|4G|5G|WiFi|Wi-Fi)\))\s+(.+)\z/iu', $cleaned, $m)) {
+            $cleaned = trim($m[2]).' '.$m[1];
+        }
+
+        return $cleaned !== '' ? $cleaned : $name;
+    }
+
     protected $fillable = [
         'name',
         'slug',
