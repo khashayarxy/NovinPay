@@ -118,6 +118,7 @@ function support_native_session(string $role, bool $initialize): array {
     $valid=isset($_SESSION['role'],$_SESSION['issued_at'],$_SESSION['last_seen'],$_SESSION['csrf_token'])
         && $_SESSION['role']===$role && is_int($_SESSION['issued_at']) && is_int($_SESSION['last_seen'])
         && $now-($role==='operator'?($_SESSION['interactive_at']??$_SESSION['last_seen']):$_SESSION['last_seen'])<=$idle && $now-$_SESSION['issued_at']<=$absolute;
+    $dirty=$initialize || !is_string($cookie);
     if (!$valid) {
         $wasAuthenticated=($_SESSION['authenticated']??false)===true;
         $_SESSION=[];
@@ -127,12 +128,14 @@ function support_native_session(string $role, bool $initialize): array {
         $_SESSION=['role'=>$role,'issued_at'=>$now,'last_seen'=>$now,'csrf_token'=>bin2hex(random_bytes(32))];
         if ($role==='customer') $_SESSION['owner_id']=bin2hex(random_bytes(32));
         else $_SESSION['interactive_at']=$now;
+        $dirty=true;
     }
     if ($role==='customer' && (!is_string($_SESSION['owner_id']??null) || !preg_match('/^[a-f0-9]{64}$/D',$_SESSION['owner_id']))) { support_close_session(); support_failure(401,'session_expired'); }
-    if(!isset($_SESSION['auth_epoch'])) $_SESSION['auth_epoch']=bin2hex(random_bytes(16));
-    if($role==='customer') $_SESSION['last_seen']=$now;
+    if(!isset($_SESSION['auth_epoch'])) { $_SESSION['auth_epoch']=bin2hex(random_bytes(16)); $dirty=true; }
+    if($role==='customer' && $now-$_SESSION['last_seen']>=300) { $_SESSION['last_seen']=$now; $dirty=true; }
     $context=$_SESSION;
-    support_close_session();
+    if ($dirty) support_close_session();
+    elseif (session_status()===PHP_SESSION_ACTIVE && !session_abort()) support_failure(503,'session_unavailable');
     return $contexts[$role]=$context;
 }
 function support_session(string $role, bool $initialize): array {

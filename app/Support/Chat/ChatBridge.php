@@ -64,11 +64,13 @@ final class ChatBridge
         }
         if ($customer) {
             // Only possession of this native anonymous session AND current account authentication
-            // permits binding. Names/phone inputs never grant conversation ownership.
-            DB::table('chat_customer_owners')->insertOrIgnore(['owner_id' => $base['owner_id'], 'customer_account_id' => $customer->id, 'bound_at' => now()->utc()]);
-            $bound = DB::table('chat_customer_owners')->where('owner_id', $base['owner_id'])->first();
-            if ((int) $bound->customer_account_id !== (int) $customer->id) {
-                \support_failure(401, 'identity_changed');
+            // permits binding. Avoid redundant INSERT IGNORE writes on read-only polls once bound.
+            if (! $bound) {
+                DB::table('chat_customer_owners')->insertOrIgnore(['owner_id' => $base['owner_id'], 'customer_account_id' => $customer->id, 'bound_at' => now()->utc()]);
+                $bound = DB::table('chat_customer_owners')->where('owner_id', $base['owner_id'])->first();
+                if (! $bound || (int) $bound->customer_account_id !== (int) $customer->id) {
+                    \support_failure(401, 'identity_changed');
+                }
             }
             $base['novinpay_owners'] = DB::table('chat_customer_owners')->where('customer_account_id', $customer->id)->pluck('owner_id')->all();
         }

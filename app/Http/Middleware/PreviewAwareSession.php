@@ -13,16 +13,25 @@ class PreviewAwareSession extends StartSession
 {
     private bool $readOnlyPreview = false;
 
+    private const READ_ONLY_CHAT_ENDPOINTS = [
+        'support-widget.php',
+        'support-content.php',
+        'customer-notifications.php',
+        'get_activity.php',
+        'support-typing.php',
+        'support-theme.php',
+        'support-avatar.php',
+        'operator-avatar.php',
+        'support-profile-image.php',
+        'support-attachment.php',
+    ];
+
     public function handle($request, Closure $next)
     {
-        // Match the native API's isset dispatch, including Laravel-normalized nulls.
-        $query = $request->query->all();
-        $publicChatConfiguration = $request->isMethod('GET') && $request->routeIs('support.chat')
-            && $request->route('path') === 'api.php'
-            && (isset($query['widget_config']) || isset($query['recovery_availability']));
-        $this->readOnlyPreview = (($request->isMethod('GET') || $request->isMethod('HEAD'))
+        $isReadMethod = $request->isMethod('GET') || $request->isMethod('HEAD');
+        $this->readOnlyPreview = ($isReadMethod
             && $request->routeIs('admin.maintenance.preview', 'admin.maintenance.preview.page', 'support.chat.operator.asset', 'customer.header'))
-            || $publicChatConfiguration;
+            || ($isReadMethod && $this->isReadOnlyChatRequest($request));
         try {
             if ($this->readOnlyPreview && $this->sessionConfigured()) {
                 // A read-only session needs no persistent cache lock either.
@@ -33,6 +42,36 @@ class PreviewAwareSession extends StartSession
         } finally {
             $this->readOnlyPreview = false;
         }
+    }
+
+    private function isReadOnlyChatRequest($request): bool
+    {
+        if (! $request->routeIs('support.chat')) {
+            return false;
+        }
+
+        $path = (string) $request->route('path', '');
+        if (in_array($path, self::READ_ONLY_CHAT_ENDPOINTS, true)) {
+            return true;
+        }
+
+        if ($path !== 'api.php') {
+            return false;
+        }
+
+        // Match the native API's isset dispatch, including Laravel-normalized nulls.
+        // CSRF/bootstrap requests retain normal session writes even if paired with read flags.
+        $query = $request->query->all();
+        if (isset($query['get_csrf']) || isset($query['get_recovery_context']) || ($query['bootstrap'] ?? '') === '1') {
+            return false;
+        }
+
+        return isset($query['widget_config'])
+            || isset($query['recovery_availability'])
+            || isset($query['get_conversation'])
+            || isset($query['receipts'])
+            || isset($query['get_users'])
+            || isset($query['get_session']);
     }
 
     protected function collectGarbage(Session $session)

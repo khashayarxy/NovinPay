@@ -55,21 +55,44 @@ class ReadOnlyMaintenancePreviewTest extends TestCase
 
     public function test_only_public_chat_configuration_gets_are_read_only(): void
     {
-        config(['session.driver' => 'database', 'session.lottery' => [0, 100], 'session.block' => false]);
+        config(['session.driver' => 'database', 'session.lottery' => [100, 100], 'session.block' => false]);
         $middleware = new PreviewAwareSession(new SessionManager($this->app));
-        foreach (['widget_config', 'recovery_availability'] as $flag) {
-            $request = Request::create('/support-chat/api.php?'.$flag.'=1', 'GET');
+        $readOnlyRequests = [
+            ['api.php', 'widget_config=1'],
+            ['api.php', 'recovery_availability=1'],
+            ['api.php', 'get_conversation=1&user_id=user_test'],
+            ['api.php', 'receipts=1&user_id=user_test'],
+            ['api.php', 'get_session=1'],
+            ['api.php', 'get_users=1'],
+            ['support-widget.php', ''],
+            ['support-content.php', 'action=home'],
+            ['customer-notifications.php', 'action=status'],
+            ['customer-notifications.php', 'action=hint'],
+            ['get_activity.php', 'scope=customer'],
+            ['support-typing.php', 'scope=customer&user_id=user_test'],
+        ];
+        foreach ($readOnlyRequests as [$path, $query]) {
+            $uri = '/support-chat/'.$path.($query !== '' ? '?'.$query : '');
+            $request = Request::create($uri, 'GET');
             $route = (new Route('GET', 'support-chat/{path}', fn () => null))->name('support.chat');
             $route->bind($request);
             $request->setRouteResolver(fn () => $route);
             $before = DB::table('sessions')->get()->toJson();
-            $response = $middleware->handle($request, fn () => new Response('configuration'));
-            $this->assertSame($before, DB::table('sessions')->get()->toJson());
-            $this->assertSame([], $response->headers->getCookies());
+            $response = $middleware->handle($request, fn () => new Response('read-only'));
+            $this->assertSame($before, DB::table('sessions')->get()->toJson(), "Expected {$uri} not to write sessions");
+            $this->assertSame([], $response->headers->getCookies(), "Expected {$uri} not to emit session Set-Cookie");
         }
         // CSRF/bootstrap, message POSTs and operator APIs retain normal writes,
-        // even when a caller adds a configuration query flag.
-        foreach ([['GET', 'api.php', 'get_csrf=1'], ['GET', 'api.php', 'widget_config=&get_csrf=1'], ['POST', 'api.php', 'widget_config=1'], ['GET', 'operator-api.php', 'widget_config=1']] as [$method, $path, $query]) {
+        // even when a caller adds a configuration or polling query flag.
+        foreach ([
+            ['GET', 'api.php', 'get_csrf=1'],
+            ['GET', 'api.php', 'widget_config=&get_csrf=1'],
+            ['GET', 'api.php', 'get_session=1&bootstrap=1'],
+            ['POST', 'api.php', 'widget_config=1'],
+            ['GET', 'operator-api.php', 'widget_config=1'],
+        ] as [$method, $path, $query]) {
+            DB::table('sessions')->delete();
+            $freshMiddleware = new PreviewAwareSession(new SessionManager($this->app));
             $request = Request::create('/support-chat/'.$path.'?'.$query, $method);
             if ($request->query('widget_config') === '') {
                 $request->query->set('widget_config', null);
@@ -77,7 +100,7 @@ class ReadOnlyMaintenancePreviewTest extends TestCase
             $route = (new Route(['GET', 'POST'], 'support-chat/{path}', fn () => null))->name('support.chat');
             $route->bind($request);
             $request->setRouteResolver(fn () => $route);
-            $response = $middleware->handle($request, fn () => new Response('stateful'));
+            $response = $freshMiddleware->handle($request, fn () => new Response('stateful'));
             $this->assertNotEmpty($response->headers->getCookies());
             $this->assertDatabaseCount('sessions', 1);
         }
