@@ -69,7 +69,39 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
+            'days' => (int) env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'payments' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => (int) env('LOG_PAYMENTS_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
+        'sms' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sms.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => (int) env('LOG_SMS_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
+        'frontend' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/frontend.log'),
+            'level' => env('LOG_LEVEL', 'warning'),
+            'days' => (int) env('LOG_FRONTEND_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'performance' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/performance.log'),
+            'level' => env('LOG_LEVEL', 'warning'),
+            'days' => (int) env('LOG_PERFORMANCE_DAYS', 14),
             'replace_placeholders' => true,
         ],
 

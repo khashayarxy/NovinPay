@@ -15,6 +15,7 @@ use App\Services\CustomerLogin;
 use App\Services\CustomerNotifications;
 use App\Services\LegacyCartHold;
 use App\Services\Notifications\UnifiedNotifier;
+use App\Services\Observability\ObservabilityEvents;
 use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
 use App\Support\FinanceTime;
@@ -302,6 +303,7 @@ class RepairRequestController extends Controller
 
         $request->session()->forget('repair_submission_token');
         app(UnifiedNotifier::class)->repairRequestSubmitted($repair);
+        app(ObservabilityEvents::class)->repairCreated($repair);
 
         return redirect()->route('repair.confirmation')
             ->with('repair_reference', $repair->tracking_reference)

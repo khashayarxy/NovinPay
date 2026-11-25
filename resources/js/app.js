@@ -2485,4 +2485,64 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             setTimeout(() => sanitizeDigitsOnly(target), 0);
         }
     });
+
+    const telemetryMeta = document.querySelector('meta[name="np-telemetry-url"]');
+    const telemetryUrl = telemetryMeta?.getAttribute('content') || '';
+    if (telemetryUrl) {
+        let reportedCount = 0;
+        const reportedKeys = new Set();
+        const stripQuery = (value) => String(value || '').split('?')[0].split('#')[0].slice(0, 300);
+        const sendTelemetry = (payload) => {
+            if (reportedCount >= 3) return;
+            const message = String(payload.message || '').trim().slice(0, 300);
+            if (!message) return;
+            const key = `${payload.kind || 'error'}:${message}:${payload.line || 0}`;
+            if (reportedKeys.has(key)) return;
+            reportedKeys.add(key);
+            reportedCount += 1;
+            try {
+                fetch(telemetryUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message,
+                        source: stripQuery(payload.source || ''),
+                        line: Number.isFinite(payload.line) ? Math.max(0, Math.trunc(payload.line)) : undefined,
+                        column: Number.isFinite(payload.column) ? Math.max(0, Math.trunc(payload.column)) : undefined,
+                        path: stripQuery(window.location.pathname || '/'),
+                        kind: payload.kind === 'unhandledrejection' ? 'unhandledrejection' : 'error',
+                    }),
+                    keepalive: true,
+                    credentials: 'omit',
+                }).catch(() => {});
+            } catch {
+                // Telemetry must never disrupt the storefront UI.
+            }
+        };
+
+        window.addEventListener('error', (event) => {
+            sendTelemetry({
+                message: event.message || event.error?.message || 'Script error',
+                source: event.filename || '',
+                line: event.lineno,
+                column: event.colno,
+                kind: 'error',
+            });
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            const reason = event.reason;
+            const message = typeof reason === 'string'
+                ? reason
+                : (reason && typeof reason.message === 'string' ? reason.message : 'Unhandled promise rejection');
+            sendTelemetry({
+                message,
+                source: '',
+                kind: 'unhandledrejection',
+            });
+        });
+    }
 });

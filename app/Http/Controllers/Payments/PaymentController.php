@@ -9,6 +9,7 @@ use App\Models\PaymentTransaction;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Services\FinancialOperations;
+use App\Services\Observability\ObservabilityEvents;
 use App\Services\PaymentConnectivity;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
@@ -177,6 +178,7 @@ class PaymentController extends Controller
             return redirect()->route('payments.result', $attempt->public_id, 303);
         }
         $newAttempt = $payments->start($account, $document->public_id, $balance, (string) Str::uuid());
+        app(ObservabilityEvents::class)->payment('retry', $newAttempt, 'from:#'.strtoupper(substr((string) $attempt->public_id, 0, 8)));
 
         return redirect()->route('payments.gateway', $newAttempt->public_id, 303);
     }

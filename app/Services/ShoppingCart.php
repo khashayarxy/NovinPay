@@ -8,6 +8,7 @@ use App\Models\InventoryItem;
 use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\SalesOrder;
+use App\Services\Observability\ObservabilityEvents;
 use App\Support\PaymentTestProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -273,6 +274,9 @@ class ShoppingCart
                 'sources' => $this->encode(['rows' => $snapshot, 'view' => $scopes['view'],
                     'preferences' => array_intersect_key($states[$scopes['view']] ?? [], $items)]),
                 'delivery' => encrypt($delivery)]);
+
+            $createdOrder = clone $order;
+            DB::afterCommit(static fn () => app(ObservabilityEvents::class)->orderCreated($createdOrder));
 
             return $order;
         }, 3);

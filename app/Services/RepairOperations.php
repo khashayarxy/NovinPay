@@ -17,6 +17,7 @@ use App\Models\RepairRequest;
 use App\Models\RepairWorkEntry;
 use App\Models\User;
 use App\Services\Notifications\UnifiedNotifier;
+use App\Services\Observability\ObservabilityEvents;
 use App\Support\AdminAccess;
 use App\Support\AdminHistory;
 use App\Support\FaNumber;
@@ -221,6 +222,9 @@ final class RepairOperations
                     $case->status = $data['decision'] === 'approved' ? RepairStage::Approved : RepairStage::ReturnPending;
                     $action = AdminAction::RepairDecision;
                     $type = 'decision';
+                    $caseSnapshot = clone $case;
+                    $decisionValue = (string) $data['decision'];
+                    DB::afterCommit(static fn () => app(ObservabilityEvents::class)->repairQuoteDecision($caseSnapshot, $decisionValue));
                     break;
                 case 'work':
                     abort_unless($case->status === RepairStage::Repairing && $case->assigned_to, 409, 'کار فقط در مرحلهٔ تعمیر و با تخصیص تکنسین مجاز است.');

@@ -15,9 +15,11 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\RepairCaseController;
 use App\Http\Controllers\Admin\RepairOverviewController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Admin\TestCustomerAccountController;
 use App\Http\Controllers\ArticleController as PublicArticleController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\ClientTelemetryController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\CustomerAccountController;
 use App\Http\Controllers\CustomerThreePathAuthController;
@@ -129,6 +131,9 @@ Route::withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::cl
     Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
     Route::get('/sitemap-{type}-{page}.xml', [SitemapController::class, 'part'])
         ->whereIn('type', ['pages', 'products', 'articles'])->where('page', '[1-9][0-9]{0,5}')->name('sitemap.part');
+    Route::post('/telemetry/client-error', [ClientTelemetryController::class, 'store'])
+        ->middleware('throttle:client-telemetry')
+        ->name('telemetry.client-error');
 });
 
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {
@@ -273,6 +278,9 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
                 Route::post($action, [MaintenanceController::class, 'update'])->middleware(['can:maintenance.manage', 'throttle:10,1'])->name($action);
             }
         });
+        Route::get('system-health', [SystemHealthController::class, 'index'])
+            ->middleware('can:maintenance.view')
+            ->name('system-health.index');
         Route::get('/', DashboardController::class)->middleware('can:dashboard.view')->name('dashboard');
         Route::get('account/password', [PasswordController::class, 'edit'])->name('password.edit');
         Route::put('account/password', [PasswordController::class, 'update'])->middleware('throttle:10,1')->name('password.update');

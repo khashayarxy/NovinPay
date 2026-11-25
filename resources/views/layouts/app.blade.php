@@ -26,6 +26,9 @@
     @endisset
     <x-public-seo :canonical="$canonical ?? null" :content-seo="$contentSeo ?? null" :public-robots="$publicRobots ?? null" :product="$product ?? null" :product-sale="$sale ?? null" :product-rating="$productRating ?? null" :article="$article ?? null" :version="$version ?? null" />
     <x-brand-head />
+    @if(config('observability.client_telemetry.enabled'))
+        <meta name="np-telemetry-url" content="{{ route('telemetry.client-error') }}">
+    @endif
     <link rel="preload" href="{{ asset('fonts/dana/DanaFaNum-Regular.woff2') }}" as="font" type="font/woff2" crossorigin>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))

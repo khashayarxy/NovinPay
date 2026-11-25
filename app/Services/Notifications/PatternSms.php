@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Services\IpPanel;
+use App\Services\Observability\ObservabilityEvents;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -99,9 +100,31 @@ final class PatternSms
                 ? ['outcome' => $this->ipPanel->sendPattern($recipient, $pattern, $variables)]
                 : $this->sendWithPanelChi($recipient, $pattern, $variables);
             Log::log($outcome['outcome'] === 'accepted' ? 'info' : 'warning', 'SMS pattern provider outcome', $context + $outcome);
+            app(ObservabilityEvents::class)->sms(
+                $this->categoryForEvent($event),
+                (string) ($outcome['outcome'] ?? 'failed'),
+                $context['provider'],
+                $event,
+            );
         } catch (Throwable $exception) {
             Log::warning('SMS pattern send failed safely', $context + ['phase' => $phase, 'exception' => $exception::class]);
+            app(ObservabilityEvents::class)->sms(
+                $this->categoryForEvent($event),
+                'failed',
+                $context['provider'],
+                $event,
+            );
         }
+    }
+
+    private function categoryForEvent(string $event): string
+    {
+        return match (true) {
+            str_starts_with($event, 'order_') => 'order',
+            str_starts_with($event, 'repair_') => 'repair',
+            str_starts_with($event, 'admin_') => 'alert',
+            default => 'other',
+        };
     }
 
     /** @param array<string, string> $variables */
