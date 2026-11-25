@@ -52,6 +52,15 @@ class PaymentMessengerNotificationsTest extends TestCase
             'notifications.telegram.bot_token' => '123456:TEST-TELEGRAM-TOKEN',
             'notifications.telegram.chat_id' => '-10099887766',
             'notifications.telegram.api_base' => 'https://api.telegram.org',
+            'observability.telegram_topics.enabled' => true,
+            'observability.telegram_topics.bot_token' => '123456:TEST-TOPICS-TOKEN',
+            'observability.telegram_topics.chat_id' => '-1005775833170',
+            'observability.telegram_topics.api_base' => 'https://api.telegram.org',
+            'observability.telegram_topics.threads' => [
+                'payments' => 11,
+                'orders' => 12,
+                'repairs' => 13,
+            ],
             'notifications.bale.enabled' => true,
             'notifications.bale.bot_token' => '987654:TEST-BALE-TOKEN',
             'notifications.bale.chat_id' => '55443322',
@@ -94,15 +103,17 @@ class PaymentMessengerNotificationsTest extends TestCase
         OrderPaid::dispatch($order, $document, $transaction);
 
         Http::assertSentCount(2);
+        Http::assertNotSent(fn (HttpRequest $req) => ($req['chat_id'] ?? null) === '-10099887766');
 
         Http::assertSent(function (HttpRequest $req) use ($order): bool {
-            if (! str_starts_with($req->url(), 'https://api.telegram.org/bot123456:TEST-TELEGRAM-TOKEN/sendMessage')) {
+            if (! str_starts_with($req->url(), 'https://api.telegram.org/bot123456:TEST-TOPICS-TOKEN/sendMessage')) {
                 return false;
             }
             $text = (string) ($req['text'] ?? '');
             $code = strtoupper(substr($order->public_id, 0, 8));
 
-            return $req['chat_id'] === '-10099887766'
+            return $req['chat_id'] === '-1005775833170'
+                && ($req['message_thread_id'] ?? null) === 12
                 && str_contains($text, 'پرداخت آنلاین سفارش تأیید شد')
                 && str_contains($text, $code)
                 && str_contains($text, 'رضا نوری')
@@ -135,13 +146,18 @@ class PaymentMessengerNotificationsTest extends TestCase
         RepairPaid::dispatch($case, $document, $transaction);
 
         Http::assertSentCount(4);
+        Http::assertNotSent(fn (HttpRequest $req) => ($req['chat_id'] ?? null) === '-10099887766');
 
-        Http::assertSent(fn (HttpRequest $req) => str_starts_with($req->url(), 'https://api.telegram.org/')
+        Http::assertSent(fn (HttpRequest $req) => str_starts_with($req->url(), 'https://api.telegram.org/bot123456:TEST-TOPICS-TOKEN/sendMessage')
+            && ($req['chat_id'] ?? null) === '-1005775833170'
+            && ($req['message_thread_id'] ?? null) === 13
             && str_contains((string) ($req['text'] ?? ''), 'لینک پرداخت آنلاین تعمیر ساخته شد')
             && str_contains((string) ($req['text'] ?? ''), '۴۰۵۵۱۲')
             && str_contains((string) ($req['text'] ?? ''), $paymentUrl));
 
-        Http::assertSent(fn (HttpRequest $req) => str_starts_with($req->url(), 'https://api.telegram.org/')
+        Http::assertSent(fn (HttpRequest $req) => str_starts_with($req->url(), 'https://api.telegram.org/bot123456:TEST-TOPICS-TOKEN/sendMessage')
+            && ($req['chat_id'] ?? null) === '-1005775833170'
+            && ($req['message_thread_id'] ?? null) === 13
             && str_contains((string) ($req['text'] ?? ''), 'هزینه تعمیر آنلاین پرداخت شد')
             && str_contains((string) ($req['text'] ?? ''), 'PAX · S910')
             && str_contains((string) ($req['text'] ?? ''), '۴۵۰٬۰۰۰ تومان')

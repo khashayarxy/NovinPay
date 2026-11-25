@@ -14,6 +14,7 @@ use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
 use App\Services\IpPanel;
+use App\Services\Observability\TelegramTopicNotifier;
 use App\Support\FaNumber;
 use App\Support\RepairPaymentCode;
 use Illuminate\Support\Facades\Cache;
@@ -28,6 +29,7 @@ final class UnifiedNotifier
         private readonly BaleNotifier $bale,
         private readonly TelegramNotifier $telegram,
         private readonly PatternSms $patternSms,
+        private readonly TelegramTopicNotifier $telegramTopics,
     ) {}
 
     public function orderPlaced(SalesOrder $order, ?string $customerEmail = null): void
@@ -160,7 +162,6 @@ final class UnifiedNotifier
             $this->sendAdminSms('admin_repair_submitted', ['code' => (string) $repair->tracking_reference, 'device' => $device]);
             $this->sendAdminEmail('درخواست تعمیر جدید #'.$ref, 'ثبت درخواست تعمیر آنلاین', 'یک درخواست تعمیر جدید توسط مشتری ثبت شد.', $adminFields, 'مشاهده درخواست در پنل', $adminUrl);
             $this->bale->send($botText);
-            $this->telegram->send($botText);
 
             if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_repair_submitted', ['code' => (string) $repair->tracking_reference, 'device' => $device]);
@@ -304,7 +305,7 @@ final class UnifiedNotifier
             ];
 
             $botText = $this->formatBotMessage('✅ پرداخت آنلاین سفارش تأیید شد', $fields, $adminUrl);
-            $this->telegram->send($botText);
+            $this->telegramTopics->send('orders', $botText, 'order_paid:'.$order->public_id);
             $this->bale->send($botText);
         }, 'order_paid');
     }
@@ -335,7 +336,7 @@ final class UnifiedNotifier
             ];
 
             $botText = $this->formatBotMessage('✅ هزینه تعمیر آنلاین پرداخت شد', $fields, $adminUrl);
-            $this->telegram->send($botText);
+            $this->telegramTopics->send('repairs', $botText, 'repair_paid:'.$transaction->public_id);
             $this->bale->send($botText);
         }, 'repair_paid');
     }
@@ -370,7 +371,7 @@ final class UnifiedNotifier
             ];
 
             $botText = $this->formatBotMessage('🔗 لینک پرداخت آنلاین تعمیر ساخته شد', $fields);
-            $this->telegram->send($botText);
+            $this->telegramTopics->send('repairs', $botText, 'repair_paylink:'.$repairCase->public_id.':'.$document->version);
             $this->bale->send($botText);
         }, 'repair_payment_link_generated');
     }

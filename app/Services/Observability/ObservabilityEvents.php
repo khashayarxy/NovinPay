@@ -70,15 +70,7 @@ final class ObservabilityEvents
     public function orderCreated(SalesOrder $order): void
     {
         try {
-            $shortId = strtoupper(substr((string) $order->public_id, 0, 8));
-            $total = number_format((int) round((float) $order->total));
             $this->metrics->increment('orders.created');
-
-            $this->topics->send(
-                'orders',
-                "🛒 سفارش جدید ثبت شد\nکد سفارش: #{$shortId}\nمبلغ کل: {$total} تومان\nوضعیت: {$order->status}",
-                "order_created:{$shortId}",
-            );
         } catch (Throwable) {
         }
     }
