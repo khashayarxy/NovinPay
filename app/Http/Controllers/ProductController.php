@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
+use App\Enums\StockStatus;
 use App\Models\Product;
 use App\Models\ProductFeedback;
 use App\Services\CustomerLogin;
@@ -32,6 +33,7 @@ class ProductController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
             'category' => ['nullable', 'string', Rule::enum(ProductCategory::class)],
             'condition' => ['nullable', Rule::enum(ProductCondition::class)],
+            'available' => ['nullable', 'boolean'],
             'sort' => ['nullable', Rule::in(['price-low', 'price-high'])],
         ], [
             'q.max' => 'عبارت جست‌وجو نباید بیشتر از ۱۰۰ کاراکتر باشد.',
@@ -46,6 +48,7 @@ class ProductController extends Controller
 
         $sort = $validated['sort'] ?? null;
         $condition = $validated['condition'] ?? null;
+        $onlyAvailable = $request->boolean('available');
         $products = Product::query()
             ->published()
             ->visibleTo($account)
@@ -53,6 +56,11 @@ class ProductController extends Controller
             ->when($term !== '', fn ($query) => $query->search($term))
             ->when($category !== null, fn ($query) => $query->category($category))
             ->when($condition, fn ($query) => $query->where('condition', $condition))
+            ->when($onlyAvailable, fn ($query) => $query
+                ->where('stock_status', '!=', StockStatus::OutOfStock->value)
+                ->whereHas('inventoryItems', fn ($inventory) => $inventory
+                    ->whereColumn('inventory_items.condition', 'products.condition')
+                    ->whereRaw('(on_hand - reserved) > 0')))
             ->when($sort, fn ($query) => $query->orderByRaw('CASE WHEN price > 0 AND is_sample = 0 THEN 0 ELSE 1 END')
                 ->orderBy('price', $sort === 'price-low' ? 'asc' : 'desc'))
             ->latest()->orderByDesc('id')
@@ -64,6 +72,7 @@ class ProductController extends Controller
                 'q' => $term !== '' ? $term : null,
                 'category' => $category?->value,
                 'condition' => $condition,
+                'available' => $onlyAvailable ? '1' : null,
                 'sort' => $sort,
             ]));
 
@@ -77,10 +86,12 @@ class ProductController extends Controller
             ])->all(),
             'sort' => $sort,
             'condition' => $condition,
+            'onlyAvailable' => $onlyAvailable,
             'term' => $term,
             'category' => $category,
             'categories' => ProductCategory::storefrontCases(),
-            'hasFilters' => $term !== '' || $category !== null || $condition !== null || $sort !== null,
+            'hasFilters' => $term !== '' || $category !== null || $condition !== null || $onlyAvailable || $sort !== null,
+            'activeFilterCount' => ($category ? 1 : 0) + ($condition ? 1 : 0) + ($onlyAvailable ? 1 : 0),
             'canonical' => rtrim(config('app.url'), '/').route('products.index', [], false)
                 .($products->currentPage() > 1 ? '?page='.$products->currentPage() : ''),
             'publicRobots' => $term !== '' || $category !== null || array_diff(array_keys($request->query()), ['page'])

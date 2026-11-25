@@ -77,6 +77,7 @@
         </div>
         <div class="public-actions repair-confirm-actions">
             <a href="{{ route('repair.track') }}" class="np-button np-button--primary">پیگیری وضعیت <x-home.icon name="arrow-left" /></a>
+            <a href="{{ route('account.repairs.request', $reference) }}" class="np-button np-button--outline">تغییر نحوهٔ تحویل</a>
             <a href="{{ route('account.index', ['section' => 'repairs']) }}" class="np-button np-button--outline">تعمیرات در حساب کاربری</a>
             <a href="{{ config('business.phone_uri') }}" class="np-button np-button--outline">تماس با نوین‌پی</a>
         </div>

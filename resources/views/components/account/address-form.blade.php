@@ -33,7 +33,7 @@
         </div>
         <div class="np-account-form__field">
             <label for="{{ $prefix }}-phone">شماره موبایل</label>
-            <input id="{{ $prefix }}-phone" name="phone" type="tel" dir="ltr" inputmode="tel" autocomplete="tel" data-normalize-digits value="{{ $fieldValue('phone', $address?->phone ? \App\Support\FaNumber::digits($address->phone) : '') }}" maxlength="40" placeholder="۰۹۱۲۳۴۵۶۷۸۹" @class(['is-invalid' => $isThisForm && $errors->has('phone')]) @if($isThisForm && $errors->has('phone')) aria-invalid="true" @endif required>
+            <input id="{{ $prefix }}-phone" name="phone" type="tel" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel" data-normalize-digits value="{{ $fieldValue('phone', $address?->phone ? \App\Support\FaNumber::digits($address->phone) : '') }}" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" @class(['is-invalid' => $isThisForm && $errors->has('phone')]) @if($isThisForm && $errors->has('phone')) aria-invalid="true" @endif required>
             @if($isThisForm) @error('phone')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror @endif
         </div>
     </div>
@@ -72,7 +72,7 @@
 
     <div class="np-account-form__field">
         <label for="{{ $prefix }}-postal_code">کد پستی ده‌رقمی</label>
-        <input id="{{ $prefix }}-postal_code" name="postal_code" dir="ltr" inputmode="numeric" autocomplete="postal-code" data-normalize-digits value="{{ $fieldValue('postal_code', $address?->postal_code) }}" maxlength="10" @class(['is-invalid' => $isThisForm && $errors->has('postal_code')]) @if($isThisForm && $errors->has('postal_code')) aria-invalid="true" @endif required>
+        <input id="{{ $prefix }}-postal_code" name="postal_code" dir="ltr" inputmode="numeric" data-digits-only="10" autocomplete="postal-code" data-normalize-digits value="{{ $fieldValue('postal_code', $address?->postal_code) }}" maxlength="10" @class(['is-invalid' => $isThisForm && $errors->has('postal_code')]) @if($isThisForm && $errors->has('postal_code')) aria-invalid="true" @endif required>
         @if($isThisForm) @error('postal_code')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror @endif
     </div>
 

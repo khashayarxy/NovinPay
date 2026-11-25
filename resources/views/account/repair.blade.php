@@ -1,28 +1,57 @@
 @extends('layouts.app')
 @section('title', 'پیگیری تعمیر')
 @section('content')
+@php
+    $deviceLabel = \App\Support\RepairIdentity::deviceLabel($repair->device_brand, $repair->device_model);
+    $parsed = ! $case && method_exists($repair, 'parsedIssue') ? $repair->parsedIssue() : null;
+    $canEditHandover = ! $case && $repair->status === \App\Enums\RepairRequestStatus::OnlineSubmitted;
+    $currentHandover = old('handover_method', $parsed['handover_key'] ?? 'self_ship');
+@endphp
 <div class="np-account np-account-detail np-container">
     <a class="np-account-link" href="{{ route('account.index', ['section' => 'repairs']) }}">بازگشت به تعمیرات</a>
     <header class="np-account-banner">
         <div>
-            @php($deviceLabel = \App\Support\RepairIdentity::deviceLabel($repair->device_brand, $repair->device_model))
             <p>پیگیری تعمیر <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></p>
             <h1>@if(preg_match('/[A-Za-z]/', $deviceLabel))<bdi class="np-latin-code" dir="ltr">{{ $deviceLabel }}</bdi>@else{{ $deviceLabel }}@endif</h1>
             <p>{{ $case ? \App\Support\CustomerTimeline::repairStatus($repair, $plan) : 'درخواست ثبت شد؛ دستگاه هنوز دریافت نشده است.' }}</p>
         </div>
     </header>
-    <div class="np-account-detail-grid">
-        <div class="np-account-detail-main">
-            <section class="np-account-card">
-                <h2>مسیر تعمیر</h2>
-                <x-account.timeline :steps="$timeline" />
-            </section>
+
+    @if (session('status'))
+        <p class="np-account-notice" role="status">{{ session('status') }}</p>
+    @endif
+    <x-form-errors />
+
+    <div class="np-account-order-layout">
+        <section class="np-account-card np-account-order-stepper">
+            <h2>مسیر تعمیر</h2>
+            <x-account.timeline :steps="$timeline" orientation="horizontal" />
+        </section>
+
+        <div class="np-account-order-columns">
             <section class="np-account-card">
                 <h2>مشخصات دستگاه</h2>
                 <dl class="np-account-facts">
                     <div><dt>برند</dt><dd>{{ $repair->device_brand?->value ?? 'ثبت نشده' }}</dd></div>
                     <div><dt>{{ $case && !$repair->onlineRequest ? 'تاریخ پذیرش' : 'تاریخ درخواست' }}</dt><dd><x-finance-time :value="$case ? ($repair->onlineRequest?->created_at ?? $repair->received_at) : $repair->created_at" /></dd></div>
-                    <div><dt>شرح مشکل</dt><dd class="whitespace-pre-line">{{ $repair->issue }}</dd></div>
+                    @if ($parsed && ! empty($parsed['serial']))
+                        <div><dt>شماره سریال</dt><dd><bdi class="np-latin" dir="ltr">{{ $parsed['serial'] }}</bdi></dd></div>
+                    @elseif ($case && ! empty($repair->device_serial))
+                        <div><dt>شماره سریال</dt><dd><bdi class="np-latin" dir="ltr">{{ $repair->device_serial }}</bdi></dd></div>
+                    @endif
+                    <div><dt>شرح مشکل</dt><dd class="whitespace-pre-line">{{ $parsed ? $parsed['problem'] : $repair->issue }}</dd></div>
+                    @if ($parsed && ! empty($parsed['accessories']))
+                        <div><dt>لوازم همراه</dt><dd>{{ $parsed['accessories'] }}</dd></div>
+                    @endif
+                    @if ($parsed && ! empty($parsed['location']))
+                        <div><dt>استان و شهر</dt><dd>{{ $parsed['location'] }}</dd></div>
+                    @endif
+                    @if ($parsed && ! empty($parsed['handover_label']))
+                        <div><dt>نحوه تحویل</dt><dd>{{ $parsed['handover_label'] }}</dd></div>
+                    @endif
+                    @if ($parsed && ! empty($parsed['pickup_address']))
+                        <div><dt>نشانی تحویل در محل</dt><dd>{{ $parsed['pickup_address'] }}</dd></div>
+                    @endif
                     @if($case && $repair->currentEstimate)
                         <div><dt>برآورد تعمیر</dt><dd>{{ \App\Support\FaNumber::digits(number_format($repair->currentEstimate->total())) }} تومان</dd></div>
                         @if($repair->currentEstimate->customer_summary)
@@ -33,9 +62,77 @@
                     <div><dt>هزینه تعمیر</dt><dd>{{ \App\Support\AdminRepairMoney::display($case ? $repair->repair_price_toman : null) }}</dd></div>
                 </dl>
             </section>
-        </div>
-        <div class="np-account-detail-side">
-            <x-account.settlement :document="$document" :plan="$plan" :paid-at-display="$paidAtDisplay ?? null" />
+
+            <div class="np-account-detail-side">
+                @if ($canEditHandover)
+                    <section class="np-account-card">
+                        <h2>گام بعدی و نحوهٔ تحویل دستگاه</h2>
+                        @if ($currentHandover === 'self_ship')
+                            <p>لطفاً دستگاه را با بسته‌بندی ایمن به نشانی زیر ارسال کنید و کد پیگیری را داخل بسته قرار دهید:</p>
+                            <dl class="np-account-facts">
+                                <div><dt>آدرس گیرنده</dt><dd>{{ config('business.address') }}</dd></div>
+                                <div><dt>شماره تماس</dt><dd><a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></dd></div>
+                                <div><dt>کد پستی</dt><dd dir="ltr">۳۳۵۱۶۱۱۸۲۸</dd></div>
+                            </dl>
+                        @elseif ($currentHandover === 'in_person')
+                            <p>لطفاً دستگاه را همراه با کد پیگیری به فروشگاه نوین‌پی تحویل دهید:</p>
+                            <dl class="np-account-facts">
+                                <div><dt>نشانی فروشگاه</dt><dd>{{ config('business.address') }}</dd></div>
+                                <div><dt>ساعات کاری</dt><dd><x-business-hours /></dd></div>
+                            </dl>
+                        @else
+                            <p>درخواست دریافت با پیک نوین‌پی ثبت شده است. همکاران ما برای هماهنگی زمان مراجعهٔ پیک با شما تماس می‌گیرند.</p>
+                            @if (! empty($parsed['pickup_address']))
+                                <dl class="np-account-facts">
+                                    <div><dt>نشانی ثبت‌شده</dt><dd>{{ $parsed['pickup_address'] }}</dd></div>
+                                </dl>
+                            @endif
+                        @endif
+
+                        @php
+                            $availableHandoverMethods = ($courierEligible ?? false)
+                                ? \App\Models\RepairRequest::HANDOVER_METHODS
+                                : collect(\App\Models\RepairRequest::HANDOVER_METHODS)->except('doorstep_pickup')->all();
+                            $handoverEditorOpen = $errors->hasAny(['handover_method', 'pickup_address', 'responsive_phone']);
+                        @endphp
+                        <div style="margin-top: 14px;">
+                            <button type="button" class="np-button np-button--outline" data-toggle-handover-editor aria-controls="repair-handover-editor" aria-expanded="{{ $handoverEditorOpen ? 'true' : 'false' }}">تغییر نحوهٔ تحویل</button>
+                        </div>
+
+                        <div id="repair-handover-editor" data-handover-editor-panel @unless($handoverEditorOpen) hidden @endunless style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+                            <form method="post" action="{{ route('account.repairs.request.handover', $repair->tracking_reference) }}" class="public-form" data-repair-handover-form>
+                                @csrf
+                                @method('PATCH')
+                                <div style="display:grid;gap:8px;margin-bottom:12px;">
+                                    @foreach ($availableHandoverMethods as $key => $label)
+                                        <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #d5e5f5;border-radius:10px;cursor:pointer;background:#f8fbff;">
+                                            <input type="radio" name="handover_method" value="{{ $key }}" @checked($currentHandover === $key) data-handover-radio>
+                                            <span>{{ $label }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+
+                                @if ($courierEligible ?? false)
+                                    <div data-handover-pickup-fields @if($currentHandover !== 'doorstep_pickup') hidden @endif>
+                                        <x-repair-field name="pickup_address" label="نشانی کامل تحویل به پیک">
+                                            <textarea id="pickup_address" name="pickup_address" class="input" rows="2" maxlength="400" placeholder="خیابان، کوچه، پلاک، واحد">{{ old('pickup_address', $parsed['pickup_address'] ?? '') }}</textarea>
+                                        </x-repair-field>
+                                        <x-repair-field name="responsive_phone" label="شماره تماس پاسخگو (اختیاری)" :required="false">
+                                            <input id="responsive_phone" name="responsive_phone" type="tel" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" value="{{ old('responsive_phone', $parsed['responsive_phone'] ?? '') }}">
+                                        </x-repair-field>
+                                        <input type="hidden" name="pickup_latitude" value="{{ old('pickup_latitude', $parsed['pickup_lat'] ?? '') }}" data-handover-lat>
+                                        <input type="hidden" name="pickup_longitude" value="{{ old('pickup_longitude', $parsed['pickup_lng'] ?? '') }}" data-handover-lng>
+                                    </div>
+                                @endif
+
+                                <button type="submit" class="np-button np-button--primary">ذخیرهٔ نحوهٔ تحویل</button>
+                            </form>
+                        </div>
+                    </section>
+                @else
+                    <x-account.settlement :document="$document" :plan="$plan" :paid-at-display="$paidAtDisplay ?? null" />
+                @endif
+            </div>
         </div>
     </div>
 </div>

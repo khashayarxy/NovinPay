@@ -117,27 +117,29 @@ class CustomerLogin
         $testSms = $this->testUsesSms($phone);
         $privateCode = $test && ! $testSms;
         $sms = app(CustomerOtpSms::class);
-        abort_unless($privateCode || ($sms->enabled() && $sms->configured() && (! $testSms || $sms->provider() === 'ippanel')),
-            503, 'ورود پیامکی هنوز فعال نشده است.');
+        $smsReady = $sms->enabled() && $sms->configured() && (! $testSms || $sms->provider() === 'ippanel');
+        $localSimulated = app()->isLocal() && ! $privateCode && ! $smsReady;
+        $skipSms = $privateCode || $localSimulated;
+        abort_unless($skipSms || $smsReady, 503, 'ورود پیامکی هنوز فعال نشده است.');
         $digest = $this->digest($phone, $test);
         $quotaKey = 'customer-sms-dispatch:'.RepairIdentity::digest('otp-send-quota', $phone);
         $challenge = (string) Str::uuid();
         $code = $privateCode ? $this->testCode($challenge) : str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $hashPrefix = $testSms ? self::TEST_SMS_HASH_PREFIX : 'v2:';
-        $quotaUntil = DB::transaction(function () use ($digest, $phone, $code, $challenge, $hashPrefix, $privateCode, $quotaKey): ?int {
+        $quotaUntil = DB::transaction(function () use ($digest, $phone, $code, $challenge, $hashPrefix, $skipSms, $quotaKey): ?int {
             DB::table('customer_login_challenges')->insertOrIgnore(['phone_digest' => $digest, 'phone' => Crypt::encryptString($phone)]);
             $row = DB::table('customer_login_challenges')->where('phone_digest', $digest)->lockForUpdate()->first();
             if ($row->resend_at && now()->lt($row->resend_at)) {
                 throw new HttpException(429, 'resend_cooldown', headers: ['Retry-After' => (string) max(1, (int) ceil(now()->diffInSeconds($row->resend_at)))]);
             }
-            if (! $privateCode && RateLimiter::tooManyAttempts($quotaKey, self::DAILY_SMS_LIMIT)) {
+            if (! $skipSms && RateLimiter::tooManyAttempts($quotaKey, self::DAILY_SMS_LIMIT)) {
                 throw new HttpException(429, 'daily_sms_limit', headers: ['Retry-After' => (string) max(1, RateLimiter::availableIn($quotaKey))]);
             }
             DB::table('customer_login_challenges')->where('id', $row->id)->update([
                 'challenge_id' => $challenge, 'code_hash' => $hashPrefix.Hash::make($this->codeDigest($challenge, $code)),
                 'attempts' => 0, 'expires_at' => now()->addMinutes(2), 'resend_at' => now()->addSeconds(self::RESEND_SECONDS),
             ]);
-            if ($privateCode) {
+            if ($skipSms) {
                 return null;
             }
             RateLimiter::hit($quotaKey, self::DAILY_SMS_SECONDS);
@@ -150,7 +152,7 @@ class CustomerLogin
             $reserved($challenge);
         }
         // Never log the request, OTP, mobile, API response or transport exception.
-        $outcome = $privateCode ? 'accepted' : $sms->sendOutcome($phone, $code);
+        $outcome = $skipSms ? 'accepted' : $sms->sendOutcome($phone, $code);
         if ($outcome !== 'accepted') {
             $wait = DB::transaction(function () use ($challenge, $outcome, $quotaKey, $quotaUntil): int {
                 $row = DB::table('customer_login_challenges')->where('challenge_id', $challenge)->lockForUpdate()->first();
@@ -167,7 +169,28 @@ class CustomerLogin
             throw new HttpException(503, 'delivery_unconfirmed', headers: ['Retry-After' => (string) $wait]);
         }
 
+        if (app()->isLocal()) {
+            session()->put('local_dev_otp', [
+                'challenge' => $challenge,
+                'code' => $code,
+            ]);
+        }
+
         return $challenge;
+    }
+
+    public static function localDevOtpFor(?string $challenge): ?string
+    {
+        if (! app()->isLocal() || ! is_string($challenge) || $challenge === '') {
+            return null;
+        }
+        $stored = session('local_dev_otp');
+        if (! is_array($stored) || ($stored['challenge'] ?? null) !== $challenge) {
+            return null;
+        }
+        $code = $stored['code'] ?? null;
+
+        return is_string($code) && $code !== '' ? $code : null;
     }
 
     private function codeDigest(string $challenge, string $code): string

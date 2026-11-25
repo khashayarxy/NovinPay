@@ -76,12 +76,12 @@
                             </div>
                             <div class="checkout-field">
                                 <label for="checkout-mobile">شماره موبایل</label>
-                                <input id="checkout-mobile" name="mobile" type="tel" dir="ltr" inputmode="numeric" class="checkout-input @error('mobile') is-invalid @enderror" value="{{ $defaultMobile }}" autocomplete="tel" maxlength="11" placeholder="09123456789">
+                                <input id="checkout-mobile" name="mobile" type="tel" dir="ltr" inputmode="numeric" data-digits-only="11" class="checkout-input @error('mobile') is-invalid @enderror" value="{{ $defaultMobile }}" autocomplete="tel" maxlength="11" placeholder="09123456789">
                                 <p class="checkout-field-error" data-error-for="mobile" @unless($errors->has('mobile')) hidden @endunless>@error('mobile'){{ $message }}@enderror</p>
                             </div>
                             <div class="checkout-field">
                                 <label for="checkout-national-code">کد ملی (۱۰ رقمی)</label>
-                                <input id="checkout-national-code" name="national_code" type="text" dir="ltr" inputmode="numeric" class="checkout-input @error('national_code') is-invalid @enderror" value="{{ $defaultNationalCode }}" maxlength="10" placeholder="۰۰۱۲۳۴۵۶۷۸">
+                                <input id="checkout-national-code" name="national_code" type="text" dir="ltr" inputmode="numeric" data-digits-only="10" class="checkout-input @error('national_code') is-invalid @enderror" value="{{ $defaultNationalCode }}" maxlength="10" placeholder="۰۰۱۲۳۴۵۶۷۸">
                                 <p class="checkout-field-error" data-error-for="national_code" @unless($errors->has('national_code')) hidden @endunless>@error('national_code'){{ $message }}@enderror</p>
                             </div>
                             <div class="checkout-field">
@@ -192,7 +192,7 @@
                                 </div>
                                 <div class="checkout-field">
                                     <label for="checkout-postal-code">کد پستی (۱۰ رقمی)</label>
-                                    <input id="checkout-postal-code" name="postal_code" type="text" dir="ltr" inputmode="numeric" class="checkout-input @error('postal_code') is-invalid @enderror" value="{{ $defaultPostal }}" maxlength="10" placeholder="۳۳۵۱۶۱۲۳۴۵">
+                                    <input id="checkout-postal-code" name="postal_code" type="text" dir="ltr" inputmode="numeric" data-digits-only="10" class="checkout-input @error('postal_code') is-invalid @enderror" value="{{ $defaultPostal }}" maxlength="10" placeholder="۳۳۵۱۶۱۲۳۴۵">
                                     <p class="checkout-field-error" data-error-for="postal_code" @unless($errors->has('postal_code')) hidden @endunless>@error('postal_code'){{ $message }}@enderror</p>
                                 </div>
                             </div>
@@ -299,7 +299,7 @@
                 <h2>خلاصهٔ سفارش</h2>
                 <ul class="commerce-checkout-items">
                     @foreach ($items as $slug => $item)
-                        <li><span>{{ $products[$slug]->name }} <small>× {{ \App\Support\FaNumber::digits($item['quantity']) }}</small></span>
+                        <li><span>{{ \App\Support\LatinText::html($products[$slug]->name) }} <small>× {{ \App\Support\FaNumber::digits($item['quantity']) }}</small></span>
                             <x-storefront.money :amount="$products[$slug]->price * $item['quantity']" /></li>
                     @endforeach
                 </ul>

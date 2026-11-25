@@ -60,7 +60,7 @@
                         @endif
                         <div class="commerce-cart-item__details">
                             <h2>
-                                @if ($product)<a href="{{ route('products.show', $product) }}">{{ $product->name }}</a>
+                                @if ($product)<a href="{{ route('products.show', $product) }}">{{ \App\Support\LatinText::html($product->name) }}</a>
                                 @else کالای خارج از دسترس @endif
                             </h2>
                             @if ($product?->color)<p>رنگ {{ $product->color }}</p>@endif

@@ -318,8 +318,18 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
     gap: 10px;
     margin-top: 18px;
 }
+.btn-group form {
+    margin: 0;
+    display: inline-flex;
+}
 .btn-group .btn {
     margin-top: 0;
+}
+.np-latin {
+    font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
 }
 .btn.btn--secondary {
     background: #f1f5f9;

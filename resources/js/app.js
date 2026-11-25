@@ -372,7 +372,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const goToStep = (step) => {
+        const scrollToFormTop = (el) => {
+            if (!(el instanceof HTMLElement)) return;
+            const header = document.querySelector('header.np-header, header[role="banner"], .site-header');
+            const headerHeight = header instanceof HTMLElement ? header.getBoundingClientRect().height : 72;
+            const offset = Math.max(80, Math.min(96, Math.round(headerHeight) + 16));
+            const rect = el.getBoundingClientRect();
+            if (rect.top < offset || rect.top > offset + 24) {
+                const targetY = Math.max(0, window.scrollY + rect.top - offset);
+                const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                window.scrollTo({ top: targetY, behavior: reduced ? 'auto' : 'smooth' });
+            }
+        };
+
+        const goToStep = (step, { scroll = false } = {}) => {
             currentStep = step;
             showAlert('');
             steps.forEach((panel) => {
@@ -386,6 +399,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentStep === 3) {
                 syncSummary();
                 syncHandoverPanels();
+            }
+            if (scroll) {
+                scrollToFormTop(repairStepper.closest('.public-panel') || repairStepper);
             }
         };
 
@@ -580,6 +596,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (phoneDisplay) phoneDisplay.textContent = data.phone || faDigits(raw);
                     if (phoneStep) phoneStep.hidden = true;
                     if (otpStep) otpStep.hidden = false;
+                    const localOtpBox = inlineAuth.querySelector('[data-local-dev-otp]');
+                    const localOtpCode = inlineAuth.querySelector('[data-local-dev-otp-code]');
+                    if (localOtpBox && localOtpCode) {
+                        if (data.local_dev_otp) {
+                            localOtpCode.textContent = data.local_dev_otp;
+                            localOtpBox.hidden = false;
+                        } else {
+                            localOtpBox.hidden = true;
+                        }
+                    }
                     startCountdown(data.remaining ?? 60);
                     codeInput?.focus();
                     startWebOtp();
@@ -601,6 +627,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (data?.resend_at) startCountdown(Math.max(1, data.resend_at - Math.floor(Date.now() / 1000)));
                         else resendBtn.disabled = false;
                         return;
+                    }
+                    const localOtpBox = inlineAuth.querySelector('[data-local-dev-otp]');
+                    const localOtpCode = inlineAuth.querySelector('[data-local-dev-otp-code]');
+                    if (localOtpBox && localOtpCode && data.local_dev_otp) {
+                        localOtpCode.textContent = data.local_dev_otp;
+                        localOtpBox.hidden = false;
                     }
                     startCountdown(data.remaining ?? 60);
                     codeInput?.focus();
@@ -655,7 +687,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof repairStepper._reverseGeocodeIfPinned === 'function') {
                         repairStepper._reverseGeocodeIfPinned();
                     }
-                    if (nameInput && !nameInput.value.trim()) nameInput.focus();
                 } catch {
                     setFieldError('repair_auth_code', 'خطا در تأیید کد. لطفاً دوباره تلاش کنید.');
                 } finally {
@@ -819,12 +850,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         repairStepper.querySelectorAll('[data-step-next]').forEach((btn) => {
             btn.addEventListener('click', () => {
-                if (validateStep(currentStep)) goToStep(Math.min(3, currentStep + 1));
+                if (validateStep(currentStep)) goToStep(Math.min(3, currentStep + 1), { scroll: true });
             });
         });
 
         repairStepper.querySelectorAll('[data-step-prev]').forEach((btn) => {
-            btn.addEventListener('click', () => goToStep(Math.max(1, currentStep - 1)));
+            btn.addEventListener('click', () => goToStep(Math.max(1, currentStep - 1), { scroll: true }));
         });
 
         repairStepper.addEventListener('submit', (event) => {
@@ -1726,27 +1757,44 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         }
     };
 
+    const scrollToCheckoutTop = () => {
+        const header = document.querySelector('header.np-header, header[role="banner"], .site-header');
+        const headerHeight = header instanceof HTMLElement ? header.getBoundingClientRect().height : 72;
+        const offset = Math.max(80, Math.min(96, Math.round(headerHeight) + 16));
+        const rect = stepper.getBoundingClientRect();
+        if (rect.top < offset || rect.top > offset + 24) {
+            const targetY = Math.max(0, window.scrollY + rect.top - offset);
+            const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+            window.scrollTo({ top: targetY, behavior: reduced ? 'auto' : 'smooth' });
+        }
+    };
+
     const tryNavigateToStep = (targetStep) => {
         if (targetStep === currentStep) return;
         if (targetStep < currentStep) {
             persistCheckoutDraft(false);
             goToStep(targetStep);
+            scrollToCheckoutTop();
             return;
         }
         if (targetStep >= 2 && !validateStep1()) {
             goToStep(1);
+            scrollToCheckoutTop();
             return;
         }
         if (targetStep >= 3 && !validateAddressIfShipping(false)) {
             goToStep(2);
+            scrollToCheckoutTop();
             return;
         }
         if (targetStep >= 4 && !validateStep3()) {
             goToStep(3);
+            scrollToCheckoutTop();
             return;
         }
         persistCheckoutDraft(true);
         goToStep(targetStep);
+        scrollToCheckoutTop();
     };
 
     indicators.forEach((ind) => {
@@ -2355,12 +2403,6 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 }
                 panel.hidden = !willOpen;
                 trigger.setAttribute('aria-expanded', String(willOpen));
-                if (willOpen) {
-                    const firstInput = panel.querySelector('input:not([type="hidden"]), select, textarea');
-                    if (firstInput instanceof HTMLElement) {
-                        firstInput.focus({ preventScroll: true });
-                    }
-                }
             }
             return;
         }
@@ -2387,8 +2429,60 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 } else {
                     modelInput.value = current;
                 }
-                modelInput.focus();
             }
+        }
+    });
+
+    document.querySelectorAll('[data-repair-handover-form]').forEach((form) => {
+        const pickupBox = form.querySelector('[data-handover-pickup-fields]');
+        const radios = form.querySelectorAll('[data-handover-radio]');
+        const sync = () => {
+            const selected = form.querySelector('[data-handover-radio]:checked');
+            const isPickup = selected instanceof HTMLInputElement && selected.value === 'doorstep_pickup';
+            if (pickupBox instanceof HTMLElement) {
+                pickupBox.hidden = !isPickup;
+                const addr = pickupBox.querySelector('textarea[name="pickup_address"]');
+                if (addr instanceof HTMLTextAreaElement) {
+                    addr.required = isPickup;
+                }
+            }
+        };
+        radios.forEach((radio) => radio.addEventListener('change', sync));
+        sync();
+    });
+
+    document.querySelectorAll('[data-toggle-handover-editor]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('aria-controls');
+            const panel = targetId ? document.getElementById(targetId) : null;
+            if (!(panel instanceof HTMLElement)) return;
+            const willOpen = panel.hidden;
+            panel.hidden = !willOpen;
+            btn.setAttribute('aria-expanded', String(willOpen));
+        });
+    });
+
+    const sanitizeDigitsOnly = (el) => {
+        if (!(el instanceof HTMLInputElement)) return;
+        const max = Number.parseInt(el.dataset.digitsOnly || el.getAttribute('maxlength') || '0', 10);
+        const filtered = (el.value || '').replace(/[^0-9\u06F0-\u06F9\u0660-\u0669]+/g, '');
+        const clamped = max > 0 ? filtered.slice(0, max) : filtered;
+        if (el.value !== clamped) {
+            el.value = clamped;
+        }
+    };
+
+    document.addEventListener('input', (event) => {
+        const target = event.target;
+        if (target instanceof HTMLInputElement && target.hasAttribute('data-digits-only')) {
+            sanitizeDigitsOnly(target);
+        }
+    });
+
+    document.addEventListener('paste', (event) => {
+        const target = event.target;
+        if (target instanceof HTMLInputElement && target.hasAttribute('data-digits-only')) {
+            setTimeout(() => sanitizeDigitsOnly(target), 0);
         }
     });
 });

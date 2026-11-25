@@ -20,8 +20,17 @@ class ZibalGateway
         return $number === false ? null : $number;
     }
 
+    public function isLocalSimulator(): bool
+    {
+        return app()->isLocal() && ! $this->canVerify();
+    }
+
     public function available(): bool
     {
+        if ($this->isLocalSimulator()) {
+            return true;
+        }
+
         return config('payments.zibal.enabled') && $this->canVerify()
             && config('payments.zibal.callback_url') === rtrim(config('app.url'), '/').self::CALLBACK_PATH;
     }
@@ -45,6 +54,9 @@ class ZibalGateway
     {
         abort_unless(in_array($operation, ['request', 'verify', 'inquiry'], true), 422);
         abort_unless($operation === 'request' ? $this->available() : $this->canVerify(), 503, 'پرداخت آنلاین هنوز فعال نشده است.');
+        if ($this->isLocalSimulator() && $operation === 'request') {
+            return ['result' => 100, 'trackId' => random_int(10000000, 99999999)];
+        }
         try {
             $response = Http::withoutRedirecting()->connectTimeout(8)->timeout(20)->acceptJson()->post('https://gateway.zibal.ir/v1/'.$operation, ['merchant' => config('payments.zibal.merchant')] + $payload);
 

@@ -1,25 +1,67 @@
-@extends('payments.layout')
-@section('title', 'انتقال به درگاه زیبال')
-@unless($indeterminate)
-    @section('navigation')
+@php
+    $isSim = (bool) ($isLocalSimulator ?? false);
+    $amountDisplay = isset($amountToman)
+        ? \App\Support\FaNumber::digits(number_format((int) $amountToman, 0, '.', '٬'))
+        : null;
+@endphp
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    @unless($indeterminate)
         <meta http-equiv="refresh" content="0;url={{ $gatewayUrl }}">
-    @endsection
-@endunless
-@section('payment')
-    <div class="payment-context"><x-storefront.icon name="shield" /><span>درگاه پرداخت زیبال</span></div>
-    @if($indeterminate)
-        <h1 id="payment-title">وضعیت وی‌پی‌ان قابل تأیید نیست</h1>
-        <p>قواعد مسیریابی یا استثناهای وی‌پی‌ان ممکن است اتصال به نوین‌پی و زیبال را از مسیرهای متفاوتی عبور دهند.</p>
-        <p>اگر درگاه باز نشد، موقتاً وی‌پی‌ان را خاموش کنید یا استثناهای زیبال و درگاه پرداخت را بررسی کنید.</p>
-    @else
-        <h1 id="payment-title">انتقال به درگاه پرداخت</h1>
-        <p>اگر درگاه باز نشد، ورود به درگاه را انتخاب کنید.</p>
-    @endif
-    @if($indeterminate)
-        <x-payment-issue-actions :retry-url="$gatewayUrl" referrer-policy="origin" />
-    @else
-        <nav class="payment-actions" aria-label="گزینه‌های انتقال به درگاه">
-            <a class="payment-button payment-button--primary" href="{{ $gatewayUrl }}" referrerpolicy="origin">ورود به درگاه زیبال</a>
-        </nav>
-    @endif
-@endsection
+    @endunless
+    <title>{{ $isSim ? 'انتقال به شبیه‌ساز درگاه زیبال' : 'انتقال به درگاه زیبال' }} | {{ config('business.name') }}</title>
+    <x-brand-head />
+    <link rel="preload" href="/fonts/dana/DanaFaNum-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/dana/DanaFaNum-Bold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ versioned_asset('css/payment-flow.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('pay/assets/pay.css') }}">
+</head>
+<body class="t-indigo">
+    <main class="payment-warning-shell">
+        <div class="payment-warning-brand"><x-home.wordmark /></div>
+        <section class="container" aria-labelledby="payment-title">
+            <div class="icon-wrap" aria-hidden="true">
+                <div class="icon">
+                    <svg viewBox="0 0 24 24"><path pathLength="20" d="M7 11V8a5 5 0 0 1 10 0v3"/><path pathLength="20" d="M6 11h12v9H6z"/></svg>
+                </div>
+            </div>
+
+            @if($indeterminate)
+                <h1 id="payment-title">وضعیت وی‌پی‌ان قابل تأیید نیست</h1>
+                <p class="lead">قواعد مسیریابی یا استثناهای وی‌پی‌ان ممکن است اتصال به نوین‌پی و زیبال را از مسیرهای متفاوتی عبور دهند.</p>
+                <div class="info-box"><p>اگر درگاه باز نشد، موقتاً وی‌پی‌ان را خاموش کنید یا استثناهای زیبال و درگاه پرداخت را بررسی کنید.</p></div>
+                <x-payment-issue-actions :retry-url="$gatewayUrl" referrer-policy="origin" variant="vpn" />
+            @else
+                <h1 id="payment-title">{{ $isSim ? 'در حال انتقال به شبیه‌ساز درگاه زیبال…' : 'در حال انتقال به درگاه پرداخت…' }}</h1>
+                <p class="lead">{{ $isSim ? 'شبیه‌ساز لوکال برای تست سناریوهای پرداخت آماده است.' : 'لطفاً چند لحظه صبر کنید؛ به درگاه پرداخت منتقل می‌شوید.' }}</p>
+                <div class="bar" aria-hidden="true"></div>
+                <p class="hint">اتصال شما با درگاه پرداخت، امن و رمزگذاری‌شده است.</p>
+                @if (! empty($sourceCode) || $amountDisplay !== null)
+                    <div class="rows">
+                        @if (! empty($sourceCode))
+                            <div class="row">
+                                <span>{{ ($isOrder ?? true) ? 'کد سفارش' : 'کد پیگیری تعمیر' }}</span>
+                                <b class="np-latin">{{ $sourceCode }}</b>
+                            </div>
+                        @endif
+                        @if ($amountDisplay !== null)
+                            <div class="row plain">
+                                <span>مبلغ قابل پرداخت</span>
+                                <b>{{ $amountDisplay }} تومان</b>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+                <div class="btn-group">
+                    <a class="btn" href="{{ $gatewayUrl }}" referrerpolicy="origin">{{ $isSim ? 'ورود به شبیه‌ساز درگاه' : 'انتقال به درگاه پرداخت' }}</a>
+                    <a class="btn btn--secondary" href="{{ route('cart.index') }}">بازگشت به سبد خرید</a>
+                </div>
+            @endif
+        </section>
+    </main>
+</body>
+</html>

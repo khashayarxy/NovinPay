@@ -188,7 +188,7 @@ class HomePageTest extends TestCase
         $response = $this->get('/')->assertOk();
         $response->assertSee('فروش و تعمیر <span>کارتخوان</span>', false)
             ->assertDontSee('فروش و تعمیر تخصصی')
-            ->assertSee('انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.')
+            ->assertSee('از برندهای معتبر؛ همراه با راه‌اندازی، گارانتی و پشتیبانی تخصصی.')
             ->assertSee('نه عکس تأییدشدهٔ محصول')
             ->assertSee('width="853" height="933"', false)
             ->assertSee('fetchpriority="high"', false)

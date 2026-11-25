@@ -87,6 +87,14 @@
             <a href="{{ route('contact') }}" @if (request()->routeIs('contact')) aria-current="page" @endif><x-storefront.icon name="phone" class="np-nav-icon" /><span>تماس با ما</span></a>
         </nav>
         <div class="np-mobile-drawer__footer" aria-label="حساب کاربری {{ config('business.name') }}">
+            @if ($shopTools)
+                <a class="np-mobile-drawer__account np-mobile-drawer__cart" href="{{ route('cart.index') }}">
+                    <x-storefront.icon name="cart" class="np-nav-icon" />
+                    <span>سبد خرید</span>
+                    <x-storefront.cart-count />
+                    <x-storefront.icon name="arrow" class="np-drawer-arrow" />
+                </a>
+            @endif
             <a class="np-mobile-drawer__account" href="{{ $customerAccount ? route('account.index') : route('account.login') }}">
                 <x-storefront.icon name="account" class="np-nav-icon" />
                 <span>{{ $customerAccount ? 'حساب کاربری' : 'ورود / ثبت‌نام' }}</span>

@@ -41,6 +41,10 @@
                             <li class="repair-recovery-empty">درخواستی برای این شماره موبایل ثبت نشده است.</li>
                         @endforelse
                     </ul>
+                    <form method="post" action="{{ route('repair.track.recovery.reset') }}" style="margin-top: 16px;">
+                        @csrf
+                        <button type="submit" class="np-button np-button--outline">بازیابی با شماره دیگر</button>
+                    </form>
                 </div>
             @elseif ($challenge)
                 <div class="repair-recovery-phone-bar">
@@ -50,10 +54,15 @@
                         <button type="submit" class="public-inline-link repair-recovery-edit-btn">اصلاح شماره موبایل</button>
                     </form>
                 </div>
+                @if (app()->isLocal() && ! empty($localDevOtp))
+                    <p class="public-field-hint" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;margin-block:10px;" data-local-dev-otp>
+                        کد تأیید لوکال (فقط محیط توسعه): <strong class="np-latin" dir="ltr">{{ $localDevOtp }}</strong>
+                    </p>
+                @endif
                 <form class="public-form" method="post" action="{{ route('repair.track.recovery.verify') }}">
                     @csrf
                     <x-repair-field name="code" label="کد تأیید پیامکی">
-                        <input class="input public-code-input repair-recovery-code-input" id="code" name="code" dir="ltr" inputmode="numeric" autocomplete="one-time-code" placeholder="••••••" minlength="6" maxlength="6" autofocus required>
+                        <input class="input public-code-input repair-recovery-code-input" id="code" name="code" dir="ltr" inputmode="numeric" data-digits-only="6" autocomplete="one-time-code" placeholder="••••••" minlength="6" maxlength="6" autofocus required>
                     </x-repair-field>
                     <div class="repair-entry-actions repair-track-actions">
                         <button type="submit" class="np-button np-button--primary">تأیید و نمایش کدهای پیگیری <x-home.icon name="arrow-left" /></button>
@@ -68,7 +77,7 @@
                 <form class="public-form" method="post" action="{{ route('repair.track.recovery.send') }}">
                     @csrf
                     <x-repair-field name="contact_phone" label="شماره موبایل">
-                        <input class="input" id="contact_phone" name="contact_phone" type="tel" dir="ltr" inputmode="tel" maxlength="40" autocomplete="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹" value="{{ old('contact_phone', '') }}" required>
+                        <input class="input" id="contact_phone" name="contact_phone" type="tel" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" autocomplete="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹" value="{{ old('contact_phone', '') }}" required>
                     </x-repair-field>
                     <div class="repair-entry-actions repair-track-actions">
                         <button type="submit" class="np-button np-button--primary">دریافت کد تأیید <x-home.icon name="arrow-left" /></button>

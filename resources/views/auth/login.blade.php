@@ -27,7 +27,7 @@
                 <div>
                     <label class="label" for="email">ایمیل</label>
                     <input class="input" type="email" id="email" name="email" dir="ltr" value="{{ is_string(old('email')) ? old('email') : '' }}"
-                        autocomplete="username" required autofocus aria-describedby="email-hint">
+                        autocomplete="username" required aria-describedby="email-hint">
                     <p class="mt-1 text-xs text-slate-500" id="email-hint">ایمیل مدیریت حساب</p>
                 </div>
 

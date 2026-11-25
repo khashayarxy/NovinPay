@@ -70,8 +70,10 @@ final class CustomerTimeline
     public static function request(RepairRequest $request): array
     {
         return [
-            ['label' => 'درخواست ثبت شد', 'state' => 'current', 'at' => $request->created_at],
-            ['label' => 'دریافت دستگاه', 'state' => 'upcoming', 'at' => null],
+            ['label' => 'ثبت درخواست', 'state' => 'complete', 'at' => $request->created_at],
+            ['label' => 'دریافت دستگاه', 'state' => 'current', 'note' => 'در انتظار تحویل دستگاه', 'at' => null],
+            ['label' => 'بررسی و اعلام هزینه', 'state' => 'upcoming', 'at' => null],
+            ['label' => 'تعمیر و تحویل', 'state' => 'upcoming', 'at' => null],
         ];
     }
 

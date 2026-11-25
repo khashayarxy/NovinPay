@@ -95,6 +95,160 @@ class RepairRequest extends Model
         return null;
     }
 
+    /**
+     * Parse structured fields stored in the encrypted issue text.
+     *
+     * @return array{
+     *     problem: string,
+     *     serial: ?string,
+     *     accessories: ?string,
+     *     location: ?string,
+     *     handover_key: ?string,
+     *     handover_label: ?string,
+     *     pickup_address: ?string,
+     *     pickup_lat: ?string,
+     *     pickup_lng: ?string,
+     *     responsive_phone: ?string,
+     * }
+     */
+    public function parsedIssue(): array
+    {
+        $raw = trim((string) ($this->issue ?? ''));
+        $lines = preg_split('/\R/u', $raw) ?: [];
+        $problemLines = [];
+        $serial = null;
+        $accessories = null;
+        $location = null;
+        $handoverLabel = null;
+        $pickupAddress = null;
+        $pickupLat = null;
+        $pickupLng = null;
+        $responsivePhone = null;
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                if ($problemLines !== [] && end($problemLines) !== '') {
+                    $problemLines[] = '';
+                }
+
+                continue;
+            }
+            if (str_starts_with($trimmed, 'شماره سریال:')) {
+                $serial = trim(mb_substr($trimmed, mb_strlen('شماره سریال:')));
+            } elseif (str_starts_with($trimmed, 'لوازم همراه:')) {
+                $accessories = trim(mb_substr($trimmed, mb_strlen('لوازم همراه:')));
+            } elseif (str_starts_with($trimmed, 'استان و شهر:')) {
+                $location = trim(mb_substr($trimmed, mb_strlen('استان و شهر:')));
+            } elseif (str_starts_with($trimmed, 'نحوه تحویل دستگاه:')) {
+                $handoverLabel = trim(mb_substr($trimmed, mb_strlen('نحوه تحویل دستگاه:')));
+            } elseif (str_starts_with($trimmed, 'نشانی تحویل در محل:')) {
+                $pickupAddress = trim(mb_substr($trimmed, mb_strlen('نشانی تحویل در محل:')));
+            } elseif (str_starts_with($trimmed, 'موقعیت نقشه:')) {
+                $coords = array_map('trim', explode(',', mb_substr($trimmed, mb_strlen('موقعیت نقشه:'))));
+                if (count($coords) === 2 && is_numeric($coords[0]) && is_numeric($coords[1])) {
+                    $pickupLat = $coords[0];
+                    $pickupLng = $coords[1];
+                }
+            } elseif (str_starts_with($trimmed, 'شماره تماس پاسخگو:')) {
+                $responsivePhone = trim(mb_substr($trimmed, mb_strlen('شماره تماس پاسخگو:')));
+            } else {
+                $problemLines[] = $trimmed;
+            }
+        }
+
+        $handoverKey = match (true) {
+            $handoverLabel === null => null,
+            str_contains($handoverLabel, 'حضوری') => 'in_person',
+            str_contains($handoverLabel, 'پیک') => 'doorstep_pickup',
+            str_contains($handoverLabel, 'ارسال') || str_contains($handoverLabel, 'پست') || str_contains($handoverLabel, 'تیپاکس') => 'self_ship',
+            default => null,
+        };
+
+        return [
+            'problem' => trim(implode("\n", $problemLines)),
+            'serial' => $serial !== '' ? $serial : null,
+            'accessories' => $accessories !== '' ? $accessories : null,
+            'location' => $location !== '' ? $location : null,
+            'handover_key' => $handoverKey,
+            'handover_label' => $handoverLabel !== '' ? $handoverLabel : null,
+            'pickup_address' => $pickupAddress !== '' ? $pickupAddress : null,
+            'pickup_lat' => $pickupLat,
+            'pickup_lng' => $pickupLng,
+            'responsive_phone' => $responsivePhone !== '' ? $responsivePhone : null,
+        ];
+    }
+
+    public function updateHandoverMethod(
+        string $method,
+        ?string $pickupAddress = null,
+        ?string $pickupLat = null,
+        ?string $pickupLng = null,
+        ?string $responsivePhone = null,
+    ): void {
+        $parsed = $this->parsedIssue();
+        $base = $parsed['problem'];
+        $meta = [];
+        if ($parsed['serial'] !== null) {
+            $meta[] = 'شماره سریال: '.$parsed['serial'];
+        }
+        if ($parsed['accessories'] !== null) {
+            $meta[] = 'لوازم همراه: '.$parsed['accessories'];
+        }
+        if ($parsed['location'] !== null) {
+            $meta[] = 'استان و شهر: '.$parsed['location'];
+        }
+        $meta[] = 'نحوه تحویل دستگاه: '.self::HANDOVER_METHODS[$method];
+        if ($method === 'doorstep_pickup') {
+            if ($pickupAddress !== null && trim($pickupAddress) !== '') {
+                $meta[] = 'نشانی تحویل در محل: '.trim($pickupAddress);
+            }
+            if ($pickupLat !== null && $pickupLng !== null && is_numeric($pickupLat) && is_numeric($pickupLng)) {
+                $meta[] = 'موقعیت نقشه: '.number_format((float) $pickupLat, 6, '.', '').', '.number_format((float) $pickupLng, 6, '.', '');
+            }
+            if ($responsivePhone !== null && trim($responsivePhone) !== '') {
+                $meta[] = 'شماره تماس پاسخگو: '.trim($responsivePhone);
+            }
+        }
+
+        $this->issue = trim($base.($base !== '' ? "\n\n" : '').implode("\n", $meta));
+        $this->save();
+    }
+
+    public function isCourierEligible(): bool
+    {
+        $location = $this->parsedIssue()['location'] ?? null;
+        if (! is_string($location) || trim($location) === '') {
+            return false;
+        }
+
+        $normalize = static function (string $value): string {
+            $val = str_replace(['ي', 'ك', "\u{200c}"], ['ی', 'ک', ' '], trim($value));
+
+            return trim((string) preg_replace('/\s+/u', ' ', $val));
+        };
+
+        $parts = array_values(array_filter(array_map($normalize, explode('-', $location))));
+        if (count($parts) < 2) {
+            return false;
+        }
+
+        [$province, $city] = $parts;
+        $zones = (array) config('delivery.courier_zones', []);
+        foreach ($zones as $zoneProvince => $zoneCities) {
+            if ($normalize((string) $zoneProvince) !== $province) {
+                continue;
+            }
+            foreach ((array) $zoneCities as $zoneCity) {
+                if ($normalize((string) $zoneCity) === $city) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     // No public mass-assignment surface; the controller assigns each field.
     protected $guarded = ['*'];
 

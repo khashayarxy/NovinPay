@@ -552,6 +552,58 @@ class ZibalPayments
         }, 3);
     }
 
+    public function recordCancelledIfNotRecorded(PaymentAttempt $attempt): void
+    {
+        $exists = DB::table('payment_events')
+            ->where('payment_attempt_id', $attempt->id)
+            ->where('event', 'gateway_canceled')
+            ->exists();
+
+        if (! $exists) {
+            $this->event($attempt, 'gateway_canceled');
+        }
+    }
+
+    public function completeLocalSimulated(PaymentAttempt $attempt, string $outcome): PaymentAttempt
+    {
+        abort_unless($this->gateway->isLocalSimulator(), 404);
+        abort_unless(in_array($outcome, ['paid', 'cancelled', 'failed'], true), 422);
+
+        if ($outcome === 'cancelled') {
+            return $this->finish($attempt, 'failed', 'gateway_canceled');
+        }
+
+        if ($outcome === 'failed') {
+            return $this->finish($attempt, 'failed', 'local_simulated_failed');
+        }
+
+        return DB::transaction(function () use ($attempt): PaymentAttempt {
+            $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
+            if ($current->state === 'settled') {
+                return $current;
+            }
+            $document = FinancialDocument::query()->lockForUpdate()->findOrFail($current->financial_document_id);
+            $this->settlement->record(
+                $document,
+                $current->amount_minor,
+                'gateway',
+                'ZIBAL-LOCAL-'.substr($current->merchant_digest, 0, 12).'-'.$current->track_id,
+                $current->public_id,
+                null,
+                $current->id,
+                null,
+                now()->toIso8601String()
+            );
+            $current->state = 'settled';
+            $current->verified_at = now();
+            $current->lease_until = null;
+            $current->save();
+            $this->event($current, 'local_simulated_settled');
+
+            return $current;
+        }, 3);
+    }
+
     private function event(PaymentAttempt $attempt, string $event): void
     {
         DB::table('payment_events')->insert(['payment_attempt_id' => $attempt->id, 'event' => $event, 'created_at' => now()]);

@@ -2787,8 +2787,9 @@ html:has(body.premium-storefront) {
     .premium-storefront .purchase { padding: 16px; }
     .premium-storefront .purchase .services { margin-block-start: 8px; }
     .premium-storefront .purchase .services li { padding-block: 4px; }
-    .premium-storefront .section-nav { justify-content: space-between; gap: 2px; }
-    .premium-storefront .section-nav a { padding-inline: 6px; }
+    .premium-storefront .section-nav { justify-content: flex-start; gap: 20px; overflow-x: auto; scrollbar-width: none; }
+    .premium-storefront .section-nav::-webkit-scrollbar { display: none; }
+    .premium-storefront .section-nav a { padding-inline: 4px; flex: 0 0 auto; white-space: nowrap; }
     .premium-storefront button[data-support-launcher] {
         transition: transform .2s ease, box-shadow .2s ease;
     }
@@ -2911,7 +2912,14 @@ html:has(body.premium-storefront) {
     color: #0b2239;
     font-variant-numeric: tabular-nums;
 }
-.np-inline-stepper--purchase { width: 100%; margin-top: 6px; }
+.purchase-stock-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.purchase-stock-row .stock { margin: 0; flex: 0 1 auto; }
+.np-inline-stepper--purchase { width: 140px; flex: 0 0 auto; margin-top: 0; }
 
 .np-added-bar {
     position: fixed;

@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
+use App\Models\InventoryItem;
 use App\Models\Product;
 use Database\Seeders\SampleProductSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ProductCatalogTest extends TestCase
@@ -461,5 +463,33 @@ class ProductCatalogTest extends TestCase
         $this->get('/products?q=PAX&category=pos_terminal&page=2')->assertOk()
             ->assertViewHas('products', fn ($products) => $products->count() === 1);
         $this->get(route('products.show', $hidden))->assertNotFound();
+    }
+
+    public function test_available_filter_shows_only_in_stock_products_and_quick_pills_are_removed(): void
+    {
+        $inStock = $this->makeProduct(['name' => 'کارتخوان موجود تست', 'stock_status' => StockStatus::InStock]);
+        InventoryItem::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'product_id' => $inStock->id,
+            'name' => $inStock->name,
+            'sku' => 'TEST-INSTOCK-'.uniqid(),
+            'condition' => $inStock->condition,
+            'serialized' => false,
+            'on_hand' => 5,
+            'reserved' => 0,
+            'version' => 1,
+        ]);
+        $outOfStock = $this->makeProduct(['name' => 'کارتخوان ناموجود تست', 'stock_status' => StockStatus::OutOfStock]);
+
+        $this->get('/products')
+            ->assertOk()
+            ->assertDontSee('catalog-quick-pills')
+            ->assertSee($inStock->name)
+            ->assertSee($outOfStock->name);
+
+        $this->get('/products?available=1')
+            ->assertOk()
+            ->assertSee($inStock->name)
+            ->assertDontSee($outOfStock->name);
     }
 }
