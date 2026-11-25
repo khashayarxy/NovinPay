@@ -119,9 +119,24 @@ final class ObservabilityEvents
             $label = RepairRequest::HANDOVER_METHODS[$method] ?? $method;
             $this->metrics->increment('repairs.handover_updated');
 
+            $lines = [
+                '🚚 تغییر روش تحویل تعمیر',
+                "کد پیگیری: {$ref}",
+                "روش جدید: {$label}",
+            ];
+            if ($method === 'doorstep_pickup' && method_exists($repair, 'parsedIssue')) {
+                $parsed = $repair->parsedIssue();
+                if (! empty($parsed['pickup_address'])) {
+                    $lines[] = 'نشانی پیک: '.mb_substr((string) $parsed['pickup_address'], 0, 180);
+                }
+                if (! empty($parsed['responsive_phone'])) {
+                    $lines[] = 'تلفن هماهنگی: '.$parsed['responsive_phone'];
+                }
+            }
+
             $this->topics->send(
                 'repairs',
-                "🚚 تغییر روش تحویل تعمیر\nکد پیگیری: {$ref}\nروش جدید: {$label}",
+                implode("\n", $lines),
                 "repair_handover:{$ref}:{$method}",
             );
         } catch (Throwable) {

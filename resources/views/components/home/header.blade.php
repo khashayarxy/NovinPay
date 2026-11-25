@@ -37,6 +37,25 @@
                             </div>
                         </div>
                     </div>
+                @elseif ($route === 'repair')
+                    <div class="np-nav__item np-nav__item--dropdown" data-desktop-repair-dropdown>
+                        <a href="{{ route($route) }}" class="np-nav__trigger" @if (request()->routeIs($active)) aria-current="page" @endif>
+                            <span>{{ $label }}</span>
+                            <x-storefront.icon name="chevron-down" class="np-nav__chevron" />
+                        </a>
+                        <div class="np-nav__dropdown np-nav__dropdown--compact" role="region" aria-label="خدمات تعمیرات">
+                            <div class="np-nav__dropdown-list">
+                                <a href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif>
+                                    <span>ثبت درخواست تعمیر</span>
+                                    <x-storefront.icon name="arrow" class="np-nav__dropdown-arrow" />
+                                </a>
+                                <a href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif>
+                                    <span>پیگیری تعمیر</span>
+                                    <x-storefront.icon name="arrow" class="np-nav__dropdown-arrow" />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 @else
                     <a href="{{ route($route) }}" @if (request()->routeIs($active)) aria-current="page" @endif>{{ $label }}</a>
                 @endif

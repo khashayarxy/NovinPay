@@ -27,27 +27,29 @@
             <h2>گام بعدی برای تحویل دستگاه</h2>
             @if ($handover === 'self_ship')
                 <p>لطفاً دستگاه را با بسته‌بندی ایمن به نشانی زیر ارسال کنید و کد پیگیری را داخل بسته قرار دهید:</p>
-                <dl class="repair-shipping-details">
-                    <div>
-                        <dt>آدرس گیرنده:</dt>
-                        <dd>{{ config('business.address') }}</dd>
+                <div class="repair-shipping-card">
+                    <div class="repair-shipping-card__head">
+                        <span class="repair-shipping-card__title">اطلاعات گیرنده جهت ارسال</span>
+                        <button type="button"
+                                class="repair-shipping-copy-btn"
+                                data-copy-shipping
+                                data-copy-text="آدرس گیرنده: {{ config('business.address') }}&#10;شماره موبایل: {{ \App\Support\FaNumber::digits(config('business.phone')) }}&#10;کد پستی: ۳۳۵۱۶۱۱۸۲۸"
+                                data-copied-label="اطلاعات کپی شد">کپی اطلاعات ارسال</button>
                     </div>
-                    <div>
-                        <dt>شماره موبایل:</dt>
-                        <dd><a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></dd>
-                    </div>
-                    <div>
-                        <dt>کد پستی:</dt>
-                        <dd dir="ltr">۳۳۵۱۶۱۱۸۲۸</dd>
-                    </div>
-                </dl>
-                <div class="repair-shipping-copy-row">
-                    <button type="button"
-                            class="btn btn-secondary btn-sm repair-shipping-copy-btn"
-                            data-copy-shipping
-                            data-copy-text="آدرس گیرنده: {{ config('business.address') }}&#10;شماره موبایل: {{ \App\Support\FaNumber::digits(config('business.phone')) }}&#10;کد پستی: ۳۳۵۱۶۱۱۸۲۸"
-                            aria-describedby="confirm-shipping-copy-status">کپی اطلاعات ارسال</button>
-                    <span id="confirm-shipping-copy-status" class="repair-shipping-copy-status" role="status" aria-live="polite"></span>
+                    <dl class="repair-shipping-details">
+                        <div>
+                            <dt>آدرس گیرنده:</dt>
+                            <dd>{{ config('business.address') }}</dd>
+                        </div>
+                        <div>
+                            <dt>شماره موبایل:</dt>
+                            <dd><a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></dd>
+                        </div>
+                        <div>
+                            <dt>کد پستی:</dt>
+                            <dd class="np-fact-rtl-num"><bdi dir="ltr">۳۳۵۱۶۱۱۸۲۸</bdi></dd>
+                        </div>
+                    </dl>
                 </div>
                 <p class="repair-insurance-alert">هنگام ارسال با پست یا تیپاکس، حتماً گزینهٔ <strong>«بیمهٔ مرسوله»</strong> را فعال کنید.</p>
             @elseif ($handover === 'in_person')
@@ -76,9 +78,7 @@
             @endif
         </div>
         <div class="public-actions repair-confirm-actions">
-            <a href="{{ route('repair.track') }}" class="np-button np-button--primary">پیگیری وضعیت <x-home.icon name="arrow-left" /></a>
-            <a href="{{ route('account.repairs.request', $reference) }}" class="np-button np-button--outline">تغییر نحوهٔ تحویل</a>
-            <a href="{{ route('account.index', ['section' => 'repairs']) }}" class="np-button np-button--outline">تعمیرات در حساب کاربری</a>
+            <a href="{{ route('account.repairs.request', $reference) }}" class="np-button np-button--primary">پیگیری وضعیت تعمیر <x-home.icon name="arrow-left" /></a>
             <a href="{{ config('business.phone_uri') }}" class="np-button np-button--outline">تماس با نوین‌پی</a>
         </div>
     </section>

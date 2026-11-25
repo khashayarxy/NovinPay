@@ -347,12 +347,14 @@ class RepairRequestTest extends TestCase
             ->assertSee('data-repair-stepper', false)
             ->assertSee('data-initial-step="1"', false)
             ->assertSee('مشخصات دستگاه')
-            ->assertSee('شرح مشکل')
+            ->assertSee('مشکل دستگاه')
             ->assertDontSee('شرح مشکل و عکس')
-            ->assertSee('اطلاعات تماس و ثبت')
+            ->assertSee('اطلاعات تماس و تحویل')
+            ->assertSee('بازبینی و ثبت نهایی')
             ->assertSee('data-step="1"', false)
             ->assertSee('data-step="2"', false)
             ->assertSee('data-step="3"', false)
+            ->assertSee('data-step="4"', false)
             ->assertSee('چاپگر و رول کاغذ')
             ->assertSee('TOPWISE');
 

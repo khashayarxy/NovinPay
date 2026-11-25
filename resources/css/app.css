@@ -125,6 +125,23 @@
         content: '';
     }
 
+    a[href],
+    button:not(:disabled),
+    [role="button"],
+    summary,
+    select:not(:disabled),
+    label:has(input[type="radio"]:not(:disabled), input[type="checkbox"]:not(:disabled)),
+    .repair-progress__item,
+    .checkout-step,
+    .repair-choice-card {
+        cursor: pointer;
+    }
+
+    button:disabled,
+    select:disabled {
+        cursor: not-allowed;
+    }
+
     .np-latin,
     .purchase-meta dd bdi[dir="ltr"] {
         font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
@@ -367,7 +384,121 @@
         pointer-events: auto;
     }
 
-    /* Phase 4: Minimalist 3-Step Repair Request Stepper */
+    /* Phase 4 + Phase 1 Overhaul: 4-Step Clickable Repair Request Flow */
+    .repair-entry-bg {
+        background: #f8fafc;
+        min-height: calc(100dvh - 120px);
+    }
+
+    .repair-entry-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
+        align-items: start;
+    }
+
+    @media (min-width: 1024px) {
+        .repair-entry-grid {
+            grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.85fr);
+            gap: 28px;
+        }
+    }
+
+    .repair-stepper-panel {
+        background: #fff;
+        border: 1px solid #dfe9f5;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgb(15 35 66 / 5%);
+    }
+
+    .repair-trust-aside {
+        position: sticky;
+        top: 5.5rem;
+    }
+
+    .repair-trust-card {
+        padding: 22px;
+        border-radius: 20px;
+        border: 1px solid #dce8f5;
+        background: linear-gradient(165deg, #ffffff 0%, #f4f9ff 100%);
+        box-shadow: 0 8px 26px rgb(15 35 66 / 4%);
+    }
+
+    .repair-trust-card__art {
+        margin-bottom: 14px;
+    }
+
+    .repair-trust-card__art svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 14px;
+    }
+
+    .repair-trust-card__eyebrow {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: #e6f3ff;
+        color: #075da6;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .repair-trust-card h2 {
+        margin: 0 0 14px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #102a43;
+        line-height: 1.5;
+    }
+
+    .repair-trust-list {
+        display: grid;
+        gap: 14px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .repair-trust-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 11px;
+    }
+
+    .repair-trust-list__icon {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: #eaf4ff;
+        color: #075da6;
+        margin-top: 2px;
+    }
+
+    .repair-trust-list__icon .np-icon {
+        width: 18px;
+        height: 18px;
+    }
+
+    .repair-trust-list strong {
+        display: block;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #122940;
+    }
+
+    .repair-trust-list p {
+        margin: 2px 0 0;
+        font-size: 12.5px;
+        line-height: 1.75;
+        color: #52678b;
+    }
+
     .repair-progress {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -378,14 +509,259 @@
         border-bottom: 1px solid #e5eef7;
     }
 
+    .repair-progress--4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .repair-progress li {
+        min-width: 0;
+    }
+
     .repair-progress__item {
+        width: 100%;
         display: flex;
         align-items: center;
         gap: 8px;
         min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid transparent;
+        border-radius: 11px;
+        background: transparent;
         color: #475569;
-        font-size: 0.85rem;
+        font-family: inherit;
+        font-size: 0.82rem;
         font-weight: 500;
+        text-align: start;
+        cursor: pointer;
+        transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+    }
+
+    .repair-progress__item:hover {
+        background: #f2f8ff;
+        color: #075da6;
+    }
+
+    @media (max-width: 640px) {
+        .repair-progress--4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+        }
+    }
+
+    .repair-handover-title {
+        margin: 4px 0 4px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #102a43;
+    }
+
+    .repair-handover-note {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 12px;
+        padding: 11px 14px;
+        border: 1px solid #cde3fa;
+        border-radius: 12px;
+        background: #f2f8ff;
+        color: #1e4268;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1.7;
+    }
+
+    .repair-handover-note[hidden] { display: none; }
+    .repair-handover-note svg { flex: none; color: #075da6; }
+
+    /* Searchable Province & City Combobox */
+    .np-searchable-select {
+        position: relative;
+    }
+    .np-searchable-select__input {
+        padding-inline-end: 2.25rem;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475e73' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: left 12px center;
+        background-size: 16px 16px;
+    }
+    .np-searchable-select__list {
+        position: absolute;
+        inset-inline: 0;
+        top: calc(100% + 4px);
+        z-index: 45;
+        max-height: 220px;
+        overflow-y: auto;
+        margin: 0;
+        padding: 5px;
+        list-style: none;
+        border: 1px solid #cbd9e8;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 12px 28px rgb(15 35 66 / 14%);
+    }
+    .np-searchable-select__list[hidden] { display: none; }
+    .np-searchable-select__option {
+        display: block;
+        width: 100%;
+        padding: 8px 11px;
+        border-radius: 8px;
+        font-size: 13.5px;
+        color: #163a61;
+        cursor: pointer;
+        transition: background-color 120ms ease, color 120ms ease;
+    }
+    .np-searchable-select__option:hover,
+    .np-searchable-select__option[aria-selected="true"] {
+        background: #edf6ff;
+        color: #075da6;
+        font-weight: 600;
+    }
+    .np-searchable-select__empty {
+        padding: 10px 12px;
+        font-size: 13px;
+        color: #64748b;
+        text-align: center;
+    }
+
+    /* Confirmation Shipping Card with Top-Left Copy Button */
+    .repair-shipping-card {
+        margin: 12px 0;
+        padding: 14px 16px;
+        border: 1px solid #cfe2f5;
+        border-radius: 14px;
+        background: #fff;
+    }
+    .repair-shipping-card__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #edf2f7;
+    }
+    .repair-shipping-card__title {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #102a43;
+    }
+    .repair-shipping-copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 34px;
+        padding: 5px 12px;
+        border: 1px solid #b6d5f2;
+        border-radius: 9px;
+        background: #f0f8ff;
+        color: #075da6;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+    }
+    .repair-shipping-copy-btn:hover {
+        background: #e2f1ff;
+        border-color: #7ab8f0;
+    }
+    .repair-shipping-copy-btn.is-copied {
+        background: #e8faf1;
+        border-color: #86efac;
+        color: #15803d;
+    }
+
+    /* In-Page Handover Modal on Account Repair Details */
+    .np-handover-modal {
+        width: min(520px, calc(100vw - 28px));
+        max-height: min(88dvh, 720px);
+        margin: auto;
+        padding: 0;
+        border: 1px solid #dce7f3;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 20px 50px rgb(15 35 66 / 24%);
+        overflow: hidden;
+    }
+    .np-handover-modal[open] {
+        display: flex;
+        flex-direction: column;
+    }
+    .np-handover-modal::backdrop {
+        background: rgb(15 30 46 / 50%);
+    }
+    .np-handover-modal__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e6eff7;
+        background: #f8fbff;
+    }
+    .np-handover-modal__head h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #102a43;
+    }
+    .np-handover-modal__close {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border: 1px solid #dce7f3;
+        border-radius: 9px;
+        background: #fff;
+        color: #475569;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .np-handover-modal__close:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+    .np-handover-modal__body {
+        padding: 18px;
+        overflow-y: auto;
+        gap: 14px;
+    }
+    .np-handover-modal__options {
+        display: grid;
+        gap: 8px;
+    }
+    .repair-choice-card--handover-modal {
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 11px 14px;
+        text-align: start;
+        font-weight: 600;
+    }
+    .repair-choice-card--handover-modal input[type="radio"] {
+        position: static;
+        opacity: 1;
+        width: 17px;
+        height: 17px;
+        accent-color: #075da6;
+    }
+    .np-handover-modal__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #edf2f7;
+    }
+    .repair-auth-target {
+        font-size: 14px;
+        color: #163a61;
+    }
+    .repair-otp-input {
+        text-align: center;
+        letter-spacing: 0.35em;
+        font-size: 1.15rem;
+        font-weight: 700;
     }
 
     .repair-progress__num {

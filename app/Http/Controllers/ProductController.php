@@ -11,6 +11,7 @@ use App\Services\CustomerLogin;
 use App\Services\ProductPurchaseVerification;
 use App\Services\ShoppingCart;
 use App\Services\StoreCheckout;
+use App\Support\FaNumber;
 use App\Support\PaymentTestProduct;
 use App\Support\ProductSale;
 use Illuminate\Http\RedirectResponse;
@@ -138,11 +139,17 @@ class ProductController extends Controller
                     ->where(fn ($other) => $other->whereNull('variant_family')->orWhere('variant_family', '!=', $family)));
             $related = $manual !== [] ? (clone $relatedQuery)->whereIn('slug', $manual)->limit(4)->get() : collect();
             if ($related->isEmpty()) {
-                $related = $relatedQuery->where('category', $product->category->value)
+                $related = (clone $relatedQuery)->where('category', $product->category->value)
                     ->orderByRaw("CASE WHEN stock_status = 'out_of_stock' THEN 1 ELSE 0 END")
                     ->when($product->brand, fn ($query) => $query->orderByRaw('CASE WHEN brand = ? THEN 0 ELSE 1 END', [$product->brand]))
                     ->when($product->price, fn ($query) => $query->orderByRaw('CASE WHEN price IS NULL THEN 1 ELSE 0 END')
                         ->orderByRaw('ABS(price - ?)', [$product->price]))
+                    ->latest()->limit(4)->get();
+            }
+            if ($related->isEmpty() && $product->category === ProductCategory::PosTerminal) {
+                $related = (clone $relatedQuery)
+                    ->whereIn('category', [ProductCategory::Consumable->value, ProductCategory::Peripheral->value])
+                    ->orderByRaw("CASE WHEN stock_status = 'out_of_stock' THEN 1 ELSE 0 END")
                     ->latest()->limit(4)->get();
             }
             $public = ProductFeedback::query()->where('product_id', $product->id)->where('status', 'approved');
@@ -212,32 +219,87 @@ class ProductController extends Controller
         return $response;
     }
 
-    public function compare(Request $request): View
+    public function compare(Request $request, StoreCheckout $checkout): View
     {
         $data = $request->validate(['products' => ['sometimes', 'array', 'max:4'],
             'products.*' => ['required', 'string', 'max:255', 'regex:/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/', 'distinct'],
             'add' => ['nullable', 'string', 'max:255', 'regex:/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/']]);
         $slugs = array_slice(array_unique(array_filter([...($data['products'] ?? []), $data['add'] ?? null])), 0, 4);
-        $products = Product::query()->published()->where('is_sample', false)
+        $loaded = Product::query()->published()->where('is_sample', false)
             ->excludePrivatePaymentTest()
+            ->with('inventoryItems')
             ->whereIn('slug', $slugs)->get()->keyBy('slug');
-        $products = collect($slugs)->map(fn ($slug) => $products->get($slug))->filter()->values();
+        $ordered = collect($slugs)->map(fn ($slug) => $loaded->get($slug))->filter()->values();
+        $lockedCategory = $ordered->first()?->category;
+        $products = $lockedCategory
+            ? $ordered->filter(fn (Product $p) => $p->category === $lockedCategory)->values()
+            : $ordered;
+        $selectedSlugs = $products->pluck('slug')->all();
+
         $choices = Product::query()->published()->where('is_sample', false)
             ->excludePrivatePaymentTest()
-            ->whereNotIn('slug', $slugs)->orderBy('name')->get(['slug', 'name']);
+            ->when($lockedCategory, fn ($query) => $query->where('category', $lockedCategory->value))
+            ->whereNotIn('slug', $selectedSlugs)
+            ->orderBy('name')
+            ->get(['slug', 'name', 'color', 'category']);
+
+        $sales = $this->sales($products, $checkout);
+
+        $specGroups = [];
+        $baseGroupRows = [
+            'برند' => [],
+            'مدل' => [],
+            'وضعیت کالا' => [],
+            'گارانتی' => [],
+        ];
+        foreach ($products as $product) {
+            $baseGroupRows['برند'][$product->slug] = $product->brand ?: '—';
+            $baseGroupRows['مدل'][$product->slug] = $product->model ?: '—';
+            $baseGroupRows['وضعیت کالا'][$product->slug] = $product->condition->label();
+            $baseGroupRows['گارانتی'][$product->slug] = $product->warranty_months > 0
+                ? FaNumber::digits($product->warranty_months).' ماه گارانتی'
+                : '—';
+        }
+        $specGroups['مشخصات کلی'] = $baseGroupRows;
+
+        foreach (Product::SPEC_GROUPS as $groupKey => $groupHeading) {
+            if ($groupKey === 'services') {
+                continue;
+            }
+            $groupRows = [];
+            foreach ($products as $product) {
+                $rawGroup = $product->product_details['groups'][$groupKey] ?? null;
+                foreach (Product::specificationRows($rawGroup) as [$rawLabel, $value]) {
+                    $label = Product::publicSpecLabel($rawLabel);
+                    $groupRows[$label][$product->slug] = $value;
+                }
+            }
+            if ($groupRows !== []) {
+                $specGroups[$groupHeading] = $groupRows;
+            }
+        }
+
+        // Legacy flat specs map for backwards compatibility
         $specs = $products->mapWithKeys(function (Product $product) {
-            $rows = ['برند' => $product->brand, 'مدل' => $product->model, 'رنگ' => $product->color];
+            $rows = ['برند' => $product->brand, 'مدل' => $product->model];
             foreach (($product->product_details['groups'] ?? []) as $group) {
                 foreach (Product::specificationRows($group) as [$label, $value]) {
-                    $rows[$label] = $value;
+                    $rows[Product::publicSpecLabel($label)] = $value;
                 }
             }
 
             return [$product->slug => $rows];
         });
 
-        return view('products.compare', ['products' => $products, 'choices' => $choices, 'specs' => $specs,
-            'publicRobots' => 'noindex, follow']);
+        return view('products.compare', [
+            'products' => $products,
+            'choices' => $choices,
+            'sales' => $sales,
+            'specGroups' => $specGroups,
+            'specs' => $specs,
+            'lockedCategory' => $lockedCategory,
+            'publicRobots' => 'noindex, follow',
+        ]);
     }
 
     private function sales(iterable $products, StoreCheckout $checkout): array

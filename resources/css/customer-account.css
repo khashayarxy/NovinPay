@@ -456,7 +456,12 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
 .np-account-detail-grid { display: grid; gap: .9rem; }
 .np-account-detail-main, .np-account-detail-side { display: grid; gap: .9rem; min-width: 0; align-content: start; }
 .np-account-dot { color: #cbd5e1; }
-.np-account-pill { display: inline-flex; align-items: center; color: #075da6; border-radius: 999px; background: #eff6ff; padding: .1rem .55rem; font-size: .76rem; font-weight: 500; }
+.np-account-pill { display: inline-flex; align-items: center; color: #075da6; border-radius: 999px; background: #eff6ff; padding: .15rem .65rem; font-size: .76rem; font-weight: 600; }
+.np-account-pill--success { color: #0f764a; background: #e8faf1; border: 1px solid #bcebd3; }
+.np-account-pill--warning { color: #a15c07; background: #fff7e6; border: 1px solid #fde2a7; }
+.np-account-pill--info { color: #075da6; background: #edf5ff; border: 1px solid #c5dffa; }
+.np-account-pill--danger { color: #b42318; background: #fef2f2; border: 1px solid #fecaca; }
+.np-fact-rtl-num { text-align: right !important; direction: rtl; font-variant-numeric: tabular-nums; }
 .np-account-price { font-size: .94rem; font-weight: 600; color: #0b2239; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .np-account-price small { font-size: .76rem; font-weight: 400; color: var(--account-muted); }
 .np-account-row strong, .np-account-row small { overflow-wrap: anywhere; }

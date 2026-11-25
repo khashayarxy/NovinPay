@@ -59,7 +59,7 @@ class RepairOverhaulAndUxTest extends TestCase
             ->assertSee('خودم ارسال میکنم')
             ->assertSee('خودم حضوری میارم')
             ->assertSee('به پیک شما تحویل میدم')
-            ->assertSee('کپی اطلاعات ارسال')
+            ->assertSee('نشانی دقیق ارسال پستی و راهنمای بسته‌بندی بلافاصله پس از ثبت نهایی نمایش داده می‌شود.')
             ->assertSee('مسیریابی با:')
             ->assertDontSee('repair-overview-strip')
             ->assertDontSee('repair-entry-notes')

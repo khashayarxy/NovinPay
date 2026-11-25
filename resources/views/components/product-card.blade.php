@@ -40,7 +40,7 @@
 
         <h3 class="text-base font-semibold leading-7 break-words">
             <a href="{{ route('products.show', $product) }}" class="transition-colors hover:text-brand-700 after:absolute after:inset-0">
-                {{ \App\Support\LatinText::html($product->name) }}
+                {{ \App\Support\LatinText::html($product->displayName()) }}
             </a>
         </h3>
 

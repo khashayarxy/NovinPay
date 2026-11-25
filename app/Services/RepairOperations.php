@@ -107,7 +107,11 @@ final class RepairOperations
                 $case->save();
                 $this->event($case, $actor, AdminAction::RepairIntake, null);
                 app(CustomerNotifications::class)->record($case->customer_account_id, 'device_received', $case->public_id);
-                DB::afterCommit(fn () => app(UnifiedNotifier::class)->repairCreatedPattern($case));
+                if ($source !== null) {
+                    DB::afterCommit(fn () => app(UnifiedNotifier::class)->repairStagePattern($case));
+                } else {
+                    DB::afterCommit(fn () => app(UnifiedNotifier::class)->repairCreatedPattern($case));
+                }
 
                 return $case;
             }, 3);

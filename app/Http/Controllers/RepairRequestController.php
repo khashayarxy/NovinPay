@@ -29,6 +29,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -213,6 +214,65 @@ class RepairRequestController extends Controller
     public function start(): RedirectResponse
     {
         return redirect()->route('repair');
+    }
+
+    public function reverseGeocode(Request $request): JsonResponse
+    {
+        $lat = $request->query('lat');
+        $lng = $request->query('lng');
+        if (! is_numeric($lat) || ! is_numeric($lng)) {
+            return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
+        }
+
+        $latFloat = (float) $lat;
+        $lngFloat = (float) $lng;
+        if ($latFloat < -90 || $latFloat > 90 || $lngFloat < -180 || $lngFloat > 180) {
+            return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
+        }
+
+        $serviceKey = trim((string) config('services.neshan.service_key', ''));
+        if ($serviceKey === '') {
+            return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
+        }
+
+        try {
+            $response = Http::timeout(4)
+                ->connectTimeout(2)
+                ->acceptJson()
+                ->withHeaders(['Api-Key' => $serviceKey])
+                ->get('https://api.neshan.org/v5/reverse', [
+                    'lat' => $latFloat,
+                    'lng' => $lngFloat,
+                ]);
+
+            if (! $response->successful()) {
+                return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
+            }
+
+            $payload = $response->json();
+            if (! is_array($payload)) {
+                return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
+            }
+
+            $address = is_string($payload['formatted_address'] ?? null)
+                ? mb_substr(trim($payload['formatted_address']), 0, 400)
+                : '';
+            [$province, $city] = CartController::matchIranProvinceAndCity(
+                (string) ($payload['state'] ?? ''),
+                (string) ($payload['city'] ?? ''),
+                (string) ($payload['county'] ?? ''),
+                $address
+            );
+
+            return response()->json([
+                'ok' => $province !== null || $address !== '',
+                'province' => $province,
+                'city' => $city,
+                'address' => $address !== '' ? $address : null,
+            ]);
+        } catch (\Throwable) {
+            return response()->json(['ok' => false, 'province' => null, 'city' => null, 'address' => null]);
+        }
     }
 
     public function store(StoreRepairRequest $request): RedirectResponse
