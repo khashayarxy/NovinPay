@@ -136,13 +136,22 @@ class Phase1StorefrontAndRepairOverhaulTest extends TestCase
     {
         $repairPage = $this->get(route('repair'));
         $repairPage->assertOk();
+        $repairPage->assertSee('repair-split-card', false);
+        $repairPage->assertSee('repair-split-form', false);
+        $repairPage->assertSee('repair-split-trust', false);
+        $repairPage->assertSee('repair-split-trust__hero-svg', false);
+        $repairPage->assertDontSee('repair-trust-aside', false);
         $repairPage->assertSee('repair-progress--4', false);
-        $repairPage->assertSee('مشخصات دستگاه');
-        $repairPage->assertSee('مشکل دستگاه');
+        $repairPage->assertSeeInOrder([
+            'مشخصات دستگاه',
+            'مشکل دستگاه',
+            'تماس و تحویل',
+            'بازبینی و ثبت',
+        ]);
         $repairPage->assertSee('اطلاعات تماس و تحویل');
         $repairPage->assertSee('بازبینی و ثبت نهایی');
         $repairPage->assertSee('data-searchable-select="province"', false);
-        $repairPage->assertSee('repair-trust-card', false);
+        $repairPage->assertSee('repair-handover-card__svg', false);
 
         $confirmPage = $this->withSession([
             'repair_reference' => '12345678',

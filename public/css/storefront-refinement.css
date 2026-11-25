@@ -88,7 +88,7 @@ body:has(.public-catalogue) :is(.store-mobile-search, .np-customer-header [data-
 .product-compare-link svg { width: 1rem; height: 1rem; }
 .premium-storefront .purchase .stock { width: fit-content; }
 .key-mobile h2, .key-card h2 { font-weight: 700; }
-.catalog-toolbar svg, .catalog-search-field svg, .repair-entry svg { flex: none; width: 18px; height: 18px; }
+.catalog-toolbar svg, .catalog-search-field svg, .repair-entry svg:not(.repair-split-trust__hero-svg):not(.repair-handover-card__svg) { flex: none; width: 18px; height: 18px; }
 .catalog-mobile-bar { display: grid; gap: 10px; margin-bottom: 14px; }
 .catalog-count--mobile { margin: 0; }
 .catalog-layout { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 22px; }

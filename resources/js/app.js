@@ -522,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             if (scroll) {
-                scrollToFormTop(repairStepper.closest('.public-panel') || repairStepper);
+                scrollToFormTop(repairStepper.closest('.repair-split-card, .public-panel') || repairStepper);
             }
         };
 
