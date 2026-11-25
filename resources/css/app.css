@@ -384,74 +384,112 @@
         pointer-events: auto;
     }
 
-    /* Phase 4 + Phase 1 Overhaul: 4-Step Clickable Repair Request Flow */
+    /* Phase 1.5 Overhaul: Unified Split-Card 4-Step Repair Request Flow */
     .repair-entry-bg {
-        background: #f8fafc;
+        background: #f4f7fb;
         min-height: calc(100dvh - 120px);
     }
 
-    .repair-entry-grid {
+    .repair-split-card {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
-        gap: 24px;
-        align-items: start;
+        align-items: stretch;
+        width: 100%;
+        max-width: 1140px;
+        margin-inline: auto;
+        background: #ffffff;
+        border: 1px solid #d7e5f4;
+        border-radius: 24px;
+        box-shadow: 0 18px 46px rgb(15 35 66 / 7%), 0 2px 8px rgb(15 35 66 / 3%);
+        overflow: hidden;
     }
 
-    @media (min-width: 1024px) {
-        .repair-entry-grid {
-            grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.85fr);
-            gap: 28px;
+    @media (min-width: 960px) {
+        .repair-split-card {
+            grid-template-columns: minmax(0, 1.78fr) minmax(320px, 1fr);
         }
     }
 
-    .repair-stepper-panel {
-        background: #fff;
-        border: 1px solid #dfe9f5;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgb(15 35 66 / 5%);
+    .repair-split-form {
+        min-width: 0;
+        background: #ffffff;
+        padding: clamp(20px, 3vw, 36px) clamp(16px, 3.2vw, 40px);
     }
 
-    .repair-trust-aside {
-        position: sticky;
-        top: 5.5rem;
+    .repair-split-trust {
+        position: relative;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 24px;
+        padding: clamp(22px, 3vw, 36px) clamp(18px, 2.6vw, 30px);
+        background: linear-gradient(165deg, #f1f8ff 0%, #e6f2ff 52%, #dcecfc 100%);
+        border-top: 1px solid #d3e5f7;
+        overflow: hidden;
     }
 
-    .repair-trust-card {
-        padding: 22px;
-        border-radius: 20px;
-        border: 1px solid #dce8f5;
-        background: linear-gradient(165deg, #ffffff 0%, #f4f9ff 100%);
-        box-shadow: 0 8px 26px rgb(15 35 66 / 4%);
+    @media (min-width: 960px) {
+        .repair-split-trust {
+            border-top: 0;
+            border-inline-start: 1px solid #d3e5f7;
+        }
     }
 
-    .repair-trust-card__art {
-        margin-bottom: 14px;
+    .repair-split-trust__glow {
+        position: absolute;
+        inset: -80px -40px auto -40px;
+        height: 240px;
+        background: radial-gradient(circle at 50% 35%, rgb(56 189 248 / 22%), transparent 70%);
+        pointer-events: none;
     }
 
-    .repair-trust-card__art svg {
+    .repair-split-trust__top {
+        position: relative;
+        z-index: 1;
+    }
+
+    .repair-split-trust__art {
+        display: flex;
+        justify-content: center;
+        margin: 0 auto 18px;
+    }
+
+    .repair-split-trust__hero-svg {
         display: block;
         width: 100%;
+        max-width: 248px;
         height: auto;
-        border-radius: 14px;
+        filter: drop-shadow(0 10px 22px rgb(15 45 92 / 8%));
     }
 
     .repair-trust-card__eyebrow {
-        display: inline-block;
-        padding: 3px 10px;
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
         border-radius: 999px;
-        background: #e6f3ff;
+        background: rgb(255 255 255 / 82%);
+        border: 1px solid #c3dcf6;
         color: #075da6;
         font-size: 12px;
         font-weight: 700;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
     }
 
-    .repair-trust-card h2 {
-        margin: 0 0 14px;
-        font-size: 18px;
-        font-weight: 700;
-        color: #102a43;
+    .repair-split-trust h2 {
+        margin: 0 0 8px;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0d2440;
         line-height: 1.5;
+    }
+
+    .repair-split-trust__lead {
+        margin: 0 0 18px;
+        font-size: 0.83rem;
+        font-weight: 500;
+        line-height: 1.75;
+        color: #3a5470;
     }
 
     .repair-trust-list {
@@ -465,19 +503,21 @@
     .repair-trust-list li {
         display: flex;
         align-items: flex-start;
-        gap: 11px;
+        gap: 12px;
     }
 
     .repair-trust-list__icon {
         display: grid;
         place-items: center;
         flex: none;
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        background: #eaf4ff;
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        background: #ffffff;
+        border: 1px solid #cbe0f6;
+        box-shadow: 0 2px 6px rgb(7 93 166 / 7%);
         color: #075da6;
-        margin-top: 2px;
+        margin-top: 1px;
     }
 
     .repair-trust-list__icon .np-icon {
@@ -487,26 +527,56 @@
 
     .repair-trust-list strong {
         display: block;
-        font-size: 13.5px;
+        font-size: 0.88rem;
         font-weight: 700;
-        color: #122940;
+        color: #0f274a;
+        line-height: 1.45;
     }
 
     .repair-trust-list p {
-        margin: 2px 0 0;
-        font-size: 12.5px;
-        line-height: 1.75;
-        color: #52678b;
+        margin: 3px 0 0;
+        font-size: 0.8rem;
+        line-height: 1.7;
+        color: #3f5975;
     }
 
+    .repair-split-trust__footer {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgb(255 255 255 / 72%);
+        border: 1px solid #c9dff6;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #274564;
+    }
+
+    .repair-split-trust__footer a {
+        color: #075da6;
+        font-weight: 800;
+        text-decoration: none;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .repair-split-trust__footer a:hover {
+        text-decoration: underline;
+    }
+
+    /* 4-Column Equal-Width Stepper with Subtle Connecting Lines (Zero Overlap) */
     .repair-progress {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-        margin: 0 0 22px;
-        padding: 0 0 18px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0;
+        margin: 0 0 26px;
+        padding: 2px 0 20px;
         list-style: none;
-        border-bottom: 1px solid #e5eef7;
+        border-bottom: 1px solid #e5eef8;
     }
 
     .repair-progress--4 {
@@ -514,45 +584,77 @@
     }
 
     .repair-progress li {
+        position: relative;
         min-width: 0;
+    }
+
+    .repair-progress--4 li:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 23px;
+        inset-inline-start: calc(50% + 22px);
+        inset-inline-end: calc(-50% + 22px);
+        height: 2px;
+        border-radius: 999px;
+        background: #d7e4f2;
+        pointer-events: none;
+        transition: background-color 180ms ease;
+    }
+
+    .repair-progress--4 li:has([data-step-done="true"]):not(:last-child)::after {
+        background: #15803d;
     }
 
     .repair-progress__item {
+        position: relative;
+        z-index: 1;
         width: 100%;
         display: flex;
+        flex-direction: column;
         align-items: center;
+        justify-content: flex-start;
         gap: 8px;
         min-width: 0;
-        padding: 6px 8px;
-        border: 1px solid transparent;
-        border-radius: 11px;
+        padding: 5px 4px;
+        border: 0;
+        border-radius: 12px;
         background: transparent;
-        color: #475569;
+        color: #52677d;
         font-family: inherit;
-        font-size: 0.82rem;
-        font-weight: 500;
-        text-align: start;
+        font-size: clamp(11.5px, 1.15vw, 13px);
+        font-weight: 600;
+        text-align: center;
         cursor: pointer;
-        transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+        transition: color 140ms ease;
     }
 
     .repair-progress__item:hover {
-        background: #f2f8ff;
         color: #075da6;
     }
 
-    @media (max-width: 640px) {
-        .repair-progress--4 {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 6px;
+    .repair-progress__item:hover .repair-progress__num {
+        border-color: #7ab6eb;
+        background: #f0f7ff;
+    }
+
+    .repair-progress__item:focus-visible {
+        outline: 2px solid #075da6;
+        outline-offset: 2px;
+    }
+
+    @media (max-width: 480px) {
+        .repair-progress--4 li:not(:last-child)::after {
+            top: 21px;
+            inset-inline-start: calc(50% + 19px);
+            inset-inline-end: calc(-50% + 19px);
         }
     }
 
     .repair-handover-title {
-        margin: 4px 0 4px;
-        font-size: 1.05rem;
+        margin: 6px 0 4px;
+        font-size: 0.96rem;
         font-weight: 700;
-        color: #102a43;
+        color: #0f274a;
     }
 
     .repair-handover-note {
@@ -768,29 +870,34 @@
         display: grid;
         place-items: center;
         flex: none;
-        width: 28px;
-        height: 28px;
+        width: 36px;
+        height: 36px;
         border-radius: 999px;
-        border: 1.5px solid #cbd9e8;
-        background: #f8fbfe;
+        border: 2px solid #cbd9e8;
+        background: #ffffff;
         color: #475569;
-        font-size: 13px;
+        font-size: 13.5px;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
-        transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+        transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+    }
+
+    @media (max-width: 480px) {
+        .repair-progress__num {
+            width: 32px;
+            height: 32px;
+            font-size: 12.5px;
+        }
     }
 
     .repair-progress__label {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    @media (min-width: 641px) {
-        .repair-progress__label {
-            overflow: visible;
-            text-overflow: clip;
-        }
+        display: block;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+        line-height: 1.45;
+        text-align: center;
     }
 
     .repair-progress__item[aria-current="step"] {
@@ -802,17 +909,18 @@
         border-color: #075da6;
         background: #075da6;
         color: #fff;
-        box-shadow: 0 0 0 4px #e8f3fd;
+        box-shadow: 0 0 0 4px #e5f1fc;
     }
 
     .repair-progress__item[data-step-done="true"] {
-        color: #137a52;
+        color: #15803d;
+        font-weight: 600;
     }
 
     .repair-progress__item[data-step-done="true"] .repair-progress__num {
-        border-color: #13865b;
-        background: #e9f7f0;
-        color: #137a52;
+        border-color: #15803d;
+        background: #e8f8f0;
+        color: #15803d;
     }
 
     .repair-step[hidden],
@@ -822,22 +930,69 @@
 
     .repair-step {
         display: grid;
-        gap: 16px;
+        gap: 18px;
+    }
+
+    .repair-step__head {
+        padding-bottom: 14px;
+        border-bottom: 1px solid #edf3f9;
     }
 
     .repair-step__head h2 {
         margin: 0;
-        font-size: 17px;
-        font-weight: 700;
-        color: #122940;
+        font-size: 1.14rem;
+        font-weight: 800;
+        color: #0d233e;
     }
 
     .repair-step__head p {
-        margin: 4px 0 0;
-        font-size: 0.86rem;
+        margin: 5px 0 0;
+        font-size: 0.87rem;
         font-weight: 500;
         color: #475569;
-        line-height: 1.8;
+        line-height: 1.75;
+    }
+
+    .repair-split-form :is(.public-field > label, .repair-choice-fieldset > legend.label) {
+        display: inline-block;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #0f274a;
+        margin-bottom: 6px;
+    }
+
+    .repair-split-form .required-mark,
+    .repair-split-form .public-field > label span[aria-hidden="true"] {
+        color: #dc2626;
+        font-weight: 700;
+    }
+
+    .repair-split-form .input {
+        border: 1.5px solid #c6d6e8;
+        border-radius: 12px;
+        background-color: #fcfdff;
+        color: #0f274a;
+        min-height: 46px;
+        padding: 10px 14px;
+        font-size: 0.92rem;
+        transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .repair-split-form textarea.input {
+        min-height: 112px;
+        line-height: 1.75;
+    }
+
+    .repair-split-form .input:hover:not(:disabled):not([readonly]) {
+        border-color: #9bbde0;
+        background-color: #ffffff;
+    }
+
+    .repair-split-form .input:focus-visible {
+        border-color: #075da6;
+        background-color: #ffffff;
+        box-shadow: 0 0 0 3.5px rgb(7 93 166 / 12%);
+        outline: none;
     }
 
     .public-hint {
@@ -888,16 +1043,19 @@
         justify-content: center;
         gap: 9px;
         min-height: 50px;
-        padding: 10px 12px;
-        border: 1.5px solid #dce7f2;
-        border-radius: 12px;
-        background: #fff;
-        color: #163a61;
+        padding: 11px 14px;
+        border: 1.5px solid #cfe0f0;
+        border-radius: 13px;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgb(15 35 66 / 3%);
+        color: #123154;
         font-size: 13.5px;
         font-weight: 700;
         text-align: center;
+        overflow-wrap: break-word;
+        word-break: normal;
         cursor: pointer;
-        transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+        transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, color 140ms ease;
     }
 
     .repair-choice-card--issue {
@@ -999,10 +1157,10 @@
     .repair-summary-box {
         display: grid;
         gap: 10px;
-        padding: 13px 16px;
-        border: 1px solid #dce7f2;
-        border-radius: 14px;
-        background: #f7fbff;
+        padding: 16px 18px;
+        border: 1.5px solid #d4e3f3;
+        border-radius: 16px;
+        background: #f8fbff;
     }
 
     .repair-summary-box__item {
@@ -1010,19 +1168,26 @@
         flex-wrap: wrap;
         align-items: baseline;
         justify-content: space-between;
-        gap: 6px 12px;
-        font-size: 13px;
+        gap: 6px 14px;
+        font-size: 13.5px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e7f0f8;
+    }
+
+    .repair-summary-box__item:last-child {
+        padding-bottom: 0;
+        border-bottom: 0;
     }
 
     .repair-summary-box__item span {
         color: #475569;
-        font-size: 0.84rem;
-        font-weight: 500;
+        font-size: 0.85rem;
+        font-weight: 600;
         flex: none;
     }
 
     .repair-summary-box__item strong {
-        color: #122940;
+        color: #0f274a;
         font-weight: 700;
         overflow-wrap: anywhere;
     }
@@ -1032,7 +1197,9 @@
         flex-wrap: wrap;
         align-items: center;
         gap: 10px;
-        padding-top: 4px;
+        padding-top: 14px;
+        margin-top: 2px;
+        border-top: 1px solid #edf3f9;
     }
 
     .repair-confirmation-code {
@@ -1290,14 +1457,15 @@
 
     .repair-entry-shell {
         width: 100%;
-        max-width: 780px;
+        max-width: 1140px;
         margin-inline: auto;
     }
 
     .repair-hero-intro {
         width: 100%;
-        max-width: 780px;
+        max-width: 1140px;
         margin-inline: auto;
+        margin-bottom: 18px;
     }
 
     .repair-hero-intro__row {
@@ -1561,7 +1729,6 @@
     }
 
     @media (min-width: 960px) {
-        .repair-hero-intro,
         .repair-entry-layout--single {
             max-width: 780px;
             margin-inline: auto;
@@ -1914,33 +2081,93 @@
 
     .repair-handover-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 10px;
-    }
-
-    @media (min-width: 768px) {
-        .repair-handover-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
+        grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+        gap: 12px;
     }
 
     .repair-choice-card--handover {
         flex-direction: column;
-        align-items: flex-start;
-        text-align: right;
-        gap: 4px;
-        padding: 12px 14px;
+        align-items: stretch;
+        justify-content: flex-start;
+        text-align: start;
+        gap: 6px;
+        padding: 15px 16px;
+        min-height: 118px;
+        border-radius: 14px;
     }
 
     .repair-choice-card--handover[hidden] {
         display: none;
     }
 
+    .repair-handover-card__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 4px;
+    }
+
+    .repair-handover-card__icon {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #eff6ff;
+        border: 1px solid #d5e6f8;
+        color: #075da6;
+        transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+    }
+
+    .repair-handover-card__svg {
+        width: 20px;
+        height: 20px;
+        flex: none;
+    }
+
+    .repair-handover-card__dot {
+        width: 19px;
+        height: 19px;
+        border-radius: 999px;
+        border: 1.8px solid #c2d4e8;
+        background: #ffffff;
+        flex: none;
+        position: relative;
+        transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .repair-choice-card--handover:has(input:checked) .repair-handover-card__icon {
+        background: #075da6;
+        border-color: #075da6;
+        color: #ffffff;
+    }
+
+    .repair-choice-card--handover:has(input:checked) .repair-handover-card__dot {
+        border-color: #075da6;
+        background: #075da6;
+        box-shadow: inset 0 0 0 3.5px #ffffff;
+    }
+
+    .repair-choice-card--handover .repair-choice-card__title {
+        font-size: 0.93rem;
+        font-weight: 700;
+        color: #0f274a;
+        line-height: 1.45;
+    }
+
+    .repair-choice-card--handover:has(input:checked) .repair-choice-card__title {
+        color: #075da6;
+    }
+
     .repair-choice-card__sub {
-        font-size: 0.84rem;
+        font-size: 0.81rem;
         font-weight: 500;
-        color: #475569;
-        line-height: 1.6;
+        color: #4b6178;
+        line-height: 1.65;
+        overflow-wrap: break-word;
+        word-break: normal;
     }
 
     .repair-handover-panel {
@@ -2029,16 +2256,8 @@
         }
 
         .repair-progress {
-            gap: 4px;
-            padding-bottom: 14px;
-            margin-bottom: 16px;
-        }
-
-        .repair-progress__item {
-            flex-direction: column;
-            text-align: center;
-            gap: 5px;
-            font-size: 11.5px;
+            padding-bottom: 16px;
+            margin-bottom: 18px;
         }
 
         .repair-brand-grid {

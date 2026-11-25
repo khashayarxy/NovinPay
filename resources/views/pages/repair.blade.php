@@ -62,8 +62,8 @@
             </div>
         </header>
 
-        <div class="repair-entry-grid">
-        <section class="public-panel repair-stepper-panel" aria-label="ثبت درخواست تعمیر">
+        <div class="repair-split-card">
+        <section class="repair-split-form" aria-label="ثبت درخواست تعمیر">
             <x-form-errors />
 
             <form method="post"
@@ -95,13 +95,13 @@
                     <li>
                         <button type="button" class="repair-progress__item" data-step-indicator="3" aria-current="{{ $initialStep === 3 ? 'step' : 'false' }}">
                             <span class="repair-progress__num">۳</span>
-                            <span class="repair-progress__label">اطلاعات تماس و تحویل</span>
+                            <span class="repair-progress__label">تماس و تحویل</span>
                         </button>
                     </li>
                     <li>
                         <button type="button" class="repair-progress__item" data-step-indicator="4" aria-current="{{ $initialStep === 4 ? 'step' : 'false' }}">
                             <span class="repair-progress__num">۴</span>
-                            <span class="repair-progress__label">بازبینی و ثبت نهایی</span>
+                            <span class="repair-progress__label">بازبینی و ثبت</span>
                         </button>
                     </li>
                 </ol>
@@ -238,16 +238,34 @@
                             <div class="repair-handover-grid" role="radiogroup" aria-label="نحوهٔ تحویل دستگاه">
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="self_ship">
                                     <input type="radio" name="handover_method" value="self_ship" @checked($selectedHandover === 'self_ship')>
+                                    <span class="repair-handover-card__head" aria-hidden="true">
+                                        <span class="repair-handover-card__icon">
+                                            <svg class="repair-handover-card__svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                                        </span>
+                                        <span class="repair-handover-card__dot"></span>
+                                    </span>
                                     <span class="repair-choice-card__title">خودم ارسال میکنم</span>
                                     <span class="repair-choice-card__sub">ارسال از سراسر کشور با پست یا تیپاکس</span>
                                 </label>
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="in_person">
                                     <input type="radio" name="handover_method" value="in_person" @checked($selectedHandover === 'in_person')>
+                                    <span class="repair-handover-card__head" aria-hidden="true">
+                                        <span class="repair-handover-card__icon">
+                                            <svg class="repair-handover-card__svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5.5-8 11-8 11S4 15.5 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        </span>
+                                        <span class="repair-handover-card__dot"></span>
+                                    </span>
                                     <span class="repair-choice-card__title">خودم حضوری میارم</span>
                                     <span class="repair-choice-card__sub">تحویل مستقیم در فروشگاه نوین‌پی شهریار</span>
                                 </label>
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="doorstep_pickup" hidden>
                                     <input type="radio" name="handover_method" value="doorstep_pickup" @checked($selectedHandover === 'doorstep_pickup') disabled>
+                                    <span class="repair-handover-card__head" aria-hidden="true">
+                                        <span class="repair-handover-card__icon">
+                                            <svg class="repair-handover-card__svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+                                        </span>
+                                        <span class="repair-handover-card__dot"></span>
+                                    </span>
                                     <span class="repair-choice-card__title">به پیک شما تحویل میدم</span>
                                     <span class="repair-choice-card__sub">دریافت دستگاه از محل شما توسط پیک نوین‌پی</span>
                                 </label>
@@ -410,34 +428,54 @@
             <script type="application/json" id="repair-courier-zones">@json($courierZones)</script>
         </section>
 
-        {{-- Desktop Left Branding & Guarantees Panel --}}
-        <aside class="repair-trust-aside" aria-label="مزایا و تضمین خدمات تعمیر نوین‌پی">
-            <div class="repair-trust-card">
-                <div class="repair-trust-card__art" aria-hidden="true">
-                    <svg viewBox="0 0 240 165" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="20" y="14" width="200" height="136" rx="22" fill="url(#npRepairBg)"/>
-                        <rect x="74" y="26" width="92" height="112" rx="14" fill="#fff" stroke="#bfdbfe" stroke-width="2"/>
-                        <rect x="86" y="40" width="68" height="36" rx="7" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
-                        <path d="M104 58l10 10 22-22" stroke="#098cf7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <rect x="88" y="88" width="18" height="10" rx="3" fill="#dbeafe"/>
-                        <rect x="111" y="88" width="18" height="10" rx="3" fill="#dbeafe"/>
-                        <rect x="134" y="88" width="18" height="10" rx="3" fill="#dbeafe"/>
-                        <rect x="88" y="104" width="18" height="10" rx="3" fill="#dbeafe"/>
-                        <rect x="111" y="104" width="18" height="10" rx="3" fill="#dbeafe"/>
-                        <rect x="134" y="104" width="18" height="10" rx="3" fill="#93c5fd"/>
-                        <rect x="88" y="120" width="64" height="8" rx="4" fill="#098cf7"/>
-                        <circle cx="176" cy="48" r="18" fill="#098cf7"/>
-                        <path d="M170 48h12M176 42v12" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+        {{-- Integrated Left Branding & Guarantees Panel (Static Split-Card Half) --}}
+        <aside class="repair-split-trust repair-trust-card" aria-label="مزایا و تضمین خدمات تعمیر نوین‌پی">
+            <div class="repair-split-trust__glow" aria-hidden="true"></div>
+            <div class="repair-split-trust__top">
+                <div class="repair-split-trust__art" aria-hidden="true">
+                    <svg class="repair-split-trust__hero-svg" viewBox="0 0 260 176" width="260" height="176" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <defs>
-                            <linearGradient id="npRepairBg" x1="20" y1="14" x2="220" y2="150" gradientUnits="userSpaceOnUse">
+                            <linearGradient id="npRepairArtSurface" x1="26" y1="12" x2="234" y2="164" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#ffffff" stop-opacity="0.92"/>
+                                <stop offset="1" stop-color="#f0f7ff" stop-opacity="0.82"/>
+                            </linearGradient>
+                            <linearGradient id="npRepairShieldFill" x1="146" y1="26" x2="206" y2="96" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#098cf7"/>
+                                <stop offset="1" stop-color="#075da6"/>
+                            </linearGradient>
+                            <linearGradient id="npRepairScreen" x1="72" y1="40" x2="144" y2="84" gradientUnits="userSpaceOnUse">
                                 <stop stop-color="#e0f2fe"/>
                                 <stop offset="1" stop-color="#eff6ff"/>
                             </linearGradient>
                         </defs>
+                        <rect x="18" y="10" width="224" height="156" rx="24" fill="url(#npRepairArtSurface)" stroke="#c7def6" stroke-width="1.5"/>
+                        <circle cx="62" cy="40" r="22" fill="#dbeafe" opacity="0.65"/>
+                        <circle cx="204" cy="132" r="26" fill="#e0f2fe" opacity="0.75"/>
+                        {{-- POS Terminal Body --}}
+                        <rect x="64" y="24" width="92" height="128" rx="16" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+                        <rect x="86" y="17" width="48" height="11" rx="4" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+                        <rect x="76" y="38" width="68" height="40" rx="8" fill="url(#npRepairScreen)" stroke="#7dd3fc" stroke-width="1.5"/>
+                        <path d="M88 59h18M88 67h30" stroke="#075da6" stroke-width="2.4" stroke-linecap="round" opacity="0.55"/>
+                        <circle cx="130" cy="53" r="8" fill="#098cf7" opacity="0.16"/>
+                        <path d="m126.5 53 2.5 2.5 5-5" stroke="#075da6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        {{-- POS Keypad --}}
+                        <rect x="78" y="90" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="101" y="90" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="124" y="90" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="78" y="106" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="101" y="106" width="18" height="10" rx="3" fill="#dbeafe"/>
+                        <rect x="124" y="106" width="18" height="10" rx="3" fill="#93c5fd"/>
+                        <rect x="78" y="124" width="64" height="10" rx="5" fill="#075da6"/>
+                        {{-- Protective Repair Guarantee Shield --}}
+                        <path d="M178 28l28 10.5v21.5c0 19.2-11.9 35.8-28 42-16.1-6.2-28-22.8-28-42V38.5L178 28Z" fill="url(#npRepairShieldFill)" stroke="#ffffff" stroke-width="3"/>
+                        <path d="m167.5 63 7 7 14.5-15" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
+
                 <span class="repair-trust-card__eyebrow">مرکز تخصصی تعمیرات نوین‌پی</span>
                 <h2>تعمیر مطمئن، شفاف و با ضمانت</h2>
+                <p class="repair-split-trust__lead">تمامی مراحل پذیرش، عیب‌یابی و تحویل کارتخوان با اعلام قبلی هزینه و ثبت در پروندهٔ آنلاین انجام می‌شود.</p>
+
                 <ul class="repair-trust-list">
                     <li>
                         <span class="repair-trust-list__icon" aria-hidden="true"><x-home.icon name="shield-check" /></span>
@@ -468,6 +506,11 @@
                         </div>
                     </li>
                 </ul>
+            </div>
+
+            <div class="repair-split-trust__footer">
+                <span>نیاز به راهنمایی پیش از ثبت دارید؟</span>
+                <a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a>
             </div>
         </aside>
         </div>
