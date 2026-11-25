@@ -14,7 +14,7 @@
     };
     $heading = match (true) {
         $alreadyPaidFlag => 'این سفارش قبلاً پرداخت شده است',
-        $settled => 'پرداخت تأیید شد',
+        $settled => 'پرداخت با موفقیت انجام شد',
         $cancelled => 'انصراف از پرداخت',
         $failed => 'تراکنش ناموفق',
         $review => 'پرداخت نیاز به بررسی دارد',
@@ -61,9 +61,8 @@
                 </div>
             </div>
 
-            <p class="hint" style="margin:0 0 6px;">{{ $isOrder ? 'پرداخت سفارش' : 'پرداخت تعمیر' }}</p>
             <h1 id="payment-title">{{ $heading }}</h1>
-            <p class="lead">{{ $lead }}</p>
+            @unless ($settled)<p class="lead">{{ $lead }}</p>@endunless
             @if ($failed && ! $cancelled && $attempt->statusMessage())
                 <p class="reason">{{ $attempt->statusMessage() }}</p>
             @endif
@@ -73,9 +72,7 @@
                     <span>{{ $isOrder ? 'کد سفارش' : 'کد پیگیری تعمیر' }}</span>
                     <span class="pay-copy-wrap">
                         <b class="np-latin" id="payOrderCode">{{ $sourceCode }}</b>
-                        @if ($settled)
-                            <button type="button" class="pay-copy-btn" data-copy-order-code aria-label="کپی کد">کپی</button>
-                        @endif
+
                     </span>
                 </div>
                 @if ($attempt->track_id)
@@ -143,16 +140,6 @@
     @if ($settled)
         <script>
             (function () {
-                var copyBtn = document.querySelector('[data-copy-order-code]');
-                var codeEl = document.getElementById('payOrderCode');
-                if (copyBtn && codeEl && navigator.clipboard) {
-                    copyBtn.addEventListener('click', function () {
-                        navigator.clipboard.writeText(codeEl.textContent.trim()).then(function () {
-                            copyBtn.textContent = 'کپی شد';
-                            setTimeout(function () { copyBtn.textContent = 'کپی'; }, 1800);
-                        });
-                    });
-                }
                 var container = document.getElementById('confettiContainer');
                 if (!container || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
                 var colors = ['#22c55e', '#10b981', '#098cf7', '#f59e0b', '#ec4899', '#8b5cf6'];

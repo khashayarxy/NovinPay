@@ -702,3 +702,28 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
     .np-account-enter, .np-timeline li[data-stage=current] .np-timeline__mark { animation: none; }
     .np-account-primary { transition: none; }
 }
+
+@media (max-width: 600px) {
+    .np-timeline--horizontal {
+        display: grid;
+        overflow: visible;
+        gap: 0;
+    }
+    .np-timeline--horizontal li {
+        display: grid;
+        grid-template-columns: 1.6rem minmax(0, 1fr);
+        text-align: start;
+        align-items: start;
+        gap: .65rem;
+        min-height: 3.45rem;
+        padding: 0 0 .85rem;
+    }
+    .np-timeline--horizontal li:not(:last-child)::before {
+        inset-inline-start: .76rem;
+        inset-inline-end: auto;
+        inset-block: 1.5rem 0;
+        width: 2px;
+        height: auto;
+    }
+    .np-timeline--horizontal li > div { display: block; }
+}

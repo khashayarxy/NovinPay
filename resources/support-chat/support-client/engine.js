@@ -1,3 +1,4 @@
+import {actionMenu} from './action-menu.js';
 import {Outbox,blockedReason} from './outbox.js?v=team1';
 import {Transport,ConversationSync,Poller,RequestError,apiHealth} from './network.js?v=team1';
 import {messageDate,persianDate} from './persian-date.js';
@@ -244,7 +245,7 @@ export function queueView(host,engine,{compact=false}={}) {
     let signature='';
     return (rows,conversation,knownAcks)=>{
         const next=JSON.stringify([rows,conversation,[...knownAcks.keys()],compact?Math.floor(Date.now()/10000):0]);if(next===signature)return;signature=next;
-        const expanded=compact?new Set([...host.querySelectorAll('.support-pending details[open]')].map(el=>el.parentElement.dataset.uuid)):new Set();
+        const expanded=compact?new Set([...host.querySelectorAll('.support-pending [data-support-menu][open]')].map(el=>el.parentElement.dataset.uuid)):new Set();
         const focused=compact&&host.contains(document.activeElement)?document.activeElement:null,focusId=focused?.closest('.support-pending')?.dataset.uuid;
         host.replaceChildren();
         const pending=rows.filter(r=>r.state!=='accepted'&&r.conversation===conversation);
@@ -254,7 +255,7 @@ export function queueView(host,engine,{compact=false}={}) {
             const state=document.createElement('small');
             state.textContent=knownAcks.has(row.key)?'در سرور ثبت شد؛ پاک‌سازی محلی در انتظار است.':row.error||({pending:row.persistent?'روی این دستگاه ذخیره شد؛ در صف ارسال':'در حافظهٔ همین صفحه؛ هنوز در سرور ثبت نشده',sending:'در حال ارسال؛ ثبت هنوز تأیید نشده',unknown:'نتیجه هنوز مشخص نیست؛ تلاش مجدد با همان شناسه',needs_action:'نیازمند اقدام شما',cancelled:'تلاش بعدی متوقف است'}[row.state]);
             let actions=item;
-            if(compact){const details=document.createElement('details'),summary=document.createElement('summary');summary.className='support-icon';summary.textContent='more_horiz';summary.setAttribute('aria-label','گزینه‌های پیام ارسال‌نشده');summary.title='گزینه‌های پیام';details.hidden=Date.now()-row.created<10000&&!['needs_action','cancelled'].includes(row.state);details.open=expanded.has(row.uuid);details.append(summary);if(row.error){const error=document.createElement('small');error.textContent=row.error;details.append(error);}item.append(details);actions=details;
+            if(compact){const details=document.createElement('div'),summary=document.createElement('button');summary.className='support-icon';summary.textContent='more_horiz';summary.setAttribute('aria-label','گزینه‌های پیام ارسال‌نشده');summary.title='گزینه‌های پیام';details.hidden=Date.now()-row.created<10000&&!['needs_action','cancelled'].includes(row.state);actionMenu(details,summary);details.open=expanded.has(row.uuid);details.append(summary);if(row.error){const error=document.createElement('small');error.textContent=row.error;details.append(error);}item.append(details);actions=details;
                 state.textContent=knownAcks.has(row.key)?'ثبت شد؛ بررسی دستگاه باقی است':(Date.now()-row.created<10000&&!['needs_action','cancelled'].includes(row.state)?'…':({needs_action:'نیازمند بررسی شما',cancelled:'تلاش متوقف شد'}[row.state]||'ارسال تأیید نشد'));}
             item.append(state);
             if(compact)item.append(actions);
@@ -264,7 +265,7 @@ export function queueView(host,engine,{compact=false}={}) {
                 button.addEventListener('click',()=>action().catch(e=>engine.hooks.warning?.(e.message)));actions.append(button);
             }
             host.append(item);
-            if(focused&&focusId===row.uuid){const target=focused.tagName==='SUMMARY'?item.querySelector('summary'):[...item.querySelectorAll('button')].find(b=>b.textContent===focused.textContent);target?.focus();}
+            if(focused&&focusId===row.uuid){const target=focused.hasAttribute('data-support-menu-toggle')?item.querySelector('[data-support-menu-toggle]'):[...item.querySelectorAll('button')].find(b=>b.textContent===focused.textContent);target?.focus();}
         }
     };
 }
@@ -326,7 +327,7 @@ export function renderTranscript(host,messages,{operator=false,older=false,compa
         el.dataset.messageId=String(m.id);el.dataset.incoming=String(operator?m.type==='user':m.type==='admin');
         const signature=JSON.stringify([m.text,m.attachments,m.accepted_at,m.time,m.reference,m.reply_to,m.sender,m.read_receipt,m._row?.state,m._row?.error,m._ack,m._row?Date.now()-m._row.created>=10000:false]);
         if(el.dataset.content!==signature){
-            const open=el.querySelector('details')?.open,focused=el.contains(document.activeElement)?document.activeElement.textContent:null;
+            const open=el.querySelector('[data-support-menu]')?.open,focused=el.contains(document.activeElement)?document.activeElement.textContent:null;
             el.replaceChildren();el.dataset.content=signature;
             el.className=operator?(m.type==='user'?'message-user':'message-admin'):`chat-msg ${m.type==='user'?'user':'admin'}`;
             if((operator&&m.type==='user')||(!operator&&m.type==='admin')){const avatar=document.createElement('span');avatar.className='support-sender-avatar';avatar.setAttribute('aria-label',operator?'مشتری':'پشتیبانی');if(!operator&&m.sender?.avatar&&/^support-avatar\.php\?id=[a-f0-9]{32}$/.test(m.sender.avatar)){const img=document.createElement('img');img.src=m.sender.avatar;img.alt=m.sender.name||'پشتیبانی';img.onerror=()=>{img.remove();avatar.textContent='پ';};avatar.append(img);}else if(operator)avatar.textContent=(engine?.sync?.userName||'مهمان').trim().slice(0,1);else{const icon=document.createElement('span');icon.className='support-icon';icon.textContent='support_agent';avatar.append(icon);}el.append(avatar);if(!operator&&m.sender?.name){const name=document.createElement('small');name.className='support-sender-name';name.textContent=m.sender.name;el.append(name);}}
@@ -344,7 +345,7 @@ export function renderTranscript(host,messages,{operator=false,older=false,compa
                 if(m.attachments?.length){const hint=document.createElement('small');hint.textContent=`${m.attachments.length} تصویر پیوست`;el.append(hint);}
                 if(late&&engine){
                     const retry=document.createElement('button');retry.type='button';retry.textContent='تلاش مجدد';retry.onclick=()=>engine.retry(row).catch(e=>engine.hooks.warning?.(e.message));el.append(retry);
-                    const details=document.createElement('details'),summary=document.createElement('summary');summary.className='support-icon';summary.textContent='more_horiz';summary.setAttribute('aria-label','گزینه‌های پیام ارسال‌نشده');summary.title='گزینه‌های پیام';details.open=!!open;details.append(summary);
+                    const details=document.createElement('div'),summary=document.createElement('button');summary.className='support-icon';summary.textContent='more_horiz';summary.setAttribute('aria-label','گزینه‌های پیام ارسال‌نشده');summary.title='گزینه‌های پیام';actionMenu(details,summary);details.open=!!open;details.append(summary);
                     if(row.error){const error=document.createElement('small');error.textContent=row.error;details.append(error);}
                     for(const [name,action]of [['توقف تلاش',()=>engine.cancel(row)],['کنار گذاشتن پیش‌نویس',()=>engine.deleteLocal(row)]]){const button=document.createElement('button');button.type='button';button.textContent=name;button.onclick=()=>action().catch(e=>engine.hooks.warning?.(e.message));details.append(button);}el.append(details);
                 }

@@ -23,20 +23,20 @@
             @if($row['sms'])
                 <p class="admin-hint">کد ورود آزمایشی به این شماره پیامک می‌شود.</p>
             @else
-            <details class="admin-section" @if($errors->has('current_password') && !$account) open @endif>
-                <summary>کد ورود آزمایشی</summary>
+            <section class="admin-section">
+                <h2>کد ورود آزمایشی</h2>
             <p class="admin-hint">ابتدا در صفحهٔ ورود مشتری درخواست کد بدهید. کد پیامک نمی‌شود و تا دو دقیقه معتبر است.</p>
             <form class="admin-form" method="post" action="{{ route('admin.test-customers.code', $row['key']) }}">
                 @csrf
                 <label class="label">رمز عبور فعلی مدیریت<input class="input" type="password" name="current_password" autocomplete="current-password" required></label>
                 <button class="btn btn-primary">نمایش کد آزمایشی فعال</button>
             </form>
-            </details>
+            </section>
             @endif
             @if($scope && !$scope['reason'])
                 @php($description = \App\Support\FaNumber::digits(count($scope['requests'])).' درخواست تعمیر، '.\App\Support\FaNumber::digits(count($scope['addresses'])).' آدرس و '.\App\Support\FaNumber::digits(count($scope['notifications'])).' اعلان آزمایشی')
-                <details class="admin-section">
-                <summary>بازنشانی حساب</summary>
+                <section class="admin-section">
+                <h2>بازنشانی حساب</h2>
                 <form class="admin-form" method="post" action="{{ route('admin.test-customers.reset', $account->public_id) }}" data-confirm="حساب آزمایشی بازنشانی شود؟ {{ $description }} حذف و نشست‌ها، رمز عبور و کدهای ورود لغو می‌شوند.">
                     @csrf
                     <input type="hidden" name="scope" value="{{ $scope['pin'] }}">
@@ -44,7 +44,7 @@
                     <label><input type="checkbox" name="confirm" value="1" required> حذف {{ $description }} و بازنشانی حساب را تأیید می‌کنم.</label>
                     <button class="btn btn-secondary">بازنشانی حساب تست</button>
                 </form>
-                </details>
+                </section>
             @endif
         </div>
     </section>

@@ -105,7 +105,7 @@ class AdminFoundationTest extends TestCase
         $this->actingAs($this->owner())->get('/admin')->assertOk()
             ->assertSee('href="'.route('home').'" target="_blank" rel="nofollow noopener noreferrer" aria-label="مشاهده وب‌سایت" title="مشاهده وب‌سایت"', false)
             ->assertSeeInOrder(['داشبورد مدیریت', 'عملیات روزانه', 'تعمیرات', 'سفارش‌ها و کالاها', 'مشتریان', 'مالی و ارسال', 'محتوا و تنظیمات', 'مقالات', 'وضعیت و نگهداری سایت', 'دسترسی و سوابق', 'امنیت حساب من'])
-            ->assertSee('<summary class="admin-nav-group-trigger">', false)
+            ->assertSee('<button type="button" class="admin-nav-group-trigger"', false)
             ->assertSee('href="'.route('admin.orders.index').'"', false)
             ->assertSee('href="'.route('admin.payments.index').'"', false)
             ->assertSee('href="'.route('admin.deliveries.index').'"', false);

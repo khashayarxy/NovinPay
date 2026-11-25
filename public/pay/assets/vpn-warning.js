@@ -15,8 +15,8 @@
     }
 
     function revealVpnWarning() {
-        $('goTitle').textContent = 'انتقال به درگاه پرداخت';
-        $('goLead').textContent = 'درگاه پرداخت فقط از داخل ایران در دسترس است.';
+        $('goTitle').textContent = 'انتقال امن به درگاه پرداخت';
+        $('goLead').textContent = '';
         $('vpnBox').hidden = false;
         document.title = 'بررسی اتصال به درگاه | نوین‌پی';
     }
@@ -25,7 +25,7 @@
         if (redirected) return;
         stopPolling();
         $('vpnBox').hidden = true;
-        $('goTitle').textContent = 'در حال انتقال به درگاه پرداخت';
+        $('goTitle').textContent = 'انتقال امن به درگاه پرداخت';
         $('goLead').textContent = 'لطفاً چند لحظه صبر کنید.';
         document.title = 'انتقال به درگاه پرداخت | نوین‌پی';
         retry.href = card.dataset.gatewayUrl;

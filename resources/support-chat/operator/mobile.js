@@ -4,7 +4,7 @@ export function mobileWorkspace({account,drawer,closeDrawer,menuButton,header,st
  const closeAccount=()=>{account.open=false;};
  document.addEventListener('pointerdown',e=>{if(!account.contains(e.target))closeAccount();});
  document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'&&account.open){closeAccount();account.querySelector('summary').focus();}
+  if(e.key==='Escape'&&account.open){closeAccount();account.querySelector('[data-support-menu-toggle]').focus();}
   if(e.key==='Tab'&&drawer.classList.contains('mobile-open')){
    const items=[...drawer.querySelectorAll('a[href],button:not([disabled])')].filter(x=>x.getClientRects().length);
    const first=items[0],last=items.at(-1);

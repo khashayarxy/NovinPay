@@ -1,7 +1,7 @@
 /* Mobile-first finishing layer; message grouping and P1 remain engine-owned. */
 html[data-support-surface=operator] .operator-account{position:relative;margin-inline-start:auto;min-width:0;max-width:min(320px,48vw)}
-.operator-account>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--support-border);border-radius:10px;cursor:pointer;list-style:none;font-size:13px}
-.operator-account>summary::-webkit-details-marker{display:none}
+.operator-account>button{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--support-border);border-radius:10px;cursor:pointer;list-style:none;font-size:13px}
+.operator-account>button::-webkit-details-marker{display:none}
 .operator-account:has(#operatorIdentity[hidden]){display:none}
 .operator-account #operatorIdentity{margin:0;max-width:100%;flex:1;overflow:hidden}.operator-account #menuName{max-width:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .operator-account .account-chevron{flex:none;font-size:18px}
@@ -24,7 +24,7 @@ html[data-support-surface=operator] .health-card-header{align-items:flex-start;g
  html[data-support-surface=operator] .app-header{min-height:58px;gap:8px;padding:6px max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left))}
  html[data-support-surface=operator] #breadcrumbHost,html[data-support-surface=operator] .operator-account :is(#connectionDot,#menuAvatar){display:none!important}
  html[data-support-surface=operator] .operator-account{max-width:none;flex:1;margin:0}
- html[data-support-surface=operator] .operator-account>summary{min-width:0;padding-inline:12px}
+ html[data-support-surface=operator] .operator-account>button{min-width:0;padding-inline:12px}
  html[data-support-surface=operator] .operator-account-panel{position:fixed;inset:calc(58px + env(safe-area-inset-top,0px)) 12px auto;width:auto}
  html[data-support-surface=operator] .app-header .icon-button{width:44px;height:44px;min-width:44px;min-height:44px}
  html[data-support-surface=operator] .app-header .operator-identity{max-width:100%}
@@ -70,3 +70,6 @@ html[data-support-surface=operator] #bootSplash{flex-direction:column;gap:14px;p
 #installationSettings{margin-top:20px;padding-top:16px;border-top:1px solid var(--support-border)}#pwaInstallStatus{font-size:12px;color:var(--support-muted);margin:8px 0}#installationSettings button{min-height:44px;margin-inline-end:8px}
 
 html[data-support-surface=operator]:not([data-operator-auth=authenticated]) body{height:auto;min-height:100dvh;overflow-y:visible;touch-action:auto;overscroll-behavior-y:auto}html[data-support-surface=operator]:not([data-operator-auth=authenticated]) body main{flex:none;min-height:calc(100dvh - 58px)}
+
+summary{list-style:none}summary::-webkit-details-marker,summary::marker{display:none;content:""}
+[data-support-menu]:not([open])>:not([data-support-menu-toggle]){display:none}

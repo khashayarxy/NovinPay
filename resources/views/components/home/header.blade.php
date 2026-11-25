@@ -72,15 +72,15 @@
         </div>
         <nav id="mobile-navigation" aria-label="ناوبری موبایل">
             <a href="{{ route('home') }}" @if (request()->routeIs('home')) aria-current="page" @endif><x-storefront.icon name="home" class="np-nav-icon" /><span>صفحه اصلی</span></a>
-            <details class="np-drawer-categories" @if (request()->routeIs('products.*')) open @endif>
-                <summary><x-storefront.icon name="shop" class="np-nav-icon" /><span>فروشگاه</span><x-storefront.icon name="chevron-down" class="np-drawer-chevron" /></summary>
+            <section class="np-drawer-categories">
+                <h3><x-storefront.icon name="shop" class="np-nav-icon" /><span>فروشگاه</span></h3>
                 <div class="np-drawer-categories__list">
                     <a href="{{ route('products.index') }}" @if (request()->routeIs('products.*') && ! $activeCategory) aria-current="page" @endif><span>همه محصولات</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
                     @foreach (\App\Enums\ProductCategory::storefrontCases() as $category)
                         <a href="{{ route('products.index', ['category' => $category->value]) }}" @if ($activeCategory === $category->value) aria-current="page" @endif><span>{{ $category->label() }}</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
                     @endforeach
                 </div>
-            </details>
+            </section>
             <a href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif><x-storefront.icon name="repair" class="np-nav-icon" /><span>تعمیرات کارتخوان</span></a>
             <a href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif><x-storefront.icon name="search" class="np-nav-icon" /><span>پیگیری تعمیرات</span></a>
             <a href="{{ route('articles.index') }}" @if (request()->routeIs('articles.*')) aria-current="page" @endif><x-storefront.icon name="book" class="np-nav-icon" /><span>مقالات و آموزش‌ها</span></a>

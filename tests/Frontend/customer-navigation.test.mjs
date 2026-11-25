@@ -14,7 +14,7 @@ test('Chromium: server-rendered customer state survives initialization, delayed 
     const directory = mkdtempSync(path.join(tmpdir(), 'novinpay-customer-header-'));
     try {
         const module = 'data:text/javascript;base64,' + readFileSync(new URL('../../resources/js/customer-navigation.js', import.meta.url)).toString('base64');
-        const authenticated = '<div data-customer-entry data-customer-state="authenticated"><details data-customer-menu><summary aria-controls="customer-links">Account</summary><nav id="customer-links"><a href="/account">Dashboard</a><form method="post" action="/account/logout"><input type="hidden" name="_token" value="synthetic"><button>Logout</button></form></nav></details></div>';
+        const authenticated = '<div data-customer-entry data-customer-state="authenticated"><div data-customer-menu><button type="button" data-customer-toggle aria-controls="customer-links">Account</button><nav id="customer-links"><a href="/account">Dashboard</a><form method="post" action="/account/logout"><input type="hidden" name="_token" value="synthetic"><button>Logout</button></form></nav></div></div>';
         const guest = '<div data-customer-entry data-customer-state="guest"><a href="/login" data-customer-guest>Guest</a></div>';
         for (const initialState of ['authenticated', 'guest']) {
             const fixture = path.join(directory, initialState + '.html');
@@ -50,7 +50,7 @@ test('Chromium: server-rendered customer state survives initialization, delayed 
                 window.dispatchEvent(new Event('focus')); await settle();
                 let menu = host.querySelector('[data-customer-menu]');
                 check(menu && !menu.open && !host.querySelector('[data-customer-guest]'), 'authenticated menu');
-                let toggle = menu.querySelector('summary');
+                let toggle = menu.querySelector('[data-customer-toggle]');
                 toggle.focus(); toggle.click(); await settle();
                 check(menu.open && toggle.getAttribute('aria-expanded') === 'true', 'native open');
                 toggle.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true})); await settle();

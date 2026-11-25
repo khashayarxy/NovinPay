@@ -141,7 +141,7 @@ class ZibalUnifiedPaymentsTest extends TestCase
 
         $this->get('https://novinpaypos.test/payments/'.$attempt->public_id.'/result')
             ->assertOk()
-            ->assertSee('پرداخت تأیید شد')
+            ->assertSee('پرداخت با موفقیت انجام شد')
             ->assertSee('۹۸۷۶۵۴۳۲۱')
             ->assertSee('پیگیری سفارش')->assertSee(route('account.orders.show', $order->public_id));
     }
@@ -261,7 +261,7 @@ class ZibalUnifiedPaymentsTest extends TestCase
 
         $this->get($resultUrl)
             ->assertOk()
-            ->assertSee('پرداخت تأیید شد')
+            ->assertSee('پرداخت با موفقیت انجام شد')
             ->assertSee('۵۵۴۴۳۳۲۲۱');
 
         // Re-visiting signed link shows already settled and hides payment button.
@@ -661,7 +661,7 @@ class ZibalUnifiedPaymentsTest extends TestCase
         $this->get('https://novinpaypos.test/payments/'.$attempt3->public_id.'/result')
             ->assertOk()
             ->assertSee('t-green')
-            ->assertSee('پرداخت تأیید شد');
+            ->assertSee('پرداخت با موفقیت انجام شد');
     }
 
     private function seedChargeEntry(FinancialDocument $document, string $category, int $minor): void

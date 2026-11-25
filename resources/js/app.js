@@ -958,14 +958,22 @@ document.addEventListener('DOMContentLoaded', () => {
             adminMobileToggle?.focus();
         });
         const groups = [...adminNavigation.querySelectorAll('.admin-nav-group')];
-        const closeOtherGroups = (current) => {
-            groups.forEach((group) => {
-                if (group !== current && group.open) group.open = false;
+
+        groups.forEach((group) => {
+            const button = group.querySelector('.admin-nav-group-trigger');
+            const setOpen = (value) => {
+                group.toggleAttribute('open', value);
+                button.setAttribute('aria-expanded', String(value));
+            };
+            button.addEventListener('click', () => {
+                const next = !group.hasAttribute('open');
+                groups.filter(other => other !== group).forEach(other => {
+                    other.removeAttribute('open');
+                    other.querySelector('.admin-nav-group-trigger').setAttribute('aria-expanded', 'false');
+                });
+                setOpen(next);
             });
-        };
-        groups.forEach((group) => group.addEventListener('toggle', () => {
-            if (group.open) closeOtherGroups(group);
-        }));
+        });
         adminNavigation.addEventListener('click', (event) => {
             if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
             const link = event.target instanceof Element ? event.target.closest('.admin-nav a') : null;

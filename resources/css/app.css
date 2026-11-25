@@ -1686,3 +1686,32 @@
         }
     }
 }
+
+/* Shared bounds for long identifiers, nested grids and native form controls. */
+:where(main, section, article, aside, form, fieldset, dl, dd, nav) { min-inline-size: 0; }
+:where(input:not([type=checkbox]):not([type=radio]), select, textarea) { max-inline-size: 100%; min-inline-size: 0; }
+:where(img, video, canvas) { max-inline-size: 100%; }
+:where(h1, h2, h3, p, dt, dd, td, th, a, button, label) { overflow-wrap: anywhere; }
+:where(bdi, time, input[inputmode=numeric], input[inputmode=decimal], .np-latin) { font-variant-numeric: tabular-nums; }
+:where(.np-account-reference, .repair-code-chip, .np-account-facts dd, .admin-definition dd) { overflow-wrap: anywhere; max-inline-size: 100%; }
+:where(dialog) { max-inline-size: calc(100vw - 24px); max-block-size: calc(100dvh - 24px); overflow-y: auto; }
+summary { list-style: none; }
+summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
+.np-account-detail-grid > *, .np-account-facts > div, .admin-detail-grid > *, .checkout-stepper > * { min-inline-size: 0; }
+@media (max-width: 600px) {
+    .np-account-row__end { flex-wrap: wrap; max-inline-size: 100%; }
+    .np-account-price { white-space: normal; }
+    .np-account-reference { font-size: .85rem; }
+    .np-account-facts > div { grid-template-columns: minmax(0, 1fr); }
+    .np-timeline li { gap: .5rem; }
+    .np-timeline li > div { min-inline-size: 0; }
+    .np-timeline strong { display: block; }
+    .np-timeline__status { margin-inline: 0; }
+    .repair-progress { gap: .35rem; }
+    .repair-progress__label { font-size: .75rem; line-height: 1.6; white-space: normal; }
+    .checkout-step-indicator { min-inline-size: 0; overflow-wrap: anywhere; }
+    .admin-page-heading, .admin-actions, .admin-topbar { flex-wrap: wrap; }
+    .admin-topbar { gap: .5rem; }
+    .admin-user { flex-wrap: wrap; }
+    .admin-table-wrap { max-inline-size: 100%; overflow-x: auto; }
+}

@@ -34,7 +34,7 @@ final class TelegramDailyDigestCommand extends Command
             ->whereBetween('verified_at', [$start, $end]);
         $settledCount = (clone $settledPayments)->count();
         $revenueMinor = (int) (clone $settledPayments)->sum('amount_minor');
-        $revenueToman = intdiv($revenueMinor, 10);
+        $revenueToman = intdiv($revenueMinor, 100);
         $failedPayments = PaymentAttempt::query()
             ->where('state', 'failed')
             ->whereBetween('updated_at', [$start, $end])
@@ -46,7 +46,7 @@ final class TelegramDailyDigestCommand extends Command
 
         $newOrders = SalesOrder::query()->whereBetween('created_at', [$start, $end])->count();
         $newRepairs = RepairRequest::query()->whereBetween('created_at', [$start, $end])->count();
-        $openRepairCases = RepairCase::query()->whereNotIn('status', ['delivered', 'cancelled'])->count();
+        $openRepairCases = RepairCase::query()->whereNotIn('status', ['delivered', 'returned'])->count();
         $newUsers = CustomerAccount::query()->whereBetween('created_at', [$start, $end])->count();
 
         $inventory = InventoryItem::query()->get(['on_hand', 'reserved', 'low_stock_threshold']);
@@ -60,7 +60,13 @@ final class TelegramDailyDigestCommand extends Command
         $summary = $metrics->summary($dateKey);
         $sms = $metrics->smsBreakdown($dateKey);
         $backup = $metrics->latestBackup();
-        $backupStatus = is_array($backup) ? ($backup['status'] ?? 'نامشخص') : 'ثبت نشده';
+        $backupStatus = match ($backup['status'] ?? null) {
+            'ok' => 'به‌روز',
+            'stale' => 'خارج از بازهٔ مجاز',
+            'missing' => 'یافت نشد',
+            'failed' => 'ناموفق',
+            default => 'ثبت نشده',
+        };
 
         $lines = [
             "📊 گزارش جمع‌بندی روزانه نوین‌پی ({$dateKey})",
@@ -79,7 +85,7 @@ final class TelegramDailyDigestCommand extends Command
             '',
             '📨 پیامک‌ها:',
             "• کل: {$sms['total']} (ناموفق: {$sms['failed']})",
-            "• OTP: {$sms['otp']} | سفارش: {$sms['order']} | تعمیر: {$sms['repair']} | هشدار: {$sms['alert']} | سایر: {$sms['other']}",
+            "• کد تأیید: {$sms['otp']} | سفارش: {$sms['order']} | تعمیر: {$sms['repair']} | هشدار: {$sms['alert']} | سایر: {$sms['other']}",
             '',
             '🛡️ سلامت و خطاها:',
             "• خطای سرور (500): {$summary['http_500']} | خطای JS کلاینت: {$summary['client_js']}",

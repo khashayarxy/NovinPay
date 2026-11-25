@@ -1,10 +1,10 @@
 import {recoveryRequest} from './recovery.js?v=0.1.0-r14';
 import {uuid} from './outbox.js';
 export function phoneControls(parent,{current,conversation,beforeSwitch,restart,warn,done=()=>{}}){
-    const panel=document.createElement('details');panel.className='support-phone-recovery';panel.hidden=true;
-    const title=document.createElement('summary');title.textContent='بازیابی با شماره موبایل';
+    const panel=document.createElement('section');panel.className='support-phone-recovery';panel.hidden=true;
+    const title=document.createElement('h3');title.textContent='بازیابی با شماره موبایل';
     const help=document.createElement('p');help.textContent='فقط گفتگوهای متصل به شمارهٔ تأییدشده بازیابی می‌شوند.';
-    const policy=document.createElement('details'),policyTitle=document.createElement('summary'),policyText=document.createElement('small');policyTitle.textContent='دربارهٔ شماره موبایل';policyText.textContent='دارندگان شمارهٔ مشترک به گفتگوهای متصل دسترسی دارند. پیش از واگذاری سیم‌کارت، ارتباط را حذف کنید. تأیید شماره پس از ۳۰ روز نیاز به تمدید دارد.';policy.append(policyTitle,policyText);
+    const policy=document.createElement('section'),policyTitle=document.createElement('h3'),policyText=document.createElement('small');policyTitle.textContent='دربارهٔ شماره موبایل';policyText.textContent='دارندگان شمارهٔ مشترک به گفتگوهای متصل دسترسی دارند. پیش از واگذاری سیم‌کارت، ارتباط را حذف کنید. تأیید شماره پس از ۳۰ روز نیاز به تمدید دارد.';policy.append(policyTitle,policyText);
     const number=document.createElement('input');number.type='tel';number.inputMode='tel';number.autocomplete='tel';number.maxLength=30;number.placeholder='شماره موبایل';number.setAttribute('aria-label','شماره موبایل برای بازیابی');
     const link=document.createElement('button');link.type='button';link.textContent='تأیید شماره موبایل';
     const recover=document.createElement('button');recover.type='button';recover.textContent='بازیابی گفتگوهای قبلی';

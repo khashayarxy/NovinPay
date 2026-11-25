@@ -4,7 +4,7 @@
         @php($lines = preg_split('/\R/u', $block, 2))
         @if (isset($lines[1]) && str_ends_with(trim($lines[0]), '؟'))
             <details>
-                <summary><span class="product-faq-question">{{ \App\Support\LatinText::html($lines[0]) }}</span><span aria-hidden="true" class="product-accordion-icon"></span></summary>
+                <summary><span class="product-faq-question">{{ \App\Support\LatinText::html($lines[0]) }}</span><svg class="product-faq-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
                 <div class="product-faq-answer">
                     @include('products._paragraphs', ['copy' => $lines[1]])
                 </div>

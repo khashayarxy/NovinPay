@@ -110,10 +110,10 @@ class MobileNavigationTest extends TestCase
         $this->assertSame(0, $xpath->query('//a[normalize-space(.)="تعمیرگاه" or normalize-space(.)="خدمات و تعمیرات"]')->length);
         $this->assertSame(array_map(fn ($name) => route($name), ['home', 'repair', 'repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
         $this->assertSame(5, $xpath->query('./a/*[@aria-hidden="true"]', $menu)->length);
-        $shopAccordion = $xpath->query('./details[contains(@class,"np-drawer-categories")]', $menu)->item(0);
+        $shopAccordion = $xpath->query('./section[contains(@class,"np-drawer-categories")]', $menu)->item(0);
         $this->assertNotNull($shopAccordion);
-        $this->assertSame('فروشگاه', trim($xpath->query('./summary', $shopAccordion)->item(0)->textContent));
-        $this->assertSame($current === 'products.index', $shopAccordion->hasAttribute('open'));
+        $this->assertSame('فروشگاه', trim($xpath->query('./h3', $shopAccordion)->item(0)->textContent));
+        $this->assertFalse($shopAccordion->hasAttribute('open'));
         $this->assertSame(1, $xpath->query('.//a[@href="'.route('products.index').'" and normalize-space(.)="همه محصولات"]', $shopAccordion)->length);
         $active = $xpath->query('.//a[@aria-current="page"]', $menu);
         $this->assertSame($current ? 1 : 0, $active->length);

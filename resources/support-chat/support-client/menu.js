@@ -4,7 +4,7 @@ export function chatMenu(win,ui){
     const top=document.createElement('div');top.className='support-drawer-header';const heading=document.createElement('h5');heading.textContent='گزینه‌های گفتگو';
     const back=document.createElement('button');back.type='button';back.textContent='بازگشت';top.append(heading,back);
     const body=document.createElement('div');body.className='support-drawer-body';const recovery=document.createElement('section');recovery.className='support-recovery-options';
-    const info=document.createElement('details');info.className='support-chat-info';const summary=document.createElement('summary');summary.textContent='اطلاعات گفتگو';info.append(summary,ui.panel);
+    const info=document.createElement('section');info.className='support-chat-info';const summary=document.createElement('h3');summary.textContent='اطلاعات گفتگو';info.append(summary,ui.panel);
     body.append(recovery,info);drawer.append(top,body);win.append(drawer);
     const toggle=document.createElement('button');toggle.type='button';toggle.className='support-menu-toggle';toggle.innerHTML='<span class="support-icon" aria-hidden="true">settings</span>';toggle.setAttribute('aria-label','تنظیمات گفتگو');toggle.title='تنظیمات گفتگو';toggle.setAttribute('aria-controls',drawer.id);toggle.setAttribute('aria-expanded','false');
     const actions=win.querySelector('.chat-header-actions');if(!win.hasAttribute('data-support-stable-shell'))actions.prepend(toggle);

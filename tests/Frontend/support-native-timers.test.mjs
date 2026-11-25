@@ -18,6 +18,7 @@ test('real Chromium Window timers survive ownership selection, expiry and logout
  try{
   const source=readFileSync(fileURLToPath(new URL('../../resources/support-chat/operator/reply-ownership.js',import.meta.url)));
   const module='data:text/javascript;base64,'+source.toString('base64');
+  const menuModule='data:text/javascript;base64,'+readFileSync(fileURLToPath(new URL('../../resources/support-chat/support-client/action-menu.js',import.meta.url))).toString('base64');
   const html=`<!doctype html><meta charset="utf-8"><body>pending<script type="module">
    try {
     const {ReplyOwnership}=await import(${JSON.stringify(module)});
@@ -35,6 +36,15 @@ test('real Chromium Window timers survive ownership selection, expiry and logout
     await new Promise(resolve=>globalThis.setTimeout(resolve,1100));
     assert(!model.blocked()&&changes>=7,'Native timeout expiration');
     model.clear();
+    const {actionMenu}=await import(${JSON.stringify(menuModule)});
+    const panel=document.createElement('div'),toggle=document.createElement('button'),action=document.createElement('button');
+    panel.append(toggle,action);document.body.append(panel);actionMenu(panel,toggle);
+    toggle.click();assert(panel.open&&toggle.getAttribute('aria-expanded')==='true','Button opens action menu');
+    action.focus();action.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    assert(!panel.open&&document.activeElement===toggle,'Escape closes and restores focus');
+    panel.open=true;assert(toggle.getAttribute('aria-expanded')==='true','Lifecycle open state remains synchronized');
+    const outside=document.createElement('button');document.body.append(outside);outside.focus();
+    assert(!panel.open,'Moving focus outside closes menu');
     document.body.textContent=JSON.stringify({result:'NATIVE_OWNERSHIP_TIMERS_PASS'});
    } catch(error) { document.body.textContent=JSON.stringify({result:'NATIVE_OWNERSHIP_TIMERS_FAIL',message:error.message,stack:error.stack}); }
   </script>`;

@@ -96,6 +96,9 @@ function initFaqAndChannels(win,cfg){
    details.className='v2-faq-item';
    const summary=document.createElement('summary');
    appendLatinText(summary,item.q||'');
+   const chevron=document.createElementNS('http://www.w3.org/2000/svg','svg');
+   chevron.classList.add('v2-faq-chevron');chevron.setAttribute('viewBox','0 0 24 24');chevron.setAttribute('aria-hidden','true');
+   const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','m6 9 6 6 6-6');path.setAttribute('fill','none');path.setAttribute('stroke','currentColor');path.setAttribute('stroke-width','2');chevron.append(path);summary.append(chevron);
    const body=document.createElement('div');
    body.className='v2-faq-item__body';
    const p=document.createElement('p');

@@ -197,8 +197,8 @@
             @enderror
         </div>
 
-        <details class="admin-advanced-details" @if($product->galleryImages() || $hasGalleryErrors) open @endif>
-            <summary>گالری تصاویر و متن جایگزین (اختیاری)</summary>
+        <section class="admin-advanced-details">
+            <h2>گالری تصاویر و متن جایگزین (اختیاری)</h2>
             <div class="space-y-4 pt-3">
                 <div>
                     <label class="label" for="image_alt">متن جایگزین تصویر اصلی</label>
@@ -249,11 +249,11 @@
                     @endforeach
                 </fieldset>
             </div>
-        </details>
+        </section>
     </div>
 
-    <details class="admin-section admin-advanced-details space-y-3" @if($existingSpecs || $errors->hasAny(['spec_labels', 'spec_values', 'spec_labels.*', 'spec_values.*'])) open @endif>
-        <summary>مشخصات فنی (اختیاری)</summary>
+    <section class="admin-section admin-advanced-details space-y-3">
+        <h2>مشخصات فنی (اختیاری)</h2>
         <p class="text-xs leading-6 text-slate-500">هر ردیف یک «برچسب و مقدار» است؛ ردیف‌های خالی نادیده گرفته می‌شوند.</p>
 
         <div id="spec-rows" class="space-y-3" data-spec-next-index="{{ $specNextIndex }}">
@@ -322,12 +322,12 @@
         </template>
 
         <button type="button" class="btn btn-secondary" data-add-spec-row>افزودن ردیف مشخصات</button>
-    </details>
+    </section>
 
     @include('admin.products._storefront')
 
-    <details class="admin-section admin-advanced-details space-y-4" @if($hasAdvancedErrors) open @endif>
-        <summary>تنظیمات پیشرفته و فنی (اسلاگ، داده نمونه و تاریخ قیمت)</summary>
+    <section class="admin-section admin-advanced-details space-y-4" >
+        <h2>تنظیمات پیشرفته و فنی (اسلاگ، داده نمونه و تاریخ قیمت)</h2>
         <div class="grid gap-4 pt-2 sm:grid-cols-2">
             <div>
                 <label class="label" for="slug">اسلاگ (نشانی دستی)</label>
@@ -362,7 +362,7 @@
                 </label>
             </div>
         </div>
-    </details>
+    </section>
 
     <div class="admin-form-footer">
         <button type="submit" class="btn btn-primary">{{ $submitLabel }}</button>

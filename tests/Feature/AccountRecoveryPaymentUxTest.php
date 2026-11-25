@@ -274,7 +274,7 @@ class AccountRecoveryPaymentUxTest extends TestCase
 
         $this->get(route('payments.result', $attempt->public_id))
             ->assertOk()
-            ->assertSee('پرداخت تأیید شد')
+            ->assertSee('پرداخت با موفقیت انجام شد')
             ->assertSee('تاریخ و ساعت پرداخت')
             ->assertSee($expectedDisplay);
 

@@ -28,6 +28,6 @@ export function overlayControls(){
   dialog.addEventListener('close',()=>{document.body.classList.toggle('overlay-open',!!document.querySelector('dialog[open]'));for(const {el,top,left,tail}of positions.get(dialog)||[]){el.scrollTop=tail?el.scrollHeight:top;el.scrollLeft=left;}const origin=origins.get(dialog);if(origin?.isConnected&&origin.getClientRects().length)origin.focus({preventScroll:true});});
  }
  document.addEventListener('pointerdown',event=>{for(const menu of document.querySelectorAll('.operator-account-menu[open]'))if(!menu.contains(event.target))menu.open=false;});
- document.addEventListener('keydown',event=>{if(event.key!=='Escape'||document.querySelector('dialog[open]'))return;const menu=document.querySelector('.operator-account-menu[open]');if(menu){menu.open=false;menu.querySelector('summary').focus();event.preventDefault();}});
+ document.addEventListener('keydown',event=>{if(event.key!=='Escape'||document.querySelector('dialog[open]'))return;const menu=document.querySelector('.operator-account-menu[open]');if(menu){menu.open=false;menu.querySelector('[data-support-menu-toggle]').focus();event.preventDefault();}});
  return {open(dialog){const ok=open(dialog);document.body.classList.toggle('overlay-open',!!document.querySelector('dialog[open]'));return ok;},close,pending,saved};
 }
