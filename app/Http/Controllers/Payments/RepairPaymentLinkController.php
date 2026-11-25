@@ -15,6 +15,7 @@ use App\Support\RepairPaymentCode;
 use App\Support\RepairTracking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
@@ -143,12 +144,25 @@ class RepairPaymentLinkController extends Controller
             );
         }
 
+        $isCancelled = $attempt->state === 'failed' && DB::table('payment_events')
+            ->where('payment_attempt_id', $attempt->id)
+            ->where('event', 'gateway_canceled')
+            ->exists();
+
+        $attemptAtDisplay = PaymentDate::formatPaidAt(null, $attempt->updated_at ?? $attempt->created_at);
+        $alreadyPaid = $attempt->state === 'settled'
+            && $attempt->verified_at !== null
+            && $attempt->verified_at->lt(now()->subMinutes(2));
+
         return view('payments.result', [
             'attempt' => $attempt,
             'document' => $document,
             'isOrder' => false,
+            'isCancelled' => $isCancelled,
+            'alreadyPaid' => $alreadyPaid,
             'sourceCode' => (string) $case->tracking_reference,
             'paidAtDisplay' => $paidAtDisplay,
+            'attemptAtDisplay' => $attemptAtDisplay,
             'trackingUrl' => RepairTracking::url($case->tracking_reference),
             'retryUrl' => match (true) {
                 $canContinue => URL::temporarySignedRoute('payments.repair.link.connect', now()->addHours(2), ['repair' => $case->public_id, 'payment' => $attempt->public_id]),

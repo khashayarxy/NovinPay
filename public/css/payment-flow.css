@@ -168,3 +168,9 @@ a:focus-visible { outline: 2px solid #075da6; outline-offset: 3px; }
     font-size: .8125rem;
     text-underline-offset: .2em;
 }
+.np-latin {
+    font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+}

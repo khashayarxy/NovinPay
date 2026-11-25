@@ -9,8 +9,8 @@
 @else
     <input class="input" id="{{ $fieldId }}" name="{{ $name }}" type="{{ $type }}" value="{{ $value }}" maxlength="{{ $maxlength }}"
         @if($type === 'number') min="0" max="1000000000" step="1" @endif
-        @if($inputmode || $type === 'tel') inputmode="{{ $inputmode ?? 'tel' }}" @endif
-        @if($type === 'tel') placeholder="۰۹۱۲۳۴۵۶۷۸۹" @endif
+        @if($inputmode || $type === 'tel') inputmode="{{ $inputmode ?? 'numeric' }}" @endif
+        @if($type === 'tel') data-digits-only="{{ min(11, (int) $maxlength) }}" placeholder="۰۹۱۲۳۴۵۶۷۸۹" @endif
         @if($inputmode || in_array($type, ['number', 'tel', 'datetime-local'])) dir="ltr" @endif
         autocomplete="{{ $autocomplete ?? ($type === 'password' ? 'current-password' : 'off') }}" @required($required)
         @error($name) aria-invalid="true" aria-describedby="{{ $fieldId }}-error" @enderror>

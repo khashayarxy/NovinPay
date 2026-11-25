@@ -2,10 +2,19 @@
 <section class="np-account-card">
     <h2>پرداخت و ارسال</h2>
     @if($document)
+        @php
+            $settlementState = $document->settlement();
+            $settlementBadge = match ($settlementState) {
+                'settled' => ['label' => 'پرداخت‌شده', 'class' => 'badge badge-success'],
+                'cleared' => ['label' => 'بدون مانده', 'class' => 'badge badge-success'],
+                'partial' => ['label' => 'پرداخت ناقص', 'class' => 'badge badge-warning'],
+                default => ['label' => 'در انتظار پرداخت', 'class' => 'badge badge-warning'],
+            };
+        @endphp
         <dl class="np-account-kv">
             <div>
                 <dt>وضعیت تسویه</dt>
-                <dd>{{ ['cleared' => 'مبلغی برای پرداخت وجود ندارد.', 'settled' => 'سند تسویه شده است.', 'partial' => 'بخشی از مبلغ پرداخت شده است.', 'unpaid' => 'پرداختی برای این سند ثبت نشده است.'][$document->settlement()] }}</dd>
+                <dd><span class="{{ $settlementBadge['class'] }}">{{ $settlementBadge['label'] }}</span></dd>
             </div>
             @if(! empty($paidAtDisplay))
                 <div>
@@ -28,13 +37,13 @@
             @if($plan?->address_snapshot)
                 <div>
                     <dt>نشانی تحویل</dt>
-                    <dd>{{ implode('، ', array_filter(\Illuminate\Support\Arr::only($plan->address_snapshot, ['province', 'city', 'address']))) }}</dd>
+                    <dd>{{ \App\Support\DeliveryAddress::format($plan->address_snapshot) }}</dd>
                 </div>
             @endif
             @if($plan?->tracking)
                 <div>
                     <dt>کد رهگیری ارسال</dt>
-                    <dd><bdi dir="ltr">{{ $plan->tracking }}</bdi></dd>
+                    <dd><bdi class="np-latin" dir="ltr">{{ $plan->tracking }}</bdi></dd>
                 </div>
             @elseif($plan?->state === 'dispatched')
                 <div>

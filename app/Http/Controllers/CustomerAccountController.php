@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RepairRequestStatus;
 use App\Enums\RepairStage;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
@@ -98,6 +99,7 @@ class CustomerAccountController extends Controller
             'emailChallenge' => $emailState !== null,
             'emailResendAt' => is_string($email) ? (int) $request->session()->get('customer_email_resend_at', 0) : 0,
             'googleEnabled' => app(GoogleAuthService::class)->configured(),
+            'localDevOtp' => app()->isLocal() && $active ? CustomerLogin::localDevOtpFor($pending) : null,
         ]);
     }
 
@@ -482,7 +484,62 @@ class CustomerAccountController extends Controller
             return redirect()->route('account.repairs.show', $case->public_id);
         }
 
-        return view('account.repair', ['repair' => $repair, 'case' => false, 'timeline' => CustomerTimeline::request($repair), 'document' => null, 'plan' => null]);
+        return view('account.repair', [
+            'repair' => $repair,
+            'case' => false,
+            'timeline' => CustomerTimeline::request($repair),
+            'document' => null,
+            'plan' => null,
+            'courierEligible' => $repair->isCourierEligible(),
+            'neshanWebKey' => (string) config('services.neshan.web_key', ''),
+        ]);
+    }
+
+    public function updateRepairHandover(Request $request, string $record): RedirectResponse
+    {
+        $account = Auth::guard('customer')->user();
+        $repair = RepairRequest::query()->where($this->owned($account))->where('tracking_reference', $record)->firstOrFail();
+
+        abort_if(
+            $repair->physicalCase()->exists() || $repair->status !== RepairRequestStatus::OnlineSubmitted,
+            409,
+            'پس از دریافت دستگاه، امکان تغییر نحوهٔ تحویل وجود ندارد.'
+        );
+
+        $input = $request->all();
+        if (isset($input['responsive_phone']) && is_string($input['responsive_phone'])) {
+            $input['responsive_phone'] = RepairIdentity::phone($input['responsive_phone']);
+        }
+
+        $allowedMethods = $repair->isCourierEligible()
+            ? ['self_ship', 'in_person', 'doorstep_pickup']
+            : ['self_ship', 'in_person'];
+
+        $data = Validator::make($input, [
+            'handover_method' => ['required', 'in:'.implode(',', $allowedMethods)],
+            'pickup_address' => ['required_if:handover_method,doorstep_pickup', 'nullable', 'string', 'min:10', 'max:400'],
+            'pickup_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'pickup_longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'responsive_phone' => ['nullable', 'regex:/\A09[0-9]{9}\z/D'],
+        ], [
+            'handover_method.required' => 'لطفاً نحوهٔ تحویل دستگاه را انتخاب کنید.',
+            'handover_method.in' => 'دریافت با پیک در شهر ثبت‌شده فعال نیست.',
+            'pickup_address.required_if' => 'برای دریافت با پیک، وارد کردن نشانی تحویل الزامی است.',
+            'pickup_address.min' => 'نشانی تحویل باید حداقل ۱۰ کاراکتر باشد.',
+            'responsive_phone.regex' => 'شماره تماس پاسخگو باید ۱۱ رقمی معتبر با ۰۹ باشد.',
+        ])->validate();
+
+        $repair->updateHandoverMethod(
+            $data['handover_method'],
+            $data['pickup_address'] ?? null,
+            isset($data['pickup_latitude']) ? (string) $data['pickup_latitude'] : null,
+            isset($data['pickup_longitude']) ? (string) $data['pickup_longitude'] : null,
+            $data['responsive_phone'] ?? null,
+        );
+
+        return redirect()
+            ->route('account.repairs.request', $repair->tracking_reference)
+            ->with('status', 'نحوهٔ تحویل دستگاه با موفقیت به‌روزرسانی شد.');
     }
 
     public function repair(string $record)

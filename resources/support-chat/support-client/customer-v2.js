@@ -68,6 +68,21 @@ function initFaqAndChannels(win,cfg){
  tabFaq.addEventListener('click',()=>setTab('faq'));
  toChatBtn?.addEventListener('click',()=>setTab('chat'));
 
+ const appendLatinText=(el,text)=>{
+  const str=String(text||'');
+  const re=/\b(?:[0-9]+[A-Za-z][A-Za-z0-9._-]*|[A-Za-z][A-Za-z0-9._-]*)\b/g;
+  let last=0,m;
+  while((m=re.exec(str))!==null){
+   if(m.index>last)el.append(document.createTextNode(str.slice(last,m.index)));
+   const bdi=document.createElement('bdi');
+   bdi.className='np-latin';
+   bdi.dir='ltr';
+   bdi.textContent=m[0];
+   el.append(bdi);
+   last=m.index+m[0].length;
+  }
+  if(last<str.length)el.append(document.createTextNode(str.slice(last)));
+ };
  const items=Array.isArray(cfg?.faq_items)?cfg.faq_items:[];
  const renderFaq=(query='')=>{
   if(!faqList)return;
@@ -80,11 +95,11 @@ function initFaqAndChannels(win,cfg){
    const details=document.createElement('details');
    details.className='v2-faq-item';
    const summary=document.createElement('summary');
-   summary.textContent=item.q||'';
+   appendLatinText(summary,item.q||'');
    const body=document.createElement('div');
    body.className='v2-faq-item__body';
    const p=document.createElement('p');
-   p.textContent=item.a||'';
+   appendLatinText(p,item.a||'');
    body.append(p);
    if(item.link&&typeof item.link==='string'&&item.link.startsWith('/')){
     const a=document.createElement('a');

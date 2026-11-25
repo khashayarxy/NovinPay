@@ -121,7 +121,7 @@
 .product-faq summary { cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: .65rem; min-height: 47px; padding: .45rem .15rem; list-style: none; font-size: .93rem; font-weight: 680; }
 .product-faq summary::-webkit-details-marker { display: none; }
 .product-faq details[open] summary { color: #00569f; }
-.product-faq-answer { max-inline-size: 72ch; padding-block-end: .7rem; color: var(--p-muted); font-size: .9rem; }
+.product-faq-answer { max-inline-size: none; width: 100%; padding-block-end: .7rem; color: var(--p-muted); font-size: .9rem; }
 .product-accordion-icon { flex: none; position: relative; width: 1.35rem; height: 1.35rem; border-radius: .3rem; background: #eaf3fb; }
 .product-accordion-icon::before,.product-accordion-icon::after { content: ""; position: absolute; inset: 50% auto auto 50%; width: .55rem; height: 2px; background: #285575; transform: translate(-50%,-50%); }
 .product-accordion-icon::after { transform: translate(-50%,-50%) rotate(90deg); }

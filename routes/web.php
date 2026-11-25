@@ -109,6 +109,7 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
     Route::middleware(EnsureCustomerSession::class)->group(function () use ($controller): void {
         Route::get('/', [$controller, 'index'])->name('index');
         Route::get('/repairs/requests/{record}', [$controller, 'repairRequest'])->where('record', '[A-Za-z0-9-]{1,35}')->name('repairs.request');
+        Route::patch('/repairs/requests/{record}/handover', [$controller, 'updateRepairHandover'])->where('record', '[A-Za-z0-9-]{1,35}')->middleware('throttle:20,1')->name('repairs.request.handover');
         Route::get('/repairs/{record}', [$controller, 'repair'])->whereUuid('record')->name('repairs.show');
         Route::get('/orders/{record}', [$controller, 'order'])->whereUuid('record')->name('orders.show');
         Route::post('password', [$controller, 'password'])->middleware('throttle:10,1')->name('password.update');
@@ -158,7 +159,10 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
         Route::get('/{payment}/connect', [$payment, 'connect'])->whereUuid('payment')->middleware('throttle:60,1')->name('connect');
         Route::get('/{payment}/gateway', [$payment, 'gateway'])->whereUuid('payment')->middleware('throttle:60,1')->name('gateway');
         Route::get('/{payment}/result', [$payment, 'result'])->whereUuid('payment')->name('result');
+        Route::post('/{payment}/retry', [$payment, 'retry'])->whereUuid('payment')->middleware('throttle:20,1')->name('retry');
         Route::get('/{payment}/status', [$payment, 'paymentStatus'])->whereUuid('payment')->middleware('throttle:60,1')->name('status');
+        Route::get('/{payment}/local-simulator', [$payment, 'localSimulator'])->whereUuid('payment')->name('local-simulator');
+        Route::post('/{payment}/local-simulator', [$payment, 'localSimulatorComplete'])->whereUuid('payment')->name('local-simulator.complete');
     });
     Route::get('/pay/{page}.html', [$payment, 'page'])->whereIn('page', ['index', 'canceled', 'error', 'failed', 'paid', 'processing', 'success'])->name('payments.page');
     Route::get('/bot/payment_verify.php', [$payment, 'callback'])->middleware('throttle:120,1')->name('payments.legacy.callback');

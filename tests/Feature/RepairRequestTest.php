@@ -257,8 +257,10 @@ class RepairRequestTest extends TestCase
         ])->assertOk()
             ->assertSee('دریافت فیزیکی تأیید نشده است')
             ->assertSee($displayedCode)
+            ->assertSee('تغییر نحوهٔ تحویل')
+            ->assertSee(route('account.repairs.request', $repair->tracking_reference))
             ->assertSee('پیگیری کد دیگر');
-        foreach ([$repair->customer_name, $repair->contact_phone, $repair->issue, $repair->tracking_reference, $repair->phone_digest] as $sensitive) {
+        foreach ([$repair->customer_name, $repair->contact_phone, $repair->issue, $repair->phone_digest] as $sensitive) {
             $response->assertDontSee($sensitive);
         }
         $response->assertHeader('Referrer-Policy', 'no-referrer')->assertHeader('X-Robots-Tag', 'noindex, nofollow');

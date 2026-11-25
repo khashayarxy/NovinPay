@@ -300,7 +300,7 @@
                             </div>
                             <div class="public-field">
                                 <label for="responsive_phone">شماره تماس پاسخگو جهت هماهنگی پیک (اختیاری)</label>
-                                <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input" dir="ltr" inputmode="tel" maxlength="20" placeholder="در صورت تفاوت با شماره حساب، مثلاً ۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
+                                <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" placeholder="در صورت تفاوت با شماره حساب، مثلاً ۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
                                 <p class="public-hint">اگر فرد دیگری دستگاه را تحویل پیک می‌دهد، شماره پاسخگو را اینجا وارد کنید.</p>
                                 <p class="public-field-error" data-field-error="responsive_phone" role="alert" @unless($errors->has('responsive_phone')) hidden @endunless>@error('responsive_phone'){{ $message }}@enderror</p>
                             </div>
@@ -338,7 +338,7 @@
                                 <div class="public-field">
                                     <label for="repair_auth_phone">شماره موبایل <span aria-hidden="true">*</span></label>
                                     <div class="repair-inline-auth__row">
-                                        <input id="repair_auth_phone" type="tel" class="input" dir="ltr" inputmode="tel" autocomplete="tel-national" maxlength="20" placeholder="۰۹۱۲۳۴۵۶۷۸۹">
+                                        <input id="repair_auth_phone" type="tel" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel-national" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹">
                                         <button type="button" class="np-button np-button--primary" data-auth-send-btn>ارسال کد تأیید</button>
                                     </div>
                                     <p class="public-field-error" data-field-error="repair_auth_phone" role="alert" hidden></p>
@@ -350,10 +350,15 @@
                                     <span>کد تأیید به شماره <strong dir="ltr" data-auth-phone-display>{{ $authDisplayPhone ?? '' }}</strong> ارسال شد.</span>
                                     <button type="button" class="repair-recovery-edit-btn" data-auth-change-phone>تغییر شماره موبایل</button>
                                 </div>
+                                @if (app()->isLocal())
+                                    <p class="public-field-hint" data-local-dev-otp @if(empty($localDevOtp)) hidden @endif style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;margin-block-end:10px;">
+                                        کد تأیید لوکال (فقط محیط توسعه): <strong class="np-latin" dir="ltr" data-local-dev-otp-code>{{ $localDevOtp ?? '' }}</strong>
+                                    </p>
+                                @endif
                                 <div class="public-field">
                                     <label for="repair_auth_code">کد تأیید شش‌رقمی <span aria-hidden="true">*</span></label>
                                     <div class="repair-inline-auth__row">
-                                        <input id="repair_auth_code" type="text" class="input" dir="ltr" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="۱۲۳۴۵۶">
+                                        <input id="repair_auth_code" type="text" class="input" dir="ltr" inputmode="numeric" data-digits-only="6" autocomplete="one-time-code" maxlength="6" placeholder="۱۲۳۴۵۶">
                                         <button type="button" class="np-button np-button--primary" data-auth-verify-btn>تأیید شماره</button>
                                     </div>
                                     <p class="public-field-error" data-field-error="repair_auth_code" role="alert" hidden></p>
@@ -373,7 +378,7 @@
                             <input id="customer_name" name="customer_name" value="{{ $customerName }}" class="input" autocomplete="name" required minlength="2" maxlength="100" aria-invalid="{{ $errors->has('customer_name') ? 'true' : 'false' }}" aria-describedby="customer_name-feedback">
                         </x-repair-field>
                         <x-repair-field name="contact_phone" label="شماره موبایل" :required="false">
-                            <input readonly value="{{ \App\Support\FaNumber::digits(auth('customer')->user()?->phone ?? '') }}" type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="tel" autocomplete="tel" maxlength="40" placeholder="پس از تأیید شماره ثبت می‌شود" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
+                            <input readonly value="{{ \App\Support\FaNumber::digits(auth('customer')->user()?->phone ?? '') }}" type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel" maxlength="11" placeholder="پس از تأیید شماره ثبت می‌شود" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
                         </x-repair-field>
                     </div>
                     <div class="repair-step-actions">

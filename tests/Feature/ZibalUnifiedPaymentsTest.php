@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Services\Notifications\PatternSms;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Services\ZibalGateway;
+use App\Services\ZibalPayments;
 use App\Support\RepairIdentity;
 use App\Support\RepairPaymentCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -185,8 +186,11 @@ class ZibalUnifiedPaymentsTest extends TestCase
 
         $this->get('https://novinpaypos.test/payments/'.$attempt->public_id.'/result')
             ->assertOk()
-            ->assertSee('پرداخت انجام نشد')
-            ->assertSee('تلاش مجدد برای پرداخت');
+            ->assertSee('t-amber')
+            ->assertSee('انصراف از پرداخت')
+            ->assertDontSee('۷۲ ساعت')
+            ->assertSee('تلاش مجدد برای پرداخت')
+            ->assertSee(route('payments.retry', $attempt->public_id));
     }
 
     public function test_repair_direct_payment_link_generation_guest_zibal_payment_and_events(): void
@@ -305,7 +309,8 @@ class ZibalUnifiedPaymentsTest extends TestCase
 
         $this->get($cb->headers->get('Location'))
             ->assertOk()
-            ->assertSee('پرداخت انجام نشد')
+            ->assertSee('t-amber')
+            ->assertSee('انصراف از پرداخت')
             ->assertSee('تلاش مجدد برای پرداخت');
     }
 
@@ -570,6 +575,93 @@ class ZibalUnifiedPaymentsTest extends TestCase
         $this->seedChargeEntry($document, 'repair', $minor);
 
         return [$case, $document];
+    }
+
+    public function test_failed_payment_retry_post_creates_new_attempt_and_redirects_to_gateway_and_local_simulator_is_404_in_testing(): void
+    {
+        $this->assertFalse(app(ZibalGateway::class)->isLocalSimulator());
+
+        [, $document] = $this->createPayableOrder(1500000);
+
+        Http::fake([
+            'https://gateway.zibal.ir/v1/request' => Http::sequence()
+                ->push(['result' => 100, 'trackId' => 111111111], 200)
+                ->push(['result' => 100, 'trackId' => 222222222], 200),
+            'https://gateway.zibal.ir/v1/verify' => Http::response(['result' => 202], 200),
+            'https://gateway.zibal.ir/v1/inquiry' => Http::response(['result' => 100, 'status' => 4], 200),
+        ]);
+
+        $this->actingAs($this->account, 'customer')
+            ->withSession(['customer_session_version' => 1]);
+
+        $this->post('https://novinpaypos.test/payments/documents/'.$document->public_id.'/zibal', [
+            'amount' => '15000.00',
+            'operation_key' => (string) Str::uuid(),
+        ])->assertRedirect();
+
+        $failedAttempt = PaymentAttempt::query()->sole();
+        $failedAttempt->state = 'failed';
+        $failedAttempt->save();
+
+        $this->get('https://novinpaypos.test/payments/'.$failedAttempt->public_id.'/local-simulator')
+            ->assertNotFound();
+
+        $retryResponse = $this->post('https://novinpaypos.test/payments/'.$failedAttempt->public_id.'/retry');
+        $newAttempt = PaymentAttempt::query()->where('id', '!=', $failedAttempt->id)->sole();
+        $retryResponse->assertRedirect('https://novinpaypos.test/payments/'.$newAttempt->public_id.'/gateway');
+    }
+
+    public function test_local_simulator_outcomes_paid_cancelled_failed_work_when_app_env_is_local(): void
+    {
+        $this->app->detectEnvironment(fn () => 'local');
+        config()->set('payments.zibal.enabled', false);
+        config()->set('payments.zibal.live_requests', false);
+
+        $gateway = app(ZibalGateway::class);
+        $payments = app(ZibalPayments::class);
+        $this->assertTrue($gateway->isLocalSimulator());
+        $this->assertTrue($gateway->available());
+
+        [, $document] = $this->createPayableOrder(1500000);
+
+        $this->actingAs($this->account, 'customer')
+            ->withSession(['customer_session_version' => 1]);
+
+        $attempt1 = $payments->start($this->account, $document->public_id, 1500000, (string) Str::uuid());
+        $this->get('https://novinpaypos.test/payments/'.$attempt1->public_id.'/connect')
+            ->assertOk()
+            ->assertSee('/payments/'.$attempt1->public_id.'/local-simulator');
+
+        $this->post('https://novinpaypos.test/payments/'.$attempt1->public_id.'/local-simulator', ['_token' => csrf_token(), 'outcome' => 'cancelled'])
+            ->assertRedirect('https://novinpaypos.test/payments/'.$attempt1->public_id.'/result');
+        $this->get('https://novinpaypos.test/payments/'.$attempt1->public_id.'/result')
+            ->assertOk()
+            ->assertSee('t-amber')
+            ->assertSee('انصراف از پرداخت')
+            ->assertDontSee('۷۲ ساعت');
+
+        $retry = $this->post('https://novinpaypos.test/payments/'.$attempt1->public_id.'/retry', ['_token' => csrf_token()]);
+        $attempt2 = PaymentAttempt::query()->where('id', '!=', $attempt1->id)->sole();
+        $retry->assertRedirect('https://novinpaypos.test/payments/'.$attempt2->public_id.'/gateway');
+
+        $this->post('https://novinpaypos.test/payments/'.$attempt2->public_id.'/local-simulator', ['_token' => csrf_token(), 'outcome' => 'failed'])
+            ->assertRedirect('https://novinpaypos.test/payments/'.$attempt2->public_id.'/result');
+        $this->get('https://novinpaypos.test/payments/'.$attempt2->public_id.'/result')
+            ->assertOk()
+            ->assertSee('t-red')
+            ->assertSee('تراکنش ناموفق')
+            ->assertSee('۷۲ ساعت');
+
+        $retry2 = $this->post('https://novinpaypos.test/payments/'.$attempt2->public_id.'/retry', ['_token' => csrf_token()]);
+        $attempt3 = PaymentAttempt::query()->whereNotIn('id', [$attempt1->id, $attempt2->id])->sole();
+        $retry2->assertRedirect('https://novinpaypos.test/payments/'.$attempt3->public_id.'/gateway');
+
+        $this->post('https://novinpaypos.test/payments/'.$attempt3->public_id.'/local-simulator', ['_token' => csrf_token(), 'outcome' => 'paid'])
+            ->assertRedirect('https://novinpaypos.test/payments/'.$attempt3->public_id.'/result');
+        $this->get('https://novinpaypos.test/payments/'.$attempt3->public_id.'/result')
+            ->assertOk()
+            ->assertSee('t-green')
+            ->assertSee('پرداخت تأیید شد');
     }
 
     private function seedChargeEntry(FinancialDocument $document, string $category, int $minor): void

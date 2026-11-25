@@ -424,7 +424,7 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->get(route('payments.result', $attempt->public_id))->assertOk()
             ->assertSee('پیگیری سفارش')->assertSee(route('account.orders.show', $order->public_id));
         $this->get(route('account.orders.show', $order->public_id))->assertOk()
-            ->assertSee('کد <bdi dir="ltr">'.FaNumber::digits($shortCode).'</bdi>', false)
+            ->assertSee('کد <bdi class="np-latin" dir="ltr">'.$shortCode.'</bdi>', false)
             ->assertDontSee($order->public_id)
             ->assertDontSee('موجودی رزرو شد')
             ->assertDontSee('مشاهده سند و رسیدها')
@@ -467,12 +467,13 @@ class MultiStepCheckoutZibalTest extends TestCase
 
         $result = $this->get('https://novinpaypos.test/payments/'.$attempt->public_id.'/result')
             ->assertOk()
-            ->assertSee('css/payment-flow.css?v=', false)
-            ->assertSee('پرداخت انجام نشد')
+            ->assertSee('pay/assets/pay.css?v=', false)
+            ->assertSee('t-red')
+            ->assertSee('تراکنش ناموفق')
             ->assertSee('۴٬۵۰۰٬۰۰۰ تومان')
             ->assertDontSee('.۰۰')
+            ->assertSee(route('payments.retry', $attempt->public_id))
             ->assertSeeInOrder(['تلاش مجدد برای پرداخت', 'بازگشت به سبد خرید']);
-        $this->assertSame(2, substr_count($result->getContent(), '<a class="payment-button'));
 
         $order = SalesOrder::query()->sole();
         $this->assertSame('پرداخت ناموفق؛ در انتظار پرداخت', CustomerTimeline::orderStatus($order));

@@ -828,7 +828,8 @@
         triggers.forEach(element => element.setAttribute('aria-expanded', String(element.dataset.storefrontOpen === dialog.id)));
         dialog.showModal();
         layers.get(dialog.id)?.show?.();
-        const target = focus || (!dialog.dataset.cartUrl && dialog.querySelector('input:not([type="hidden"]), iframe')) || dialog.querySelector('[data-storefront-close]');
+        const isSearchDialog = dialog.id === 'search-dialog';
+        const target = focus || (isSearchDialog && dialog.querySelector('input:not([type="hidden"])')) || dialog.querySelector('[data-storefront-close]');
         target?.focus({preventScroll: true});
         if (dialog.dataset.cartUrl) {
             if (pendingQtySync.size > 0) {
@@ -958,15 +959,39 @@
             },
         });
     }
-    const filters = document.querySelector('[data-catalog-filters]');
+    const filters = document.querySelector('[data-desktop-filter-form]');
     if (filters) {
-        const dialog = document.getElementById('catalog-filter-dialog');
-        const sidebar = filters.parentElement;
-        dialog.querySelector('[data-filter-slot]').append(filters);
-        sidebar.hidden = true;
-        document.body.classList.add('catalog-filter-ready');
-
+        filters.querySelectorAll('[data-auto-submit-filter]').forEach((input) => {
+            input.addEventListener('change', () => filters.submit());
+        });
     }
+    document.querySelectorAll('.store-filter-dialog').forEach((sheet) => {
+        if (!dialogs.has(sheet)) return;
+        const entry = dialogs.get(sheet);
+        entry.beforeClose = () => {
+            sheet.classList.add('is-closing');
+            if (getComputedStyle(sheet).animationName === 'none') {
+                sheet.classList.remove('is-closing');
+                return;
+            }
+            return new Promise((resolve) => {
+                let done = false;
+                const finishAnimation = () => {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timer);
+                    sheet.removeEventListener('animationend', onEnd);
+                    sheet.classList.remove('is-closing');
+                    resolve();
+                };
+                const onEnd = (event) => {
+                    if (event.target === sheet) finishAnimation();
+                };
+                const timer = setTimeout(finishAnimation, 240);
+                sheet.addEventListener('animationend', onEnd);
+            });
+        };
+    });
     window.addEventListener('popstate', restoreLayer);
     window.addEventListener('pagehide', () => finish(false));
     window.addEventListener('pageshow', restoreLayer);

@@ -342,6 +342,13 @@
     .np-mobile-drawer__account { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #d5e6f5; border-radius: 11px; background: #f1f7fd; color: #075da6; font-size: 14px; font-weight: 500; transition: background-color 140ms ease, border-color 140ms ease; }
     .np-mobile-drawer__account:hover { background: #e3f0fc; border-color: #b5d5f2; }
     .np-mobile-drawer__account .np-nav-icon { width: 19px; height: 19px; flex: none; color: #075da6; }
+    .np-mobile-drawer__cart { background: #ffffff; border-color: #dce7f2; color: #0b2239; }
+    .np-mobile-drawer__cart .store-cart-count { margin-inline-start: auto; position: static; transform: none; min-width: 22px; height: 22px; padding-inline: 6px; border-radius: 999px; background: #075da6; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+    .np-mobile-drawer__cart .store-cart-count:empty,
+    .np-mobile-drawer__cart .store-cart-count[hidden] { display: none; }
+    .np-mobile-drawer__cart .np-drawer-arrow { margin-inline-start: 4px; }
+    .np-mobile-drawer__cart .store-cart-count[hidden] + .np-drawer-arrow,
+    .np-mobile-drawer__cart .store-cart-count:empty + .np-drawer-arrow { margin-inline-start: auto; }
     .np-mobile-menu :is(button, a):focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 3px; }
     .homepage .np-hero__grid { grid-template-columns: 1fr; padding-block: 12px 28px; gap: 8px; }
     .homepage .np-hero__copy { grid-column: 1; grid-row: 2; }

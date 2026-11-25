@@ -139,7 +139,7 @@
                                     <input type="hidden" name="challenge" value="{{ $emailChallengeId }}">
                                     <label for="account-email-code" class="sr-only">کد تأیید شش‌رقمی</label>
                                     <div class="np-otp-boxes is-enhanced" data-otp-boxes dir="ltr" @if($errors->has('code')) data-otp-error @endif>
-                                        <input id="account-email-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" required>
+                                        <input id="account-email-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" data-digits-only="6" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" required>
                                         <div class="np-otp-boxes__grid" data-otp-grid>
                                             @for($slot = 0; $slot < 6; $slot++)
                                                 <input type="text" inputmode="numeric" maxlength="6" class="np-otp-box" aria-label="رقم {{ \App\Support\FaNumber::digits($slot + 1) }}" autocomplete="{{ $slot === 0 ? 'one-time-code' : 'off' }}">
@@ -175,7 +175,7 @@
                                     @if($recovery)<input type="hidden" name="recover" value="1">@endif
                                     <label for="account-code" class="sr-only">کد تأیید شش‌رقمی</label>
                                     <div class="np-otp-boxes is-enhanced" data-otp-boxes dir="ltr" @if($errors->has('code')) data-otp-error @endif>
-                                        <input id="account-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" aria-describedby="code-expiry account-otp-error" @if($errors->has('code')) aria-invalid="true" @endif required>
+                                        <input id="account-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" data-digits-only="6" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" aria-describedby="code-expiry account-otp-error" @if($errors->has('code')) aria-invalid="true" @endif required>
                                         <div class="np-otp-boxes__grid" data-otp-grid>
                                             @for($slot = 0; $slot < 6; $slot++)
                                                 <input type="text" inputmode="numeric" maxlength="6" class="np-otp-box" aria-label="رقم {{ \App\Support\FaNumber::digits($slot + 1) }}" autocomplete="{{ $slot === 0 ? 'one-time-code' : 'off' }}">
@@ -183,6 +183,11 @@
                                         </div>
                                     </div>
                                     <small id="code-expiry" class="np-auth__hint">کد تا دو دقیقه معتبر است.</small>
+                                    @if (app()->isLocal() && ! empty($localDevOtp))
+                                        <p class="np-auth__hint" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;margin-block:8px;" data-local-dev-otp>
+                                            کد تأیید لوکال (فقط محیط توسعه): <strong class="np-latin" dir="ltr">{{ $localDevOtp }}</strong>
+                                        </p>
+                                    @endif
                                     <p id="account-otp-error" class="np-account-otp-error" role="alert" hidden></p>
                                     <button type="submit" class="np-account-primary" data-verify-wait="{{ $wait('verify') }}">{{ $recovery ? 'تأیید و انتخاب رمز' : 'ورود به پنل کاربری' }}</button>
                                     <small class="sr-only" role="status" data-otp-pending hidden>در حال بررسی کد…</small>

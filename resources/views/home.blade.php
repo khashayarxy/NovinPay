@@ -9,7 +9,7 @@
             <div class="np-hero__copy">
                 <p class="np-eyebrow">به {{ config('business.name') }} خوش آمدید</p>
                 <h1 id="hero-title">فروش و تعمیر <span>کارتخوان</span></h1>
-                <p class="np-hero__description">انواع دستگاه‌های کارتخوان از برندهای معتبر، همراه با راه‌اندازی، پشتیبانی و تعمیر تخصصی.</p>
+                <p class="np-hero__description">از برندهای معتبر؛ همراه با راه‌اندازی، گارانتی و پشتیبانی تخصصی.</p>
                 <div class="np-hero__actions">
                     <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده محصولات<x-home.icon name="arrow-left" /></a>
                     <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />ثبت درخواست تعمیر<x-home.icon name="arrow-left" /></a>

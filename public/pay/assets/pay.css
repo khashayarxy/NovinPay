@@ -143,13 +143,13 @@ h1, h2, h3, h4, h5, h6 {
 .icon.live .hand { transform-origin: 12px 12px; animation: spin 2.4s linear infinite; }
 
 /* ---------- متن‌ها ---------- */
-h2 { font-size: 1.6rem; color: var(--title); margin-bottom: 12px; line-height: 1.5; }
+h1, h2 { font-size: 1.6rem; color: var(--title); margin-bottom: 12px; line-height: 1.5; }
 p { color: #475569; font-size: 1rem; line-height: 1.9; }
 .reason { margin-top: 8px; color: #334155; }
 .reason:empty { display: none; }
 .ph { display: inline-block; }
 .ln { display: block; }
-h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
+h1, h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
 .hint { font-size: .875rem; color: #64748b; margin: 6px 0; line-height: 1.9; }
 
 /* ---------- ردیف‌های اطلاعات ---------- */
@@ -271,7 +271,7 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
     body { padding: 14px; }
     .container { padding: 32px 18px; }
     .info-box { padding: 14px 12px; }
-    h2 { font-size: 1.4rem; }
+    h1, h2 { font-size: 1.4rem; }
     .icon-wrap, .icon { width: 64px; height: 64px; }
     .icon svg { width: 30px; height: 30px; }
 }
@@ -279,4 +279,77 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
     *, *::before, *::after { animation: none !important; transition: none !important; }
     .icon path, .icon circle { stroke-dashoffset: 0; }
     .confetti-container { display: none; }
+}
+
+/* ---------- پوستهٔ برند و کنترل‌های نوین‌پی ---------- */
+.payment-warning-shell {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 480px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
+.payment-warning-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 26px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.96);
+    border-radius: 999px;
+    box-shadow: 0 12px 28px -10px rgba(15, 23, 42, 0.1), 0 2px 6px rgba(15, 23, 42, 0.04);
+    backdrop-filter: blur(10px);
+}
+.payment-warning-brand img { display: block; width: 132px; height: auto; }
+.btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+.btn-group form { margin: 0; display: inline-flex; }
+.btn-group .btn { margin-top: 0; }
+.btn.btn--secondary {
+    background: #f1f5f9;
+    color: #334155;
+    box-shadow: none;
+    border: 1px solid #cbd5e1;
+}
+.btn.btn--secondary:hover { background: #e2e8f0; filter: none; }
+.pay-copy-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.pay-copy-btn {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #334155;
+    border-radius: 8px;
+    padding: 3px 9px;
+    font-size: .78rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+.pay-copy-btn:hover { background: #e2e8f0; color: #0f172a; }
+.pay-support-link {
+    margin-top: 14px;
+    font-size: .86rem;
+    color: #64748b;
+}
+.pay-support-link a {
+    color: var(--title);
+    font-weight: 600;
+    text-underline-offset: .22em;
+}
+.np-latin {
+    font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
 }

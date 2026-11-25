@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\AdminAction;
+use App\Enums\RepairBrand;
+use App\Enums\RepairRequestStatus;
+use App\Enums\RepairStage;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
 use App\Models\CustomerAddress;
+use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\User;
 use App\Services\CustomerAccountLink;
@@ -579,5 +583,101 @@ class CustomerAccountTest extends TestCase
         $this->assertSame($customer->id, $account->fresh()->customer_id);
         Auth::guard('customer')->forgetUser();
         $this->get('/account')->assertRedirect('/login');
+    }
+
+    public function test_repair_handover_method_can_be_changed_before_physical_receipt_and_is_blocked_after(): void
+    {
+        $account = $this->loginCustomer();
+
+        $repair = new RepairRequest;
+        $repair->forceFill([
+            'customer_account_id' => $account->id,
+            'tracking_reference' => '55443322',
+            'submission_digest' => hash('sha256', 'handover-test-55443322'),
+            'customer_name' => 'مشتری آزمایشی',
+            'contact_phone' => '09000000000',
+            'phone_digest' => RepairIdentity::digest('phone', '09000000000'),
+            'device_brand' => RepairBrand::Newland,
+            'device_model' => 'ME31',
+            'issue' => "خرابی شارژ\n\nشماره سریال: FHDFJDK3243524\nاستان و شهر: تهران - شهریار\nنحوه تحویل دستگاه: خودم ارسال میکنم",
+            'status' => RepairRequestStatus::OnlineSubmitted,
+        ])->save();
+
+        $this->get(route('account.repairs.request', '55443322'))
+            ->assertOk()
+            ->assertSee('np-timeline--horizontal')
+            ->assertSee('بررسی و اعلام هزینه')
+            ->assertSee('تعمیر و تحویل')
+            ->assertSee('<bdi class="np-latin" dir="ltr">FHDFJDK3243524</bdi>', false)
+            ->assertSee('تغییر نحوهٔ تحویل')
+            ->assertSee('به پیک شما تحویل میدم');
+
+        $ineligible = new RepairRequest;
+        $ineligible->forceFill([
+            'customer_account_id' => $account->id,
+            'tracking_reference' => '55443399',
+            'submission_digest' => hash('sha256', 'handover-test-55443399'),
+            'customer_name' => 'مشتری قم',
+            'contact_phone' => '09000000000',
+            'phone_digest' => RepairIdentity::digest('phone', '09000000000'),
+            'device_brand' => RepairBrand::Newland,
+            'device_model' => 'ME31',
+            'issue' => "خرابی شارژ\n\nاستان و شهر: قم - قنوات\nنحوه تحویل دستگاه: خودم ارسال میکنم",
+            'status' => RepairRequestStatus::OnlineSubmitted,
+        ])->save();
+
+        $this->get(route('account.repairs.request', '55443399'))
+            ->assertOk()
+            ->assertDontSee('به پیک شما تحویل میدم');
+
+        $this->patch(route('account.repairs.request.handover', '55443399'), [
+            'handover_method' => 'doorstep_pickup',
+            'pickup_address' => 'قم، قنوات، خیابان اصلی پلاک ۱',
+        ])->assertSessionHasErrors('handover_method');
+
+        $this->patch(route('account.repairs.request.handover', '55443322'), [
+            'handover_method' => 'doorstep_pickup',
+            'pickup_address' => 'شهریار، خیابان ولیعصر، کوچه بهار، پلاک ۱۲',
+            'responsive_phone' => '09123456789',
+        ])->assertRedirect(route('account.repairs.request', '55443322'));
+
+        $this->get(route('account.repairs.request', '55443322'))
+            ->assertOk()
+            ->assertSee('به پیک شما تحویل میدم')
+            ->assertSee('شهریار، خیابان ولیعصر، کوچه بهار، پلاک ۱۲');
+
+        $this->patch(route('account.repairs.request.handover', '55443322'), [
+            'handover_method' => 'in_person',
+        ])->assertRedirect(route('account.repairs.request', '55443322'));
+
+        $this->get(route('account.repairs.request', '55443322'))
+            ->assertOk()
+            ->assertSee('خودم حضوری میارم');
+
+        $owner = User::factory()->superAdmin()->create();
+        $case = new RepairCase;
+        $case->forceFill([
+            'public_id' => (string) Str::uuid(),
+            'repair_request_id' => $repair->id,
+            'customer_account_id' => $account->id,
+            'tracking_reference' => '55443322',
+            'tracking_digest' => RepairIdentity::digest('tracking', '55443322'),
+            'intake_digest' => hash('sha256', 'intake-55443322'),
+            'customer_name' => 'مشتری آزمایشی',
+            'contact_phone' => '09000000000',
+            'phone_digest' => RepairIdentity::digest('phone', '09000000000'),
+            'device_brand' => RepairBrand::Newland,
+            'device_model' => 'ME31',
+            'issue' => 'خرابی شارژ',
+            'physical_condition' => 'سالم',
+            'accessories' => 'ندارد',
+            'status' => RepairStage::Received,
+            'received_at' => now(),
+            'received_by' => $owner->id,
+        ])->save();
+
+        $this->patch(route('account.repairs.request.handover', '55443322'), [
+            'handover_method' => 'self_ship',
+        ])->assertStatus(409);
     }
 }

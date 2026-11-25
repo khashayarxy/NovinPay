@@ -55,6 +55,7 @@ class RepairRequestController extends Controller
             'authChallenge' => $request->session()->has('repair_auth_challenge'),
             'authDisplayPhone' => $request->session()->get('repair_auth_phone_display'),
             'authResendAt' => (int) $request->session()->get('repair_auth_resend_at', 0),
+            'localDevOtp' => app()->isLocal() ? CustomerLogin::localDevOtpFor($request->session()->get('repair_auth_challenge')) : null,
         ]);
     }
 
@@ -109,12 +110,17 @@ class RepairRequestController extends Controller
         }
 
         if ($request->expectsJson()) {
-            return response()->json([
+            $payload = [
                 'ok' => true,
                 'phone' => $displayPhone,
                 'resend_at' => $resendAt,
                 'remaining' => max(0, $resendAt - now()->timestamp),
-            ]);
+            ];
+            if (app()->isLocal()) {
+                $payload['local_dev_otp'] = CustomerLogin::localDevOtpFor($request->session()->get('repair_auth_challenge'));
+            }
+
+            return response()->json($payload);
         }
 
         return redirect()->route('repair');
@@ -337,7 +343,17 @@ class RepairRequestController extends Controller
             $request->session()->forget(['repair_recovery_challenge', 'repair_recovery_expires_at']);
         }
 
-        $digest = $this->recoveredPhone($request);
+        $grant = $request->session()->get('repair_recovery_phone');
+        $digest = null;
+        if (is_array($grant) && ($grant['expires'] ?? 0) > now()->timestamp) {
+            if (! ($grant['view_consumed'] ?? false)) {
+                $digest = $grant['digest'] ?? null;
+                $grant['view_consumed'] = true;
+                $request->session()->put('repair_recovery_phone', $grant);
+            } else {
+                $request->session()->forget(['repair_recovery_phone', 'repair_recovery_challenge']);
+            }
+        }
         $recoveredItems = collect();
         if ($digest) {
             $byCode = [];
@@ -408,6 +424,7 @@ class RepairRequestController extends Controller
             'challenge' => $request->session()->has('repair_recovery_challenge'),
             'maskedPhone' => $request->session()->get('repair_recovery_phone_masked'),
             'resendAt' => (int) $request->session()->get('repair_recovery_resend_at', 0),
+            'localDevOtp' => app()->isLocal() ? CustomerLogin::localDevOtpFor($request->session()->get('repair_recovery_challenge')) : null,
         ]);
     }
 
@@ -458,6 +475,7 @@ class RepairRequestController extends Controller
     {
         $request->session()->forget([
             'repair_recovery_challenge',
+            'repair_recovery_phone',
             'repair_recovery_phone_enc',
             'repair_recovery_phone_masked',
             'repair_recovery_resend_at',
@@ -494,6 +512,7 @@ class RepairRequestController extends Controller
         $request->session()->put('repair_recovery_phone', [
             'digest' => RepairIdentity::digest('phone', $account->phone),
             'expires' => now()->addMinutes(15)->timestamp,
+            'view_consumed' => false,
         ]);
 
         return redirect()->route('repair.track.recovery');
@@ -556,6 +575,7 @@ class RepairRequestController extends Controller
 
             $trackSummary = [
                 'code' => FaNumber::digits($reference),
+                'code_raw' => $reference,
                 'device' => RepairIdentity::deviceLabel($sourceBrand, $sourceModel),
                 'delivery' => $deliveryLabel ?? 'ثبت‌شده',
             ];

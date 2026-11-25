@@ -84,7 +84,14 @@ class AccountRecoveryPaymentUxTest extends TestCase
             ->assertSee(FaNumber::digits('92991001'))
             ->assertSee('PAX Z9')
             ->assertSee('np-latin-code', false)
+            ->assertSee('بازیابی با شماره دیگر')
             ->assertSee(PaymentDate::formatPaidAt(null, $repair->created_at) ? explode(' | ', PaymentDate::formatPaidAt(null, $repair->created_at))[0] : '');
+
+        // Revisiting /repair/track/recovery fresh clears the one-time recovery result.
+        $this->get(route('repair.track.recovery'))
+            ->assertOk()
+            ->assertDontSee(FaNumber::digits('92991001'))
+            ->assertSee('دریافت کد تأیید');
     }
 
     public function test_account_overview_counts_active_requests_standardizes_numerals_and_polishes_tabs(): void
@@ -273,9 +280,15 @@ class AccountRecoveryPaymentUxTest extends TestCase
 
         $this->get(route('account.orders.show', $order->public_id))
             ->assertOk()
+            ->assertSee('مسیر سفارش')
+            ->assertSee('np-timeline--horizontal')
+            ->assertSee('پرداخت‌شده')
+            ->assertDontSee('سند تسویه شده است.')
             ->assertSee('تاریخ و ساعت پرداخت')
             ->assertSee($expectedDisplay)
-            ->assertSee(FaNumber::digits(strtoupper(substr($order->public_id, 0, 8))));
+            ->assertSee('<bdi class="np-latin" dir="ltr">'.strtoupper(substr($order->public_id, 0, 8)).'</bdi>', false);
+
+        $this->assertNull(CustomerLogin::localDevOtpFor('non-local-challenge'));
     }
 
     public function test_signed_repair_payment_result_falls_back_to_verified_at_when_provider_paid_at_missing(): void

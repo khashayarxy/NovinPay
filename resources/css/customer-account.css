@@ -513,7 +513,12 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
     .np-account-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
     .np-account-detail { max-width: 66rem; margin-inline: auto; }
     .np-account-detail-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+    .np-account-order-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
     .np-account-form { max-width: 44rem; }
+}
+.np-account-order-layout { display: grid; gap: 1rem; }
+@media (max-width: 1023px) {
+    .np-account-order-columns { display: grid; gap: 1rem; }
 }
 .np-account-facts { display: grid; gap: .6rem; margin-top: .65rem; }
 .np-account-facts dt { font-size: .84rem; font-weight: 400; color: var(--account-muted); }
@@ -593,7 +598,7 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
 }
 .repair-track-summary {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     margin: 0 0 14px;
     padding: 10px 12px;
@@ -601,9 +606,18 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
     background: #fff;
     border: 1px solid #d5e5f5;
 }
+@media (max-width: 600px) {
+    .repair-track-summary {
+        grid-template-columns: 1fr;
+    }
+}
 .repair-track-summary > div {
-    display: grid;
-    gap: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+    text-align: right;
 }
 .repair-track-summary dt {
     font-size: .84rem;
@@ -615,6 +629,9 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
     font-size: .88rem;
     font-weight: 700;
     color: var(--account-ink);
+    text-align: right;
+    unicode-bidi: isolate;
+    overflow-wrap: anywhere;
 }
 .repair-track-active-box {
     margin-top: 12px;
@@ -640,7 +657,8 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
+    gap: 10px 14px;
 }
 .repair-track-collapsed-panel[hidden] {
     display: none;

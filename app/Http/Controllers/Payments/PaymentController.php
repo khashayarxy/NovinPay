@@ -8,6 +8,7 @@ use App\Models\PaymentAttempt;
 use App\Models\PaymentTransaction;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
+use App\Services\FinancialOperations;
 use App\Services\PaymentConnectivity;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
@@ -16,6 +17,7 @@ use App\Support\OrderMoney;
 use App\Support\PaymentDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
@@ -39,7 +41,10 @@ class PaymentController extends Controller
         $attempt = PaymentAttempt::query()->where('track_id', $track)->where('merchant_digest', $payments->merchantDigest())->firstOrFail();
         abort_if($order !== null && (! is_string($order) || $order !== $attempt->public_id), 404);
         // Browser success/cancellation flags are not proof of payment or failure.
-        $payments->verify($attempt);
+        $attempt = $payments->verify($attempt);
+        if ($attempt->state === 'failed' && ($request->query('success') === '0' || (string) $request->query('status') === '3')) {
+            $payments->recordCancelledIfNotRecorded($attempt);
+        }
 
         if (! Auth::guard('customer')->check()) {
             $document = FinancialDocument::query()->find($attempt->financial_document_id);
@@ -69,6 +74,9 @@ class PaymentController extends Controller
             }
 
             return redirect()->route('payments.result', $attempt->public_id);
+        }
+        if ($gateway->isLocalSimulator()) {
+            return $this->sendToGateway($attempt, false);
         }
         $isIran = $connectivity->isIran($request);
         if ($request->expectsJson()) {
@@ -120,21 +128,88 @@ class PaymentController extends Controller
             );
         }
 
+        $isCancelled = $attempt->state === 'failed' && DB::table('payment_events')
+            ->where('payment_attempt_id', $attempt->id)
+            ->where('event', 'gateway_canceled')
+            ->exists();
+
+        $attemptAtDisplay = PaymentDate::formatPaidAt(null, $attempt->updated_at ?? $attempt->created_at);
+        $alreadyPaid = $attempt->state === 'settled'
+            && $attempt->verified_at !== null
+            && $attempt->verified_at->lt(now()->subMinutes(2));
+
         return view('payments.result', [
             'attempt' => $attempt,
             'document' => $document,
             'isOrder' => $isOrder,
             'sourceCode' => $sourceCode,
+            'orderCode' => $sourceCode,
+            'isCancelled' => $isCancelled,
+            'alreadyPaid' => $alreadyPaid,
             'paidAtDisplay' => $paidAtDisplay,
+            'attemptAtDisplay' => $attemptAtDisplay,
             'trackingUrl' => $source
                 ? route($isOrder ? 'account.orders.show' : 'account.repairs.show', ['record' => $source])
                 : route('account.index', ['section' => $isOrder ? 'orders' : 'repairs']),
+            'retryPostUrl' => $attempt->state === 'failed' ? route('payments.retry', $attempt->public_id) : null,
             'retryUrl' => match (true) {
                 $canContinue => route('payments.connect', $attempt->public_id),
                 $attempt->state === 'failed' => $documentUrl,
                 default => route('payments.result', $attempt->public_id),
             },
         ]);
+    }
+
+    public function retry(string $payment, ZibalPayments $payments, ZibalGateway $gateway)
+    {
+        $account = Auth::guard('customer')->user();
+        [$attempt, $document] = $this->paymentContext($payment, $payments);
+        if ($attempt->state === 'settled') {
+            return redirect()->route('payments.result', $attempt->public_id, 303);
+        }
+        if ($attempt->state === 'pending' && $this->canContinue($attempt, $payments, $gateway)) {
+            return redirect()->route('payments.gateway', $attempt->public_id, 303);
+        }
+        app(FinancialOperations::class)->reconcile($document);
+        $document->refresh();
+        $balance = max(0, (int) $document->charged_minor - (int) $document->paid_minor);
+        if ($balance <= 0) {
+            return redirect()->route('payments.result', $attempt->public_id, 303);
+        }
+        $newAttempt = $payments->start($account, $document->public_id, $balance, (string) Str::uuid());
+
+        return redirect()->route('payments.gateway', $newAttempt->public_id, 303);
+    }
+
+    public function localSimulator(string $payment, ZibalPayments $payments, ZibalGateway $gateway)
+    {
+        abort_unless($gateway->isLocalSimulator(), 404);
+        [$attempt, $document] = $this->paymentContext($payment, $payments);
+        if (! $this->canContinue($attempt, $payments, $gateway)) {
+            return redirect()->route('payments.result', $attempt->public_id, 303);
+        }
+        $isOrder = (bool) $document->sales_order_id;
+        $order = $isOrder ? SalesOrder::query()->whereKey($document->sales_order_id)->first(['public_id']) : null;
+        $repair = ! $isOrder && $document->repair_case_id ? RepairCase::query()->whereKey($document->repair_case_id)->first(['public_id', 'tracking_reference']) : null;
+        $sourceCode = $isOrder
+            ? ($order ? strtoupper(substr($order->public_id, 0, 8)) : strtoupper(substr($document->public_id, 0, 8)))
+            : ($repair?->tracking_reference ?? strtoupper(substr($document->public_id, 0, 8)));
+
+        return response()->view('payments.local-simulator', [
+            'attempt' => $attempt,
+            'sourceCode' => $sourceCode,
+            'amountToman' => intdiv((int) $attempt->amount_minor, 10),
+        ], 200, ['X-Robots-Tag' => 'noindex, nofollow']);
+    }
+
+    public function localSimulatorComplete(Request $request, string $payment, ZibalPayments $payments, ZibalGateway $gateway)
+    {
+        abort_unless($gateway->isLocalSimulator(), 404);
+        $data = $request->validate(['outcome' => ['required', 'in:paid,cancelled,failed']]);
+        [$attempt] = $this->paymentContext($payment, $payments);
+        $updated = $payments->completeLocalSimulated($attempt, $data['outcome']);
+
+        return redirect()->route('payments.result', $updated->public_id, 303);
     }
 
     public function paymentStatus(string $payment, ZibalPayments $payments)
@@ -161,11 +236,28 @@ class PaymentController extends Controller
 
     private function sendToGateway(PaymentAttempt $attempt, bool $indeterminate = false)
     {
+        $gateway = app(ZibalGateway::class);
+        $isLocalSimulator = $gateway->isLocalSimulator();
+        $document = FinancialDocument::query()->find($attempt->financial_document_id);
+        $isOrder = (bool) $document?->sales_order_id;
+        $order = $isOrder ? SalesOrder::query()->whereKey($document->sales_order_id)->first(['public_id']) : null;
+        $repair = ! $isOrder && $document?->repair_case_id ? RepairCase::query()->whereKey($document->repair_case_id)->first(['public_id', 'tracking_reference']) : null;
+        $sourceCode = $isOrder
+            ? ($order ? strtoupper(substr($order->public_id, 0, 8)) : ($document ? strtoupper(substr($document->public_id, 0, 8)) : null))
+            : ($repair?->tracking_reference ?? ($document ? strtoupper(substr($document->public_id, 0, 8)) : null));
+
         // A same-origin document makes even a cold/direct entry send the merchant origin.
         // The attempt UUID and query string must never be part of the bank's Referer.
         return response()->view('payments.forward', [
-            'gatewayUrl' => ZibalGateway::START_URL.$attempt->track_id,
+            'gatewayUrl' => $isLocalSimulator
+                ? route('payments.local-simulator', $attempt->public_id)
+                : ZibalGateway::START_URL.$attempt->track_id,
             'indeterminate' => $indeterminate,
+            'attempt' => $attempt,
+            'isOrder' => $isOrder,
+            'sourceCode' => $sourceCode,
+            'amountToman' => intdiv((int) $attempt->amount_minor, 10),
+            'isLocalSimulator' => $isLocalSimulator,
         ], headers: ['Referrer-Policy' => 'origin']);
     }
 

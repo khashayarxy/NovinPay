@@ -6,7 +6,9 @@
         <section class="public-panel" aria-labelledby="tracking-title">
             <header class="store-page-intro">
                 <h1 id="tracking-title">پیگیری درخواست تعمیر</h1>
-                <p>کد پیگیری هشت‌رقمی و شماره موبایل ثبت‌شده را وارد کنید.</p>
+                @if ($matched !== true)
+                    <p>کد پیگیری هشت‌رقمی و شماره موبایل ثبت‌شده را وارد کنید.</p>
+                @endif
             </header>
             <x-form-errors />
             @if ($matched === false)
@@ -33,6 +35,11 @@
                     <div class="repair-track-active-box">
                         <strong>{{ ($physicalMatch ?? false) ? ($physicalStatus ?? 'وضعیت فعلی تعمیر') : \App\Enums\RepairRequestStatus::OnlineSubmitted->label() }}</strong>
                         <p>{{ $nextAction }}</p>
+                        @if (! ($physicalMatch ?? false) && ! empty($trackSummary['code_raw']))
+                            <div style="margin-top: 8px;">
+                                <a class="np-button np-button--outline" href="{{ route('account.repairs.request', $trackSummary['code_raw']) }}">تغییر نحوهٔ تحویل</a>
+                            </div>
+                        @endif
                     </div>
                 </div>
                 <div class="repair-track-toggle-row">
@@ -49,11 +56,11 @@
                 <form method="post" action="{{ route('repair.track.store') }}" class="public-form">
                     @csrf
                     <x-repair-field name="tracking_reference" label="کد پیگیری">
-                        <input id="tracking_reference" name="tracking_reference" value="{{ old('tracking_reference', $trackingCode ?? '') }}" class="input public-code-input" dir="ltr" inputmode="numeric" autocomplete="off" spellcheck="false" required minlength="8" maxlength="8" placeholder="۱۲۳۴۵۶۷۸" aria-invalid="{{ $errors->has('tracking_reference') ? 'true' : 'false' }}" aria-describedby="tracking_reference-feedback">
+                        <input id="tracking_reference" name="tracking_reference" value="{{ old('tracking_reference', $trackingCode ?? '') }}" class="input public-code-input" dir="ltr" inputmode="numeric" data-digits-only="8" autocomplete="off" spellcheck="false" required minlength="8" maxlength="8" placeholder="۱۲۳۴۵۶۷۸" aria-invalid="{{ $errors->has('tracking_reference') ? 'true' : 'false' }}" aria-describedby="tracking_reference-feedback">
                         <p class="repair-field-helper-link"><a class="public-inline-link" href="{{ route('repair.track.recovery') }}">فراموشی کد پیگیری؟</a></p>
                     </x-repair-field>
                     <x-repair-field name="contact_phone" label="شماره موبایل">
-                        <input type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="tel" autocomplete="off" required maxlength="40" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
+                        <input type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="off" required maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
                     </x-repair-field>
                     <div class="repair-entry-actions repair-track-actions">
                         <button type="submit" class="np-button np-button--primary">بررسی وضعیت <x-home.icon name="arrow-left" /></button>
