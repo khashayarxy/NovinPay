@@ -14,6 +14,7 @@ use App\Models\SalesOrderLine;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\Notifications\UnifiedNotifier;
+use App\Services\Observability\ObservabilityEvents;
 use App\Support\AdminHistory;
 use App\Support\CommerceAccess;
 use App\Support\CommerceInput;
@@ -155,6 +156,11 @@ final class CommerceManagement
             $movement->$key = $value;
         }
         $movement->save();
+
+        if ($kind !== 'configure') {
+            $itemSnapshot = clone $item;
+            DB::afterCommit(static fn () => app(ObservabilityEvents::class)->inventoryChanged($itemSnapshot, $onHand, $reserved, $kind, $reason));
+        }
     }
 
     private function order(User $actor, string $action, array $data, ?SalesOrder $target, int $operation): int
@@ -252,6 +258,11 @@ final class CommerceManagement
         if (in_array($action, ['order.confirm', 'order.cancel'], true)) {
             $notification = $action === 'order.confirm' ? 'order_confirmed' : 'order_cancelled';
             DB::afterCommit(fn () => app(UnifiedNotifier::class)->orderPattern($order, $notification));
+        }
+
+        if ($before !== $order->status) {
+            $orderSnapshot = clone $order;
+            DB::afterCommit(static fn () => app(ObservabilityEvents::class)->orderStatusChanged($orderSnapshot, $before, (string) $orderSnapshot->status));
         }
 
         return $order->id;

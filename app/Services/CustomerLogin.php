@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CustomerAccount;
+use App\Services\Observability\ObservabilityEvents;
 use App\Support\RepairIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -221,7 +222,8 @@ class CustomerLogin
 
     public function verify(string $challenge, string $code): CustomerAccount
     {
-        $account = DB::transaction(function () use ($challenge, $code): ?CustomerAccount {
+        $wasCreated = false;
+        $account = DB::transaction(function () use ($challenge, $code, &$wasCreated): ?CustomerAccount {
             $row = DB::table('customer_login_challenges')->where('challenge_id', $challenge)->lockForUpdate()->first();
             if ($row?->code_hash && now()->gte($row->expires_at)) {
                 throw ValidationException::withMessages(['code' => 'زمان اعتبار کد تمام شد. کد تازه درخواست کنید.']);
@@ -246,13 +248,15 @@ class CustomerLogin
             }
             DB::table('customer_login_challenges')->where('id', $row->id)->update(['code_hash' => null]);
             // Phone possession does not authorize historical CRM records, including shared phones.
-            CustomerAccount::query()->insertOrIgnore(['public_id' => (string) Str::uuid(), 'phone_digest' => $row->phone_digest, 'phone' => $row->phone, 'verified_at' => $test ? null : now(), 'created_at' => now(), 'updated_at' => now()]);
+            $wasCreated = CustomerAccount::query()->insertOrIgnore(['public_id' => (string) Str::uuid(), 'phone_digest' => $row->phone_digest, 'phone' => $row->phone, 'verified_at' => $test ? null : now(), 'created_at' => now(), 'updated_at' => now()]) > 0;
 
             return CustomerAccount::query()->where('phone_digest', $row->phone_digest)->where('is_active', true)->first();
         }, 3);
         if (! $account) {
             throw ValidationException::withMessages(['code' => 'کد معتبر نیست یا منقضی شده است.']);
         }
+
+        app(ObservabilityEvents::class)->userAuth($wasCreated ? 'registered' : 'login_otp', $account);
 
         return $account;
     }

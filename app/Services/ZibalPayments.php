@@ -11,6 +11,7 @@ use App\Models\PaymentAttempt;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\User;
+use App\Services\Observability\ObservabilityEvents;
 use App\Support\OrderMoney;
 use App\Support\PaymentTestProduct;
 use App\Support\RepairIdentity;
@@ -607,6 +608,28 @@ class ZibalPayments
     private function event(PaymentAttempt $attempt, string $event): void
     {
         DB::table('payment_events')->insert(['payment_attempt_id' => $attempt->id, 'event' => $event, 'created_at' => now()]);
+
+        if ($event === 'request_started') {
+            return;
+        }
+
+        $stage = match (true) {
+            $event === 'pending' => 'started',
+            in_array($event, ['settled', 'local_simulated_settled'], true) => 'settled',
+            $event === 'gateway_canceled' => 'canceled',
+            $event === 'local_simulated_failed', str_starts_with($event, 'gateway_unpaid_'), str_starts_with($event, 'request_rejected_') => 'failed',
+            $event === 'uncertain' => 'uncertain',
+            in_array($event, ['review', 'invalid_gateway_track', 'reconciliation_exhausted', 'request_outcome_unknown'], true), str_starts_with($event, 'gateway_return_') => 'review',
+            default => null,
+        };
+
+        if ($stage === null) {
+            return;
+        }
+
+        $snapshot = clone $attempt;
+        $note = in_array($event, ['pending', 'settled', 'uncertain', 'review'], true) ? null : $event;
+        DB::afterCommit(static fn () => app(ObservabilityEvents::class)->payment($stage, $snapshot, $note));
     }
 
     public static function shippingReady(FinancialDocument $document): void

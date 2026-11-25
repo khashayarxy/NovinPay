@@ -31,6 +31,7 @@
         ]],
         'وضعیت و نگهداری سایت' => ['world', [
             ['maintenance.view', 'admin.maintenance.index', 'admin.maintenance.*', 'وضعیت و نگهداری سایت'],
+            ['maintenance.view', 'admin.system-health.index', 'admin.system-health.*', 'سلامت سیستم و لاگ‌ها'],
         ]],
         'دسترسی و سوابق' => ['shield-check', [
             ['staff.manage', 'admin.staff.index', 'admin.staff.*', 'دسترسی همکاران'],

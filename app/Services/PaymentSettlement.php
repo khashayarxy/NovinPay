@@ -16,6 +16,7 @@ use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\Observability\ObservabilityEvents;
 use App\Support\AdminHistory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -74,10 +75,13 @@ class PaymentSettlement
         if ($allocation > 0 && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor && $document->sales_order_id) {
             $order = SalesOrder::query()->lockForUpdate()->find($document->sales_order_id);
             if ($order && in_array($order->status, ['draft', 'reserved'], true)) {
+                $previousStatus = (string) $order->status;
                 $this->reserveStockForPaidOrder($order, $actor);
                 $order->status = 'confirmed';
                 $order->version++;
                 $order->save();
+                $orderSnapshot = clone $order;
+                DB::afterCommit(static fn () => app(ObservabilityEvents::class)->orderStatusChanged($orderSnapshot, $previousStatus, 'confirmed'));
             }
         }
 
@@ -156,6 +160,8 @@ class PaymentSettlement
             $item->is_low_stock = $item->available <= $item->low_stock_threshold;
             $item->version++;
             $item->save();
+            $itemSnapshot = clone $item;
+            DB::afterCommit(static fn () => app(ObservabilityEvents::class)->inventoryChanged($itemSnapshot, 0, $reserveQty, 'reserve', 'رزرو پس از پرداخت سفارش'));
 
             if ($opActorId === null) {
                 continue;

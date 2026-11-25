@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Services\Observability\ObservabilityEvents;
+
 final class CustomerOtpSms
 {
     public function __construct(private IpPanel $ipPanel) {}
@@ -23,6 +25,9 @@ final class CustomerOtpSms
 
     public function sendOutcome(string $phone, string $code): string
     {
-        return $this->ipPanel->sendOutcome($phone, $code);
+        $outcome = $this->ipPanel->sendOutcome($phone, $code);
+        app(ObservabilityEvents::class)->sms('otp', $outcome, $this->provider(), 'customer_otp');
+
+        return $outcome;
     }
 }

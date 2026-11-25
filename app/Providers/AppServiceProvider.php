@@ -9,6 +9,8 @@ use App\Events\RepairPaymentLinkGenerated;
 use App\Http\Middleware\PreviewAwareSession;
 use App\Models\User;
 use App\Services\Notifications\UnifiedNotifier;
+use App\Services\Observability\ObservabilityMetrics;
+use App\Services\Observability\TelegramTopicNotifier;
 use App\Support\AdminAccess;
 use App\Support\Chat\ChatBridge;
 use App\Support\CustomerAuthThrottle;
@@ -16,13 +18,17 @@ use App\Support\RepairIdentity;
 use App\Support\SiteMaintenanceState;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -64,6 +70,11 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(30)->by('ip:'.$ip),
             ];
         });
+        RateLimiter::for('client-telemetry', function ($request): Limit {
+            $limit = max(1, (int) config('observability.client_telemetry.rate_limit_per_minute', 10));
+
+            return Limit::perMinute($limit)->by('client-telemetry:'.hash('sha256', (string) $request->ip()));
+        });
         Gate::define('access-admin', fn (User $user): bool => AdminAccess::account($user) !== null);
         Gate::define('staff.manage', fn (User $user): bool => AdminAccess::account($user)?->hasFullAccess() ?? false);
         foreach (AdminPermission::cases() as $permission) {
@@ -83,5 +94,42 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(OrderPaid::class, fn (OrderPaid $event) => app(UnifiedNotifier::class)->orderPaid($event->order, $event->document, $event->transaction));
         Event::listen(RepairPaid::class, fn (RepairPaid $event) => app(UnifiedNotifier::class)->repairPaid($event->repairCase, $event->document, $event->transaction));
         Event::listen(RepairPaymentLinkGenerated::class, fn (RepairPaymentLinkGenerated $event) => app(UnifiedNotifier::class)->repairPaymentLinkGenerated($event->repairCase, $event->document, $event->paymentUrl));
+
+        $slowQueryThreshold = (int) config('observability.performance.slow_query_ms', 500);
+        if ($slowQueryThreshold > 0) {
+            DB::listen(function (QueryExecuted $query) use ($slowQueryThreshold): void {
+                static $recording = false;
+                if ($recording || $query->time < $slowQueryThreshold) {
+                    return;
+                }
+
+                $recording = true;
+                try {
+                    // Never log raw bindings or literal values from SQL.
+                    $shape = preg_replace("/'[^']*'/", "'?'", $query->sql) ?? $query->sql;
+                    $shape = preg_replace('/\b\d+\b/', '?', $shape) ?? $shape;
+                    $shape = mb_substr(preg_replace('/\s+/u', ' ', trim($shape)) ?? '', 0, 220);
+                    $durationMs = (int) round($query->time);
+                    $path = app()->runningInConsole() ? 'cli' : '/'.ltrim(request()->path(), '/');
+
+                    Log::channel('performance')->warning('Slow DB query detected', [
+                        'connection' => $query->connectionName,
+                        'duration_ms' => $durationMs,
+                        'path' => $path,
+                        'sql_shape' => $shape,
+                    ]);
+
+                    app(ObservabilityMetrics::class)->increment('performance.slow_queries');
+                    app(TelegramTopicNotifier::class)->send(
+                        'performance',
+                        "🐢 کوئری کند دیتابیس\nمدت: {$durationMs}ms\nاتصال: {$query->connectionName}\nمسیر: {$path}\nالگو: {$shape}",
+                        'slow_query:'.md5($shape),
+                    );
+                } catch (Throwable) {
+                } finally {
+                    $recording = false;
+                }
+            });
+        }
     }
 }

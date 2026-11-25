@@ -19,6 +19,7 @@ use App\Services\CustomerEmailLogin;
 use App\Services\CustomerLogin;
 use App\Services\GoogleAuthService;
 use App\Services\LegacyCartHold;
+use App\Services\Observability\ObservabilityEvents;
 use App\Services\TestCustomerReset;
 use App\Support\CrmAccess;
 use App\Support\CustomerAuthThrottle;
@@ -318,6 +319,8 @@ class CustomerAccountController extends Controller
             ]);
         }
 
+        app(ObservabilityEvents::class)->userAuth('login_password', $account);
+
         return $this->authenticated($request, $account, false);
     }
 
@@ -536,6 +539,7 @@ class CustomerAccountController extends Controller
             isset($data['pickup_longitude']) ? (string) $data['pickup_longitude'] : null,
             $data['responsive_phone'] ?? null,
         );
+        app(ObservabilityEvents::class)->repairHandoverUpdated($repair, $data['handover_method']);
 
         return redirect()
             ->route('account.repairs.request', $repair->tracking_reference)

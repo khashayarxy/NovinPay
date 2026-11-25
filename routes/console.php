@@ -55,6 +55,24 @@ Schedule::command('payments:reconcile')->everyMinute()->withoutOverlapping(10)
 Schedule::call(fn () => app(OperationalReadiness::class)->heartbeat())
     ->name('operations:heartbeat')->everyMinute()->withoutOverlapping(2);
 
+Schedule::command('novinpay:telegram-daily-digest')
+    ->dailyAt('23:55')
+    ->timezone('Asia/Tehran')
+    ->withoutOverlapping(15)
+    ->when(fn () => (bool) config('observability.telegram_topics.enabled'));
+
+Schedule::command('novinpay:telegram-sales-inventory-report')
+    ->dailyAt('21:00')
+    ->timezone('Asia/Tehran')
+    ->withoutOverlapping(15)
+    ->when(fn () => (bool) config('observability.telegram_topics.enabled'));
+
+Schedule::command('novinpay:telegram-backup-report')
+    ->dailyAt('06:00')
+    ->timezone('Asia/Tehran')
+    ->withoutOverlapping(15)
+    ->when(fn () => (bool) config('observability.telegram_topics.enabled'));
+
 Artisan::command('operations:status', function (OperationalReadiness $operations): int {
     $status = $operations->status();
     $this->line(json_encode($status, JSON_THROW_ON_ERROR));
