@@ -132,6 +132,12 @@ class ObservabilityAndTelegramTopicsTest extends TestCase
         });
         Http::assertSent(fn (HttpRequest $request) => ($request['message_thread_id'] ?? null) === 11
             && ($request['chat_id'] ?? null) === '-100999888777');
+
+        // Custom Telegram proxy / Cloudflare Worker API base URL is respected
+        config(['observability.telegram_topics.api_base' => 'https://tg-proxy.example.test']);
+        $this->assertTrue($notifier->send('orders', 'Proxied topic alert', 'dedupe-proxy-1', 300));
+        Http::assertSent(fn (HttpRequest $request) => str_starts_with($request->url(), 'https://tg-proxy.example.test/bot123456:TEST_BOT_TOKEN_SECRET/sendMessage')
+            && ($request['message_thread_id'] ?? null) === 12);
     }
 
     public function test_client_telemetry_validates_sanitizes_caps_size_and_rate_limits(): void

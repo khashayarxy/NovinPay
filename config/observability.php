@@ -21,9 +21,9 @@ return [
 
     'telegram_topics' => [
         'enabled' => filter_var(env('TELEGRAM_TOPICS_ENABLED', false), FILTER_VALIDATE_BOOL),
-        'bot_token' => (string) env('TELEGRAM_TOPICS_BOT_TOKEN', env('TELEGRAM_BOT_TOKEN', '')),
+        'bot_token' => (string) env('TELEGRAM_TOPICS_BOT_TOKEN', env('NOTIFICATIONS_TELEGRAM_BOT_TOKEN', env('TELEGRAM_BOT_TOKEN', ''))),
         'chat_id' => (string) env('TELEGRAM_TOPICS_CHAT_ID', env('TELEGRAM_ADMIN_CHAT_ID', '')),
-        'api_base' => rtrim((string) env('TELEGRAM_TOPICS_API_BASE', env('TELEGRAM_API_BASE_URL', 'https://api.telegram.org')), '/'),
+        'api_base' => rtrim((string) env('TELEGRAM_TOPICS_API_BASE', env('NOTIFICATIONS_TELEGRAM_API_BASE', env('TELEGRAM_API_BASE_URL', 'https://api.telegram.org'))), '/'),
         'throttle_seconds' => (int) env('TELEGRAM_TOPICS_THROTTLE_SECONDS', 300),
         'threads' => [
             'payments' => env('TELEGRAM_TOPIC_PAYMENTS_ID') ? (int) env('TELEGRAM_TOPIC_PAYMENTS_ID') : null,

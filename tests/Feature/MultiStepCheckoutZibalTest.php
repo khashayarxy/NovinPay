@@ -334,6 +334,15 @@ class MultiStepCheckoutZibalTest extends TestCase
             'notifications.telegram.bot_token' => '123456:TEST-CHECKOUT-TG',
             'notifications.telegram.chat_id' => '-10077889900',
             'notifications.telegram.api_base' => 'https://api.telegram.org',
+            'observability.telegram_topics.enabled' => true,
+            'observability.telegram_topics.bot_token' => '123456:TEST-TOPICS-TG',
+            'observability.telegram_topics.chat_id' => '-1005775833170',
+            'observability.telegram_topics.api_base' => 'https://api.telegram.org',
+            'observability.telegram_topics.threads' => [
+                'payments' => 11,
+                'orders' => 12,
+                'repairs' => 13,
+            ],
         ]);
 
         [$proof, $revision, $quote] = $this->seedCartItem();
@@ -362,8 +371,9 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->assertSame('pending', $attempt->state);
         $res->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/connect');
 
-        // Unpaid order creation & gateway redirect must NEVER send a Telegram order notification.
-        Http::assertNotSent(fn ($req) => str_contains($req->url(), 'api.telegram.org'));
+        // Unpaid order creation & gateway redirect must NEVER send a legacy Telegram channel or orders topic notification.
+        Http::assertNotSent(fn ($req) => str_contains($req->url(), 'api.telegram.org') && ($req['chat_id'] ?? null) === '-10077889900');
+        Http::assertNotSent(fn ($req) => str_contains($req->url(), 'api.telegram.org') && ($req['message_thread_id'] ?? null) === 12);
 
         // Before payment verification, unpaid draft order must NOT clutter the customer's orders tab or show as confirmed,
         // while direct order view still shows accurate pending payment status without .۰۰ decimals.
@@ -436,9 +446,14 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->assertSee('data-stage="upcoming"', false)
             ->assertSee('آماده‌سازی سفارش');
 
-        $telegramRequests = Http::recorded(fn ($req) => str_contains($req->url(), 'api.telegram.org'))->values();
-        $this->assertCount(1, $telegramRequests);
-        $this->assertStringContainsString('پرداخت آنلاین سفارش تأیید شد', (string) ($telegramRequests[0][0]['text'] ?? ''));
+        $legacyTelegramRequests = Http::recorded(fn ($req) => str_contains($req->url(), 'api.telegram.org') && ($req['chat_id'] ?? null) === '-10077889900')->values();
+        $this->assertCount(0, $legacyTelegramRequests, 'Legacy Telegram channel must not receive order notifications.');
+
+        $orderPaidTopicRequests = Http::recorded(fn ($req) => str_contains($req->url(), 'api.telegram.org')
+            && ($req['chat_id'] ?? null) === '-1005775833170'
+            && ($req['message_thread_id'] ?? null) === 12
+            && str_contains((string) ($req['text'] ?? ''), 'پرداخت آنلاین سفارش تأیید شد'))->values();
+        $this->assertCount(1, $orderPaidTopicRequests);
 
         // Cart is automatically cleared after verified Zibal settlement.
         $this->assertSame(0, app(ShoppingCart::class)->count(request()));

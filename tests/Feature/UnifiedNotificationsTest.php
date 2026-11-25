@@ -159,6 +159,13 @@ class UnifiedNotificationsTest extends TestCase
     public function test_repair_request_and_status_update_dispatch_admin_and_customer_notifications(): void
     {
         $this->enableAllChannels();
+        config([
+            'observability.telegram_topics.enabled' => true,
+            'observability.telegram_topics.bot_token' => 'tg-topics-token',
+            'observability.telegram_topics.chat_id' => '-1005775833170',
+            'observability.telegram_topics.api_base' => 'https://api.telegram.org',
+            'observability.telegram_topics.threads' => ['repairs' => 13],
+        ]);
         $this->fakeSuccessTransports();
 
         $account = new CustomerAccount;
@@ -191,7 +198,10 @@ class UnifiedNotificationsTest extends TestCase
         Http::assertSent(fn (HttpRequest $req) => $req->url() === 'https://edge.ippanel.com/v1/api/send'
             && $req['code'] === 'patCustRepairSub' && $req['recipients'] === ['+989127778899']);
         Http::assertSent(fn (HttpRequest $req) => str_starts_with($req->url(), 'https://tapi.bale.ai/'));
-        Http::assertSent(fn (HttpRequest $req) => str_starts_with($req->url(), 'https://api.telegram.org/'));
+        Http::assertNotSent(fn (HttpRequest $req) => ($req['chat_id'] ?? null) === '-100200300');
+        Http::assertSent(fn (HttpRequest $req) => str_starts_with($req->url(), 'https://api.telegram.org/bottg-topics-token/sendMessage')
+            && ($req['chat_id'] ?? null) === '-1005775833170'
+            && ($req['message_thread_id'] ?? null) === 13);
 
         // Now verify repair case status update to 'ready' with cost notifies customer.
         $admin = User::factory()->superAdmin()->create();
