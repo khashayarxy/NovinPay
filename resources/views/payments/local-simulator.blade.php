@@ -11,6 +11,7 @@
     <x-brand-head />
     <link rel="preload" href="/fonts/dana/DanaFaNum-Regular.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/dana/DanaFaNum-Bold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ versioned_asset('css/payment-flow.css') }}">
     <link rel="stylesheet" href="{{ versioned_asset('pay/assets/pay.css') }}">
     <style>
         .sim-btn-paid { background: linear-gradient(135deg, #16a34a, #15803d); box-shadow: 0 12px 24px -10px rgba(22, 163, 74, .55); }

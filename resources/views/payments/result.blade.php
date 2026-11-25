@@ -39,6 +39,7 @@
     <x-brand-head />
     <link rel="preload" href="/fonts/dana/DanaFaNum-Regular.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/dana/DanaFaNum-Bold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ versioned_asset('css/payment-flow.css') }}">
     <link rel="stylesheet" href="{{ versioned_asset('pay/assets/pay.css') }}">
 </head>
 <body class="{{ $theme }}">
@@ -60,6 +61,7 @@
                 </div>
             </div>
 
+            <p class="hint" style="margin:0 0 6px;">{{ $isOrder ? 'پرداخت سفارش' : 'پرداخت تعمیر' }}</p>
             <h1 id="payment-title">{{ $heading }}</h1>
             <p class="lead">{{ $lead }}</p>
             @if ($failed && ! $cancelled && $attempt->statusMessage())

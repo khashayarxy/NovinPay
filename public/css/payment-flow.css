@@ -174,3 +174,83 @@ a:focus-visible { outline: 2px solid #075da6; outline-offset: 3px; }
     unicode-bidi: isolate;
     font-variant-numeric: tabular-nums;
 }
+
+/* Companion shell & button extensions for Zizolearn pay.css pages */
+.payment-warning-shell {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 480px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
+.payment-warning-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 26px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.96);
+    border-radius: 999px;
+    box-shadow: 0 12px 28px -10px rgba(15, 23, 42, 0.1), 0 2px 6px rgba(15, 23, 42, 0.04);
+    backdrop-filter: blur(10px);
+}
+.payment-warning-brand img { display: block; width: 132px; height: auto; }
+.payment-warning-shell h1 {
+    font-family: 'Dana', Tahoma, sans-serif;
+    font-weight: 700;
+    font-size: 1.6rem;
+    color: var(--title);
+    margin: 0 0 12px;
+    line-height: 1.5;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+    .payment-warning-shell h1 { font-size: 1.4rem; }
+}
+.payment-warning-shell .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+.payment-warning-shell .btn-group form { margin: 0; display: inline-flex; }
+.payment-warning-shell .btn-group .btn { margin-top: 0; }
+.payment-warning-shell .btn.btn--secondary {
+    background: #f1f5f9;
+    color: #334155;
+    box-shadow: none;
+    border: 1px solid #cbd5e1;
+}
+.payment-warning-shell .btn.btn--secondary:hover { background: #e2e8f0; filter: none; }
+.payment-warning-shell .pay-copy-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.payment-warning-shell .pay-copy-btn {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #334155;
+    border-radius: 8px;
+    padding: 3px 9px;
+    font-size: .78rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+.payment-warning-shell .pay-copy-btn:hover { background: #e2e8f0; color: #0f172a; }
+.payment-warning-shell .pay-support-link {
+    margin-top: 14px;
+    font-size: .86rem;
+    color: #64748b;
+}
+.payment-warning-shell .pay-support-link a {
+    color: var(--title);
+    font-weight: 600;
+    text-underline-offset: .22em;
+}
