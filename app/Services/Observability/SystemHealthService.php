@@ -51,6 +51,7 @@ final class SystemHealthService
             'client_telemetry_enabled' => (bool) config('observability.client_telemetry.enabled'),
             'php_version' => PHP_VERSION,
             'app_env' => (string) config('app.env'),
+            'session_driver' => (string) config('session.driver'),
         ];
     }
 
@@ -159,7 +160,9 @@ final class SystemHealthService
         $targets = [
             'storage/logs' => storage_path('logs'),
             'storage/framework' => storage_path('framework'),
+            'storage/framework/sessions' => storage_path('framework/sessions'),
             'storage/framework/cache' => storage_path('framework/cache'),
+            'storage/framework/cache/data' => storage_path('framework/cache/data'),
             'bootstrap/cache' => base_path('bootstrap/cache'),
         ];
         $results = [];

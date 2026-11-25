@@ -55,6 +55,10 @@ Schedule::command('payments:reconcile')->everyMinute()->withoutOverlapping(10)
 Schedule::call(fn () => app(OperationalReadiness::class)->heartbeat())
     ->name('operations:heartbeat')->everyMinute()->withoutOverlapping(2);
 
+Schedule::command('novinpay:prune-ephemeral')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(10);
+
 Schedule::command('novinpay:telegram-daily-digest')
     ->dailyAt('23:55')
     ->timezone('Asia/Tehran')
