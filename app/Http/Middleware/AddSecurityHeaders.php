@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PaymentTestProduct;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /** Browser controls; preserve stricter endpoint-specific attachment/chat CSPs. */
@@ -35,7 +37,21 @@ class AddSecurityHeaders
         }
         if (str_contains($response->headers->get('Content-Type', ''), 'text/html')) {
             if ($request->attributes->get('customer_header_rendered')) {
-                $response->headers->set('Cache-Control', 'no-store, private');
+                $existingCacheControl = strtolower((string) $response->headers->get('Cache-Control', ''));
+                $isGuestBfcacheEligible = ($request->isMethod('GET') || $request->isMethod('HEAD'))
+                    && $response->getStatusCode() === 200
+                    && ! str_contains($existingCacheControl, 'no-store')
+                    && ! (bool) $request->attributes->get('customer_authenticated')
+                    && ! Auth::guard('web')->check()
+                    && ! Auth::guard('customer')->check()
+                    && ($request->routeIs('home', 'products.index', 'products.show', 'products.comparison', 'contact', 'terms', 'privacy')
+                        || in_array($request->path(), ['/', 'products', 'product-comparison', 'contact', 'terms', 'privacy'], true))
+                    && ! ($request->routeIs('products.show') && PaymentTestProduct::isTestProduct($request->route('product')));
+
+                $response->headers->set(
+                    'Cache-Control',
+                    $isGuestBfcacheEligible ? 'private, no-cache, must-revalidate' : 'no-store, private',
+                );
                 $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');
             } elseif (! $response->headers->has('X-LiteSpeed-Cache-Control')) {
                 $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');

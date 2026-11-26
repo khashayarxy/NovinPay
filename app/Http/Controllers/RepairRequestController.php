@@ -52,7 +52,7 @@ class RepairRequestController extends Controller
         return view('pages.repair', [
             'brands' => RepairBrand::cases(),
             'submissionToken' => $request->session()->get('repair_submission_token'),
-            'iranLocations' => config('iran_locations', []),
+            'iranLocationProvinces' => array_keys(config('iran_locations', [])),
             'courierZones' => config('delivery.courier_zones', []),
             'neshanWebKey' => (string) config('services.neshan.web_key', ''),
             'authChallenge' => $request->session()->has('repair_auth_challenge'),

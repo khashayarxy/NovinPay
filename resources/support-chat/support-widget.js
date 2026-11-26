@@ -1,6 +1,6 @@
 (()=>{
 // Same-origin iframe adapter: no remote widget service and no cross-origin API.
-const source=new URL(document.currentScript.src),assets=new URL('./',source),root=new URL('/support-chat/',location.origin);
+const sourceEl=document.currentScript,source=new URL(sourceEl.src),assets=new URL('./',source),root=new URL('/support-chat/',location.origin);
 if(root.origin!==location.origin)throw new Error('Support widget requires a same-origin installation');
 if(!document.querySelector('[data-support-launcher]')){
 const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('support-client/launcher.css?v='+encodeURIComponent(source.searchParams.get('v')||'0.1.0-ui4'),assets);document.head.append(style);
@@ -8,8 +8,9 @@ const button=document.createElement('button');button.type='button';button.datase
 const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');path.setAttribute('d','M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z');svg.append(path);button.append(svg);
 const frameUrl=new URL('support-widget.php',root);
 const frame=document.createElement('iframe');frame.title='پشتیبانی';frame.hidden=true;frame.setAttribute('allow','clipboard-write');
-let frameBooted=false;
-const bootFrame=()=>{if(frameBooted)return;frameBooted=true;frame.src=frameUrl;};
+let frameBooted=false,configLoaded=false;
+const loadConfig=()=>{if(configLoaded)return;configLoaded=true;fetch(new URL('api.php?widget_config=1',root),{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(c=>{sourcePaths=Array.isArray(c.source_paths)?c.source_paths:[];visibility();if(c.customer_v2===true||c.local_v2===true){button.style.background='#0866ff';button.dataset.supportV2Launcher='1';frame.dataset.supportV2Frame='1';}else if(/^#[a-f0-9]{6}$/i.test(c.color))button.style.background=c.color;if(c.name)button.title='پشتیبانی '+c.name;}).catch(()=>{});};
+const bootFrame=()=>{if(frameBooted)return;frameBooted=true;loadConfig();frame.src=frameUrl;};
 frame.id='supportWidgetFrame';frame.dataset.supportFrame='';frame.dataset.state='closed';frame.inert=true;button.setAttribute('aria-controls',frame.id);
 const overlays=window.StorefrontOverlays;
 const isMobile=()=>matchMedia('(max-width:700px)').matches;
@@ -48,8 +49,6 @@ button.onclick=()=>open?requestClose():openWidget();
 button.addEventListener('pointerenter',bootFrame,{once:true,passive:true});
 button.addEventListener('touchstart',bootFrame,{once:true,passive:true});
 button.addEventListener('focus',bootFrame,{once:true});
-const scheduleBoot=()=>{const idle=window.requestIdleCallback;if(typeof idle==='function')idle(bootFrame,{timeout:4500});else setTimeout(bootFrame,3500);};
-if(document.readyState==='complete')scheduleBoot();else addEventListener('load',scheduleBoot,{once:true});
 const closeFromFrame=event=>{
  if(event.key!=='Escape'||event.defaultPrevented||event.isComposing)return;
  event.preventDefault();requestClose();
@@ -66,7 +65,14 @@ addEventListener('message',event=>{if(open&&event.origin===location.origin&&even
 document.body.append(button,frame);
 if(dialog)document.body.append(dialog);
 const accentVisibility=()=>button.dataset.accentPaused=String(document.hidden);document.addEventListener('visibilitychange',accentVisibility);accentVisibility();
-fetch(new URL('api.php?widget_config=1',root),{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(c=>{sourcePaths=Array.isArray(c.source_paths)?c.source_paths:[];visibility();if(c.customer_v2===true||c.local_v2===true){button.style.background='#0866ff';button.dataset.supportV2Launcher='1';frame.dataset.supportV2Frame='1';}else if(/^#[a-f0-9]{6}$/i.test(c.color))button.style.background=c.color;button.title='پشتیبانی '+c.name;}).catch(()=>{});
+if(sourceEl?.dataset?.supportV2==='1'){
+ button.style.background='#0866ff';
+ button.dataset.supportV2Launcher='1';
+ frame.dataset.supportV2Frame='1';
+ button.title='پشتیبانی '+(sourceEl.dataset.supportName||'نوین‌پی');
+}else{
+ loadConfig();
+}
 
 if(!dialog){
  addEventListener('pagehide',()=>close(true));

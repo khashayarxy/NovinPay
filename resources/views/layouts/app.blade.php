@@ -30,6 +30,7 @@
         <meta name="np-telemetry-url" content="{{ route('telemetry.client-error') }}">
     @endif
     <link rel="preload" href="{{ asset('fonts/dana/DanaFaNum-Regular.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/dana/DanaFaNum-Bold.woff2') }}" as="font" type="font/woff2" crossorigin>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <script src="{{ versioned_asset('js/storefront-scroll-lock.js') }}" defer></script>
@@ -68,7 +69,7 @@
 @if(config('support_chat.enabled') && !View::hasSection('quiet-shell'))
     @php($chatAccount = auth('customer')->user())
     @if(!$chatAccount || $chatAccount->verified_at)
-        <script src="{{ app(\App\Support\Chat\ChatAssets::class)->url('support-widget.js') }}" defer></script>
+        <script src="{{ app(\App\Support\Chat\ChatAssets::class)->url('support-widget.js') }}" data-support-v2="1" data-support-name="{{ config('business.name') }}" defer></script>
     @endif
 @endif
 </body>

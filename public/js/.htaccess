@@ -1,7 +1,13 @@
-# Non-hashed static scripts: always revalidate so deployments take effect immediately
-# without requiring Ctrl+F5, while hashed /build/assets/* remain immutable.
+# Unversioned static scripts revalidate immediately; ?v=<mtime> assets cache immutably.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{QUERY_STRING} (?:^|&)v=[0-9A-Za-z._-]+(?:&|$)
+    RewriteRule \.js$ - [E=np_versioned:1]
+</IfModule>
 <IfModule mod_headers.c>
     <FilesMatch "\.js$">
         Header set Cache-Control "public, max-age=0, must-revalidate"
+        Header set Cache-Control "public, max-age=31536000, immutable" env=np_versioned
+        Header set Cache-Control "public, max-age=31536000, immutable" env=REDIRECT_np_versioned
     </FilesMatch>
 </IfModule>

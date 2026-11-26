@@ -5,7 +5,9 @@ namespace App\Models;
 use App\Enums\ProductCategory;
 use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
+use App\Support\GuestPageCache;
 use App\Support\PaymentTestProduct;
+use App\Support\ProductMediaPublisher;
 use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -112,6 +114,16 @@ class Product extends Model
                 $product->summary,
                 $product->description,
             );
+        });
+
+        static::saved(function (Product $product): void {
+            GuestPageCache::bump();
+            ProductMediaPublisher::syncProduct($product);
+        });
+
+        static::deleted(function (Product $product): void {
+            GuestPageCache::bump();
+            ProductMediaPublisher::unpublishProduct($product);
         });
     }
 

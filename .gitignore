@@ -17,6 +17,7 @@
 /public/build
 /public/fonts
 /public/hot
+/public/media-cache
 /public/storage
 /storage/*.key
 /storage/pail

@@ -1,4 +1,4 @@
-@props(['product', 'sale' => null, 'quantity' => null])
+@props(['product', 'sale' => null, 'quantity' => null, 'eager' => false])
 @php
     $sale ??= \App\Support\ProductSale::resolve($product, null);
     $known = \App\Support\ProductSale::priceConfirmed($product);
@@ -14,7 +14,7 @@
 <article class="card public-product-card relative flex flex-col overflow-hidden">
     <div class="public-product-card__media">
         <div class="aspect-[4/3]">
-            <x-product-image :product="$product" />
+            <x-product-image :product="$product" :eager="$eager" sizes="(max-width: 1023px) 46vw, 280px" />
         </div>
     </div>
 

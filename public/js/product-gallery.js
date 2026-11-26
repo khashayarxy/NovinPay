@@ -16,7 +16,11 @@ document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
     let suppressOpenUntil = 0;
 
     function copyImage(target, image) {
-        target.src = image.src;
+        const fullSrc = image.dataset?.fullSrc || image.getAttribute('src') || image.src;
+        target.removeAttribute('srcset');
+        target.removeAttribute('sizes');
+        target.src = fullSrc;
+        if (target.dataset) target.dataset.fullSrc = fullSrc;
         target.alt = image.alt;
         for (const dimension of ['width', 'height']) {
             if (image.hasAttribute(dimension)) {

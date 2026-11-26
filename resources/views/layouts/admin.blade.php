@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow">
     <x-brand-head />
     <title>@yield('title', 'مدیریت') | پنل مدیریت {{ config('business.name') }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/admin-app.css', 'resources/js/app.js'])
     <x-password-visibility-assets />
     <script src="{{ versioned_asset('js/mobile-digits.js') }}" defer></script>
 </head>

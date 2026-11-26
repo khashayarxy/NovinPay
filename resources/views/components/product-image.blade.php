@@ -1,8 +1,16 @@
-@props(['product', 'image' => null, 'eager' => false])
-@php($image ??= $product->primaryImage())
+@props(['product', 'image' => null, 'eager' => false, 'sizes' => '(max-width: 767px) 350px, 420px'])
+@php
+    $image ??= $product->primaryImage();
+    $staticMedia = ($image && ! $product->isPrivatePaymentTest() && $product->is_published && ! $product->is_sample)
+        ? \App\Support\ProductMediaPublisher::resolveStatic($image['path'], isset($image['width']) ? (int) $image['width'] : null)
+        : null;
+@endphp
 
 @if ($image)
-    <img src="{{ route('products.media', basename($image['path'])) }}"
+    @php($fallbackUrl = route('products.media', basename($image['path'])))
+    <img src="{{ $staticMedia['src'] ?? $fallbackUrl }}"
+        @if (! empty($staticMedia['srcset'])) srcset="{{ $staticMedia['srcset'] }}" sizes="{{ $sizes }}" @endif
+        data-full-src="{{ $staticMedia['full'] ?? $fallbackUrl }}"
         alt="{{ $image['alt'] ?? 'تصویر '.$product->name }}"
         @if (isset($image['width'], $image['height'])) width="{{ $image['width'] }}" height="{{ $image['height'] }}" @endif
         @if ($eager) loading="eager" fetchpriority="high" data-gallery-main @else loading="lazy" decoding="async" @endif

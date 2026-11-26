@@ -41,11 +41,13 @@ class ShoppingCart
     {
         $device = $request->cookie(self::DEVICE_COOKIE);
         $usable = fn ($token) => is_string($token) && preg_match('/\A[0-9a-f]{64}\z/D', $token);
+        $freshDeviceGenerated = false;
         if ($initialize && ! $usable($device)) {
             $device = $request->session()->get('store_cart_device_bootstrap');
             if (! $usable($device)) {
                 $device = bin2hex(random_bytes(32));
                 $request->session()->put('store_cart_device_bootstrap', $device);
+                $freshDeviceGenerated = true;
             }
             Cookie::queue(new HostCookie(self::DEVICE_COOKIE, $device, now()->addYear(), '/', null, true, true, false, 'lax'));
         } elseif ($initialize) {
@@ -61,13 +63,41 @@ class ShoppingCart
             'device' => $deviceScope,
             'account' => $accountScope,
             'view' => $view,
+            'fresh_device' => $freshDeviceGenerated,
             'proof' => hash_hmac('sha256', json_encode([$deviceScope, $accountScope, $account?->session_version], JSON_THROW_ON_ERROR), config('app.key')),
         ];
+    }
+
+    public function hasPotentialCart(Request $request): bool
+    {
+        if ($request->attributes->has('storefront-cart-committed')) {
+            return true;
+        }
+        if ($this->login->authenticatedAccount($request) !== null) {
+            return true;
+        }
+        $device = $request->cookie(self::DEVICE_COOKIE);
+        if (is_string($device) && preg_match('/\A[0-9a-f]{64}\z/D', $device) === 1) {
+            return true;
+        }
+        if ($request->hasSession()) {
+            $session = $request->session();
+            if ($session->has('store_cart_device_bootstrap') || $session->has('store_cart')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function count(Request $request): int
     {
         if (! $request->attributes->has('storefront-cart-count')) {
+            if (! $this->hasPotentialCart($request)) {
+                $request->attributes->set('storefront-cart-count', 0);
+
+                return 0;
+            }
             $request->attributes->set('storefront-cart-count', array_sum($this->read($request, false)['quantity']));
         }
 
@@ -208,7 +238,8 @@ class ShoppingCart
         }
 
         $scopes = $this->scopes($request, $initialize);
-        $states = $this->states($scopes, false);
+        $skipDb = ($scopes['fresh_device'] ?? false) && $scopes['account'] === null;
+        $states = $skipDb ? [] : $this->states($scopes, false);
         $items = $this->combined($scopes, $states);
 
         return [
@@ -499,7 +530,7 @@ class ShoppingCart
 
     private function states(array $scopes, bool $lock): array
     {
-        $keys = array_values(array_unique(array_filter(array_diff_key($scopes, ['proof' => true]))));
+        $keys = array_values(array_unique(array_filter(array_diff_key($scopes, ['proof' => true, 'fresh_device' => true]))));
         if ($keys === []) {
             return [];
         }

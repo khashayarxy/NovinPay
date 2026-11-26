@@ -14,6 +14,7 @@ use App\Support\AdminHistory;
 use App\Support\FaNumber;
 use App\Support\FinanceTime;
 use App\Support\OrderMoney;
+use App\Support\ProductMediaPublisher;
 use App\Support\ProductSale;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -424,6 +425,7 @@ class ProductController extends Controller
         // successful store/update/destroy into a 500 for the admin. Any
         // leftover file is reported and can be removed manually.
         try {
+            ProductMediaPublisher::removePublishedImage($path);
             $disk = Storage::disk('public');
 
             if ($disk->exists($path)) {

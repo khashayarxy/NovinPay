@@ -2,6 +2,15 @@
 
 @section('meta_description', 'فروش دستگاه‌های کارتخوان آکبند و استوک و خدمات تعمیر PAX، NewPOS و Newland در شهریار. مشاوره و استعلام قیمت از نوین‌پی.')
 
+@if (config('homepage.artwork.hero') === 'images/home/novinpay-terminal-clean.webp' && is_file(public_path('images/home/novinpay-terminal-clean-853.avif')))
+    @push('page-head')
+        <link rel="preload" as="image" type="image/avif"
+              imagesrcset="{{ asset('images/home/novinpay-terminal-clean-400.avif') }} 400w, {{ asset('images/home/novinpay-terminal-clean-640.avif') }} 640w, {{ asset('images/home/novinpay-terminal-clean-853.avif') }} 853w"
+              imagesizes="(max-width: 850px) clamp(220px, 65vw, 260px), 400px"
+              fetchpriority="high">
+    @endpush
+@endif
+
 @section('content')
     <section class="np-hero" aria-labelledby="hero-title">
         <div class="np-container np-hero__grid">

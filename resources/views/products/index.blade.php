@@ -156,7 +156,7 @@
                 @else
                     <div class="public-product-grid">
                         @foreach ($products as $product)
-                            <x-product-card :product="$product" :sale="$sales[$product->id]" :quantity="$stock[$product->id] ?? null" />
+                            <x-product-card :product="$product" :sale="$sales[$product->id]" :quantity="$stock[$product->id] ?? null" :eager="$loop->index < 2" />
                         @endforeach
                     </div>
 
