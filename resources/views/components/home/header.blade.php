@@ -4,6 +4,7 @@
     $shopTools = request()->routeIs('home', 'products.*', 'cart.*', 'repair*', 'account.*', 'articles.*', 'contact', 'consultation*', 'terms', 'privacy');
     request()->attributes->set('customer_header_rendered', true);
     $customerAccount = app(\App\Services\CustomerLogin::class)->authenticatedAccount(request());
+    request()->attributes->set('customer_authenticated', $customerAccount !== null);
     $activeCategory = request()->routeIs('products.index') ? request()->query('category') : null;
     $shopCategories = \App\Enums\ProductCategory::storefrontCases();
     $navigation = [['home', 'home', 'صفحه اصلی'], ['products.index', 'products.*', 'فروشگاه'], ['repair', 'repair*', 'تعمیرات'], ['contact', 'contact', 'تماس با ما'], ['articles.index', 'articles.*', 'مقاله‌ها']];

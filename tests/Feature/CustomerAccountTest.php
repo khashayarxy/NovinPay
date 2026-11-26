@@ -126,7 +126,7 @@ class CustomerAccountTest extends TestCase
         ]);
         $this->get('/')->assertOk()->assertSee('data-customer-state="guest"', false)
             ->assertSee('ورود / ثبت‌نام')->assertDontSee('mobile-customer-navigation')
-            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('Cache-Control', 'must-revalidate, no-cache, private')
             ->assertHeader('X-LiteSpeed-Cache-Control', 'no-cache');
         $this->post('/account/start', ['phone' => $account->phone])->assertRedirect();
         $this->post('/account/password-login', ['password' => 'synthetic-header-passphrase'])->assertRedirect('/account');

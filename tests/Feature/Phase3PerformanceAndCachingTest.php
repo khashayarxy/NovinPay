@@ -63,7 +63,7 @@ class Phase3PerformanceAndCachingTest extends TestCase
         $missHome = $this->get('/');
         $missHome->assertOk()
             ->assertHeader('X-Guest-Cache', 'MISS')
-            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('Cache-Control', 'must-revalidate, no-cache, private')
             ->assertHeader('X-LiteSpeed-Cache-Control', 'no-cache')
             ->assertSee('data-cart-empty-guest="1"', false)
             ->assertSee('نوین‌پی');
@@ -79,7 +79,7 @@ class Phase3PerformanceAndCachingTest extends TestCase
         $hitHome = $this->get('/');
         $hitHome->assertOk()
             ->assertHeader('X-Guest-Cache', 'HIT')
-            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('Cache-Control', 'must-revalidate, no-cache, private')
             ->assertSee('نوین‌پی');
         $this->assertSame([], $hitHome->headers->getCookies());
         $this->assertCount(0, DB::getQueryLog(), 'Guest page cache HIT must execute zero DB queries.');
@@ -128,15 +128,25 @@ class Phase3PerformanceAndCachingTest extends TestCase
             ->get('/');
         $authedHome->assertOk()
             ->assertHeaderMissing('X-Guest-Cache')
+            ->assertHeader('Cache-Control', 'no-store, private')
             ->assertSee('data-customer-state="authenticated"', false);
 
         Auth::forgetGuards();
         $this->flushSession();
 
-        // 4. Non-whitelisted routes (/cart, /repair, /login, /admin/login) never use guest cache
+        // Guest storefront product detail & comparison get bfcache-friendly Cache-Control
+        $this->get('/products/pax-s910')
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'must-revalidate, no-cache, private');
+        $this->get('/product-comparison')
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'must-revalidate, no-cache, private');
+
+        // 4. Non-whitelisted routes (/cart, /repair, /login, /admin/login, /account) never use guest cache and keep strict no-store
         foreach (['/cart', '/repair', '/login', '/admin/login'] as $route) {
             $res = $this->get($route);
             $res->assertOk()->assertHeaderMissing('X-Guest-Cache');
+            $this->assertStringContainsString('no-store', (string) $res->headers->get('Cache-Control', ''));
         }
     }
 
