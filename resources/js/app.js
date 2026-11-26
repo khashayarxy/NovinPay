@@ -216,6 +216,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const inPersonPanel = repairStepper.querySelector('[data-handover-panel="in_person"]');
         const pickupPanel = repairStepper.querySelector('[data-handover-panel="pickup"]');
         const pickupAddressInput = repairStepper.querySelector('#pickup_address');
+        const pickupNotesInput = repairStepper.querySelector('#pickup_notes');
+        const otherPersonToggle = repairStepper.querySelector('[data-other-person-toggle]');
+        const otherPersonField = repairStepper.querySelector('[data-other-person-field]');
         const responsivePhoneInput = repairStepper.querySelector('#responsive_phone');
         const presetButtons = [...repairStepper.querySelectorAll('[data-issue-preset]')];
         const upgradeEstimateBox = repairStepper.querySelector('[data-upgrade-estimate]');
@@ -256,6 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             province: repairStepper.querySelector('#repair_province_search') || provinceSelect,
             city: repairStepper.querySelector('#repair_city_search') || citySelect,
             pickup_address: pickupAddressInput,
+            pickup_notes: pickupNotesInput,
             responsive_phone: responsivePhoneInput,
             customer_name: nameInput,
             contact_phone: contactPhoneInput,
@@ -394,7 +398,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     city: citySelect?.value || '',
                     handover_method: handoverRadios.find((r) => r.checked && !r.disabled)?.value || '',
                     pickup_address: pickupAddressInput?.value || '',
-                    responsive_phone: responsivePhoneInput?.value || '',
+                    pickup_notes: pickupNotesInput?.value || '',
+                    other_person_handover: Boolean(otherPersonToggle?.checked),
+                    responsive_phone: otherPersonToggle && !otherPersonToggle.checked ? '' : (responsivePhoneInput?.value || ''),
                     customer_name: nameInput?.value || '',
                 };
                 window.sessionStorage?.setItem(draftKey, JSON.stringify(draft));
@@ -599,6 +605,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return true;
         };
+
+        const syncOtherPersonField = ({ focusInput = false } = {}) => {
+            if (!(otherPersonToggle instanceof HTMLInputElement) || !(otherPersonField instanceof HTMLElement)) return;
+            const checked = otherPersonToggle.checked;
+            otherPersonField.hidden = !checked;
+            if (!checked && responsivePhoneInput) {
+                responsivePhoneInput.value = '';
+                setFieldError('responsive_phone', '');
+            } else if (checked && focusInput) {
+                responsivePhoneInput?.focus();
+            }
+        };
+        otherPersonToggle?.addEventListener('change', () => {
+            syncOtherPersonField({ focusInput: true });
+            saveDraft();
+        });
 
         // Clear inline field errors as the user interacts
         brandRadios.forEach((r) => r.addEventListener('change', () => setFieldError('device_brand', '')));
@@ -1068,11 +1090,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (hr) hr.checked = true;
                     }
                     if (saved.pickup_address && pickupAddressInput) pickupAddressInput.value = saved.pickup_address;
+                    if (saved.pickup_notes && pickupNotesInput) pickupNotesInput.value = saved.pickup_notes;
+                    if (otherPersonToggle instanceof HTMLInputElement) {
+                        otherPersonToggle.checked = Boolean(saved.other_person_handover || saved.responsive_phone);
+                    }
                     if (saved.responsive_phone && responsivePhoneInput) responsivePhoneInput.value = saved.responsive_phone;
                     if (saved.customer_name && nameInput && !nameInput.value.trim()) nameInput.value = saved.customer_name;
                 }
             } catch {}
         }
+        syncOtherPersonField();
 
         if (provinceSelect?.value) {
             populateRepairCities(citySelect?.dataset.selectedCity || citySelect?.value || '');

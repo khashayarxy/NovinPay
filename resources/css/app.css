@@ -1264,22 +1264,77 @@
         justify-content: center;
     }
 
-    .repair-confirm-card {
-        max-width: 560px;
-        margin-inline: auto;
+    .repair-confirm-main {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
         text-align: center;
+        gap: 18px;
+    }
+
+    .repair-confirm-head {
+        display: grid;
+        justify-items: center;
+        gap: 8px;
+    }
+
+    .repair-confirm-badge {
+        display: grid;
+        place-items: center;
+        width: 52px;
+        height: 52px;
+        border-radius: 999px;
+        background: #e8f8f0;
+        border: 1.5px solid #a7f3d0;
+        color: #15803d;
+        margin-bottom: 2px;
+    }
+
+    .repair-confirm-badge svg {
+        width: 24px !important;
+        height: 24px !important;
+    }
+
+    .repair-confirm-head h1 {
+        margin: 0;
+        font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+        font-weight: 800;
+        color: #0d233e;
+        line-height: 1.45;
     }
 
     .repair-confirm-lead {
-        max-width: 44ch;
-        margin-inline: auto;
+        max-width: 46ch;
+        margin: 0 auto;
         color: #46617c;
-        line-height: 1.85;
+        font-size: 0.9rem;
+        line-height: 1.8;
     }
 
-    .repair-confirm-notice {
+    .repair-confirm-stepper {
+        margin-block: 4px;
         text-align: start;
-        margin-block: 16px;
+    }
+
+    .repair-confirm-aside {
+        text-align: start;
+    }
+
+    .repair-confirm-next-lead {
+        margin: 0 0 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #2f4963;
+        line-height: 1.75;
+    }
+
+    .repair-confirm-info-card {
+        padding: 15px 16px;
+        border-radius: 14px;
+        background: rgb(255 255 255 / 92%);
+        border: 1px solid #c9dff6;
+        display: grid;
+        gap: 10px;
     }
 
     .repair-confirm-steps {
@@ -1296,6 +1351,29 @@
     .repair-confirm-actions {
         justify-content: center;
         gap: 10px;
+        padding-top: 6px;
+    }
+
+    .repair-courier-alt {
+        display: grid;
+        gap: 10px;
+    }
+
+    .repair-courier-alt__toggle {
+        width: 100%;
+        justify-content: flex-start;
+        text-align: start;
+        font-weight: 600;
+    }
+
+    .repair-courier-alt__field[hidden] {
+        display: none;
+    }
+
+    .repair-rtl-phone-input {
+        direction: ltr;
+        text-align: right !important;
+        unicode-bidi: plaintext;
     }
 
     .repair-recovery-phone-bar {

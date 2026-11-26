@@ -16,6 +16,9 @@ final class PatternSms
         'order_preparing' => '694jmegiuep02i6',
         'order_shipped' => 'yksd5440vew1loy',
         'repair_created' => '309p3u2jo5b7qds',
+        'repair_created_in_person' => '',
+        'repair_created_postal' => '',
+        'repair_created_courier' => '',
         'repair_payment' => 'a7h9o09htzyjk17',
         'repair_status' => 'hn7sgk679tfdxvt',
         'order_pickup_ready' => 'u2fc816s2qo1u5t',
@@ -62,6 +65,25 @@ final class PatternSms
         };
     }
 
+    public function resolvePattern(string $event): string
+    {
+        if (! array_key_exists($event, self::PATTERNS)) {
+            return '';
+        }
+
+        $configured = trim((string) config('notifications.pattern_sms.patterns.'.$event));
+        if ($configured !== '') {
+            return $configured;
+        }
+
+        if (in_array($event, ['repair_created_in_person', 'repair_created_postal', 'repair_created_courier'], true)) {
+            return trim((string) config('notifications.pattern_sms.patterns.repair_created'))
+                ?: self::PATTERNS['repair_created'];
+        }
+
+        return self::PATTERNS[$event];
+    }
+
     /** @param array<string, string> $variables */
     public function send(string $event, string $identity, ?string $recipient, array $variables): void
     {
@@ -73,8 +95,8 @@ final class PatternSms
             return;
         }
 
-        $pattern = trim((string) config('notifications.pattern_sms.patterns.'.$event)) ?: (self::PATTERNS[$event] ?? '');
-        if (! isset(self::PATTERNS[$event]) || ! preg_match('/\A[A-Za-z0-9]{1,80}\z/D', $pattern)) {
+        $pattern = $this->resolvePattern($event);
+        if (! array_key_exists($event, self::PATTERNS) || ! preg_match('/\A[A-Za-z0-9]{1,80}\z/D', $pattern)) {
             Log::warning('SMS pattern skipped', $context + ['reason' => 'invalid_pattern']);
 
             return;
@@ -87,8 +109,9 @@ final class PatternSms
 
         $phase = 'deduplication';
         try {
-            // Preserve existing claims across provider switches and keep them after uncertain sends.
-            $key = 'panelchi:'.hash('sha256', $event.':'.$identity);
+            // Preserve existing claims across provider switches and method-specific repair_created variants.
+            $dedupeEvent = str_starts_with($event, 'repair_created') ? 'repair_created' : $event;
+            $key = 'panelchi:'.hash('sha256', $dedupeEvent.':'.$identity);
             if (! Cache::store('database')->add($key, true, now()->addYear())) {
                 Log::debug('SMS pattern duplicate suppressed', $context);
 

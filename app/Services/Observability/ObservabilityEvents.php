@@ -103,10 +103,34 @@ final class ObservabilityEvents
             $brand = $repair->device_brand?->value ?? (string) $repair->device_brand;
             $this->metrics->increment('repairs.created');
 
+            $lines = [
+                '🛠️ درخواست تعمیر جدید',
+                "کد پیگیری: {$ref}",
+                "دستگاه: {$brand} {$repair->device_model}",
+            ];
+            if (method_exists($repair, 'parsedIssue')) {
+                $parsed = $repair->parsedIssue();
+                if (! empty($parsed['handover_label'])) {
+                    $lines[] = 'نحوه تحویل: '.$parsed['handover_label'];
+                }
+                if (($parsed['handover_key'] ?? null) === 'doorstep_pickup') {
+                    if (! empty($parsed['pickup_address'])) {
+                        $lines[] = 'نشانی پیک: '.mb_substr((string) $parsed['pickup_address'], 0, 180);
+                    }
+                    if (! empty($parsed['responsive_phone'])) {
+                        $lines[] = 'تلفن هماهنگی: '.$parsed['responsive_phone'];
+                    }
+                    if (! empty($parsed['pickup_notes'])) {
+                        $lines[] = 'توضیحات پیک: '.mb_substr((string) $parsed['pickup_notes'], 0, 160);
+                    }
+                }
+            }
+
             $this->topics->send(
                 'repairs',
-                "🛠️ درخواست تعمیر جدید\nکد پیگیری: {$ref}\nدستگاه: {$brand} {$repair->device_model}",
+                implode("\n", $lines),
                 "repair_created:{$ref}",
+                adminUrl: route('admin.repairs.show', $repair),
             );
         } catch (Throwable) {
         }
@@ -131,6 +155,9 @@ final class ObservabilityEvents
                 }
                 if (! empty($parsed['responsive_phone'])) {
                     $lines[] = 'تلفن هماهنگی: '.$parsed['responsive_phone'];
+                }
+                if (! empty($parsed['pickup_notes'])) {
+                    $lines[] = 'توضیحات پیک: '.mb_substr((string) $parsed['pickup_notes'], 0, 160);
                 }
             }
 
@@ -280,6 +307,9 @@ final class ObservabilityEvents
             'order_pickup_ready' => 'آمادهٔ تحویل حضوری',
             'order_cancelled' => 'لغو سفارش',
             'repair_created' => 'ثبت تعمیر',
+            'repair_created_in_person' => 'ثبت تعمیر (حضوری)',
+            'repair_created_postal' => 'ثبت تعمیر (پستی)',
+            'repair_created_courier' => 'ثبت تعمیر (پیک)',
             'repair_payment' => 'پرداخت تعمیر',
             'repair_status' => 'تغییر مرحلهٔ تعمیر',
             'repair_cancelled' => 'لغو تعمیر',

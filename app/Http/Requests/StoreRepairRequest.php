@@ -19,8 +19,14 @@ class StoreRepairRequest extends PrivateRepairFormRequest
         $account = Auth::guard('customer')->user();
         $merge = ['contact_phone' => $account?->phone];
 
-        if ($this->filled('responsive_phone') && is_string($this->input('responsive_phone'))) {
+        if ($this->input('other_person_handover') === '0') {
+            $merge['responsive_phone'] = null;
+        } elseif ($this->filled('responsive_phone') && is_string($this->input('responsive_phone'))) {
             $merge['responsive_phone'] = RepairIdentity::phone($this->input('responsive_phone'));
+        }
+
+        if ($this->filled('pickup_notes') && is_string($this->input('pickup_notes'))) {
+            $merge['pickup_notes'] = trim(preg_replace('/\s+/u', ' ', $this->input('pickup_notes')) ?? '');
         }
 
         $this->merge($merge);
@@ -50,8 +56,10 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             'city' => ['nullable', 'string', 'max:80'],
             'handover_method' => ['nullable', 'string', Rule::in(array_keys(RepairRequest::HANDOVER_METHODS))],
             'pickup_address' => ['nullable', 'string', 'max:500'],
+            'pickup_notes' => ['nullable', 'string', 'max:300'],
             'pickup_latitude' => ['nullable', 'numeric', 'between:-85,85'],
             'pickup_longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'other_person_handover' => ['nullable', 'boolean'],
             'responsive_phone' => ['nullable', 'string', 'regex:/\A09[0-9]{9}\z/'],
             'submission_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
         ];
@@ -110,6 +118,7 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             'city' => 'شهر',
             'handover_method' => 'روش تحویل دستگاه',
             'pickup_address' => 'نشانی تحویل در محل',
+            'pickup_notes' => 'توضیحات برای پیک',
             'submission_token' => 'شناسهٔ فرم',
         ];
     }

@@ -317,6 +317,12 @@ class RepairRequestController extends Controller
             if (! empty($data['responsive_phone'])) {
                 $repair->issue .= "\nشماره تماس پاسخگو: ".$data['responsive_phone'];
             }
+            if (! empty($data['pickup_notes'])) {
+                $cleanNotes = trim(preg_replace('/\s+/u', ' ', (string) $data['pickup_notes']) ?? '');
+                if ($cleanNotes !== '') {
+                    $repair->issue .= "\nتوضیحات برای پیک: ".$cleanNotes;
+                }
+            }
         }
         $repair->status = RepairRequestStatus::OnlineSubmitted;
         $account = Auth::guard('customer')->user();
