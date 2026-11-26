@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
@@ -340,6 +341,8 @@ class Phase5ChatReviewsNotificationsBackupsTest extends TestCase
     #[PreserveGlobalState(false)]
     public function test_new_telegram_topics_fallback_safely_inventory_reserve_alerts_and_support_chat_deep_links(): void
     {
+        // CI logs to STDERR; suppress expected Bale-offline/fallback warnings in isolated child process.
+        Log::spy();
         Cache::flush();
         $chatDir = sys_get_temp_dir().'/novinpay-phase5-chat-'.bin2hex(random_bytes(10));
         config([

@@ -69,14 +69,13 @@ class PreviewAwareSession extends StartSession
         }
 
         // Match the native API's isset dispatch, including Laravel-normalized nulls.
-        // Native chat bootstrap/CSRF endpoints issue their own isolated chat cookie
-        // and only read the authenticated Laravel customer session without mutating it.
+        // CSRF/bootstrap requests retain normal session writes even if paired with read flags.
         $query = $request->query->all();
+        if (isset($query['get_csrf']) || isset($query['get_recovery_context']) || ($query['bootstrap'] ?? '') === '1') {
+            return false;
+        }
 
-        return isset($query['get_csrf'])
-            || isset($query['get_recovery_context'])
-            || ($query['bootstrap'] ?? '') === '1'
-            || isset($query['widget_config'])
+        return isset($query['widget_config'])
             || isset($query['recovery_availability'])
             || isset($query['get_conversation'])
             || isset($query['receipts'])
