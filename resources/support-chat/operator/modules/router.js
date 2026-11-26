@@ -18,7 +18,11 @@ export function createRouter({views,navLinks,titleHost,isAdmin,onNavigate}){
 
  function parseHash(){
   const raw=location.hash.replace(/^#/,'').trim();
-  if(!raw)return {route:'conversations',params:{}};
+  if(!raw){
+   const queryConv=new URLSearchParams(location.search).get('conversation')||'';
+   if(/^user_[a-f0-9]{32}_[0-9]{1,20}$/.test(queryConv))return {route:'conversations',params:{id:queryConv}};
+   return {route:'conversations',params:{}};
+  }
   // Legacy compatibility: #conversation=user_...
   if(raw.startsWith('conversation=')){
    return {route:'conversations',params:{id:raw.slice(13)}};

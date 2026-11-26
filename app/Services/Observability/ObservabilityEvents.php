@@ -240,11 +240,37 @@ final class ObservabilityEvents
         }
     }
 
+    public function consultationCreated(): void
+    {
+        try {
+            $this->metrics->increment('consultations.created');
+        } catch (Throwable) {
+        }
+    }
+
+    public function reviewCreated(): void
+    {
+        try {
+            $this->metrics->increment('reviews.created');
+        } catch (Throwable) {
+        }
+    }
+
+    public function supportChatMessageReceived(): void
+    {
+        try {
+            $this->metrics->increment('support_chat.messages');
+        } catch (Throwable) {
+        }
+    }
+
     public function inventoryChanged(InventoryItem $item, int $onHandDelta, int $reservedDelta, string $kind, string $reason = ''): void
     {
         try {
             $available = (int) $item->available;
-            $threshold = max(0, (int) ($item->low_stock_threshold ?? config('observability.inventory.default_low_stock_threshold', 2)));
+            $configuredDefault = (int) config('observability.inventory.low_stock_threshold', 3);
+            $itemThreshold = (int) ($item->low_stock_threshold ?? 0);
+            $threshold = $itemThreshold > 0 ? $itemThreshold : max(0, $configuredDefault);
             $this->metrics->increment('inventory.movements');
 
             if ($available <= 0) {
@@ -269,12 +295,14 @@ final class ObservabilityEvents
                 return;
             }
 
-            if (in_array($kind, ['receive', 'adjust', 'dispatch'], true) && ($onHandDelta !== 0 || $reservedDelta !== 0)) {
-                $sign = $onHandDelta > 0 ? "+{$onHandDelta}" : (string) $onHandDelta;
+            $availableDelta = $onHandDelta - $reservedDelta;
+            if (in_array($kind, ['receive', 'adjust', 'dispatch', 'reserve', 'release'], true) && ($onHandDelta !== 0 || $reservedDelta !== 0)) {
+                $deltaValue = $availableDelta !== 0 ? $availableDelta : $onHandDelta;
+                $sign = $deltaValue > 0 ? "+{$deltaValue}" : (string) $deltaValue;
                 $noteLine = $reason !== '' ? "\nتوضیح: ".mb_substr($reason, 0, 120) : '';
                 $this->topics->send(
                     'inventory',
-                    '📊 تغییر موجودی انبار ('.self::label($kind).")\nکالا: {$item->name}\nشناسه کالا: {$item->sku}\nتغییر: {$sign} | موجودی آزاد: {$available}{$noteLine}",
+                    '📊 تغییر موجودی انبار ('.self::label($kind).")\nکالا: {$item->name}\nشناسه کالا: {$item->sku}\nتغییر موجودی آزاد: {$sign} | موجودی آزاد: {$available}{$noteLine}",
                     "inv_chg:{$item->id}:{$kind}:{$available}",
                     60,
                 );
@@ -320,6 +348,8 @@ final class ObservabilityEvents
             'receive' => 'دریافت',
             'adjust' => 'اصلاح',
             'dispatch' => 'خروج',
+            'reserve' => 'رزرو سفارش',
+            'release' => 'آزادسازی رزرو',
             default => preg_match('/\A[a-z0-9_]+\z/i', $value) ? 'نیازمند بررسی در پنل مدیریت' : $value,
         };
     }

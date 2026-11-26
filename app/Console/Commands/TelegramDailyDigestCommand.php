@@ -2,32 +2,58 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Consultation;
 use App\Models\CustomerAccount;
 use App\Models\InventoryItem;
 use App\Models\PaymentAttempt;
+use App\Models\ProductFeedback;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
+use App\Services\Notifications\BaleNotifier;
 use App\Services\Observability\ObservabilityMetrics;
 use App\Services\Observability\TelegramTopicNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 final class TelegramDailyDigestCommand extends Command
 {
-    protected $signature = 'novinpay:telegram-daily-digest {--date= : Target date in Y-m-d format}';
+    protected $signature = 'novinpay:telegram-daily-digest
+        {--date= : Target date in Y-m-d format (or "yesterday")}
+        {--if-unsent : Skip if a digest was already delivered for the target date}';
 
-    protected $description = 'Send the consolidated 24-hour operational digest to the Telegram digest topic.';
+    protected $description = 'Send the consolidated 24-hour operational digest to the Telegram digest topic (and Bale if enabled).';
 
-    public function handle(ObservabilityMetrics $metrics, TelegramTopicNotifier $topics): int
+    public function handle(ObservabilityMetrics $metrics, TelegramTopicNotifier $topics, BaleNotifier $bale): int
     {
-        $dateOption = $this->option('date');
-        $target = is_string($dateOption) && preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $dateOption)
-            ? Carbon::parse($dateOption)
-            : now();
+        $dateOption = trim((string) $this->option('date'));
+        if ($dateOption === 'yesterday') {
+            $target = Carbon::now('Asia/Tehran')->subDay();
+        } elseif ($dateOption !== '' && preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $dateOption)) {
+            $target = Carbon::createFromFormat('Y-m-d', $dateOption, 'Asia/Tehran');
+        } else {
+            $target = Carbon::now('Asia/Tehran');
+        }
+
         $dateKey = $target->format('Y-m-d');
-        $start = $target->copy()->startOfDay();
-        $end = $target->copy()->endOfDay();
+        $sentMarkerKey = 'novinpay:daily_digest_sent:'.$dateKey;
+
+        if ($this->option('if-unsent')) {
+            try {
+                if (Cache::get($sentMarkerKey) === true) {
+                    $this->line("Daily digest already sent for {$dateKey}; skipping.");
+
+                    return self::SUCCESS;
+                }
+            } catch (Throwable) {
+            }
+        }
+
+        $appTz = (string) config('app.timezone', 'UTC');
+        $start = $target->copy()->startOfDay()->setTimezone($appTz);
+        $end = $target->copy()->endOfDay()->setTimezone($appTz);
 
         $settledPayments = PaymentAttempt::query()
             ->where('state', 'settled')
@@ -48,17 +74,23 @@ final class TelegramDailyDigestCommand extends Command
         $newRepairs = RepairRequest::query()->whereBetween('created_at', [$start, $end])->count();
         $openRepairCases = RepairCase::query()->whereNotIn('status', ['delivered', 'returned'])->count();
         $newUsers = CustomerAccount::query()->whereBetween('created_at', [$start, $end])->count();
+        $newConsultations = Consultation::query()->whereBetween('created_at', [$start, $end])->count();
+        $newReviews = ProductFeedback::query()->whereBetween('created_at', [$start, $end])->count();
+        $pendingReviews = ProductFeedback::query()->where('status', 'pending')->count();
 
+        $defaultThreshold = (int) config('observability.inventory.low_stock_threshold', 3);
         $inventory = InventoryItem::query()->get(['on_hand', 'reserved', 'low_stock_threshold']);
         $outOfStock = $inventory->filter(fn (InventoryItem $i) => max(0, (int) $i->on_hand - (int) $i->reserved) <= 0)->count();
-        $lowStock = $inventory->filter(function (InventoryItem $i): bool {
+        $lowStock = $inventory->filter(function (InventoryItem $i) use ($defaultThreshold): bool {
             $avail = max(0, (int) $i->on_hand - (int) $i->reserved);
+            $threshold = (int) $i->low_stock_threshold > 0 ? (int) $i->low_stock_threshold : $defaultThreshold;
 
-            return $avail > 0 && $avail <= (int) $i->low_stock_threshold;
+            return $avail > 0 && $avail <= $threshold;
         })->count();
 
         $summary = $metrics->summary($dateKey);
         $sms = $metrics->smsBreakdown($dateKey);
+        $chatMessages = $metrics->get('support_chat.messages', $dateKey);
         $backup = $metrics->latestBackup();
         $backupStatus = match ($backup['status'] ?? null) {
             'ok' => 'به‌روز',
@@ -79,8 +111,10 @@ final class TelegramDailyDigestCommand extends Command
             "• سفارش جدید: {$newOrders}",
             "• ناموجود: {$outOfStock} کالا | موجودی کم: {$lowStock} کالا",
             '',
-            '🛠️ تعمیرات و کاربران:',
+            '🛠️ تعمیرات، مشاوره و دیدگاه‌ها:',
             "• درخواست تعمیر جدید: {$newRepairs} | پرونده‌های باز: {$openRepairCases}",
+            "• مشاوره جدید: {$newConsultations} | پیام چت پشتیبانی: {$chatMessages}",
+            "• دیدگاه جدید: {$newReviews} (در انتظار تأیید: {$pendingReviews})",
             "• کاربر جدید: {$newUsers} | ورودها: {$summary['user_logins']}",
             '',
             '📨 پیامک‌ها:',
@@ -94,9 +128,18 @@ final class TelegramDailyDigestCommand extends Command
         ];
 
         $text = implode("\n", $lines);
-        $sent = $topics->send('digest', $text, "daily_digest:{$dateKey}", 60);
+        $sentTelegram = $topics->send('digest', $text, "daily_digest:{$dateKey}", 60);
+        $sentBale = $bale->send($text, "daily_digest:{$dateKey}", 60);
+        $delivered = $sentTelegram || $sentBale;
 
-        $this->line("Daily digest generated for {$dateKey} (telegram_sent=".($sent ? 'true' : 'false').').');
+        if ($delivered) {
+            try {
+                Cache::put($sentMarkerKey, true, now()->addDays(3));
+            } catch (Throwable) {
+            }
+        }
+
+        $this->line("Daily digest generated for {$dateKey} (telegram_sent=".($sentTelegram ? 'true' : 'false').', bale_sent='.($sentBale ? 'true' : 'false').').');
 
         return self::SUCCESS;
     }

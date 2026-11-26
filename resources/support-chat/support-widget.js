@@ -10,7 +10,7 @@ const frameUrl=new URL('support-widget.php',root);
 const frame=document.createElement('iframe');frame.title='پشتیبانی';frame.hidden=true;frame.setAttribute('allow','clipboard-write');
 let frameBooted=false,configLoaded=false;
 const loadConfig=()=>{if(configLoaded)return;configLoaded=true;fetch(new URL('api.php?widget_config=1',root),{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(c=>{sourcePaths=Array.isArray(c.source_paths)?c.source_paths:[];visibility();if(c.customer_v2===true||c.local_v2===true){button.style.background='#0866ff';button.dataset.supportV2Launcher='1';frame.dataset.supportV2Frame='1';}else if(/^#[a-f0-9]{6}$/i.test(c.color))button.style.background=c.color;if(c.name)button.title='پشتیبانی '+c.name;}).catch(()=>{});};
-const bootFrame=()=>{if(frameBooted)return;frameBooted=true;loadConfig();frame.src=frameUrl;};
+const bootFrame=()=>{if(frameBooted)return;frameBooted=true;if(sourceEl?.dataset?.supportV2!=='1')loadConfig();frame.src=frameUrl;};
 frame.id='supportWidgetFrame';frame.dataset.supportFrame='';frame.dataset.state='closed';frame.inert=true;button.setAttribute('aria-controls',frame.id);
 const overlays=window.StorefrontOverlays;
 const isMobile=()=>matchMedia('(max-width:700px)').matches;
@@ -60,7 +60,7 @@ if(dialog){
 // The iframe remains the theme authority; accept only its same-origin resolution.
 addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow||event.data?.type!=='support-widget-theme'||!['light','dark'].includes(event.data.resolved))return;frame.dataset.theme=event.data.resolved;});
 frame.addEventListener('load',visibility);
-addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow)return;if(event.data?.type==='support-customer-open')attention();if(event.data?.type==='support-widget-ready')visibility();if(event.data?.type==='support-unread'&&Number.isSafeInteger(event.data.count)&&event.data.count>=0){badge.hidden=event.data.count===0;badge.textContent=event.data.count>999?'۹۹۹+':event.data.count.toLocaleString('fa-IR');button.setAttribute('aria-label',event.data.count?`پشتیبانی، ${event.data.count} پیام خوانده‌نشده`:'پشتیبانی');}});
+addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow)return;if(event.data?.type==='support-customer-open')attention();if(event.data?.type==='support-widget-ready'){if(Array.isArray(event.data.source_paths))sourcePaths=event.data.source_paths;visibility();}if(event.data?.type==='support-unread'&&Number.isSafeInteger(event.data.count)&&event.data.count>=0){badge.hidden=event.data.count===0;badge.textContent=event.data.count>999?'۹۹۹+':event.data.count.toLocaleString('fa-IR');button.setAttribute('aria-label',event.data.count?`پشتیبانی، ${event.data.count} پیام خوانده‌نشده`:'پشتیبانی');}});
 addEventListener('message',event=>{if(open&&event.origin===location.origin&&event.source===frame.contentWindow&&event.data==='support-widget-close')requestClose();});
 document.body.append(button,frame);
 if(dialog)document.body.append(dialog);

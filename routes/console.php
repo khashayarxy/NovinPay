@@ -63,7 +63,13 @@ Schedule::command('novinpay:telegram-daily-digest')
     ->dailyAt('23:55')
     ->timezone('Asia/Tehran')
     ->withoutOverlapping(15)
-    ->when(fn () => (bool) config('observability.telegram_topics.enabled'));
+    ->when(fn () => (bool) config('observability.telegram_topics.enabled') || (bool) config('notifications.bale.enabled'));
+
+Schedule::command('novinpay:telegram-daily-digest --date=yesterday --if-unsent')
+    ->dailyAt('00:10')
+    ->timezone('Asia/Tehran')
+    ->withoutOverlapping(15)
+    ->when(fn () => (bool) config('observability.telegram_topics.enabled') || (bool) config('notifications.bale.enabled'));
 
 Schedule::command('novinpay:telegram-sales-inventory-report')
     ->dailyAt('21:00')
@@ -71,11 +77,11 @@ Schedule::command('novinpay:telegram-sales-inventory-report')
     ->withoutOverlapping(15)
     ->when(fn () => (bool) config('observability.telegram_topics.enabled'));
 
-Schedule::command('novinpay:telegram-backup-report')
-    ->dailyAt('06:00')
+Schedule::command('novinpay:telegram-encrypted-backup')
+    ->twiceDaily(6, 18)
     ->timezone('Asia/Tehran')
-    ->withoutOverlapping(15)
-    ->when(fn () => (bool) config('observability.telegram_topics.enabled'));
+    ->withoutOverlapping(30)
+    ->when(fn () => (bool) config('observability.backups.scheduled_enabled', true) && (bool) config('observability.telegram_topics.enabled'));
 
 Artisan::command('operations:status', function (OperationalReadiness $operations): int {
     $status = $operations->status();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CustomerAccount;
 use App\Models\Product;
 use App\Models\ProductFeedback;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Services\ProductPurchaseVerification;
 use App\Support\PaymentTestProduct;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +29,7 @@ class ProductFeedbackController extends Controller
             'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
             'website' => ['prohibited'],
         ]);
-        DB::transaction(function () use ($product, $account, $purchase, $data): void {
+        $savedEntry = DB::transaction(function () use ($product, $account, $purchase, $data): ProductFeedback {
             $owner = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
             abort_unless($owner->is_active && $owner->session_version === $account->session_version && $owner->verified_at, 403);
             $published = Product::query()->lockForUpdate()->findOrFail($product->id);
@@ -47,7 +48,11 @@ class ProductFeedbackController extends Controller
                 'body' => $data['body'], 'rating' => $verified ? ($data['rating'] ?? null) : null,
                 'verified_buyer' => $verified, 'staff_reply' => null,
             ])->save();
+
+            return $entry;
         }, 3);
+
+        app(UnifiedNotifier::class)->productFeedbackSubmitted($savedEntry, $product, $account);
 
         return redirect()->route('products.show', $product)->with('feedback_status', 'نوشتهٔ شما برای بررسی ثبت شد.');
     }

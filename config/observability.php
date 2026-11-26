@@ -17,6 +17,10 @@ return [
     'backups' => [
         'path' => (string) env('OBSERVABILITY_BACKUP_PATH', '/home/novinpay/novinpay-private-backups'),
         'max_age_hours' => (int) env('OBSERVABILITY_BACKUP_MAX_AGE_HOURS', 72),
+        'scheduled_enabled' => filter_var(env('OBSERVABILITY_SCHEDULED_DB_BACKUP_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'passphrase' => (string) env('OBSERVABILITY_BACKUP_PASSPHRASE', ''),
+        'key_file' => (string) env('OBSERVABILITY_BACKUP_KEY_FILE', '/home/novinpay/.novinpay-maint10-key'),
+        'retain_scheduled' => (int) env('OBSERVABILITY_BACKUP_RETAIN_COUNT', 6),
     ],
 
     'telegram_topics' => [
@@ -25,6 +29,7 @@ return [
         'chat_id' => (string) env('TELEGRAM_TOPICS_CHAT_ID', env('TELEGRAM_ADMIN_CHAT_ID', '')),
         'api_base' => rtrim((string) env('TELEGRAM_TOPICS_API_BASE', env('NOTIFICATIONS_TELEGRAM_API_BASE', env('TELEGRAM_API_BASE_URL', 'https://api.telegram.org'))), '/'),
         'throttle_seconds' => (int) env('TELEGRAM_TOPICS_THROTTLE_SECONDS', 300),
+        'fallback_to_general' => filter_var(env('TELEGRAM_TOPICS_FALLBACK_TO_GENERAL', true), FILTER_VALIDATE_BOOL),
         'threads' => [
             'payments' => env('TELEGRAM_TOPIC_PAYMENTS_ID') ? (int) env('TELEGRAM_TOPIC_PAYMENTS_ID') : null,
             'orders' => env('TELEGRAM_TOPIC_ORDERS_ID') ? (int) env('TELEGRAM_TOPIC_ORDERS_ID') : null,
@@ -36,6 +41,9 @@ return [
             'backups' => env('TELEGRAM_TOPIC_BACKUPS_ID') ? (int) env('TELEGRAM_TOPIC_BACKUPS_ID') : null,
             'performance' => env('TELEGRAM_TOPIC_PERFORMANCE_ID') ? (int) env('TELEGRAM_TOPIC_PERFORMANCE_ID') : null,
             'digest' => env('TELEGRAM_TOPIC_DIGEST_ID') ? (int) env('TELEGRAM_TOPIC_DIGEST_ID') : null,
+            'consultations' => env('TELEGRAM_TOPIC_CONSULTATIONS_ID') ? (int) env('TELEGRAM_TOPIC_CONSULTATIONS_ID') : null,
+            'support_chat' => env('TELEGRAM_TOPIC_SUPPORT_CHAT_ID') ? (int) env('TELEGRAM_TOPIC_SUPPORT_CHAT_ID') : null,
+            'reviews' => env('TELEGRAM_TOPIC_REVIEWS_ID') ? (int) env('TELEGRAM_TOPIC_REVIEWS_ID') : null,
         ],
     ],
 ];
