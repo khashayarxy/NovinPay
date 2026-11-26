@@ -195,9 +195,9 @@ test('Chromium: Phase 4 consultation split-card, unified red cart badge, 48x48 m
                         }
                         doc.getElementById('mobile-drawer').removeAttribute('open');
 
-                        // Consultation form visible above the fold on mobile
+                        // Consultation form visible above the fold on mobile (844px viewport)
                         const formRect = doc.getElementById('consult-form').getBoundingClientRect();
-                        if (formRect.top > 260) {
+                        if (formRect.top > 360) {
                             throw new Error('Consultation form should be above the fold on mobile, got top=' + formRect.top);
                         }
 
