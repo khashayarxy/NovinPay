@@ -79,6 +79,128 @@ class ShoppingCart
         return $this->scopes($request, true)['proof'];
     }
 
+    public function mergeGuestIntoAccount(Request $request, CustomerAccount $account): void
+    {
+        $usable = static fn ($token): bool => is_string($token) && preg_match('/\A[0-9a-f]{64}\z/D', $token) === 1;
+        $device = $request->cookie(self::DEVICE_COOKIE);
+        if (! $usable($device)) {
+            $device = $request->session()->get('store_cart_device_bootstrap');
+        }
+
+        $request->attributes->remove('storefront-cart-committed');
+        $request->attributes->remove('storefront-cart-count');
+
+        if (! $usable($device)) {
+            return;
+        }
+
+        $deviceScope = hash('sha256', 'device:'.$device);
+        if (! DB::table('shopping_carts')->where('scope', $deviceScope)->exists()) {
+            return;
+        }
+
+        $accountScope = hash('sha256', 'account:'.$account->id);
+        $viewScope = hash('sha256', 'combined:'.$deviceScope.':'.$accountScope);
+        $scopes = [
+            'device' => $deviceScope,
+            'account' => $accountScope,
+            'view' => $viewScope,
+        ];
+
+        DB::transaction(function () use ($account, $scopes, $deviceScope, $accountScope, $viewScope): void {
+            $fresh = CustomerAccount::query()->lockForUpdate()->find($account->id);
+            if (! $fresh || ! $fresh->is_active) {
+                return;
+            }
+
+            $states = $this->states($scopes, true);
+            $deviceState = $states[$deviceScope] ?? [];
+            if ($deviceState === []) {
+                foreach ($states as $scope => $state) {
+                    if ($state === []) {
+                        $this->save($scope, []);
+                    }
+                }
+
+                return;
+            }
+
+            $accountState = $states[$accountScope] ?? [];
+            $viewState = $states[$viewScope] ?? [];
+            $products = Product::query()
+                ->published()
+                ->visibleTo($fresh)
+                ->with('inventoryItems')
+                ->whereIn('slug', array_keys($deviceState))
+                ->get()
+                ->keyBy('slug');
+
+            foreach ($deviceState as $slug => $guestEntry) {
+                if (PaymentTestProduct::isTestProduct($slug) && ! PaymentTestProduct::canAccess($fresh)) {
+                    continue;
+                }
+                $guestQty = max(0, (int) ($guestEntry['quantity'] ?? 0));
+                if ($guestQty <= 0) {
+                    continue;
+                }
+
+                $owned = $accountState[$slug] ?? null;
+                if (! $owned && count($accountState) >= 30) {
+                    continue;
+                }
+
+                $product = $products->get($slug);
+                $offer = $product ? $this->checkout->offer($product, true) : null;
+                $maxQty = self::maxQuantityForOffer($offer);
+                $accountQty = max(0, (int) ($owned['quantity'] ?? 0));
+
+                if ($maxQty > 0) {
+                    $mergedQty = min($accountQty + $guestQty, $maxQty);
+                    $inventoryId = $offer->id;
+                } else {
+                    $mergedQty = min($accountQty + $guestQty, self::MAX_ITEM_QUANTITY);
+                    $inventoryId = $owned['inventory'] ?? $guestEntry['inventory'] ?? null;
+                }
+
+                if ($mergedQty > 0) {
+                    $accountState[$slug] = [
+                        'inventory' => $inventoryId,
+                        'quantity' => $mergedQty,
+                        'version' => (string) Str::uuid(),
+                    ];
+                    unset($viewState[$slug]);
+                }
+            }
+
+            $this->save($accountScope, $accountState);
+            $this->save($deviceScope, []);
+            $this->save($viewScope, $viewState);
+        }, 3);
+    }
+
+    public function detachOnLogout(Request $request, ?CustomerAccount $account = null): void
+    {
+        $usable = static fn ($token): bool => is_string($token) && preg_match('/\A[0-9a-f]{64}\z/D', $token) === 1;
+        $device = $request->cookie(self::DEVICE_COOKIE);
+        if (! $usable($device)) {
+            $device = $request->session()->get('store_cart_device_bootstrap');
+        }
+
+        if ($usable($device) && $account !== null) {
+            $deviceScope = hash('sha256', 'device:'.$device);
+            $accountScope = hash('sha256', 'account:'.$account->id);
+            $viewScope = hash('sha256', 'combined:'.$deviceScope.':'.$accountScope);
+            DB::table('shopping_carts')->where('scope', $viewScope)->delete();
+        }
+
+        $request->session()->forget('store_cart_device_bootstrap');
+        $freshDevice = bin2hex(random_bytes(32));
+        Cookie::queue(new HostCookie(self::DEVICE_COOKIE, $freshDevice, now()->addYear(), '/', null, true, true, false, 'lax'));
+
+        $request->attributes->remove('storefront-cart-committed');
+        $request->attributes->remove('storefront-cart-count');
+    }
+
     public function read(Request $request, bool $initialize = true): array
     {
         if ($request->attributes->has('storefront-cart-committed')) {

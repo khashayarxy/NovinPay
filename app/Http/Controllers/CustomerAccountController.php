@@ -20,6 +20,7 @@ use App\Services\CustomerLogin;
 use App\Services\GoogleAuthService;
 use App\Services\LegacyCartHold;
 use App\Services\Observability\ObservabilityEvents;
+use App\Services\ShoppingCart;
 use App\Services\TestCustomerReset;
 use App\Support\CrmAccess;
 use App\Support\CustomerAuthThrottle;
@@ -340,6 +341,7 @@ class CustomerAccountController extends Controller
         $request->session()->regenerate(true);
         $request->session()->forget(['customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_send_attempt', 'customer_send_attempts', 'customer_otp_at', 'customer_password_offer']);
         $request->session()->put('customer_session_version', $account->session_version);
+        app(ShoppingCart::class)->mergeGuestIntoAccount($request, $account);
         if ($otp) {
             $request->session()->put('customer_otp_at', now()->timestamp);
             if (! $account->password) {
@@ -411,6 +413,7 @@ class CustomerAccountController extends Controller
         $request->session()->forget(['customer_session_version', 'customer_otp_at', 'customer_password_offer', 'customer_login_phone', 'customer_login_flow', 'customer_challenge', 'customer_resend_at', 'customer_retry_until', 'customer_retry_reason', 'customer_intended', 'repair_submission_token', 'repair_reference', 'repair_recovery_phone', 'repair_recovery_challenge']);
         app(LegacyCartHold::class)->rememberOriginalSession($request);
         $request->session()->regenerate(true);
+        app(ShoppingCart::class)->detachOnLogout($request, $account instanceof CustomerAccount ? $account : null);
 
         if ($account && is_int($version) && config('customer.test_reset_on_logout')) {
             $reset->reset($account, null, null, $version);

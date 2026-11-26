@@ -360,7 +360,7 @@
                 <div class="repair-step" data-step="4" @if($initialStep !== 4) hidden @endif>
                     <div class="repair-step__head">
                         <h2>بازبینی و ثبت نهایی</h2>
-                        <p>{{ $isGuest ? 'اطلاعات زیر را بررسی کنید و با وارد کردن کد تأیید پیامکی درخواست خود را ثبت کنید.' : 'اطلاعات زیر را بررسی کنید و درخواست تعمیر را ثبت نهایی کنید.' }}</p>
+                        <p>{{ $isGuest ? 'ابتدا خلاصهٔ اطلاعات را بررسی و تأیید کنید تا کد پیامکی برای ثبت نهایی ارسال شود.' : 'اطلاعات زیر را بررسی کنید و درخواست تعمیر را ثبت نهایی کنید.' }}</p>
                     </div>
 
                     <div class="repair-summary-box" data-repair-summary>
@@ -398,15 +398,15 @@
                                 <p>کد ۶ رقمی به شمارهٔ واردشده ارسال می‌شود و بلافاصله پس از وارد کردن، درخواست شما ثبت خواهد شد.</p>
                             </div>
 
-                            <div class="repair-inline-auth__step" data-auth-step="phone" @if(!empty($authChallenge)) hidden @endif>
-                                <div class="repair-inline-auth__row">
-                                    <span class="repair-auth-target">شماره موبایل: <strong dir="ltr" data-auth-phone-preview>—</strong></span>
-                                    <button type="button" class="np-button np-button--primary" data-auth-send-btn>ارسال کد تأیید</button>
+                            <div class="repair-inline-auth__step repair-inline-auth__step--request" data-auth-step="phone" @if(!empty($authChallenge)) hidden @endif>
+                                <div class="repair-inline-auth__row repair-inline-auth__row--cta">
+                                    <span class="repair-auth-target">کد تأیید به شمارهٔ <strong dir="ltr" data-auth-phone-preview>—</strong> ارسال می‌شود.</span>
+                                    <button type="button" class="np-button np-button--primary" data-auth-send-btn>تأیید اطلاعات و دریافت کد پیامکی</button>
                                 </div>
                                 <p class="public-field-error" data-field-error="repair_auth_phone" role="alert" hidden></p>
                             </div>
 
-                            <div class="repair-inline-auth__step" data-auth-step="otp" @if(empty($authChallenge)) hidden @endif>
+                            <div class="repair-inline-auth__step repair-inline-auth__step--otp" data-auth-step="otp" @if(empty($authChallenge)) hidden @endif>
                                 <div class="repair-recovery-phone-bar">
                                     <span>کد تأیید به شماره <strong dir="ltr" data-auth-phone-display>{{ $authDisplayPhone ?? '' }}</strong> ارسال شد.</span>
                                     <button type="button" class="repair-recovery-edit-btn" data-auth-change-phone>ویرایش شماره</button>

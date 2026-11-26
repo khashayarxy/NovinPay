@@ -6,7 +6,7 @@ if (typeof BroadcastChannel !== 'undefined') {
     const commerce = new BroadcastChannel('novinpay-commerce');
     document.addEventListener('submit', event => {
         const path = new URL(event.target.action, location.href);
-        if (path.origin === location.origin && /^\/account\/(verify|password-login|logout|password)$/.test(path.pathname)) {
+        if (path.origin === location.origin && /^\/(account\/(verify|password-login|logout|password|email\/verify|email\/password-login)|repair\/auth\/verify)$/.test(path.pathname)) {
             commerce.postMessage('identity-change');
         }
     });
@@ -234,6 +234,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const normalizeDigitsGlobal = (val) => String(val || '')
             .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
             .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+        const normalizePersianSearch = (val) => String(val || '')
+            .trim()
+            .replace(/[\u200B-\u200F\u202A-\u202E\u0640\s]+/gu, '')
+            .replace(/[يیئ]/gu, 'ی')
+            .replace(/ك/gu, 'ک')
+            .replace(/ة/gu, 'ه')
+            .replace(/[أإآ]/gu, 'ا')
+            .toLowerCase();
 
         let iranLocations = {};
         let courierZones = {};
@@ -241,9 +249,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try { courierZones = JSON.parse(document.getElementById('repair-courier-zones')?.textContent || '{}') || {}; } catch {}
 
         const isPickupSupported = (province, city) => {
-            if (!province || !city) return false;
-            const list = courierZones[province];
-            return Array.isArray(list) && list.includes(city);
+            const normProv = normalizePersianSearch(province);
+            const normCity = normalizePersianSearch(city);
+            if (!normProv || !normCity) return false;
+            const entry = Object.entries(courierZones).find(([p]) => normalizePersianSearch(p) === normProv);
+            const list = entry ? entry[1] : null;
+            return Array.isArray(list) && list.some((c) => normalizePersianSearch(c) === normCity);
         };
 
         const handoverLabels = {
@@ -287,8 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 inputEl.setAttribute('aria-expanded', 'false');
             };
             const renderList = (query = '') => {
-                const q = query.trim().toLowerCase();
-                const opts = getOptions().filter((o) => !q || o.textContent.toLowerCase().includes(q));
+                const q = normalizePersianSearch(query);
+                const opts = getOptions().filter((o) => !q || normalizePersianSearch(o.textContent).includes(q));
                 listEl.innerHTML = '';
                 if (opts.length === 0) {
                     const empty = document.createElement('li');
@@ -307,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             selectEl.value = opt.value;
                             inputEl.value = opt.textContent;
                             closeList();
+                            inputEl.blur();
                             selectEl.dispatchEvent(new Event('change', { bubbles: true }));
                         });
                         listEl.append(li);
@@ -319,7 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
             inputEl.addEventListener('focus', () => renderList(''));
             inputEl.addEventListener('click', () => renderList(''));
             inputEl.addEventListener('input', () => {
-                const exact = getOptions().find((o) => o.textContent.trim() === inputEl.value.trim());
+                const qNorm = normalizePersianSearch(inputEl.value);
+                const exact = qNorm ? getOptions().find((o) => normalizePersianSearch(o.textContent) === qNorm) : null;
                 if (exact && selectEl.value !== exact.value) {
                     selectEl.value = exact.value;
                     selectEl.dispatchEvent(new Event('change', { bubbles: true }));
@@ -339,6 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (ev.key === 'Escape') {
                     closeList();
                     syncInputFromSelect();
+                    inputEl.blur();
                 } else if (ev.key === 'Enter' && !listEl.hidden) {
                     const first = listEl.querySelector('.np-searchable-select__option');
                     if (first) {
@@ -501,7 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        let lastAutoOtpPhone = '';
+        let otpIssuedForPhone = normalizeDigitsGlobal(
+            repairStepper.querySelector('[data-auth-phone-display]')?.textContent || ''
+        ).replace(/\D+/g, '');
         const goToStep = (step, { scroll = false } = {}) => {
             currentStep = Math.min(4, Math.max(1, step));
             showAlert('');
@@ -520,10 +536,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 syncSummary();
                 if (repairStepper.dataset.isGuest === '1') {
                     const normalizedPhone = normalizeDigitsGlobal(contactPhoneInput?.value || '').replace(/\D+/g, '');
+                    const phoneStepEl = repairStepper.querySelector('[data-auth-step="phone"]');
                     const otpStepEl = repairStepper.querySelector('[data-auth-step="otp"]');
-                    if (/^09\d{9}$/.test(normalizedPhone) && normalizedPhone !== lastAutoOtpPhone && otpStepEl?.hidden) {
-                        lastAutoOtpPhone = normalizedPhone;
-                        repairStepper.querySelector('[data-auth-send-btn]')?.click();
+                    if (otpIssuedForPhone && normalizedPhone && normalizedPhone !== otpIssuedForPhone && otpStepEl && !otpStepEl.hidden) {
+                        otpStepEl.hidden = true;
+                        if (phoneStepEl) phoneStepEl.hidden = false;
                     }
                 }
             }
@@ -742,9 +759,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         setFieldError('repair_auth_phone', data?.message || 'ارسال کد تأیید ممکن نیست.');
                         return;
                     }
+                    otpIssuedForPhone = raw;
                     if (phoneDisplay) phoneDisplay.textContent = data.phone || faDigits(raw);
                     if (phoneStep) phoneStep.hidden = true;
-                    if (otpStep) otpStep.hidden = false;
+                    if (otpStep) {
+                        otpStep.hidden = false;
+                        otpStep.classList.add('is-revealed');
+                    }
                     const localOtpBox = inlineAuth.querySelector('[data-local-dev-otp]');
                     const localOtpCode = inlineAuth.querySelector('[data-local-dev-otp-code]');
                     if (localOtpBox && localOtpCode) {
@@ -756,7 +777,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                     startCountdown(data.remaining ?? 60);
-                    codeInput?.focus();
+                    if (window.matchMedia?.('(pointer: fine)').matches) {
+                        codeInput?.focus({ preventScroll: true });
+                    }
                     startWebOtp();
                 } catch {
                     setFieldError('repair_auth_phone', 'خطا در برقراری ارتباط. لطفاً دوباره تلاش کنید.');
@@ -784,7 +807,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         localOtpBox.hidden = false;
                     }
                     startCountdown(data.remaining ?? 60);
-                    codeInput?.focus();
+                    if (window.matchMedia?.('(pointer: fine)').matches) {
+                        codeInput?.focus({ preventScroll: true });
+                    }
                     startWebOtp();
                 } catch {
                     resendBtn.disabled = false;
@@ -795,7 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
             changePhoneBtn?.addEventListener('click', async () => {
                 webOtpController?.abort();
                 stopCountdown();
-                lastAutoOtpPhone = '';
+                otpIssuedForPhone = '';
                 setFieldError('repair_auth_code', '');
                 setFieldError('repair_auth_phone', '');
                 try { await postAuth(resetUrl, {}); } catch {}
@@ -878,11 +903,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 'شهریار': [35.6597, 51.0592],
                 'تهران': [35.6892, 51.3890],
                 'کرج': [35.8400, 50.9391],
+                'قدس': [35.7214, 51.1090],
                 'شهر قدس': [35.7214, 51.1090],
                 'اندیشه': [35.6829, 51.0195],
                 'ملارد': [35.6659, 50.9767],
                 'فردیس': [35.7239, 50.9885],
+                'اسلامشهر': [35.5466, 51.2352],
                 'رباط کریم': [35.4846, 51.0829],
+                'نسیم شهر': [35.5653, 51.1603],
+                'پرند': [35.4769, 50.9464],
+                'صفادشت': [35.6836, 50.8350],
                 'باغستان': [35.6350, 51.1167],
                 'صباشهر': [35.5819, 51.0933],
                 'وحیدیه': [35.6095, 51.0315],
@@ -975,7 +1005,11 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             repairStepper._renderRepairMap = ensureRepairMap;
             repairStepper._centerMapForCity = (cityName) => {
-                const coords = cityCenters[String(cityName || '').trim()];
+                const targetNorm = normalizePersianSearch(cityName);
+                const match = targetNorm
+                    ? Object.entries(cityCenters).find(([name]) => normalizePersianSearch(name) === targetNorm)
+                    : null;
+                const coords = match ? match[1] : null;
                 if (!coords || userPinned) return;
                 lat = coords[0];
                 lng = coords[1];

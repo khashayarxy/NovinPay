@@ -6,6 +6,7 @@ use App\Models\CustomerAccount;
 use App\Services\CustomerEmailLogin;
 use App\Services\CustomerLogin;
 use App\Services\GoogleAuthService;
+use App\Services\ShoppingCart;
 use App\Support\CustomerAuthThrottle;
 use App\Support\CustomerLoginFlow;
 use Illuminate\Http\RedirectResponse;
@@ -212,6 +213,7 @@ class CustomerThreePathAuthController extends Controller
         Auth::guard('customer')->login($account);
         $request->session()->regenerate();
         $request->session()->put('customer_session_version', $account->session_version);
+        app(ShoppingCart::class)->mergeGuestIntoAccount($request, $account);
 
         return redirect()->to(CustomerLoginFlow::destination($request));
     }

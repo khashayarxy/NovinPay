@@ -517,33 +517,28 @@ body.public-site button[data-support-launcher]::before {
 .catalog-sheet-footer .btn {
     width: 100%; min-height: 46px; justify-content: center;
 }
-@keyframes sheetSlideUp {
-    from { opacity: 0; transform: translateY(28px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-@keyframes sheetSlideDown {
-    from { opacity: 1; transform: translateY(0); }
-    to { opacity: 0; transform: translateY(28px); }
-}
-@keyframes sheetBackdropIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
 @media (max-width: 767px) {
-    .store-sheet-dialog[open] {
-        animation: sheetSlideUp 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    body.public-site dialog.store-sheet-dialog {
+        will-change: transform;
     }
-    .store-sheet-dialog[open].is-closing {
-        animation: sheetSlideDown 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+    body.public-site dialog.store-sheet-dialog[open] {
+        animation: np-cart-in-bottom 240ms cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .store-sheet-dialog::backdrop {
-        animation: sheetBackdropIn 200ms ease both;
+    body.public-site dialog.store-sheet-dialog[open].is-closing {
+        animation: np-cart-out-bottom 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+    }
+    body.public-site dialog.store-sheet-dialog[open]::backdrop {
+        animation: np-cart-backdrop-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    body.public-site dialog.store-sheet-dialog[open].is-closing::backdrop {
+        animation: np-cart-backdrop-out 180ms ease-in forwards;
     }
 }
 @media (prefers-reduced-motion: reduce) {
-    .store-sheet-dialog[open],
-    .store-sheet-dialog[open].is-closing,
-    .store-sheet-dialog::backdrop {
+    body.public-site dialog.store-sheet-dialog[open],
+    body.public-site dialog.store-sheet-dialog[open].is-closing,
+    body.public-site dialog.store-sheet-dialog[open]::backdrop,
+    body.public-site dialog.store-sheet-dialog[open].is-closing::backdrop {
         animation: none;
     }
 }

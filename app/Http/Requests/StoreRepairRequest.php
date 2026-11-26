@@ -73,12 +73,25 @@ class StoreRepairRequest extends PrivateRepairFormRequest
                 return;
             }
 
+            $normalizePlace = static fn (string $v): string => preg_replace(
+                '/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{0640}\s]+/u',
+                '',
+                str_replace(['ي', 'ك', 'ئ'], ['ی', 'ک', 'ی'], trim($v))
+            ) ?? '';
             $province = trim((string) $this->input('province', ''));
             $city = trim((string) $this->input('city', ''));
+            $normProv = $normalizePlace($province);
+            $normCity = $normalizePlace($city);
             $zones = config('delivery.courier_zones', []);
-            $allowedCities = is_array($zones[$province] ?? null) ? $zones[$province] : [];
+            $allowedCities = [];
+            foreach ($zones as $zoneProv => $zoneCities) {
+                if ($normalizePlace((string) $zoneProv) === $normProv && is_array($zoneCities)) {
+                    $allowedCities = array_map(static fn ($c): string => $normalizePlace((string) $c), $zoneCities);
+                    break;
+                }
+            }
 
-            if ($province === '' || $city === '' || ! in_array($city, $allowedCities, true)) {
+            if ($normProv === '' || $normCity === '' || ! in_array($normCity, $allowedCities, true)) {
                 $validator->errors()->add('handover_method', 'تحویل در محل فقط برای شهرهای تحت پوشش پیک نوین‌پی فعال است.');
             }
 

@@ -61,8 +61,7 @@ function initFaqAndChannels(win,cfg){
   chatPane.hidden=isFaq;
   if(inputArea)inputArea.hidden=isFaq;
   faqPane.hidden=!isFaq;
-  if(isFaq)searchInput?.focus({preventScroll:true});
-  else win.querySelector('#chatInput')?.focus({preventScroll:true});
+  if(!isFaq&&matchMedia('(pointer:fine)').matches)win.querySelector('#chatInput')?.focus({preventScroll:true});
  };
  tabChat.addEventListener('click',()=>setTab('chat'));
  tabFaq.addEventListener('click',()=>setTab('faq'));
