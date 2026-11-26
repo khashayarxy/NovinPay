@@ -109,6 +109,7 @@ class RepairRequest extends Model
      *     pickup_lat: ?string,
      *     pickup_lng: ?string,
      *     responsive_phone: ?string,
+     *     pickup_notes: ?string,
      * }
      */
     public function parsedIssue(): array
@@ -124,6 +125,7 @@ class RepairRequest extends Model
         $pickupLat = null;
         $pickupLng = null;
         $responsivePhone = null;
+        $pickupNotes = null;
 
         foreach ($lines as $line) {
             $trimmed = trim($line);
@@ -152,6 +154,8 @@ class RepairRequest extends Model
                 }
             } elseif (str_starts_with($trimmed, 'شماره تماس پاسخگو:')) {
                 $responsivePhone = trim(mb_substr($trimmed, mb_strlen('شماره تماس پاسخگو:')));
+            } elseif (str_starts_with($trimmed, 'توضیحات برای پیک:')) {
+                $pickupNotes = trim(mb_substr($trimmed, mb_strlen('توضیحات برای پیک:')));
             } else {
                 $problemLines[] = $trimmed;
             }
@@ -176,6 +180,7 @@ class RepairRequest extends Model
             'pickup_lat' => $pickupLat,
             'pickup_lng' => $pickupLng,
             'responsive_phone' => $responsivePhone !== '' ? $responsivePhone : null,
+            'pickup_notes' => $pickupNotes !== '' ? $pickupNotes : null,
         ];
     }
 
@@ -185,6 +190,7 @@ class RepairRequest extends Model
         ?string $pickupLat = null,
         ?string $pickupLng = null,
         ?string $responsivePhone = null,
+        ?string $pickupNotes = null,
     ): void {
         $parsed = $this->parsedIssue();
         $base = $parsed['problem'];
@@ -208,6 +214,10 @@ class RepairRequest extends Model
             }
             if ($responsivePhone !== null && trim($responsivePhone) !== '') {
                 $meta[] = 'شماره تماس پاسخگو: '.trim($responsivePhone);
+            }
+            $effectiveNotes = $pickupNotes ?? $parsed['pickup_notes'];
+            if ($effectiveNotes !== null && trim($effectiveNotes) !== '') {
+                $meta[] = 'توضیحات برای پیک: '.trim(preg_replace('/\s+/u', ' ', $effectiveNotes) ?? '');
             }
         }
 

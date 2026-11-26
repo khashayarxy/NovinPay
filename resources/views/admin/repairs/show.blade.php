@@ -41,11 +41,21 @@
             <div class="admin-panel-heading">
                 <h2 id="customer-data-title">اطلاعات مشتری و دستگاه</h2>
             </div>
+            @php($parsedIssue = $repair->parsedIssue())
             <dl class="admin-record-facts repair-intake-facts">
                 <div><dt>نام مشتری</dt><dd><strong class="repair-hero-name">{{ $repair->customer_name }}</strong></dd></div>
                 <div><dt>شماره موبایل</dt><dd><a class="repair-phone-chip" href="tel:{{ $repair->contact_phone }}" dir="ltr"><bdi>{{ \App\Support\FaNumber::digits($repair->contact_phone) }}</bdi></a></dd></div>
                 <div><dt>برند</dt><dd><bdi dir="ltr">{{ $repair->device_brand->value }}</bdi></dd></div>
                 <div><dt>مدل اعلام‌شده</dt><dd><bdi dir="auto">{{ $repair->device_model }}</bdi></dd></div>
+                @if (! empty($parsedIssue['handover_label']))
+                    <div><dt>نحوه تحویل</dt><dd>{{ $parsedIssue['handover_label'] }}</dd></div>
+                @endif
+                @if (! empty($parsedIssue['responsive_phone']))
+                    <div><dt>شماره تماس تحویل‌دهنده</dt><dd><a class="repair-phone-chip" href="tel:{{ $parsedIssue['responsive_phone'] }}" dir="ltr"><bdi>{{ \App\Support\FaNumber::digits($parsedIssue['responsive_phone']) }}</bdi></a></dd></div>
+                @endif
+                @if (! empty($parsedIssue['pickup_notes']))
+                    <div class="repair-fact--full"><dt>توضیحات برای پیک</dt><dd>{{ $parsedIssue['pickup_notes'] }}</dd></div>
+                @endif
                 <div class="repair-fact--full repair-callout"><dt>شرح مشکل دستگاه</dt><dd class="whitespace-pre-line">{{ $repair->issue }}</dd></div>
             </dl>
             @if ($hasPhoto || !empty($sidePhotos))

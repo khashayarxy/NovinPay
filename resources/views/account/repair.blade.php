@@ -82,9 +82,14 @@
                             </dl>
                         @else
                             <p>درخواست دریافت با پیک نوین‌پی ثبت شده است. همکاران ما برای هماهنگی زمان مراجعهٔ پیک با شما تماس می‌گیرند.</p>
-                            @if (! empty($parsed['pickup_address']))
+                            @if (! empty($parsed['pickup_address']) || ! empty($parsed['pickup_notes']))
                                 <dl class="np-account-facts">
-                                    <div><dt>نشانی ثبت‌شده</dt><dd>{{ $parsed['pickup_address'] }}</dd></div>
+                                    @if (! empty($parsed['pickup_address']))
+                                        <div><dt>نشانی ثبت‌شده</dt><dd>{{ $parsed['pickup_address'] }}</dd></div>
+                                    @endif
+                                    @if (! empty($parsed['pickup_notes']))
+                                        <div><dt>توضیحات برای پیک</dt><dd>{{ $parsed['pickup_notes'] }}</dd></div>
+                                    @endif
                                 </dl>
                             @endif
                         @endif

@@ -122,7 +122,17 @@ final class UnifiedNotifier
     {
         $this->safe(function () use ($repair): void {
             $code = (string) $repair->tracking_reference;
-            $this->patternSms->send('repair_created', $code, $this->normalizePhone($repair->contact_phone), [
+            $event = 'repair_created';
+            if ($repair instanceof RepairRequest) {
+                $handoverKey = $repair->parsedIssue()['handover_key'] ?? null;
+                $event = match ($handoverKey) {
+                    'in_person' => 'repair_created_in_person',
+                    'self_ship' => 'repair_created_postal',
+                    'doorstep_pickup' => 'repair_created_courier',
+                    default => 'repair_created',
+                };
+            }
+            $this->patternSms->send($event, $code, $this->normalizePhone($repair->contact_phone), [
                 'name' => (string) $repair->customer_name,
                 'repair_code' => $code,
             ]);
@@ -152,12 +162,19 @@ final class UnifiedNotifier
             $device = trim($repair->device_brand->value.' · '.$repair->device_model);
             $adminUrl = route('admin.repairs.show', $repair);
 
+            $parsed = $repair->parsedIssue();
             $adminFields = [
                 'کد پیگیری' => $ref,
                 'نام مشتری' => $customerName,
                 'دستگاه' => $device,
-                'شرح مشکل' => mb_strimwidth(trim((string) $repair->issue), 0, 140, '…'),
             ];
+            if (! empty($parsed['handover_label'])) {
+                $adminFields['نحوه تحویل'] = $parsed['handover_label'];
+            }
+            if (! empty($parsed['pickup_notes'])) {
+                $adminFields['توضیحات پیک'] = mb_strimwidth($parsed['pickup_notes'], 0, 140, '…');
+            }
+            $adminFields['شرح مشکل'] = mb_strimwidth(trim((string) ($parsed['problem'] ?: $repair->issue)), 0, 140, '…');
             $botText = $this->formatBotMessage('🔧 درخواست تعمیر جدید ثبت شد', $adminFields, $adminUrl);
 
             $this->sendAdminSms('admin_repair_submitted', ['code' => (string) $repair->tracking_reference, 'device' => $device]);

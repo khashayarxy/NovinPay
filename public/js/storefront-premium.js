@@ -31,7 +31,7 @@
     function deactivate() {
         const previous = active;
         active = null;
-        if (previous === cartDialog) clearCart(cartDialog);
+        if (previous && previous === cartDialog) clearCart(cartDialog);
         if (previous) layers.get(previous.id)?.hide?.();
         previous?.close();
         pending.forEach((controller, key) => {
@@ -58,8 +58,14 @@
         closing = true;
         await layers.get(current.id)?.beforeClose?.();
         if (active !== current) return;
-        if (history.state?.storefrontOverlay) history.back();
-        else finish();
+        if (history.state?.storefrontOverlay) {
+            history.back();
+            setTimeout(() => {
+                if (closing && active === current) finish();
+            }, 60);
+        } else {
+            finish();
+        }
     }
 
     async function readPage(url, key) {
@@ -410,7 +416,7 @@
             if (inPageCart && typeof html === 'string' && html.length > 0) {
                 const doc = new DOMParser().parseFromString(html, 'text/html');
                 applyPageCartDocument(doc, focusKey);
-            } else if (active === cartDialog) {
+            } else if (cartDialog && active === cartDialog) {
                 if (typeof html === 'string' && html.length > 0) {
                     const doc = new DOMParser().parseFromString(html, 'text/html');
                     applyCartDocument(cartDialog, doc, cartEpoch, html);
@@ -442,7 +448,7 @@
             if (!active && !fromDrawer && !inPageCart && cartDialog) {
                 open(cartDialog, submitter);
                 if (error) error.hidden = false;
-            } else if (active === cartDialog) {
+            } else if (cartDialog && active === cartDialog) {
                 await refreshCart(cartDialog, {supersede: true, focusKey});
             }
         } finally {
@@ -682,7 +688,7 @@
                         errEl.textContent = err?.message || 'تغییر تعداد انجام نشد.';
                         errEl.hidden = false;
                     }
-                    if (active === cartDialog) {
+                    if (cartDialog && active === cartDialog) {
                         await refreshCart(cartDialog, {supersede: true});
                     } else {
                         const pageCart = [...document.querySelectorAll('[data-storefront-cart]')].find(el => !cartDialog?.contains(el));
@@ -917,7 +923,7 @@
             return event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
         };
         dialog.addEventListener('pointerdown', event => { outside = isOutside(event); });
-        dialog.addEventListener('click', event => { if (event.detail && outside && isOutside(event)) close(); outside = false; });
+        dialog.addEventListener('click', event => { if (outside && isOutside(event)) close(); outside = false; });
         dialog.addEventListener('keydown', event => {
             if (event.defaultPrevented || event.isComposing) return;
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); return; }
@@ -965,36 +971,41 @@
             input.addEventListener('change', () => filters.submit());
         });
     }
+    const sheetReducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     document.querySelectorAll('.store-filter-dialog').forEach((sheet) => {
-        if (!dialogs.has(sheet)) return;
-        const entry = dialogs.get(sheet);
-        entry.beforeClose = () => {
-            sheet.classList.add('is-closing');
-            if (getComputedStyle(sheet).animationName === 'none') {
-                sheet.classList.remove('is-closing');
-                return;
-            }
-            return new Promise((resolve) => {
-                let done = false;
-                const finishAnimation = () => {
-                    if (done) return;
-                    done = true;
-                    clearTimeout(timer);
-                    sheet.removeEventListener('animationend', onEnd);
+        if (!sheet.id) return;
+        register(sheet, {
+            show: () => sheet.classList.remove('is-closing'),
+            hide: () => sheet.classList.remove('is-closing'),
+            beforeClose: () => {
+                if (sheetReducedMotion.matches) return;
+                sheet.classList.add('is-closing');
+                if (getComputedStyle(sheet).animationName === 'none') {
                     sheet.classList.remove('is-closing');
-                    resolve();
-                };
-                const onEnd = (event) => {
-                    if (event.target === sheet) finishAnimation();
-                };
-                const timer = setTimeout(finishAnimation, 240);
-                sheet.addEventListener('animationend', onEnd);
-            });
-        };
+                    return;
+                }
+                return new Promise((resolve) => {
+                    let done = false;
+                    const finishAnimation = () => {
+                        if (done) return;
+                        done = true;
+                        clearTimeout(timer);
+                        sheet.removeEventListener('animationend', onEnd);
+                        sheet.classList.remove('is-closing');
+                        resolve();
+                    };
+                    const onEnd = (event) => {
+                        if (event.target === sheet) finishAnimation();
+                    };
+                    const timer = setTimeout(finishAnimation, 240);
+                    sheet.addEventListener('animationend', onEnd);
+                });
+            },
+        });
     });
     window.addEventListener('popstate', restoreLayer);
     window.addEventListener('pagehide', () => finish(false));
-    window.addEventListener('pageshow', restoreLayer);
+    window.addEventListener('pageshow', event => { if (event.persisted || (!active && !closing)) restoreLayer(); });
     commerce?.addEventListener('message', event => {
         if (event.data === 'identity-change') {
             ++cartEpoch;

@@ -24,6 +24,9 @@
     $pickupLng = old('pickup_longitude', '');
     $responsivePhone = old('responsive_phone', '');
     $responsivePhone = is_string($responsivePhone) ? $responsivePhone : '';
+    $pickupNotes = old('pickup_notes', '');
+    $pickupNotes = is_string($pickupNotes) ? $pickupNotes : '';
+    $hasOtherPerson = (bool) old('other_person_handover', $responsivePhone !== '' || $errors->has('responsive_phone'));
     $customerName = old('customer_name', auth('customer')->user()?->name ?? '');
     $customerName = is_string($customerName) ? $customerName : '';
     $customerPhone = old('contact_phone', auth('customer')->user()?->phone ?? ($authDisplayPhone ?? ''));
@@ -33,7 +36,7 @@
         $initialStep = 1;
     } elseif ($errors->hasAny(['issue'])) {
         $initialStep = 2;
-    } elseif ($errors->hasAny(['customer_name', 'contact_phone', 'province', 'city', 'handover_method', 'pickup_address', 'responsive_phone'])) {
+    } elseif ($errors->hasAny(['customer_name', 'contact_phone', 'province', 'city', 'handover_method', 'pickup_address', 'pickup_notes', 'responsive_phone'])) {
         $initialStep = 3;
     } elseif ($errors->hasAny(['submission_token', 'code'])) {
         $initialStep = 4;
@@ -326,10 +329,23 @@
                                 <p class="public-field-error" data-field-error="pickup_address" role="alert" @unless($errors->has('pickup_address')) hidden @endunless>@error('pickup_address'){{ $message }}@enderror</p>
                             </div>
                             <div class="public-field">
-                                <label for="responsive_phone">شماره تماس پاسخگو جهت هماهنگی پیک (اختیاری)</label>
-                                <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" placeholder="در صورت تفاوت با شماره اصلی، مثلاً ۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
-                                <p class="public-hint">اگر فرد دیگری دستگاه را تحویل پیک می‌دهد، شماره پاسخگو را اینجا وارد کنید.</p>
-                                <p class="public-field-error" data-field-error="responsive_phone" role="alert" @unless($errors->has('responsive_phone')) hidden @endunless>@error('responsive_phone'){{ $message }}@enderror</p>
+                                <label for="pickup_notes">توضیحات برای پیک (اختیاری)</label>
+                                <input id="pickup_notes" name="pickup_notes" type="text" value="{{ $pickupNotes }}" class="input" maxlength="300" placeholder="مثلاً بازهٔ زمانی مناسب، زنگ یا طبقه، توضیحات دسترسی" aria-invalid="{{ $errors->has('pickup_notes') ? 'true' : 'false' }}">
+                                <p class="public-field-error" data-field-error="pickup_notes" role="alert" @unless($errors->has('pickup_notes')) hidden @endunless>@error('pickup_notes'){{ $message }}@enderror</p>
+                            </div>
+                            <div class="repair-courier-alt">
+                                <label class="repair-choice-card repair-choice-card--accessory repair-courier-alt__toggle" for="other_person_handover">
+                                    <input type="checkbox" id="other_person_handover" name="other_person_handover" value="1" data-other-person-toggle @checked($hasOtherPerson)>
+                                    <span class="repair-choice-card__check" aria-hidden="true">
+                                        <svg class="repair-choice-card__tick" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.2 8.4 6.5 11.7 12.8 4.6"/></svg>
+                                    </span>
+                                    <span class="repair-choice-card__title">فرد دیگری دستگاه را به پیک تحویل می‌دهد</span>
+                                </label>
+                                <div class="public-field repair-courier-alt__field" data-other-person-field @unless($hasOtherPerson) hidden @endunless>
+                                    <label for="responsive_phone">شماره تماس تحویل‌دهنده</label>
+                                    <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input repair-rtl-phone-input" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
+                                    <p class="public-field-error" data-field-error="responsive_phone" role="alert" @unless($errors->has('responsive_phone')) hidden @endunless>@error('responsive_phone'){{ $message }}@enderror</p>
+                                </div>
                             </div>
                         </div>
                     </div>

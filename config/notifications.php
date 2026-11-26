@@ -12,6 +12,11 @@ foreach (PatternSms::PATTERNS as $event => $pattern) {
         ?: trim((string) env('NOTIFICATIONS_PANELCHI_PATTERN_'.$suffix))
         ?: $pattern;
 }
+foreach (['repair_created_in_person', 'repair_created_postal', 'repair_created_courier'] as $methodEvent) {
+    if ($patternSmsPatterns[$methodEvent] === '') {
+        $patternSmsPatterns[$methodEvent] = $patternSmsPatterns['repair_created'];
+    }
+}
 
 return [
     'admin' => [
