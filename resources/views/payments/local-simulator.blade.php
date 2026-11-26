@@ -47,7 +47,7 @@
                     <span>کد رهگیری شبیه‌سازی‌شده</span>
                     <strong><bdi class="np-latin" dir="ltr">{{ $attempt->track_id }}</bdi></strong>
                 </div>
-                <div class="row">
+                <div class="row plain">
                     <span>مبلغ قابل پرداخت</span>
                     <strong>{{ $amountDisplay }} تومان</strong>
                 </div>

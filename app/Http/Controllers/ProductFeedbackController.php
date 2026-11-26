@@ -6,6 +6,7 @@ use App\Models\CustomerAccount;
 use App\Models\Product;
 use App\Models\ProductFeedback;
 use App\Services\ProductPurchaseVerification;
+use App\Support\PaymentTestProduct;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,19 +20,19 @@ class ProductFeedbackController extends Controller
 
     public function store(Request $request, Product $product, ProductPurchaseVerification $purchase): RedirectResponse
     {
-        abort_unless($product->is_published && ! $product->is_sample && ! $product->isPrivatePaymentTest(), 404);
+        $account = Auth::guard('customer')->user();
+        abort_unless($product->is_published && ! $product->is_sample && PaymentTestProduct::canSeeProduct($product, $account), 404);
         $data = $request->validate([
             'kind' => ['required', Rule::in(['review', 'question'])],
             'body' => ['required', 'string', 'min:5', 'max:1500'],
             'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
             'website' => ['prohibited'],
         ]);
-        $account = Auth::guard('customer')->user();
         DB::transaction(function () use ($product, $account, $purchase, $data): void {
             $owner = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
             abort_unless($owner->is_active && $owner->session_version === $account->session_version && $owner->verified_at, 403);
             $published = Product::query()->lockForUpdate()->findOrFail($product->id);
-            abort_unless($published->is_published && ! $published->is_sample && ! $published->isPrivatePaymentTest(), 404);
+            abort_unless($published->is_published && ! $published->is_sample && PaymentTestProduct::canSeeProduct($published, $owner), 404);
             $review = $data['kind'] === 'review';
             $verified = $review && $purchase->verified($owner, $product);
             if (isset($data['rating']) && ! $verified) {
@@ -53,10 +54,10 @@ class ProductFeedbackController extends Controller
 
     public function report(Request $request, Product $product, ProductFeedback $feedback): RedirectResponse
     {
-        abort_unless($product->is_published && ! $product->is_sample && ! $product->isPrivatePaymentTest()
+        $account = Auth::guard('customer')->user();
+        abort_unless($product->is_published && ! $product->is_sample && PaymentTestProduct::canSeeProduct($product, $account)
             && $feedback->product_id === $product->id && $feedback->status === 'approved', 404);
         $data = $request->validate(['reason' => ['required', Rule::in(array_keys(self::REPORT_REASONS))]]);
-        $account = Auth::guard('customer')->user();
         abort_unless($account->verified_at, 403);
         DB::transaction(function () use ($feedback, $account, $data): void {
             $entry = ProductFeedback::query()->lockForUpdate()->findOrFail($feedback->id);

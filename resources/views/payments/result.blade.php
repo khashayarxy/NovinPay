@@ -71,14 +71,13 @@
                 <div class="row">
                     <span>{{ $isOrder ? 'کد سفارش' : 'کد پیگیری تعمیر' }}</span>
                     <span class="pay-copy-wrap">
-                        <b class="np-latin" id="payOrderCode">{{ $sourceCode }}</b>
-
+                        <b class="np-latin" id="payOrderCode" dir="ltr">{{ $sourceCode }}</b>
                     </span>
                 </div>
                 @if ($attempt->track_id)
                     <div class="row">
                         <span>کد رهگیری زیبال</span>
-                        <b>{{ \App\Support\FaNumber::digits((string) $attempt->track_id) }}</b>
+                        <b dir="ltr">{{ \App\Support\FaNumber::digits((string) $attempt->track_id) }}</b>
                     </div>
                 @endif
                 <div class="row plain">
@@ -101,8 +100,8 @@
             @if ($settled)
                 <div class="info-box go">
                     <p>{{ $isOrder
-                        ? 'سفارش شما ثبت و تأیید شد؛ مراحل آماده‌سازی و ارسال از طریق پیامک و صفحهٔ پیگیری سفارش اطلاع‌رسانی می‌شود.'
-                        : 'پرداخت هزینهٔ تعمیر با موفقیت ثبت شد؛ مراحل بعدی از طریق پیامک و صفحهٔ پیگیری تعمیر اطلاع‌رسانی می‌شود.' }}</p>
+                        ? 'مراحل آماده‌سازی و ارسال از طریق پیامک و صفحهٔ پیگیری سفارش اطلاع‌رسانی می‌شود.'
+                        : 'مراحل بعدی از طریق پیامک و صفحهٔ پیگیری تعمیر اطلاع‌رسانی می‌شود.' }}</p>
                 </div>
                 <div class="btn-group">
                     <a class="btn" href="{{ $trackingUrl }}">{{ $isOrder ? 'پیگیری سفارش' : 'پیگیری تعمیر' }}</a>
@@ -110,16 +109,18 @@
                 </div>
             @elseif ($cancelled)
                 <div class="info-box go">
-                    <p>هیچ مبلغی از حساب شما کسر نشده و سبد خرید شما همچنان محفوظ است؛ هر زمان مایل بودید می‌توانید مجدد اقدام کنید.</p>
+                    <p>{{ $isOrder
+                        ? 'سبد خرید شما محفوظ است و هر زمان مایل بودید می‌توانید مجدد اقدام به پرداخت نمایید.'
+                        : 'درخواست تعمیر شما محفوظ است و هر زمان مایل بودید می‌توانید مجدد اقدام به پرداخت نمایید.' }}</p>
                 </div>
                 <x-payment-issue-actions :retry-url="$retryUrl" :retry-post-url="$retryPostUrl ?? null" variant="vpn" />
-                <p class="pay-support-link">نیاز به راهنمایی دارید؟ <a href="{{ route('contact') }}">تماس با پشتیبانی</a></p>
+                <p class="pay-support-link">نیاز به راهنمایی دارید؟ <a href="{{ config('business.phone_uri') }}">تماس با پشتیبانی</a></p>
             @elseif ($review)
                 <div class="info-box warn">
                     <p><strong>پرداخت مجدد نکنید.</strong> اگر مبلغی از حساب شما کسر شده، کد سفارش و کد پیگیری را به پشتیبانی اعلام کنید تا بررسی شود.</p>
                 </div>
                 <div class="btn-group">
-                    <a class="btn" href="{{ route('contact') }}">تماس با پشتیبانی</a>
+                    <a class="btn" href="{{ config('business.phone_uri') }}">تماس با پشتیبانی</a>
                     <a class="btn btn--secondary" href="{{ $trackingUrl }}">{{ $isOrder ? 'پیگیری سفارش' : 'پیگیری تعمیر' }}</a>
                 </div>
             @elseif ($failed)
@@ -127,7 +128,7 @@
                     <p>در صورت کسر مبلغ از حساب بانکی شما، تا ۷۲ ساعت آینده به حساب مبدأ بازگردانده خواهد شد.</p>
                 </div>
                 <x-payment-issue-actions :retry-url="$retryUrl" :retry-post-url="$retryPostUrl ?? null" variant="vpn" />
-                <p class="pay-support-link"><a href="{{ route('contact') }}">تماس با پشتیبانی</a></p>
+                <p class="pay-support-link"><a href="{{ config('business.phone_uri') }}">تماس با پشتیبانی</a></p>
             @else
                 <div class="info-box warn">
                     <p><strong>پرداخت مجدد نکنید.</strong> تا مشخص‌شدن نتیجه، چند لحظه صبر کنید یا وضعیت پرداخت را بررسی کنید.</p>

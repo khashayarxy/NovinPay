@@ -8,7 +8,6 @@ use App\Models\PaymentAttempt;
 use App\Models\PaymentTransaction;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
-use App\Services\FinancialOperations;
 use App\Services\Observability\ObservabilityEvents;
 use App\Services\PaymentConnectivity;
 use App\Services\ZibalGateway;
@@ -164,23 +163,24 @@ class PaymentController extends Controller
     public function retry(string $payment, ZibalPayments $payments, ZibalGateway $gateway)
     {
         $account = Auth::guard('customer')->user();
-        [$attempt, $document] = $this->paymentContext($payment, $payments);
+        [$attempt] = $this->paymentContext($payment, $payments);
         if ($attempt->state === 'settled') {
             return redirect()->route('payments.result', $attempt->public_id, 303);
         }
         if ($attempt->state === 'pending' && $this->canContinue($attempt, $payments, $gateway)) {
             return redirect()->route('payments.gateway', $attempt->public_id, 303);
         }
-        app(FinancialOperations::class)->reconcile($document);
-        $document->refresh();
-        $balance = max(0, (int) $document->charged_minor - (int) $document->paid_minor);
-        if ($balance <= 0) {
-            return redirect()->route('payments.result', $attempt->public_id, 303);
-        }
-        $newAttempt = $payments->start($account, $document->public_id, $balance, (string) Str::uuid());
-        app(ObservabilityEvents::class)->payment('retry', $newAttempt, 'from:#'.strtoupper(substr((string) $attempt->public_id, 0, 8)));
 
-        return redirect()->route('payments.gateway', $newAttempt->public_id, 303);
+        $newAttempt = $payments->retryAttempt($account, $attempt, (string) Str::uuid());
+        if ($newAttempt->id !== $attempt->id && $newAttempt->state === 'pending') {
+            app(ObservabilityEvents::class)->payment('retry', $newAttempt, 'from:#'.strtoupper(substr((string) $attempt->public_id, 0, 8)));
+        }
+
+        $destination = $newAttempt->state === 'pending' && $this->canContinue($newAttempt, $payments, $gateway)
+            ? 'payments.gateway'
+            : 'payments.result';
+
+        return redirect()->route($destination, $newAttempt->public_id, 303);
     }
 
     public function localSimulator(string $payment, ZibalPayments $payments, ZibalGateway $gateway)

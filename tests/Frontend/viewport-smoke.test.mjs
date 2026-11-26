@@ -293,11 +293,19 @@ test('Chromium: multi-viewport smoke across 390x844, 768x1024, and 1440x900 for 
         const scrollLockJs = readFileSync(new URL('../../public/js/storefront-scroll-lock.js', import.meta.url), 'utf8');
         const premiumJs = readFileSync(new URL('../../public/js/storefront-premium.js', import.meta.url), 'utf8');
 
-        const shell = (title, bodyContent) => `<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        const shell = (title, bodyContent, extraBodyClass = '') => `<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
             <title>${title}</title><style>${css}</style>
-            <body class="public-site premium-storefront">
-                <header class="np-header"><div class="np-container np-header__inner"><a class="np-logo-link" href="/">نوین‌پی</a></div></header>
+            <body class="public-site premium-storefront ${extraBodyClass}">
+                <header class="np-header"><div class="np-container np-header__inner">
+                    <a class="np-logo-link" href="/">نوین‌پی</a>
+                    <div class="np-header__actions"><div class="np-mobile-menu"><button type="button" aria-label="فهرست ناوبری">☰</button></div></div>
+                    ${extraBodyClass.includes('product-detail-page')
+                        ? '<a class="np-customer-trigger store-mobile-cart" href="/cart" data-storefront-open="cart-dialog" aria-label="سبد خرید"><svg width="20" height="20" viewBox="0 0 24 24"></svg><span class="store-cart-count" data-store-cart-count><bdi>۲</bdi></span></a>'
+                        : '<a class="np-customer-trigger store-mobile-search" href="/products" aria-label="جستجوی محصولات">🔍</a>'}
+                    <div class="np-customer-header"><div class="store-desktop-tools"><a class="np-customer-trigger" href="/cart">سبد</a></div></div>
+                </div></header>
                 <main id="main-content">${bodyContent}</main>
+                <nav class="global-store-nav" data-mobile-bottom-nav><a href="/">خانه</a><a href="/products">فروشگاه</a></nav>
                 <script>window.__errs=[];window.addEventListener('error',e=>window.__errs.push(e.message));window.requestAnimationFrame=fn=>setTimeout(fn,16);</script>
                 <script>${scrollLockJs}</script>
                 <script>${premiumJs}</script>
@@ -391,12 +399,45 @@ test('Chromium: multi-viewport smoke across 390x844, 768x1024, and 1440x900 for 
                     </div>
                 </div></div></div>
             `),
+            '/products/sample-pos': shell('جزئیات محصول', `
+                <div class="storefront-content np-container" style="min-height:1400px;padding-block:18px">
+                    <div class="product-layout">
+                        <div class="gallery card" style="height:260px">تصویر دستگاه</div>
+                        <div class="product-overview"><section class="identity card"><h1>Newland ME31 (4G)</h1></section></div>
+                        <div class="purchase-column" data-purchase-column>
+                            <aside class="purchase card" id="product-purchase">
+                                <div class="price-group"><p class="muted">قیمت فروش دستگاه</p><p class="price"><bdi>۱۰٬۵۰۰٬۰۰۰</bdi> <small>تومان</small></p></div>
+                                <div class="product-cart-control" data-product-primary-action data-product-cart-control data-product-slug="me31" data-product-qty="0" data-product-max="5">
+                                    <div class="purchase-stock-row"><div class="stock is-available"><strong>موجود در انبار</strong></div></div>
+                                    <form id="product-cart-form" class="product-cart-form" action="/cart/products/me31" method="post"><input type="hidden" name="quantity" value="1"><button class="primary" type="submit">خرید محصول</button></form>
+                                </div>
+                                <ul class="services"><li><strong>۶ ماه گارانتی نوین‌پی</strong></li></ul>
+                                <dl class="purchase-meta"><div><dt>شناسه کالا</dt><dd><bdi dir="ltr">ME31-4G</bdi></dd></div></dl>
+                            </aside>
+                        </div>
+                    </div>
+                </div>
+                <div class="sticky-contact" data-product-dock inert>
+                    <div class="product-dock-action" data-product-cart-control data-product-slug="me31" data-product-qty="0" data-product-max="5">
+                        <button class="primary" type="submit" form="product-cart-form" data-dock-add-btn>افزودن به سبد خرید</button>
+                        <div class="product-dock-in-cart" data-dock-in-cart hidden>
+                            <div class="np-inline-stepper np-inline-stepper--dock" data-inline-stepper hidden>
+                                <button type="button" class="np-inline-stepper__btn" data-stepper-inc>+</button>
+                                <span class="np-inline-stepper__count" data-stepper-count>۱</span>
+                                <button type="button" class="np-inline-stepper__btn" data-stepper-dec>−</button>
+                            </div>
+                            <a class="product-dock-cart-link" href="/cart" data-dock-cart-link>مشاهده سبد خرید</a>
+                        </div>
+                    </div>
+                    <div class="product-dock-price"><span class="product-dock-price__label">قیمت فروش</span><p class="price"><bdi>۱۰٬۵۰۰٬۰۰۰</bdi> <small>تومان</small></p></div>
+                </div>
+            `, 'product-detail-page'),
             '/runner': `<!doctype html><meta charset="utf-8"><body style="margin:0"><iframe id="vp" style="border:0;display:block"></iframe>
             <script>
             ;(async () => {
                 const frame = document.getElementById('vp');
                 const viewports = [[390, 844], [768, 1024], [1440, 900]];
-                const pages = ['/', '/products', '/repair', '/repair/confirmation'];
+                const pages = ['/', '/products', '/products/sample-pos', '/repair', '/repair/confirmation'];
                 const wait = (ms = 45) => new Promise(r => setTimeout(r, ms));
                 const loadPage = (page, w, h) => new Promise((resolve, reject) => {
                     frame.width = String(w); frame.height = String(h);
@@ -494,6 +535,35 @@ test('Chromium: multi-viewport smoke across 390x844, 768x1024, and 1440x900 for 
                             const codeBox = doc.querySelector('.repair-confirmation-code').getBoundingClientRect();
                             if (codeBox.width < mainBox.width - 40) {
                                 throw new Error('/repair/confirmation@' + w + 'x' + h + ' tracking code card should be full-width on mobile (got ' + codeBox.width + ' inside ' + mainBox.width + ')');
+                            }
+                        }
+
+                        if (page === '/products/sample-pos') {
+                            const bottomNav = doc.querySelector('.global-store-nav');
+                            const mobileCart = doc.querySelector('.store-mobile-cart');
+                            const dock = doc.querySelector('[data-product-dock]');
+                            const bodyPriceGroup = doc.querySelector('.purchase .price-group');
+                            const bodyCartForm = doc.querySelector('.purchase .product-cart-form');
+                            if (w < 768) {
+                                if (win.getComputedStyle(bottomNav).display !== 'none') {
+                                    throw new Error('/products/sample-pos@' + w + 'x' + h + ' expected .global-store-nav hidden on mobile');
+                                }
+                                const cartRect = mobileCart.getBoundingClientRect();
+                                if (cartRect.width < 36 || cartRect.left > w / 2) {
+                                    throw new Error('/products/sample-pos@' + w + 'x' + h + ' expected .store-mobile-cart visible on top-left of mobile header');
+                                }
+                                const dockRect = dock.getBoundingClientRect();
+                                const cw = doc.documentElement.clientWidth;
+                                if (dock.inert || Math.abs(dockRect.bottom - win.innerHeight) > 2 || Math.abs(dockRect.width - cw) > 2) {
+                                    throw new Error('/products/sample-pos@' + w + 'x' + h + ' expected full-width sticky buy bar at bottom=0 (inert=' + dock.inert + ', bottom=' + dockRect.bottom + ', width=' + dockRect.width + ', cw=' + cw + ')');
+                                }
+                                if (win.getComputedStyle(bodyPriceGroup).display !== 'none' || win.getComputedStyle(bodyCartForm).display !== 'none') {
+                                    throw new Error('/products/sample-pos@' + w + 'x' + h + ' expected redundant body price/buy form hidden on <768px');
+                                }
+                            } else {
+                                if (win.getComputedStyle(bodyPriceGroup).display === 'none' || win.getComputedStyle(bodyCartForm).display === 'none') {
+                                    throw new Error('/products/sample-pos@' + w + 'x' + h + ' expected desktop purchase card visible on >=768px');
+                                }
                             }
                         }
 
