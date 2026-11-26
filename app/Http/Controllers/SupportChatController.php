@@ -183,9 +183,11 @@ class SupportChatController extends Controller
         if ($path === 'api.php'
             && $request->isMethod('POST')
             && $request->has('send_message')
+            && empty($request->input('faq_article'))
             && $status === 200
             && is_array($payload)
-            && ($payload['status'] ?? null) === 'success'
+            && in_array($payload['status'] ?? null, ['accepted', 'success'], true)
+            && empty($payload['replayed'])
             && empty($payload['duplicate'])) {
             $conversationId = (string) ($payload['conversation_id'] ?? $request->input('user_id', ''));
             $messageText = (string) $request->input('message', '');

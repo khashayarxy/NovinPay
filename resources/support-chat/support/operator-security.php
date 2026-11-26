@@ -193,11 +193,54 @@ function support_login_result(bool $success, ?string $username = null): void {
 }
 function support_throttle(string $bucket,int $limit,int $window=60): void {
     $key=hash_hmac('sha256',$bucket,support_security_key());
-    support_security_store(function(array &$s) use($key,$limit,$window) {
-        $now=time();$times=array_values(array_filter($s['rates'][$key]??[],fn($t)=>$now-$t<$window));
-        if(count($times)>=$limit || (!isset($s['rates'][$key]) && count($s['rates'])>=1024)) {header('Retry-After: '.$window);support_failure(429,'rate_limited');}
-        $times[]=$now;$s['rates'][$key]=$times;
-    });
+    $shard=substr($key,0,2);
+    $dir=support_private_dir(support_runtime_dir().'/rate-shards');
+    $lockPath=$dir.'/'.$shard.'.lock';
+    $dataPath=$dir.'/'.$shard.'.json';
+    if(is_link($lockPath)||is_link($dataPath)||(file_exists($dataPath)&&!is_file($dataPath))) support_failure(503,'security_unavailable');
+    $lock=@fopen($lockPath,'c+b');
+    if(!$lock||!@flock($lock,LOCK_EX)){if($lock)fclose($lock);support_failure(503,'security_unavailable');}
+    @chmod($lockPath,0600);
+    try {
+        $now=time();
+        $rates=[];
+        if(is_file($dataPath)) {
+            $size=(int)@filesize($dataPath);
+            if($size>0&&$size<=524288) {
+                $decoded=json_decode((string)@file_get_contents($dataPath),true);
+                if(is_array($decoded)) $rates=$decoded;
+            }
+        }
+        $maxWindow=max(60,$window);
+        foreach($rates as $k=>$times) {
+            if(!is_string($k)||!is_array($times)){unset($rates[$k]);continue;}
+            $filtered=array_values(array_filter($times,fn($t)=>is_int($t)&&$now-$t<$maxWindow));
+            if($filtered)$rates[$k]=$filtered;else unset($rates[$k]);
+        }
+        $times=array_values(array_filter($rates[$key]??[],fn($t)=>is_int($t)&&$now-$t<$window));
+        if(count($times)>=$limit || (!isset($rates[$key]) && count($rates)>=256)) {
+            header('Retry-After: '.$window);
+            support_failure(429,'rate_limited');
+        }
+        $times[]=$now;
+        $rates[$key]=$times;
+        $tmp=$dataPath.'.tmp.'.bin2hex(random_bytes(8));
+        $fh=@fopen($tmp,'x+b');
+        if($fh) {
+            @chmod($tmp,0600);
+            $encoded=json_encode($rates,JSON_THROW_ON_ERROR);
+            if(@fwrite($fh,$encoded)===strlen($encoded) && @fflush($fh)) {
+                @fclose($fh);
+                @rename($tmp,$dataPath);
+            } else {
+                @fclose($fh);
+                @unlink($tmp);
+            }
+        }
+    } finally {
+        flock($lock,LOCK_UN);
+        fclose($lock);
+    }
 }
 function support_principal(array $context,string $role): string {
     if($role==='customer') return 'customer:'.$context['owner_id'];

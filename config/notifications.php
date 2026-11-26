@@ -18,24 +18,33 @@ foreach (['repair_created_in_person', 'repair_created_postal', 'repair_created_c
     }
 }
 
+$adminPhonesRaw = trim((string) env('NOTIFICATIONS_ADMIN_PHONES', ''));
+$adminEmailsRaw = trim((string) env('NOTIFICATIONS_ADMIN_EMAILS', ''));
+$smsEnabledEnv = env('NOTIFICATIONS_SMS_ENABLED');
+$emailEnabledEnv = env('NOTIFICATIONS_EMAIL_ENABLED');
+
 return [
     'admin' => [
-        'phones' => array_values(array_filter(array_map('trim', explode(',', (string) env('NOTIFICATIONS_ADMIN_PHONES', ''))))),
-        'emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('NOTIFICATIONS_ADMIN_EMAILS', ''))))),
+        'phones' => array_values(array_filter(array_map('trim', explode(',', $adminPhonesRaw)))),
+        'emails' => array_values(array_filter(array_map('trim', explode(',', $adminEmailsRaw)))),
     ],
 
     'sms' => [
-        'enabled' => (bool) env('NOTIFICATIONS_SMS_ENABLED', false),
+        'enabled' => in_array($smsEnabledEnv, [null, ''], true)
+            ? ($adminPhonesRaw !== '')
+            : filter_var($smsEnabledEnv, FILTER_VALIDATE_BOOL),
+        'admin_shared_pattern_fallback' => filter_var(env('NOTIFICATIONS_ADMIN_SHARED_PATTERN_FALLBACK', true), FILTER_VALIDATE_BOOL),
         'patterns' => [
-            'admin_order_placed' => (string) env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_ORDER', ''),
-            'admin_repair_submitted' => (string) env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_REPAIR', ''),
-            'admin_consultation_submitted' => (string) env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_CONSULTATION', ''),
-            'admin_chat_first_message' => (string) env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_CHAT_FIRST', ''),
-            'customer_order_placed' => (string) env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_ORDER_PLACED', ''),
-            'customer_order_shipped' => (string) env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_ORDER_SHIPPED', ''),
-            'customer_repair_submitted' => (string) env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_REPAIR_SUBMITTED', ''),
-            'customer_repair_status' => (string) env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_REPAIR_STATUS', ''),
-            'customer_consultation_submitted' => (string) env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_CONSULTATION', ''),
+            'admin_order_placed' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_ADMIN_ORDER', env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_ORDER', ''))),
+            'admin_order_paid' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_ADMIN_ORDER_PAID', env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_ORDER_PAID', ''))),
+            'admin_repair_submitted' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_ADMIN_REPAIR', env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_REPAIR', ''))),
+            'admin_consultation_submitted' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_ADMIN_CONSULTATION', env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_CONSULTATION', ''))),
+            'admin_chat_first_message' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_ADMIN_CHAT_FIRST', env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_CHAT_FIRST', ''))),
+            'customer_order_placed' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_CUSTOMER_ORDER_PLACED', env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_ORDER_PLACED', ''))),
+            'customer_order_shipped' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_CUSTOMER_ORDER_SHIPPED', env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_ORDER_SHIPPED', ''))),
+            'customer_repair_submitted' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_CUSTOMER_REPAIR_SUBMITTED', env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_REPAIR_SUBMITTED', ''))),
+            'customer_repair_status' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_CUSTOMER_REPAIR_STATUS', env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_REPAIR_STATUS', ''))),
+            'customer_consultation_submitted' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_CUSTOMER_CONSULTATION', env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_CONSULTATION', ''))),
         ],
     ],
 
@@ -53,18 +62,20 @@ return [
     ],
 
     'email' => [
-        'enabled' => (bool) env('NOTIFICATIONS_EMAIL_ENABLED', false),
+        'enabled' => in_array($emailEnabledEnv, [null, ''], true)
+            ? ($adminEmailsRaw !== '')
+            : filter_var($emailEnabledEnv, FILTER_VALIDATE_BOOL),
     ],
 
     'bale' => [
-        'enabled' => (bool) env('NOTIFICATIONS_BALE_ENABLED', env('BALE_BOT_TOKEN') && env('BALE_ADMIN_CHAT_ID')),
+        'enabled' => filter_var(env('NOTIFICATIONS_BALE_ENABLED', (bool) (env('BALE_BOT_TOKEN') && env('BALE_ADMIN_CHAT_ID'))), FILTER_VALIDATE_BOOL),
         'bot_token' => (string) env('NOTIFICATIONS_BALE_BOT_TOKEN', env('BALE_BOT_TOKEN', '')),
         'chat_id' => (string) env('NOTIFICATIONS_BALE_CHAT_ID', env('BALE_ADMIN_CHAT_ID', '')),
         'api_base' => rtrim((string) env('NOTIFICATIONS_BALE_API_BASE', env('BALE_API_BASE_URL', 'https://tapi.bale.ai')), '/'),
     ],
 
     'telegram' => [
-        'enabled' => (bool) env('NOTIFICATIONS_TELEGRAM_ENABLED', env('TELEGRAM_BOT_TOKEN') && env('TELEGRAM_ADMIN_CHAT_ID')),
+        'enabled' => filter_var(env('NOTIFICATIONS_TELEGRAM_ENABLED', (bool) (env('TELEGRAM_BOT_TOKEN') && env('TELEGRAM_ADMIN_CHAT_ID'))), FILTER_VALIDATE_BOOL),
         'bot_token' => (string) env('NOTIFICATIONS_TELEGRAM_BOT_TOKEN', env('TELEGRAM_BOT_TOKEN', '')),
         'chat_id' => (string) env('NOTIFICATIONS_TELEGRAM_CHAT_ID', env('TELEGRAM_ADMIN_CHAT_ID', '')),
         'api_base' => rtrim((string) env('NOTIFICATIONS_TELEGRAM_API_BASE', env('TELEGRAM_API_BASE_URL', 'https://api.telegram.org')), '/'),

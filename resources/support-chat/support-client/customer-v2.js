@@ -67,9 +67,10 @@ function initFaqAndChannels(win,cfg){
  tabFaq.addEventListener('click',()=>setTab('faq'));
  toChatBtn?.addEventListener('click',()=>setTab('chat'));
 
+ const normalizeFaqQuery=val=>String(val||'').toLowerCase().replace(/ي/g,'ی').replace(/ك/g,'ک').replace(/\u200c/g,' ').replace(/\s+/g,' ').trim();
  const appendLatinText=(el,text)=>{
   const str=String(text||'');
-  const re=/\b(?:[0-9]+[A-Za-z][A-Za-z0-9._-]*|[A-Za-z][A-Za-z0-9._-]*)\b/g;
+  const re=/(?<![A-Za-z0-9_])(?:[0-9]+[A-Za-z][A-Za-z0-9._-]*|[A-Za-z][A-Za-z0-9._-]*)(?![A-Za-z0-9_])/g;
   let last=0,m;
   while((m=re.exec(str))!==null){
    if(m.index>last)el.append(document.createTextNode(str.slice(last,m.index)));
@@ -85,16 +86,19 @@ function initFaqAndChannels(win,cfg){
  const items=Array.isArray(cfg?.faq_items)?cfg.faq_items:[];
  const renderFaq=(query='')=>{
   if(!faqList)return;
-  const q=query.trim().toLowerCase();
+  const q=normalizeFaqQuery(query);
   faqList.innerHTML='';
   let shown=0;
   for(const item of items){
-   const hay=`${item.q||''} ${item.a||''}`.toLowerCase();
+   const hay=normalizeFaqQuery(`${item.q||''} ${item.a||''}`);
    if(q&&!hay.includes(q))continue;
    const details=document.createElement('details');
    details.className='v2-faq-item';
    const summary=document.createElement('summary');
-   appendLatinText(summary,item.q||'');
+   const questionSpan=document.createElement('span');
+   questionSpan.className='faq-question-text';
+   appendLatinText(questionSpan,item.q||'');
+   summary.append(questionSpan);
    const chevron=document.createElementNS('http://www.w3.org/2000/svg','svg');
    chevron.classList.add('v2-faq-chevron');chevron.setAttribute('viewBox','0 0 24 24');chevron.setAttribute('aria-hidden','true');
    const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','m6 9 6 6 6-6');path.setAttribute('fill','none');path.setAttribute('stroke','currentColor');path.setAttribute('stroke-width','2');chevron.append(path);summary.append(chevron);
@@ -108,7 +112,7 @@ function initFaqAndChannels(win,cfg){
     a.className='v2-faq-item__link';
     a.href=item.link;
     a.target='_top';
-    a.textContent=(item.link_label||'مشاهده بیشتر')+' ←';
+    a.textContent=String(item.link_label||'مشاهده بیشتر').replace(/\s*←\s*$/u,'');
     body.append(a);
    }
    details.append(summary,body);
@@ -134,7 +138,7 @@ const launch=()=>{if(bootJob)return bootJob;const retry=loading.querySelector('[
   if(typeof config?.name!=='string')throw Error();
   globalThis.SupportWidgetConfig=config;initFaqAndChannels(startup,config);window.SupportTheme?.configure(config);const requested=new URL(location.href).searchParams.get('source_path');let referring=null;try{const ref=new URL(document.referrer);if(ref.origin===location.origin)referring=ref.pathname;}catch{}globalThis.SupportSourcePath=allowed(requested)||allowed(referring);
   tools=customerTools();mounted=true;await mountCustomer({shellFactory:shell,transcriptRenderer:renderCustomerV2,presentation:tools,onClose:parent!==window?closeFrame:null});
-  if(!startup.classList.contains('active'))window.toggleChat();if(parent!==window){parent.postMessage({type:'support-widget-ready'},location.origin);publishTheme();}
+  if(!startup.classList.contains('active'))window.toggleChat();if(parent!==window){parent.postMessage({type:'support-widget-ready',source_paths:Array.isArray(config?.source_paths)?config.source_paths:[]},location.origin);publishTheme();}
  })().catch(error=>{startup.dataset.initState='failed';startup.setAttribute('aria-busy','false');loading.hidden=false;text.textContent='گفتگو در دسترس نیست. دوباره بررسی کنید.';retry.hidden=false;retry.onclick=mounted?()=>location.reload():()=>configurationRecovery.start(true);loading.querySelector('[data-init-reference]').textContent='';diagnostics.events.push({stage:mounted?'mount':'configuration',code:transientFailure(error)?'transient':'terminal',ms:Math.round(performance.now())});diagnostics.events=diagnostics.events.slice(-12);dispatchEvent(new Event('support-init-state'));throw error;})
  .finally(()=>{retry.disabled=false;if(bootJob===job)bootJob=null;});bootJob=job;return job;
 };

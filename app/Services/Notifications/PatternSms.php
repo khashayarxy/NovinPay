@@ -150,6 +150,46 @@ final class PatternSms
         };
     }
 
+    /**
+     * Dispatch an explicit pattern code (used for admin SMS notifications) via the active SMS provider.
+     *
+     * @param  array<string, scalar>  $variables
+     */
+    public function sendExplicitPattern(string $event, string $recipient, string $pattern, array $variables): string
+    {
+        if (! preg_match('/\A09[0-9]{9}\z/D', $recipient) || ! preg_match('/\A[A-Za-z0-9]{1,80}\z/D', $pattern) || $variables === []) {
+            return 'rejected';
+        }
+
+        $stringVars = [];
+        foreach ($variables as $k => $v) {
+            $stringVars[(string) $k] = (string) $v;
+        }
+
+        $provider = $this->provider();
+        try {
+            if ($provider === 'panelchi' && $this->panelChiConfigurationIssue() === null) {
+                return (string) ($this->sendWithPanelChi($recipient, $pattern, $stringVars)['outcome'] ?? 'failed');
+            }
+            if ($this->ipPanel->patternConfigurationIssue() === null) {
+                return $this->ipPanel->sendPattern($recipient, $pattern, $stringVars);
+            }
+            Log::warning('Explicit SMS pattern skipped due to provider configuration', [
+                'event' => $event,
+                'provider' => $provider,
+                'issue' => $provider === 'panelchi' ? $this->panelChiConfigurationIssue() : $this->ipPanel->patternConfigurationIssue(),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('Explicit SMS pattern dispatch failed safely', [
+                'event' => $event,
+                'provider' => $provider,
+                'exception' => $e::class,
+            ]);
+        }
+
+        return 'failed';
+    }
+
     /** @param array<string, string> $variables */
     private function sendWithPanelChi(string $recipient, string $pattern, array $variables): array
     {
