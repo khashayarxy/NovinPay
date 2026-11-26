@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="public-actions repair-confirm-actions">
-                    <a href="{{ route('account.repairs.request', $reference) }}" class="np-button np-button--primary">پیگیری وضعیت تعمیر <x-home.icon name="arrow-left" /></a>
+                    <a href="{{ route('account.repairs.request', $reference) }}" class="np-button np-button--primary">پیگیری وضعیت تعمیر</a>
                     <a href="{{ config('business.phone_uri') }}" class="np-button np-button--outline">تماس با نوین‌پی</a>
                 </div>
             </section>

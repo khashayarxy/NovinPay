@@ -48,15 +48,15 @@
     .global-store-nav a:focus-visible { outline: 2px solid #075da6; outline-offset: -2px; }
     .global-store-nav a:active { background: #dcecf9; }
     body:has(.global-store-nav) button[data-support-launcher] {
-        bottom: calc(var(--store-nav-edge) + 12px + var(--store-purchase-space, 0px));
+        bottom: calc(var(--store-nav-edge) + 10px + var(--store-purchase-space, 0px));
         transform: translateY(calc(-1 * var(--store-nav-active-height)));
-        transition: transform .2s ease, box-shadow .2s ease;
+        transition: transform .2s ease, box-shadow .2s ease, opacity .16s ease;
     }
     body:has(.global-store-nav) button[data-support-launcher]:hover {
         transform: translateY(calc(-1 * var(--store-nav-active-height) - 2px));
     }
     body:has(dialog[open], [data-support-frame][data-state="open"]) :is(.global-store-nav, [data-product-dock]),
-    body:has(input:is([type=text],[type=search],[type=tel],[type=password],[type=email],[type=number],:not([type])):focus, textarea:focus) :is(.global-store-nav, [data-product-dock]) {
+    body:has(input:is([type=text],[type=search],[type=tel],[type=password],[type=email],[type=number],:not([type])):focus, textarea:focus, select:focus) :is(.global-store-nav, [data-product-dock], button[data-support-launcher]) {
         visibility: hidden;
     }
     @media (hover: hover) {

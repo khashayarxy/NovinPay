@@ -22,7 +22,7 @@
                 <p class="article-category-label">{{ $version->category->name }}</p>
                 <h2><a href="{{ route('articles.show', ['slug' => $article->slug]) }}">{{ $version->title }}</a></h2>
                 <p>{{ $version->summary }}</p>
-                <span class="article-reading-hint" aria-hidden="true">خواندن مقاله <x-home.icon name="arrow-left" /></span>
+                <span class="article-reading-hint" aria-hidden="true">خواندن مقاله <x-home.icon name="chevron-left" /></span>
             </article>
         @endforeach
         </div>
@@ -34,9 +34,9 @@
             <p>راهنماهای انتخاب، نگهداری و رفع خطای کارتخوان به‌زودی در این بخش منتشر می‌شوند.</p>
             <div class="article-empty__actions">
                 @if($category)
-                    <a href="{{ route('articles.index') }}" class="np-button np-button--outline">همهٔ مقاله‌ها <x-home.icon name="arrow-left" /></a>
+                    <a href="{{ route('articles.index') }}" class="np-button np-button--outline">همهٔ مقاله‌ها</a>
                 @else
-                    <a href="{{ route('products.index') }}" class="np-button np-button--outline">مشاهدهٔ محصولات <x-home.icon name="arrow-left" /></a>
+                    <a href="{{ route('products.index') }}" class="np-button np-button--outline">مشاهدهٔ محصولات</a>
                 @endif
             </div>
         </section>

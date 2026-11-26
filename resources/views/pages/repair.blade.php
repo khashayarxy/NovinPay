@@ -61,7 +61,7 @@
                     <h1>ثبت درخواست تعمیر کارتخوان</h1>
                     <p>در چهار مرحلهٔ ساده درخواست خود را ثبت کنید و کد پیگیری بگیرید.</p>
                 </div>
-                <a class="public-inline-link" href="{{ route('repair.track') }}">پیگیری درخواست قبلی <x-home.icon name="arrow-left" /></a>
+                <a class="public-inline-link" href="{{ route('repair.track') }}">پیگیری درخواست قبلی</a>
             </div>
         </header>
 
@@ -134,7 +134,7 @@
                             <input id="device_model" name="device_model" value="{{ $selectedModel }}" class="input np-latin-mixed" dir="rtl" placeholder="مثلاً ME31" required maxlength="100" aria-invalid="{{ $errors->has('device_model') ? 'true' : 'false' }}" aria-describedby="device_model-feedback">
                         </x-repair-field>
                         <x-repair-field name="device_serial" label="شماره سریال دستگاه (اختیاری)" :required="false">
-                            <input id="device_serial" name="device_serial" value="{{ old('device_serial', '') }}" class="input np-latin-mixed" dir="rtl" maxlength="100" placeholder="کد S/N درج‌شده روی برچسب پشت دستگاه" aria-invalid="{{ $errors->has('device_serial') ? 'true' : 'false' }}" aria-describedby="device_serial-feedback">
+                            <input id="device_serial" name="device_serial" value="{{ strtoupper((string) old('device_serial', '')) }}" class="input np-latin-mixed pos-serial-input" dir="ltr" autocapitalize="characters" spellcheck="false" autocomplete="off" data-pos-serial maxlength="100" placeholder="کد S/N درج‌شده روی برچسب پشت دستگاه" aria-invalid="{{ $errors->has('device_serial') ? 'true' : 'false' }}" aria-describedby="device_serial-feedback">
                         </x-repair-field>
                     </div>
                     <fieldset class="repair-choice-fieldset">
@@ -152,7 +152,7 @@
                         </div>
                     </fieldset>
                     <div class="repair-step-actions">
-                        <button type="button" class="np-button np-button--primary" data-step-next>مرحلهٔ بعد <x-home.icon name="arrow-left" /></button>
+                        <button type="button" class="np-button np-button--primary" data-step-next>مرحلهٔ بعد <x-home.icon name="chevron-left" /></button>
                     </div>
                 </div>
 
@@ -182,7 +182,7 @@
                         <textarea id="issue" name="issue" class="input" rows="4" placeholder="نشانهٔ خرابی، پیام خطای نمایشگر و زمان بروز مشکل را بنویسید (حداقل ۱۰ کاراکتر)" required minlength="10" maxlength="2000" aria-invalid="{{ $errors->has('issue') ? 'true' : 'false' }}" aria-describedby="issue-feedback">{{ $selectedIssue }}</textarea>
                     </x-repair-field>
                     <div class="repair-step-actions">
-                        <button type="button" class="np-button np-button--primary" data-step-next>مرحلهٔ بعد <x-home.icon name="arrow-left" /></button>
+                        <button type="button" class="np-button np-button--primary" data-step-next>مرحلهٔ بعد <x-home.icon name="chevron-left" /></button>
                         <button type="button" class="np-button np-button--outline" data-step-prev>مرحلهٔ قبل</button>
                     </div>
                 </div>
@@ -199,7 +199,7 @@
                             <input id="customer_name" name="customer_name" value="{{ $customerName }}" class="input" autocomplete="name" required minlength="2" maxlength="100" placeholder="مثلاً علی رضایی" aria-invalid="{{ $errors->has('customer_name') ? 'true' : 'false' }}" aria-describedby="customer_name-feedback">
                         </x-repair-field>
                         <x-repair-field name="contact_phone" label="شماره موبایل">
-                            <input @if(!$isGuest) readonly @endif value="{{ $customerPhone !== '' ? \App\Support\FaNumber::digits($customerPhone) : '' }}" type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel-national" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
+                            <input @if(!$isGuest) readonly @endif value="{{ $customerPhone !== '' ? \App\Support\FaNumber::digits($customerPhone) : '' }}" type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
                             @if(!$isGuest)
                                 <p class="public-hint">شماره موبایل حساب کاربری شما تأیید شده است.</p>
                             @endif
@@ -343,7 +343,7 @@
                                 </label>
                                 <div class="public-field repair-courier-alt__field" data-other-person-field @unless($hasOtherPerson) hidden @endunless>
                                     <label for="responsive_phone">شماره تماس تحویل‌دهنده</label>
-                                    <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input repair-rtl-phone-input" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
+                                    <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input repair-rtl-phone-input" dir="ltr" inputmode="numeric" autocomplete="tel" data-digits-only="11" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
                                     <p class="public-field-error" data-field-error="responsive_phone" role="alert" @unless($errors->has('responsive_phone')) hidden @endunless>@error('responsive_phone'){{ $message }}@enderror</p>
                                 </div>
                             </div>
@@ -351,7 +351,7 @@
                     </div>
 
                     <div class="repair-step-actions">
-                        <button type="button" class="np-button np-button--primary" data-step-next>بازبینی و مرحلهٔ پایانی <x-home.icon name="arrow-left" /></button>
+                        <button type="button" class="np-button np-button--primary" data-step-next>بازبینی و مرحلهٔ پایانی <x-home.icon name="chevron-left" /></button>
                         <button type="button" class="np-button np-button--outline" data-step-prev>مرحلهٔ قبل</button>
                     </div>
                 </div>
@@ -435,7 +435,7 @@
                     @endif
 
                     <div class="repair-step-actions">
-                        <button class="np-button np-button--primary" type="submit" data-repair-submit @if($isGuest) hidden @endif>ثبت نهایی درخواست تعمیر <x-home.icon name="arrow-left" /></button>
+                        <button class="np-button np-button--primary" type="submit" data-repair-submit data-loading-label="در حال ارسال..." @if($isGuest) hidden @endif>ثبت نهایی درخواست تعمیر</button>
                         <button type="button" class="np-button np-button--outline" data-step-prev>مرحلهٔ قبل</button>
                     </div>
                 </div>

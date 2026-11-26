@@ -2501,6 +2501,108 @@
             justify-content: center;
         }
     }
+
+    /* Phase 4: Consultation split-card header, POS serial uppercase, subtle chevrons & submit spinner */
+    .consultation-card-head {
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e7eff8;
+    }
+
+    .consultation-card-head__badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 11px;
+        margin-bottom: 8px;
+        border-radius: 999px;
+        background: #eef6ff;
+        border: 1px solid #cfe3f8;
+        color: #075da6;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .consultation-card-head h1 {
+        margin: 0 0 6px;
+        font-size: clamp(1.22rem, 2.2vw, 1.55rem);
+        font-weight: 800;
+        line-height: 1.45;
+        color: #0d2440;
+    }
+
+    .consultation-card-head p {
+        margin: 0;
+        font-size: 0.875rem;
+        line-height: 1.75;
+        color: #475569;
+    }
+
+    .consultation-form-actions {
+        display: flex;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    @media (max-width: 640px) {
+        .consultation-entry {
+            padding-block: 14px 28px;
+        }
+
+        .consultation-form-actions > .np-button {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    .pos-serial-input {
+        direction: ltr;
+        text-align: left;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pos-serial-input:placeholder-shown {
+        text-align: right;
+        text-transform: none;
+        letter-spacing: normal;
+    }
+
+    .np-chevron-inline {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        vertical-align: middle;
+        opacity: 0.85;
+    }
+
+    .np-btn-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid currentColor;
+        border-inline-end-color: transparent;
+        border-radius: 50%;
+        flex: none;
+        animation: np-btn-spin 0.65s linear infinite;
+    }
+
+    @keyframes np-btn-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .np-btn-spinner {
+            animation: none;
+        }
+    }
+
+    button[data-submitting="1"] {
+        opacity: 0.85;
+        cursor: wait;
+    }
 }
 
 /* Shared bounds for long identifiers, nested grids and native form controls. */

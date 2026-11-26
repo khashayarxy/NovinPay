@@ -1,6 +1,10 @@
 @props(['name'])
 
-@if (in_array($name, ['home', 'book'], true))
+@if ($name === 'chevron-left')
+    <svg {{ $attributes->class(['np-chevron-inline']) }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m15 18-6-6 6-6" />
+    </svg>
+@elseif (in_array($name, ['home', 'book'], true))
     <svg {{ $attributes->class(['np-nav-icon']) }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         @if ($name === 'home')
             <path d="M3 10l9-7 9 7M5 9v11h14V9M10 20v-6h4v6" />

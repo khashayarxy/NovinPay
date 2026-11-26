@@ -465,19 +465,19 @@ body.public-site .np-mobile-drawer__phones a:hover {
     color: #054a85;
 }
 
-/* Calmer, larger brand-blue support chat launcher across desktop & mobile. */
+/* Calmer brand-blue support chat launcher across desktop & compact 48x48 on mobile. */
 body.public-site button[data-support-launcher] {
-    --support-launcher-size: 58px;
-    --support-icon-size: 28px;
-    width: 58px !important;
-    height: 58px !important;
+    --support-launcher-size: 56px;
+    --support-icon-size: 26px;
+    width: var(--support-launcher-size) !important;
+    height: var(--support-launcher-size) !important;
     background: #075da6 !important;
     color: #fff !important;
     box-shadow: 0 6px 20px rgb(7 93 166 / 28%) !important;
 }
 body.public-site button[data-support-launcher] > svg {
-    width: 28px !important;
-    height: 28px !important;
+    width: var(--support-icon-size) !important;
+    height: var(--support-icon-size) !important;
 }
 body.public-site button[data-support-launcher]:hover {
     background: #0a4f89 !important;
@@ -485,6 +485,14 @@ body.public-site button[data-support-launcher]:hover {
 }
 body.public-site button[data-support-launcher]::before {
     border-color: #075da6 !important;
+}
+@media (max-width: 767px) {
+    body.public-site button[data-support-launcher] {
+        --support-launcher-size: 48px;
+        --support-icon-size: 22px;
+        left: max(14px, env(safe-area-inset-left, 0px)) !important;
+        box-shadow: 0 4px 14px rgb(7 93 166 / 24%) !important;
+    }
 }
 .store-filter-dialog [data-filter-slot] { overflow-y: auto; padding: 16px; overscroll-behavior: contain; }
 .store-filter-dialog .catalog-filter-actions {
