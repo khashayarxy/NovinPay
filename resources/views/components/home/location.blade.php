@@ -10,7 +10,15 @@
             <nav class="np-location__maps" aria-label="مسیریابی فروشگاه">
                 @foreach (['Google Maps' => ['google-maps-2026.png', 14, 18, 'google'], 'نشان' => ['neshan.svg', 16, 16, 'neshan'], 'بلد' => ['balad.svg', 17, 17, 'balad']] as $label => $icon)
                     <a href="{{ config('business.maps')[$label] }}" target="_blank" rel="noopener noreferrer">
-                        <img class="np-map-brand-icon np-map-brand-icon--{{ $icon[3] }}" src="{{ asset('brand/maps/'.$icon[0]) }}" width="{{ $icon[1] }}" height="{{ $icon[2] }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+                        @if ($icon[0] === 'google-maps-2026.png' && is_file(public_path('brand/maps/google-maps-2026-28.webp')))
+                            <picture class="np-map-brand-picture">
+                                <source type="image/webp" srcset="{{ asset('brand/maps/google-maps-2026-28.webp') }} 28w, {{ asset('brand/maps/google-maps-2026-56.webp') }} 56w" sizes="14px">
+                                <source type="image/avif" srcset="{{ asset('brand/maps/google-maps-2026-28.avif') }} 28w, {{ asset('brand/maps/google-maps-2026-56.avif') }} 56w" sizes="14px">
+                                <img class="np-map-brand-icon np-map-brand-icon--{{ $icon[3] }}" src="{{ asset('brand/maps/'.$icon[0]) }}" width="{{ $icon[1] }}" height="{{ $icon[2] }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+                            </picture>
+                        @else
+                            <img class="np-map-brand-icon np-map-brand-icon--{{ $icon[3] }}" src="{{ asset('brand/maps/'.$icon[0]) }}" width="{{ $icon[1] }}" height="{{ $icon[2] }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+                        @endif
                         <bdi>{{ $label === 'Google Maps' ? 'گوگل مپ' : $label }}</bdi><span class="sr-only"> (در زبانهٔ جدید باز می‌شود)</span>
                     </a>
                 @endforeach

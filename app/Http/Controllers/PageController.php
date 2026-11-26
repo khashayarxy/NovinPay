@@ -9,7 +9,10 @@ class PageController extends Controller
 {
     public function contact(): View
     {
-        return view('pages.contact', ['canonical' => rtrim(config('app.url'), '/').'/contact']);
+        return view('pages.contact', [
+            'canonical' => rtrim(config('app.url'), '/').'/contact',
+            'publicRobots' => 'index, follow',
+        ]);
     }
 
     public function discovery(): Response
@@ -25,11 +28,17 @@ class PageController extends Controller
 
     public function terms(): View
     {
-        return view('pages.terms');
+        return view('pages.terms', [
+            'canonical' => rtrim(config('app.url'), '/').'/terms',
+            'publicRobots' => 'noindex, nofollow',
+        ]);
     }
 
     public function privacy(): View
     {
-        return view('pages.privacy');
+        return view('pages.privacy', [
+            'canonical' => rtrim(config('app.url'), '/').'/privacy',
+            'publicRobots' => 'noindex, nofollow',
+        ]);
     }
 }

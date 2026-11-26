@@ -26,9 +26,9 @@ class AddSecurityHeaders
         }
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none');
         if ($request->isSecure() && ! $response->headers->has('Strict-Transport-Security')) {
-            // Long-lived HSTS in production; preserve short rollout default in non-production/tests.
+            // Long-lived HSTS with preload in production; preserve short rollout default in non-production/tests.
             $hsts = app()->environment('production')
-                ? 'max-age=31536000; includeSubDomains'
+                ? 'max-age=31536000; includeSubDomains; preload'
                 : 'max-age=300';
             $response->headers->set('Strict-Transport-Security', $hsts);
         }
@@ -36,6 +36,9 @@ class AddSecurityHeaders
             $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()');
         }
         if (str_contains($response->headers->get('Content-Type', ''), 'text/html')) {
+            if (! $response->headers->has('Cross-Origin-Opener-Policy')) {
+                $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
+            }
             if ($request->attributes->get('customer_header_rendered')) {
                 $existingCacheControl = strtolower((string) $response->headers->get('Cache-Control', ''));
                 $isGuestBfcacheEligible = ($request->isMethod('GET') || $request->isMethod('HEAD'))
@@ -56,13 +59,13 @@ class AddSecurityHeaders
             } elseif (! $response->headers->has('X-LiteSpeed-Cache-Control')) {
                 $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');
             }
+            $cspPolicy = "default-src 'self'; script-src 'self' https://static.neshan.org; style-src 'self' 'unsafe-inline' https://static.neshan.org; img-src 'self' data: blob: https://trustseal.enamad.ir https://*.neshan.org; font-src 'self' data: https://static.neshan.org; connect-src 'self' https://*.neshan.org https://www.cloudflare.com https://1.1.1.1; frame-src 'self' https://neshan.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self' https://gateway.zibal.ir";
             if (! $response->headers->has('Content-Security-Policy')) {
-                $response->headers->set('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
+                $response->headers->set('Content-Security-Policy', $cspPolicy);
             }
             if (! $response->headers->has('Content-Security-Policy-Report-Only')) {
-                // Console-only rollout: no public report endpoint or payload logs.
-                // Existing operator/widget enforcement remains authoritative.
-                $response->headers->set('Content-Security-Policy-Report-Only', "default-src 'self'; script-src 'self' https://static.neshan.org; style-src 'self' 'unsafe-inline' https://static.neshan.org; img-src 'self' data: blob: https://trustseal.enamad.ir https://*.neshan.org; font-src 'self' data: https://static.neshan.org; connect-src 'self' https://*.neshan.org https://www.cloudflare.com https://1.1.1.1; frame-src 'self' https://neshan.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'");
+                // Console-only Trusted Types sink audit without public report endpoint or runtime breakage.
+                $response->headers->set('Content-Security-Policy-Report-Only', $cspPolicy."; require-trusted-types-for 'script'; trusted-types default");
             }
         }
 

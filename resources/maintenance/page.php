@@ -29,7 +29,7 @@ $danaBold = $inlineFont('dana/DanaFaNum-Bold.woff2');
 <?php if ($danaBold !== null) { ?>@font-face{font-family:'Dana';src:url('<?= $danaBold ?>') format('woff2');font-style:normal;font-weight:700;font-display:swap}
 <?php } ?>
 *,*::before,*::after{box-sizing:border-box}
-html{min-height:100%;background:#fff;color-scheme:light;font-size:100%}
+html{min-height:100%;background:#fff;color-scheme:light dark;font-size:100%}
 body{margin:0;min-width:0;min-height:100svh;color:#516784;font-family:'Dana',Tahoma,sans-serif;background:#fff;text-align:center}
 .maintenance{position:relative;isolation:isolate;overflow:hidden;width:100%;min-height:100svh;padding:clamp(20px,3vh,38px) 20px;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .maintenance::before,.maintenance::after{content:"";position:absolute;z-index:-2;pointer-events:none;background:#eef7ff;border-radius:50%}
@@ -50,6 +50,7 @@ h1 span{color:#098cf7}
 .phones svg{width:19px;height:19px;flex:none;fill:currentColor}
 .phones a:hover{background:#e7f4ff;border-color:#86caff}
 .phones a:focus-visible{outline:2px solid #075da6;outline-offset:3px}
+@media(prefers-color-scheme:dark){html,body{background:#0b1526;color:#a8bed8}.maintenance::before,.maintenance::after{background:rgba(9,140,247,.1)}.hero::before{background:radial-gradient(ellipse,rgba(9,140,247,.22) 4%,rgba(14,116,144,.08) 58%,transparent 75%)}.brand{filter:brightness(0) invert(1)}h1{color:#f1f6fd}h1 span{color:#38bdf8}.message,.contact p{color:#a8bed8}.phones a{background:#13233d;border-color:#26456e;color:#7dd3fc}.phones a:hover{background:#1a3052;border-color:#38bdf8}}
 @media(max-width:480px){.maintenance{padding:20px 16px}.brand{width:155px}.hero{width:min(94vw,48svh);margin-top:8px}h1{font-size:23px;line-height:1.65}.message{margin-top:7px}.contact{margin-top:12px}.contact::before{margin-bottom:10px}.phones{gap:8px;margin-top:10px}.phones a{min-width:0;flex:1 1 145px;padding:7px 9px;gap:7px;font-size:15px}}
 @media(max-height:560px){.maintenance{padding-block:14px}.hero{width:min(370px,60vw,43svh);margin-top:4px}.contact{margin-top:6px}.contact::before{margin-bottom:6px}.phones{margin-top:6px}.message{margin-top:4px}}
 </style>

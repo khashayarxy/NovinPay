@@ -2,6 +2,21 @@ import { initMobileNavigation } from './mobile-navigation';
 import { initClickMap } from './click-map';
 import { initCustomerNavigation } from './customer-navigation';
 
+if (typeof window !== 'undefined' && window.trustedTypes?.createPolicy && !window.trustedTypes.defaultPolicy) {
+    try {
+        window.trustedTypes.createPolicy('default', {
+            createHTML: (input) => String(input).replace(/<script\b[\s\S]*?<\/script>/gi, ''),
+            createScriptURL: (input) => {
+                const resolved = new URL(String(input), window.location.href);
+                if (resolved.origin === window.location.origin || resolved.origin === 'https://static.neshan.org') {
+                    return resolved.href;
+                }
+                throw new TypeError('Blocked untrusted script URL');
+            },
+        });
+    } catch {}
+}
+
 if (typeof BroadcastChannel !== 'undefined') {
     const commerce = new BroadcastChannel('novinpay-commerce');
     document.addEventListener('submit', event => {

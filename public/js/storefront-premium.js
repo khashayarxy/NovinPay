@@ -1048,8 +1048,14 @@
         else if (cartDialog && (!cartSnapshot || cartSnapshot.epoch !== cartEpoch)) preloadCart(cartDialog);
     });
     if (cartDialog?.dataset.cartUrl && cartDialog.hasAttribute('data-cart-preload') && !cartDialog.querySelector('template[data-ssr-cart]') && !document.querySelector('[data-storefront-cart]')) {
-        const schedulePreload = window.requestIdleCallback || (fn => setTimeout(fn, 120));
-        schedulePreload(() => preloadCart(cartDialog));
+        const scheduleAfterLoad = () => {
+            const idle = window.requestIdleCallback
+                ? fn => window.requestIdleCallback(fn, {timeout: 2500})
+                : fn => setTimeout(fn, 900);
+            idle(() => preloadCart(cartDialog));
+        };
+        if (document.readyState === 'complete') scheduleAfterLoad();
+        else window.addEventListener('load', scheduleAfterLoad, {once: true});
     }
     const purchaseColumn = document.querySelector('[data-purchase-column]');
     function fitPurchaseColumn() {

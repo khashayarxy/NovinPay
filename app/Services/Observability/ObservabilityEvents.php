@@ -8,6 +8,7 @@ use App\Models\PaymentAttempt;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
+use App\Services\Notifications\UnifiedNotifier;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -63,6 +64,28 @@ final class ObservabilityEvents
             }
 
             $this->topics->send('payments', implode("\n", $lines), "pay:{$stage}:{$shortId}");
+
+            if (in_array($stage, ['review', 'mismatch', 'uncertain'], true)) {
+                app(UnifiedNotifier::class)->criticalOperationalAlert(
+                    category: 'payment',
+                    subject: "⚠️ هشدار درگاه پرداخت (#{$shortId}) — ".self::label($stage),
+                    heading: 'ناهنجاری یا نیازمند بررسی در تراکنش درگاه پرداخت',
+                    intro: 'یک تلاش پرداخت آنلاین نیازمند بررسی دستی یا تطبیق در پنل مدیریت نوین‌پی است.',
+                    fields: [
+                        'شناسه تلاش پرداخت' => '#'.$shortId,
+                        'مبلغ تراکنش' => number_format($toman).' تومان',
+                        'وضعیت ثبت‌شده' => self::label($attempt->state),
+                        'کد رهگیری زیبال' => (string) $track,
+                        'جزئیات رویداد' => $note ? self::label($note) : self::label($stage),
+                    ],
+                    dedupeKey: "pay_alert:{$stage}:{$shortId}",
+                    ttlMinutes: 60,
+                    actionLabel: 'بررسی سفارش‌ها در پنل مدیریت',
+                    actionUrl: url('/admin/orders'),
+                    statusBadge: 'هشدار درگاه پرداخت',
+                    statusTone: $stage === 'uncertain' ? 'warning' : 'danger',
+                );
+            }
         } catch (Throwable) {
         }
     }
@@ -223,6 +246,25 @@ final class ObservabilityEvents
                     'sms',
                     "⚠️ خطا در ارسال پیامک\nدسته: {$categoryLabel}\nرویداد: {$eventLabel}\nسرویس‌دهنده: {$providerLabel}\nنتیجه: {$outcomeLabel}",
                     "sms_fail:{$category}:{$event}:{$outcome}",
+                );
+
+                app(UnifiedNotifier::class)->criticalOperationalAlert(
+                    category: 'sms',
+                    subject: "⚠️ خطا در ارسال پیامک ({$providerLabel} · {$eventLabel})",
+                    heading: 'اختلال در ارسال پیامک سامانه نوین‌پی',
+                    intro: 'ارسال پیامک از طریق سرویس‌دهنده با خطا مواجه شد. لطفاً اعتبار پنل یا وضعیت کلید API را بررسی کنید.',
+                    fields: [
+                        'دسته‌بندی پیامک' => $categoryLabel,
+                        'رویداد' => $eventLabel,
+                        'سرویس‌دهنده' => $providerLabel,
+                        'نتیجه / علت خطا' => $outcomeLabel,
+                    ],
+                    dedupeKey: "sms_fail:{$category}:{$event}:{$outcome}",
+                    ttlMinutes: 30,
+                    actionLabel: 'مشاهده سلامت سیستم',
+                    actionUrl: url('/admin/system-health'),
+                    statusBadge: 'خطای سامانه پیامک',
+                    statusTone: 'warning',
                 );
 
                 return;

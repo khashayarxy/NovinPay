@@ -3,10 +3,10 @@
 @section('meta_description', 'فروش دستگاه‌های کارتخوان آکبند و استوک و خدمات تعمیر PAX، NewPOS و Newland در شهریار. مشاوره و استعلام قیمت از نوین‌پی.')
 
 @if (config('homepage.artwork.hero') === 'images/home/novinpay-terminal-clean.webp' && is_file(public_path('images/home/novinpay-terminal-clean-853.avif')))
-    @push('page-head')
+    @push('preload-head')
         <link rel="preload" as="image" type="image/avif"
-              imagesrcset="{{ asset('images/home/novinpay-terminal-clean-400.avif') }} 400w, {{ asset('images/home/novinpay-terminal-clean-640.avif') }} 640w, {{ asset('images/home/novinpay-terminal-clean-853.avif') }} 853w"
-              imagesizes="(max-width: 850px) clamp(220px, 65vw, 260px), 400px"
+              imagesrcset="{{ asset('images/home/novinpay-terminal-clean-320.avif') }} 320w, {{ asset('images/home/novinpay-terminal-clean-400.avif') }} 400w, {{ asset('images/home/novinpay-terminal-clean-480.avif') }} 480w, {{ asset('images/home/novinpay-terminal-clean-640.avif') }} 640w, {{ asset('images/home/novinpay-terminal-clean-853.avif') }} 853w"
+              imagesizes="(max-width: 560px) 220px, (max-width: 850px) 260px, 310px"
               fetchpriority="high">
     @endpush
 @endif
@@ -64,7 +64,7 @@
         <p>فروش و تعمیر انواع دستگاه‌های کارتخوان از برندهای زیر</p>
         <div class="np-brands__grid">
             @foreach (['Newland', 'NewPOS', 'PAX', 'TOPWISE'] as $brand)
-                <a href="{{ route('products.index', ['q' => $brand]) }}" class="np-brand" aria-label="کارتخوان‌های {{ $brand }}"><x-home.manufacturer :name="$brand" /></a>
+                <a href="{{ route('products.index', ['q' => $brand]) }}" rel="nofollow" class="np-brand" aria-label="کارتخوان‌های {{ $brand }}"><x-home.manufacturer :name="$brand" /></a>
             @endforeach
         </div>
     </section>

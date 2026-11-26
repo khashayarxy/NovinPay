@@ -22,6 +22,10 @@ class UnifiedNotificationMail extends Mailable
         public readonly array $fields = [],
         public readonly ?string $actionLabel = null,
         public readonly ?string $actionUrl = null,
+        public readonly ?string $statusBadge = null,
+        public readonly string $statusTone = 'info',
+        public readonly ?string $preheader = null,
+        public readonly ?string $footerNote = null,
     ) {}
 
     public function envelope(): Envelope
@@ -35,6 +39,7 @@ class UnifiedNotificationMail extends Mailable
     {
         return new Content(
             view: 'emails.notification',
+            text: 'emails.notification_text',
         );
     }
 }

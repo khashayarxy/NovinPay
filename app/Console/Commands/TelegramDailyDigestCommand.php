@@ -11,6 +11,7 @@ use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
 use App\Services\Notifications\BaleNotifier;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Services\Observability\ObservabilityMetrics;
 use App\Services\Observability\TelegramTopicNotifier;
 use Illuminate\Console\Command;
@@ -130,7 +131,28 @@ final class TelegramDailyDigestCommand extends Command
         $text = implode("\n", $lines);
         $sentTelegram = $topics->send('digest', $text, "daily_digest:{$dateKey}", 60);
         $sentBale = $bale->send($text, "daily_digest:{$dateKey}", 60);
-        $delivered = $sentTelegram || $sentBale;
+
+        $emailFields = [
+            'تاریخ گزارش' => $dateKey,
+            'پرداخت‌های موفق' => "{$settledCount} مورد (".number_format($revenueToman).' تومان)',
+            'پرداخت‌های ناموفق / نیازمند بررسی' => "ناموفق: {$failedPayments} | نیازمند بررسی: {$reviewPayments}",
+            'سفارش‌های جدید' => "{$newOrders} مورد",
+            'وضعیت موجودی انبار' => "ناموجود: {$outOfStock} کالا | موجودی کم: {$lowStock} کالا",
+            'تعمیرات' => "درخواست جدید: {$newRepairs} | پرونده‌های باز: {$openRepairCases}",
+            'مشاوره و چت پشتیبانی' => "مشاوره جدید: {$newConsultations} | پیام چت: {$chatMessages}",
+            'دیدگاه‌ها و کاربران' => "دیدگاه جدید: {$newReviews} (منتظر تأیید: {$pendingReviews}) | کاربر جدید: {$newUsers}",
+            'پیامک‌ها' => "کل: {$sms['total']} (ناموفق: {$sms['failed']})",
+            'سلامت سرور (۲۴ ساعت)' => "خطای ۵۰۰: {$summary['http_500']} | درخواست کند: {$summary['slow_requests']}",
+            'وضعیت آخرین بکاپ' => $backupStatus,
+        ];
+        $hasAttention = $reviewPayments > 0 || $summary['http_500'] > 0 || in_array($backup['status'] ?? null, ['failed', 'missing', 'stale'], true);
+        $sentEmail = false;
+        try {
+            $sentEmail = app(UnifiedNotifier::class)->dailyDigestEmail($dateKey, $emailFields, $hasAttention);
+        } catch (Throwable) {
+        }
+
+        $delivered = $sentTelegram || $sentBale || $sentEmail;
 
         if ($delivered) {
             try {
@@ -139,7 +161,7 @@ final class TelegramDailyDigestCommand extends Command
             }
         }
 
-        $this->line("Daily digest generated for {$dateKey} (telegram_sent=".($sentTelegram ? 'true' : 'false').', bale_sent='.($sentBale ? 'true' : 'false').').');
+        $this->line("Daily digest generated for {$dateKey} (telegram_sent=".($sentTelegram ? 'true' : 'false').', bale_sent='.($sentBale ? 'true' : 'false').', email_sent='.($sentEmail ? 'true' : 'false').').');
 
         return self::SUCCESS;
     }

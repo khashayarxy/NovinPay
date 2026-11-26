@@ -13,6 +13,15 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
+    # Single-hop canonical HTTPS + non-www + trailing-slash normalization on production domain
+    RewriteCond %{HTTP_HOST} ^www\.novinpaypos\.com$ [NC]
+    RewriteRule ^(?:(.+?)/+|(.+))?$ https://novinpaypos.com/$1$2 [L,R=301]
+
+    RewriteCond %{HTTP_HOST} ^novinpaypos\.com$ [NC]
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+    RewriteRule ^(?:(.+?)/+|(.+))?$ https://novinpaypos.com/$1$2 [L,R=301]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$

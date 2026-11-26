@@ -20,10 +20,11 @@
     <meta name="description" content="@yield('meta_description', 'فروش و تعمیر دستگاه‌های کارتخوان (POS) در شهریار')">
     @if ($stagingRobots || isset($publicRobots))
         <meta name="robots" content="{{ $stagingRobots ?? $publicRobots }}">
-    @elseif (request()->routeIs('repair*', 'consultation*', 'terms', 'privacy', 'account.*', 'payments.*', 'delivery.*', 'cart.*'))
+    @elseif (request()->routeIs('repair*', 'consultation*', 'account.*', 'payments.*', 'delivery.*', 'cart.*'))
         <meta name="robots" content="noindex, nofollow">
     @endif
     @endisset
+    @stack('preload-head')
     <x-public-seo :canonical="$canonical ?? null" :content-seo="$contentSeo ?? null" :public-robots="$publicRobots ?? null" :product="$product ?? null" :product-sale="$sale ?? null" :product-rating="$productRating ?? null" :article="$article ?? null" :version="$version ?? null" />
     <x-brand-head />
     @if(config('observability.client_telemetry.enabled'))
@@ -32,16 +33,16 @@
     <link rel="preload" href="{{ asset('fonts/dana/DanaFaNum-Regular.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{{ asset('fonts/dana/DanaFaNum-Bold.woff2') }}" as="font" type="font/woff2" crossorigin>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
-        <script src="{{ versioned_asset('js/storefront-scroll-lock.js') }}" defer></script>
-        <script src="{{ versioned_asset('js/storefront-premium.js') }}" defer></script>
-    @endif
-    @stack('page-head')
     @if ($hasStoreNavigation)
         <link rel="stylesheet" href="{{ versioned_asset('css/store-navigation.css') }}">
     @endif
     @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
         <link rel="stylesheet" href="{{ versioned_asset('css/storefront-refinement.css') }}">
+    @endif
+    @stack('page-head')
+    @if ($hasStoreNavigation && !View::hasSection('quiet-shell'))
+        <script src="{{ versioned_asset('js/storefront-scroll-lock.js') }}" defer></script>
+        <script src="{{ versioned_asset('js/storefront-premium.js') }}" defer></script>
     @endif
     @if(request()->routeIs('account.*'))
         <x-password-visibility-assets />
