@@ -44,10 +44,7 @@
             <form id="product-cart-form" method="post" action="{{ route('cart.add', $product) }}" class="product-cart-form" data-cart-mutation @if($currentCartQty > 0) hidden @endif>
                 @csrf
                 <x-storefront.cart-context :proof="$cartProof ?? null" :revision="$cartRevision ?? null" />
-                <div>
-                    <label class="label" for="store-quantity">تعداد</label>
-                    <input class="input" id="store-quantity" type="number" name="quantity" value="1" min="1" max="{{ $maxProductQty }}" required>
-                </div>
+                <input type="hidden" name="quantity" value="1">
                 <button class="primary" type="submit">خرید محصول</button>
             </form>
         </div>

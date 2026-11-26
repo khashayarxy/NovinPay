@@ -1,4 +1,4 @@
-.global-store-nav, .store-mobile-search { display: none; }
+.global-store-nav, .store-mobile-search, .store-mobile-cart { display: none; }
 
 @media (max-width: 850px) {
     html:has(.global-store-nav) {
@@ -82,13 +82,50 @@
     .global-store-nav { max-width: 520px; }
     .global-store-nav a { flex-direction: row; gap: 5px; font-size: 12px; }
 }
+@media (max-width: 850px) {
+    .product-detail-page .store-mobile-cart {
+        position: relative;
+        z-index: 2;
+        display: inline-flex;
+        flex: 0 0 44px;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        margin-inline-start: auto;
+    }
+    .product-detail-page .store-mobile-cart svg { width: 20px; height: 20px; }
+}
+@media (max-width: 767px) {
+    html:has(body.product-detail-page) {
+        --store-nav-edge: 0px;
+        --store-nav-height: 0px;
+        --store-nav-active-height: 0px;
+        --store-nav-space: calc(var(--store-purchase-height, 78px) + env(safe-area-inset-bottom, 0px) + 16px);
+        scroll-padding-bottom: calc(var(--store-purchase-height, 78px) + env(safe-area-inset-bottom, 0px) + 20px);
+    }
+    body.product-detail-page .global-store-nav {
+        display: none !important;
+    }
+    body.product-detail-page {
+        padding-bottom: calc(var(--store-purchase-height, 78px) + env(safe-area-inset-bottom, 0px) + 16px);
+    }
+    body.product-detail-page:has(.global-store-nav) button[data-support-launcher],
+    body.product-detail-page button[data-support-launcher] {
+        bottom: calc(var(--store-purchase-height, 76px) + env(safe-area-inset-bottom, 0px) + 14px + var(--store-added-bar-space, 0px));
+        transform: none;
+    }
+    body.product-detail-page:has(.global-store-nav) button[data-support-launcher]:hover,
+    body.product-detail-page button[data-support-launcher]:hover {
+        transform: translateY(-2px);
+    }
+}
 @media (max-width: 700px) {
     .premium-storefront .store-mobile-search {
         display: inline-flex;
         margin-inline-start: auto;
     }
     .premium-storefront .np-customer-header { margin-inline-start: 0; }
-    .premium-storefront .np-header :is(.store-mobile-search, [data-customer-entry] .np-customer-trigger) {
+    .premium-storefront .np-header :is(.store-mobile-search, .store-mobile-cart, [data-customer-entry] .np-customer-trigger) {
         flex: 0 0 44px;
         height: 44px;
         padding: 0;

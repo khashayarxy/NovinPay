@@ -117,7 +117,7 @@ class PremiumStorefrontTest extends TestCase
         $this->get(route('cart.index'))->assertOk()->assertSee('مشاهدهٔ محصولات');
         $product->update(['stock_status' => 'limited']);
         $this->get(route('products.show', $product))->assertOk()->assertSee('موجودی محدود')
-            ->assertSee('max="2"', false)->assertSee('form="product-cart-form"', false);
+            ->assertSee('data-product-max="2"', false)->assertSee('form="product-cart-form"', false);
         $product->update(['stock_status' => 'unverified']);
         $this->post(route('cart.add', $product), ['quantity' => 1])->assertConflict();
     }

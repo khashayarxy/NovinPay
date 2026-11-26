@@ -76,6 +76,7 @@
                                 @can('products.manage')
                                     <div class="admin-row-actions-bar">
                                         <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-secondary btn-sm">ویرایش</a>
+                                        <a href="{{ route('admin.products.feedback.index', $product) }}" class="btn btn-secondary btn-sm">دیدگاه‌ها</a>
                                         @if($stockByProduct !== null && $stock)
                                             <a href="{{ route('admin.inventory.index', ['product' => $product->id]) }}" class="btn btn-secondary btn-sm">جزئیات موجودی</a>
                                         @endif

@@ -351,6 +351,118 @@ class ZibalPayments
         }, 3);
     }
 
+    public function retryAttempt(CustomerAccount $account, PaymentAttempt $failedAttempt, string $operation): PaymentAttempt
+    {
+        abort_unless($this->gateway->available(), 503, 'پرداخت آنلاین هنوز فعال نشده است.');
+        abort_unless(Str::isUuid($operation), 422);
+
+        [$attempt, $created, $rial, $description] = DB::transaction(function () use ($account, $failedAttempt, $operation): array {
+            $freshAccount = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
+            abort_unless($freshAccount->is_active && $freshAccount->session_version === $account->session_version, 403);
+
+            $lockedFailed = PaymentAttempt::query()->lockForUpdate()->findOrFail($failedAttempt->id);
+            abort_unless($lockedFailed->customer_account_id === $freshAccount->id, 403);
+
+            $docPublicId = FinancialDocument::query()->whereKey($lockedFailed->financial_document_id)->value('public_id');
+            abort_unless(is_string($docPublicId) && $docPublicId !== '', 404);
+            $document = $this->ownedDocument($freshAccount, $docPublicId, true);
+            app(FinancialOperations::class)->reconcile($document);
+            $document->refresh();
+
+            $description = 'پرداخت سفارش نوین‌پی';
+            if ($document->sales_order_id) {
+                $linkedOrder = SalesOrder::query()->lockForUpdate()->find($document->sales_order_id);
+                if ($linkedOrder) {
+                    $this->assertOrderPaymentTestAccess($freshAccount, $linkedOrder);
+                    abort_if($linkedOrder->status === 'cancelled', 409, 'این سفارش لغو شده است.');
+                }
+            } elseif ($document->repair_case_id) {
+                $repairRef = RepairCase::query()->whereKey($document->repair_case_id)->value('tracking_reference');
+                $description = $repairRef ? 'پرداخت هزینه تعمیر نوین‌پی — کد '.$repairRef : 'پرداخت هزینه تعمیر نوین‌پی';
+            } else {
+                self::shippingReady($document);
+            }
+
+            $settled = PaymentAttempt::query()
+                ->where('financial_document_id', $document->id)
+                ->where('state', 'settled')
+                ->latest('id')
+                ->first();
+            $balance = max(0, (int) $document->charged_minor - (int) $document->paid_minor);
+            if ($settled || $balance <= 0) {
+                return [$settled ?? $lockedFailed, false, 0, $description];
+            }
+
+            abort_unless($balance % 10 === 0, 422, 'مبلغ باید به ریال صحیح قابل تبدیل باشد.');
+            $rial = intdiv($balance, 10);
+            abort_unless($rial >= config('payments.zibal.min_rial') && $rial <= config('payments.zibal.max_rial'), 422, 'مبلغ سفارش خارج از محدوده مجاز درگاه است.');
+
+            $prior = PaymentAttempt::query()->where('operation_key', $operation)->first();
+            if ($prior) {
+                abort_unless($prior->customer_account_id === $freshAccount->id && $prior->financial_document_id === $document->id && $prior->amount_minor === $balance, 409);
+
+                return [$prior, false, $rial, $description];
+            }
+
+            $active = PaymentAttempt::query()
+                ->where('financial_document_id', $document->id)
+                ->whereNotIn('state', ['settled', 'failed'])
+                ->latest('id')
+                ->first();
+            if ($active) {
+                return [$active, false, $rial, $description];
+            }
+
+            $attempt = new PaymentAttempt;
+            foreach ([
+                'public_id' => (string) Str::uuid(),
+                'financial_document_id' => $document->id,
+                'customer_account_id' => $freshAccount->id,
+                'operation_key' => $operation,
+                'amount_minor' => $balance,
+                'amount_rial' => $rial,
+                'document_version' => $document->version,
+                'merchant_digest' => $this->merchantDigest(),
+                'state' => 'requesting',
+            ] as $key => $value) {
+                $attempt->$key = $value;
+            }
+            $attempt->save();
+            $this->event($attempt, 'request_started');
+
+            return [$attempt, true, $rial, $description];
+        }, 3);
+
+        if (! $created) {
+            return $attempt;
+        }
+
+        $response = $this->gateway->call('request', [
+            'amount' => $rial,
+            'orderId' => $attempt->public_id,
+            'callbackUrl' => config('payments.zibal.callback_url'),
+            'description' => $description,
+        ]);
+
+        return DB::transaction(function () use ($attempt, $response): PaymentAttempt {
+            $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
+            $track = ZibalGateway::trackNumber($response['trackId'] ?? null);
+            if (($response['result'] ?? null) === 100 && $track !== null) {
+                $current->track_id = (string) $track;
+                $current->state = 'pending';
+            } elseif (in_array($response['result'] ?? null, self::REQUEST_REJECTIONS, true)) {
+                $current->state = 'failed';
+            } else {
+                $current->state = 'uncertain';
+            }
+            $current->retry_at = now()->addMinutes(2);
+            $current->save();
+            $this->event($current, $current->state === 'failed' ? 'request_rejected_'.$response['result'] : $current->state);
+
+            return $current;
+        }, 3);
+    }
+
     private function resolveRepairAccount(RepairCase $case, FinancialDocument $document): CustomerAccount
     {
         if ($case->customer_account_id) {
@@ -642,7 +754,7 @@ class ZibalPayments
     private function assertOrderPaymentTestAccess(CustomerAccount $account, SalesOrder $order): void
     {
         $slug = PaymentTestProduct::slug();
-        if ($slug === '' || PaymentTestProduct::canAccess($account)) {
+        if ($slug === '' || PaymentTestProduct::canSeeProduct($slug, $account)) {
             return;
         }
 

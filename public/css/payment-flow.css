@@ -107,9 +107,9 @@ body { margin: 0; font-family: 'Dana', Tahoma, sans-serif; font-weight: 400; }
 .payment-summary-list > div {
     display: flex;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: .25rem .8rem;
-    padding-block: .45rem;
+    align-items: center;
+    gap: 12px;
+    padding-block: .5rem;
     border-bottom: 1px solid #e6eff8;
 }
 .payment-summary-list > div:last-child { border-bottom: 0; padding-block-end: 0; }
@@ -117,8 +117,8 @@ body { margin: 0; font-family: 'Dana', Tahoma, sans-serif; font-weight: 400; }
 @media (min-width: 1024px) {
     .payment-shell { width: min(100%, 46rem); }
 }
-.payment-summary-list dt { color: #475e73; }
-.payment-summary-list dd { margin: 0; font-weight: 700; }
+.payment-summary-list dt { color: #475e73; font-weight: 500; text-align: right; }
+.payment-summary-list dd { margin: 0; margin-inline-start: auto; font-weight: 700; font-variant-numeric: tabular-nums; text-align: left; }
 
 .payment-actions {
     display: flex;
@@ -169,7 +169,7 @@ a:focus-visible { outline: 2px solid #075da6; outline-offset: 3px; }
     text-underline-offset: .2em;
 }
 .np-latin {
-    font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
+    font-family: 'Dana', Tahoma, sans-serif;
     direction: ltr;
     unicode-bidi: isolate;
     font-variant-numeric: tabular-nums;
@@ -229,7 +229,10 @@ a:focus-visible { outline: 2px solid #075da6; outline-offset: 3px; }
 .payment-warning-shell .pay-copy-wrap {
     display: inline-flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
+    margin-inline-start: auto;
+    text-align: left;
 }
 .payment-warning-shell .pay-copy-btn {
     border: 1px solid #cbd5e1;
@@ -266,9 +269,15 @@ body.t-blue {
 .payment-warning-shell .info-box.warn p { color: #92400e; }
 body:has(.payment-warning-shell) { font-variant-numeric: tabular-nums; }
 .payment-warning-shell .container { min-inline-size: 0; }
-.payment-warning-shell .row { gap: .5rem; flex-wrap: wrap; }
+.payment-warning-shell .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
 .payment-warning-shell .row > * { min-inline-size: 0; max-inline-size: 100%; overflow-wrap: anywhere; }
-.payment-warning-shell .row > :last-child { margin-inline-start: auto; }
+.payment-warning-shell .row > :first-child { text-align: right; }
+.payment-warning-shell .row > :last-child { margin-inline-start: auto; text-align: left; }
 .payment-warning-shell :is(.np-latin, bdi) { unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
 .payment-warning-shell .btn-group { flex-wrap: wrap; }
 .payment-warning-shell .btn-group > *, .payment-warning-shell .btn-group form { min-inline-size: 0; max-inline-size: 100%; }

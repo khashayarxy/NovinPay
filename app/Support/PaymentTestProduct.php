@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Models\CustomerAccount;
 use App\Models\Product;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 final class PaymentTestProduct
 {
@@ -77,6 +79,12 @@ final class PaymentTestProduct
             return true;
         }
 
-        return self::canAccess($account);
+        if (self::canAccess($account)) {
+            return true;
+        }
+
+        $adminUser = Auth::guard('web')->user();
+
+        return $adminUser instanceof User && AdminAccess::account($adminUser) !== null;
     }
 }

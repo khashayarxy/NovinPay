@@ -1,13 +1,5 @@
 /* استایل مشترک صفحه‌های پرداخت */
 @font-face {
-    font-family: 'IRANYekanXVF';
-    src: url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2-variations'),
-        url('/fonts/iranyekanx/IRANYekanXVFaNumVF.woff2') format('woff2');
-    font-weight: 100 1000;
-    font-style: normal;
-    font-display: swap;
-}
-@font-face {
     font-family: 'Dana';
     src: url('/fonts/dana/DanaFaNum-Regular.woff2') format('woff2');
     font-weight: 400;
@@ -41,6 +33,7 @@
 
 body {
     font-family: 'Dana', Tahoma, sans-serif;
+    font-variant-numeric: tabular-nums;
     background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
     min-height: 100vh;
     min-height: 100dvh;
@@ -51,9 +44,8 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'IRANYekanXVF', 'Dana', Tahoma, sans-serif;
-    font-variation-settings: 'dots' 1;
-    font-feature-settings: 'dots' 1;
+    font-family: 'Dana', Tahoma, sans-serif;
+    font-weight: 700;
 }
 
 .container {
@@ -153,11 +145,10 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
 .hint { font-size: .875rem; color: #64748b; margin: 6px 0; line-height: 1.9; }
 
 /* ---------- ردیف‌های اطلاعات ---------- */
-.rows { display: grid; gap: 6px; margin: 20px 0 16px; }
+.rows { display: grid; gap: 8px; margin: 20px 0 16px; text-align: right; }
 .rows:empty { display: none; }
 .row {
     display: flex;
-    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
@@ -165,21 +156,37 @@ h2, .lead, .reason, .info-box p { text-wrap: balance; overflow-wrap: anywhere; }
     background: #f1f5f9;
     border-radius: 16px;
     color: #475569;
+    font-family: 'Dana', Tahoma, sans-serif;
     font-size: .9rem;
+    line-height: 1.6;
     animation: rise .35s ease backwards;
 }
-.row b {
-    color: #1e293b;
-    font-weight: 600;
-    font-size: .95rem;
-    font-family: monospace;
-    letter-spacing: .04em;
+.row > span:first-child {
+    text-align: right;
+    font-family: 'Dana', Tahoma, sans-serif;
+    font-weight: 500;
+    color: #475569;
+    flex: 0 1 auto;
+}
+.row :is(b, strong) {
+    margin-inline-start: auto;
+    color: #0f172a;
+    font-family: 'Dana', Tahoma, sans-serif;
+    font-weight: 700;
+    font-size: .92rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
     direction: ltr;
     unicode-bidi: isolate;
     overflow-wrap: anywhere;
     text-align: left;
 }
-.row.plain b { font-family: inherit; letter-spacing: 0; direction: rtl; }
+.row.plain :is(b, strong) {
+    font-family: 'Dana', Tahoma, sans-serif;
+    letter-spacing: 0;
+    direction: rtl;
+    text-align: left;
+}
 
 /* ---------- باکس‌ها ---------- */
 .info-box {

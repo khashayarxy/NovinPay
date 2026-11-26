@@ -69,7 +69,11 @@
             </div>
         </div>
         @if ($shopTools)
-            <a class="np-customer-trigger store-mobile-search" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-controls="search-dialog" aria-label="جستجوی محصولات"><x-storefront.icon name="search" width="20" height="20" /></a>
+            @if (request()->routeIs('products.show'))
+                <a class="np-customer-trigger store-mobile-cart" href="{{ route('cart.index') }}" data-storefront-open="cart-dialog" aria-haspopup="dialog" aria-controls="cart-dialog" aria-label="سبد خرید"><x-storefront.icon name="cart" width="20" height="20" /><x-storefront.cart-count /></a>
+            @else
+                <a class="np-customer-trigger store-mobile-search" href="{{ route('products.index') }}" data-storefront-open="search-dialog" aria-haspopup="dialog" aria-controls="search-dialog" aria-label="جستجوی محصولات"><x-storefront.icon name="search" width="20" height="20" /></a>
+            @endif
         @endif
         <div class="np-customer-header" data-customer-header data-session-url="{{ route('customer.header') }}">
             @if ($shopTools)
@@ -91,15 +95,7 @@
         </div>
         <nav id="mobile-navigation" aria-label="ناوبری موبایل">
             <a href="{{ route('home') }}" @if (request()->routeIs('home')) aria-current="page" @endif><x-storefront.icon name="home" class="np-nav-icon" /><span>صفحه اصلی</span></a>
-            <section class="np-drawer-categories">
-                <h3><x-storefront.icon name="shop" class="np-nav-icon" /><span>فروشگاه</span></h3>
-                <div class="np-drawer-categories__list">
-                    <a href="{{ route('products.index') }}" @if (request()->routeIs('products.*') && ! $activeCategory) aria-current="page" @endif><span>همه محصولات</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
-                    @foreach (\App\Enums\ProductCategory::storefrontCases() as $category)
-                        <a href="{{ route('products.index', ['category' => $category->value]) }}" @if ($activeCategory === $category->value) aria-current="page" @endif><span>{{ $category->label() }}</span><x-storefront.icon name="arrow" class="np-drawer-arrow" /></a>
-                    @endforeach
-                </div>
-            </section>
+            <a href="{{ route('products.index') }}" @if (request()->routeIs('products.*')) aria-current="page" @endif><x-storefront.icon name="shop" class="np-nav-icon" /><span>فروشگاه</span></a>
             <a href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif><x-storefront.icon name="repair" class="np-nav-icon" /><span>تعمیرات کارتخوان</span></a>
             <a href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif><x-storefront.icon name="search" class="np-nav-icon" /><span>پیگیری تعمیرات</span></a>
             <a href="{{ route('articles.index') }}" @if (request()->routeIs('articles.*')) aria-current="page" @endif><x-storefront.icon name="book" class="np-nav-icon" /><span>مقالات و آموزش‌ها</span></a>

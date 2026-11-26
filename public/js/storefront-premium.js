@@ -754,6 +754,7 @@
             if (typeof separate === 'boolean') control.dataset.removeScope = separate ? 'hide' : 'device';
             const formEl = control.querySelector('form[data-cart-mutation]');
             const dockBtn = control.querySelector('[data-dock-add-btn]');
+            const dockInCart = control.querySelector('[data-dock-in-cart]');
             const stepper = control.querySelector('[data-inline-stepper]');
             const countEl = control.querySelector('[data-stepper-count]');
             const incBtn = control.querySelector('[data-stepper-inc]');
@@ -762,6 +763,7 @@
             const trashIcon = control.querySelector('.np-inline-stepper__trash');
             if (formEl) formEl.hidden = qty > 0;
             if (dockBtn) dockBtn.hidden = qty > 0;
+            if (dockInCart) dockInCart.hidden = qty <= 0;
             if (stepper) stepper.hidden = qty <= 0;
             if (countEl && qty > 0) countEl.textContent = toFaDigits(qty);
             if (incBtn) incBtn.disabled = qty >= max;
@@ -1070,12 +1072,17 @@
     const navigation = document.querySelector('[data-mobile-bottom-nav]');
     const related = document.getElementById('product-related');
     const mobile = matchMedia('(max-width: 700px)');
+    const mobileProductSticky = matchMedia('(max-width: 767px)');
     const floatingNavigation = matchMedia('(max-width: 850px)');
     let previousY = Math.max(0, scrollY);
     let travel = 0;
     let navHidden = false;
     function updateNavigation() {
         if (!navigation) return;
+        if (body.classList.contains('product-detail-page') && mobileProductSticky.matches) {
+            navigation.inert = true;
+            return;
+        }
         const y = Math.max(0, scrollY);
         const delta = y - previousY;
         previousY = y;
@@ -1098,7 +1105,11 @@
         frame = 0;
         if (active || root.classList.contains('storefront-overlay-open')) return;
         updateNavigation();
-        if (contact && action && productContent) {
+        if (contact && body.classList.contains('product-detail-page') && mobileProductSticky.matches) {
+            const show = !body.classList.contains('keyboard-open');
+            contact.toggleAttribute('data-dock-visible', show);
+            contact.inert = !show;
+        } else if (contact && action && productContent) {
             const headerEdge = productHeader?.getBoundingClientRect().bottom ?? 0;
             const navEdge = !navHidden && navigation ? navigation.getBoundingClientRect().top : innerHeight;
             const contentEdge = Math.min(productContent.getBoundingClientRect().bottom, related?.getBoundingClientRect().top ?? Infinity);

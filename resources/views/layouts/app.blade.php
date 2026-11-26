@@ -49,7 +49,7 @@
         <script src="{{ versioned_asset('js/mobile-digits.js') }}" defer></script>
     @endif
 </head>
-<body @class(['public-site flex min-h-screen flex-col', 'homepage' => request()->routeIs('home'), 'premium-storefront' => View::hasSection('premium-storefront')]) @if(View::hasSection('premium-storefront')) data-navigation="a" @endif>
+<body @class(['public-site flex min-h-screen flex-col', 'homepage' => request()->routeIs('home'), 'premium-storefront' => View::hasSection('premium-storefront'), 'product-detail-page' => request()->routeIs('products.show')]) @if(View::hasSection('premium-storefront')) data-navigation="a" @endif>
     <a class="skip-link" href="#main-content">پرش به محتوای اصلی</a>
     @unless(View::hasSection('quiet-shell'))
         <x-home.header :premium="View::hasSection('premium-storefront')" />
