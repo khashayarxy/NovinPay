@@ -86,7 +86,7 @@
                     @empty
                         <div class="np-account-empty">
                             <p>هنوز سفارش پرداخت‌شده‌ای ثبت نکرده‌اید. می‌توانید محصولات را در فروشگاه ببینید.</p>
-                            <a class="np-account-link" href="{{ route('products.index') }}">رفتن به فروشگاه ←</a>
+                            <a class="np-account-link" href="{{ route('products.index') }}">رفتن به فروشگاه</a>
                         </div>
                     @endforelse
                     @if($section === 'orders'){{ $orders->links() }}@endif
@@ -149,7 +149,7 @@
                     @if($repairs->isEmpty() && $requests->isEmpty())
                         <div class="np-account-empty">
                             <p>هنوز درخواست تعمیری در این حساب ثبت نشده است.</p>
-                            <a class="np-account-link" href="{{ route('repair') }}">ثبت اولین درخواست تعمیر ←</a>
+                            <a class="np-account-link" href="{{ route('repair') }}">ثبت اولین درخواست تعمیر</a>
                         </div>
                     @endif
                     @if($section === 'repairs'){{ $repairs->links() }}{{ $requests->links() }}@endif
@@ -197,7 +197,7 @@
                     @empty
                         <div class="np-account-empty">
                             <p>هنوز دیدگاه یا پرسشی روی محصولات ثبت نکرده‌اید.</p>
-                            <a class="np-account-link" href="{{ route('products.index') }}">مشاهده محصولات ←</a>
+                            <a class="np-account-link" href="{{ route('products.index') }}">مشاهده محصولات</a>
                         </div>
                     @endforelse
                     @if($reviews instanceof \Illuminate\Contracts\Pagination\Paginator){{ $reviews->links() }}@endif

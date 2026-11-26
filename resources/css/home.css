@@ -375,7 +375,7 @@
     .np-mobile-drawer__account:hover { background: #e3f0fc; border-color: #b5d5f2; }
     .np-mobile-drawer__account .np-nav-icon { width: 19px; height: 19px; flex: none; color: #075da6; }
     .np-mobile-drawer__cart { background: #ffffff; border-color: #dce7f2; color: #0b2239; }
-    .np-mobile-drawer__cart .store-cart-count { margin-inline-start: auto; position: static; transform: none; min-width: 22px; height: 22px; padding-inline: 6px; border-radius: 999px; background: #075da6; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+    .np-mobile-drawer__cart .store-cart-count { margin-inline-start: auto; position: static; transform: none; min-width: 22px; height: 22px; padding-inline: 6px; border-radius: 999px; background: #b4232d; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
     .np-mobile-drawer__cart .store-cart-count:empty,
     .np-mobile-drawer__cart .store-cart-count[hidden] { display: none; }
     .np-mobile-drawer__cart .np-drawer-arrow { margin-inline-start: 4px; }

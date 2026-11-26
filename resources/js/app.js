@@ -12,7 +12,15 @@ if (typeof BroadcastChannel !== 'undefined') {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+const runWhenDomReady = (callback) => {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', callback, { once: true });
+    } else {
+        callback();
+    }
+};
+
+runWhenDomReady(() => {
     initClickMap();
     initMobileNavigation();
     initCustomerNavigation();
@@ -1452,15 +1460,61 @@ document.addEventListener('DOMContentLoaded', () => {
         input.addEventListener('input', evaluate);
     });
 
-    // Prevent double-submission on customer forms
-    document.querySelectorAll('form[data-prevent-double-submit]').forEach((form) => {
-        form.addEventListener('submit', () => {
-            const btn = form.querySelector('button[type="submit"], button:not([type])');
-            if (btn instanceof HTMLButtonElement && !btn.disabled) {
-                btn.disabled = true;
-                btn.dataset.loading = 'true';
+    // Prevent double-submission & show inline spinner on public/customer forms
+    const resetSubmittingButtons = () => {
+        document.querySelectorAll('button[data-submitting="1"]').forEach((btn) => {
+            if (!(btn instanceof HTMLButtonElement)) return;
+            btn.disabled = false;
+            delete btn.dataset.submitting;
+            delete btn.dataset.loading;
+            btn.removeAttribute('aria-busy');
+            if (typeof btn.dataset.originalHtml === 'string') {
+                btn.innerHTML = btn.dataset.originalHtml;
             }
         });
+    };
+
+    window.addEventListener('pageshow', () => {
+        resetSubmittingButtons();
+    });
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        if (
+            !form.hasAttribute('data-public-submit-loading')
+            && !form.hasAttribute('data-prevent-double-submit')
+            && !form.hasAttribute('data-repair-stepper')
+        ) {
+            return;
+        }
+        if (event.defaultPrevented) return;
+        if (!form.noValidate && typeof form.checkValidity === 'function' && !form.checkValidity()) {
+            return;
+        }
+        const submitter = event.submitter instanceof HTMLButtonElement
+            ? event.submitter
+            : form.querySelector('button[type="submit"]:not([hidden]), button:not([type]):not([hidden])');
+        if (!(submitter instanceof HTMLButtonElement)) return;
+        if (submitter.dataset.submitting === '1') {
+            event.preventDefault();
+            return;
+        }
+        if (typeof submitter.dataset.originalHtml !== 'string') {
+            submitter.dataset.originalHtml = submitter.innerHTML;
+        }
+        const loadingText = submitter.dataset.loadingLabel || 'در حال ارسال...';
+        submitter.dataset.submitting = '1';
+        submitter.dataset.loading = 'true';
+        submitter.disabled = true;
+        submitter.setAttribute('aria-busy', 'true');
+        submitter.innerHTML = '';
+        const spinner = document.createElement('span');
+        spinner.className = 'np-btn-spinner';
+        spinner.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = loadingText;
+        submitter.append(spinner, label);
     });
 
     const authShowcase = document.querySelector('[data-auth-showcase]');
@@ -1649,11 +1703,9 @@ document.addEventListener('DOMContentLoaded', () => {
             removeButton.closest('[data-spec-row]')?.remove();
         }
     });
-});
 
-
-document.addEventListener('click', async (event) => {
-    const button = event.target.closest('[data-copy-card]');
+    document.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-copy-card]');
     if (!button) return;
     const status = button.parentElement.querySelector('[data-copy-result]');
     try {
@@ -2652,6 +2704,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             bootNeshanSdk();
         }
     }
+});
 
     const recoveryResendBtn = document.querySelector('[data-recovery-resend-btn]');
     const recoveryTimerEl = document.querySelector('[data-recovery-resend-timer]');
@@ -2920,10 +2973,49 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         }
     };
 
+    const persianSerialDigits = '۰۱۲۳۴۵۶۷۸۹';
+    const arabicSerialDigits = '٠١٢٣٤٥٦٧٨٩';
+    const serialSelector = '[data-pos-serial], input[name="device_serial"], textarea[name="serials"]';
+
+    const normalizePosSerialValue = (raw) => String(raw || '')
+        .replace(/[۰-۹٠-٩]/g, (ch) => {
+            const pIdx = persianSerialDigits.indexOf(ch);
+            return String(pIdx !== -1 ? pIdx : arabicSerialDigits.indexOf(ch));
+        })
+        .replace(/[a-z]/g, (ch) => ch.toUpperCase());
+
+    const sanitizePosSerial = (el) => {
+        if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+        const normalized = normalizePosSerialValue(el.value);
+        if (el.value !== normalized) {
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const dir = el.selectionDirection;
+            el.value = normalized;
+            if (document.activeElement === el && start !== null && end !== null) {
+                try {
+                    el.setSelectionRange(start, end, dir || 'none');
+                } catch {}
+            }
+        }
+    };
+
+    document.querySelectorAll(serialSelector).forEach(sanitizePosSerial);
+
     document.addEventListener('input', (event) => {
         const target = event.target;
         if (target instanceof HTMLInputElement && target.hasAttribute('data-digits-only')) {
             sanitizeDigitsOnly(target);
+        }
+        if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.matches(serialSelector)) {
+            sanitizePosSerial(target);
+        }
+    });
+
+    document.addEventListener('change', (event) => {
+        const target = event.target;
+        if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.matches(serialSelector)) {
+            sanitizePosSerial(target);
         }
     });
 
@@ -2931,6 +3023,9 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         const target = event.target;
         if (target instanceof HTMLInputElement && target.hasAttribute('data-digits-only')) {
             setTimeout(() => sanitizeDigitsOnly(target), 0);
+        }
+        if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.matches(serialSelector)) {
+            setTimeout(() => sanitizePosSerial(target), 0);
         }
     });
 

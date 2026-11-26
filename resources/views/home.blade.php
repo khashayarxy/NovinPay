@@ -20,8 +20,8 @@
                 <h1 id="hero-title">فروش و تعمیر <span>کارتخوان</span></h1>
                 <p class="np-hero__description">از برندهای معتبر؛ همراه با راه‌اندازی، گارانتی و پشتیبانی تخصصی.</p>
                 <div class="np-hero__actions">
-                    <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده محصولات<x-home.icon name="arrow-left" /></a>
-                    <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />ثبت درخواست تعمیر<x-home.icon name="arrow-left" /></a>
+                    <a href="{{ route('products.index') }}" class="np-button np-button--primary"><x-home.icon name="shopping-bag" />مشاهده محصولات</a>
+                    <a href="{{ route('repair') }}" class="np-button np-button--outline"><x-home.icon name="tool" />ثبت درخواست تعمیر</a>
                 </div>
             </div>
         </div>
@@ -41,7 +41,7 @@
     <section class="np-container np-services" aria-labelledby="popular-services-title">
         <div class="np-section-heading">
             <div><h2 id="popular-services-title">خدمات کارتخوان نوین‌پی</h2><p>برای هر مرحله از کار با کارتخوان، راهی برای راهنمایی شما داریم.</p></div>
-            <a href="{{ route('contact') }}" class="np-small-link">راهنمایی خدمات<x-home.icon name="arrow-left" /></a>
+            <a href="{{ route('contact') }}" class="np-small-link">راهنمایی خدمات<x-home.icon name="chevron-left" /></a>
         </div>
         <div class="np-services__grid">
             @foreach ([

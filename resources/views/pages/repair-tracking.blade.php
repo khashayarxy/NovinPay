@@ -48,23 +48,23 @@
                             data-toggle-track-search
                             aria-controls="repair-track-search-panel"
                             aria-expanded="false">پیگیری کد دیگر</button>
-                    <a class="public-inline-link" href="{{ route('repair') }}">ثبت درخواست تعمیر <x-home.icon name="arrow-left" /></a>
+                    <a class="public-inline-link" href="{{ route('repair') }}">ثبت درخواست تعمیر</a>
                 </div>
             @endif
 
             <div id="repair-track-search-panel" @class(['repair-track-collapsed-panel' => $matched === true]) @if($matched === true) hidden @endif>
-                <form method="post" action="{{ route('repair.track.store') }}" class="public-form">
+                <form method="post" action="{{ route('repair.track.store') }}" class="public-form" data-public-submit-loading>
                     @csrf
                     <x-repair-field name="tracking_reference" label="کد پیگیری">
                         <input id="tracking_reference" name="tracking_reference" value="{{ old('tracking_reference', $trackingCode ?? '') }}" class="input public-code-input" dir="ltr" inputmode="numeric" data-digits-only="8" autocomplete="off" spellcheck="false" required minlength="8" maxlength="8" placeholder="۱۲۳۴۵۶۷۸" aria-invalid="{{ $errors->has('tracking_reference') ? 'true' : 'false' }}" aria-describedby="tracking_reference-feedback">
                         <p class="repair-field-helper-link"><a class="public-inline-link" href="{{ route('repair.track.recovery') }}">فراموشی کد پیگیری؟</a></p>
                     </x-repair-field>
                     <x-repair-field name="contact_phone" label="شماره موبایل">
-                        <input type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="off" required maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
+                        <input type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel" required maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
                     </x-repair-field>
                     <div class="repair-entry-actions repair-track-actions">
-                        <button type="submit" class="np-button np-button--primary">بررسی وضعیت <x-home.icon name="arrow-left" /></button>
-                        <a class="public-inline-link" href="{{ route('repair') }}">ثبت درخواست تعمیر <x-home.icon name="arrow-left" /></a>
+                        <button type="submit" class="np-button np-button--primary" data-loading-label="در حال ارسال...">بررسی وضعیت</button>
+                        <a class="public-inline-link" href="{{ route('repair') }}">ثبت درخواست تعمیر</a>
                     </div>
                 </form>
 

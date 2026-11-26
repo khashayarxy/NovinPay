@@ -20,13 +20,13 @@
                 <a class="public-inline-link" href="{{ route('account.index', ['section' => 'orders']) }}">سفارش‌های من</a>
             @else
                 @if ($timeline === [])<p class="public-notice public-notice--error" role="alert">سفارشی با این کد و شماره پیدا نشد.</p>@endif
-                <form class="public-form" method="post" action="{{ route('account.orders.track', ['code' => $code]) }}">
+                <form class="public-form" method="post" action="{{ route('account.orders.track', ['code' => $code]) }}" data-public-submit-loading>
                     @csrf
                     <p>شماره موبایل ثبت‌شده برای سفارش را وارد کنید.</p>
                     <x-repair-field name="contact_phone" label="شماره موبایل">
                         <input class="input" type="tel" id="contact_phone" name="contact_phone" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" autocomplete="tel" required>
                     </x-repair-field>
-                    <button class="np-button np-button--primary">بررسی وضعیت</button>
+                    <button type="submit" class="np-button np-button--primary" data-loading-label="در حال ارسال...">بررسی وضعیت</button>
                 </form>
             @endif
         </section>

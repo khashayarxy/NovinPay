@@ -10,7 +10,7 @@
             <p class="article-summary">{{ $version->summary }}</p>
         </header>
         <x-article-content :blocks="$version->blocks" />
-        <footer class="article-detail-footer"><a class="public-inline-link" href="{{ route('articles.index') }}">بازگشت به مقاله‌ها <x-home.icon name="arrow-left" /></a></footer>
+        <footer class="article-detail-footer"><a class="public-inline-link" href="{{ route('articles.index') }}">بازگشت به مقاله‌ها</a></footer>
     </article>
 </div>
 @endsection

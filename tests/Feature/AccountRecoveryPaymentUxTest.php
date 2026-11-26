@@ -194,7 +194,8 @@ class AccountRecoveryPaymentUxTest extends TestCase
 
         $this->get(route('account.index', ['section' => 'reviews']))
             ->assertOk()
-            ->assertSee('مشاهده محصولات ←')
+            ->assertSee('مشاهده محصولات')
+            ->assertDontSee('مشاهده محصولات ←')
             ->assertDontSee('<a class="np-account-link" href="'.route('products.index').'">فروشگاه</a>', false);
 
         $this->get(route('account.index', ['section' => 'addresses']))

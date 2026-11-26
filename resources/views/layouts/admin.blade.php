@@ -37,7 +37,7 @@
                         </button>
                         <span class="admin-topbar-root">پنل مدیریت {{ config('business.name') }}</span>
                     </div>
-                    <div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : ($adminAccount->isManager() ? 'مدیر' : 'کارمند') }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج <x-home.icon name="arrow-left" /></button></form></div>
+                    <div class="admin-user"><span><strong>{{ auth()->user()->name }}</strong><small>{{ $adminAccount->isSuperAdmin() ? 'مدیر کل' : ($adminAccount->isManager() ? 'مدیر' : 'کارمند') }}</small></span><form method="post" action="{{ route('admin.logout') }}">@csrf<button type="submit" class="admin-logout">خروج</button></form></div>
                 </header>
                 <main id="main-content" class="admin-main" tabindex="-1">
                     @if(session('success'))<div class="admin-notice admin-notice--success" role="status"><x-home.icon name="check" />{{ session('success') }}</div>@endif
@@ -46,7 +46,7 @@
             </div>
         </div>
     @else
-        <header class="admin-login-header"><a href="{{ route('home') }}" aria-label="وب‌سایت {{ config('business.name') }}"><x-brand-logo /></a><a class="admin-text-link" href="{{ route('home') }}">بازگشت به وب‌سایت ←</a></header>
+        <header class="admin-login-header"><a href="{{ route('home') }}" aria-label="وب‌سایت {{ config('business.name') }}"><x-brand-logo /></a><a class="admin-text-link" href="{{ route('home') }}">بازگشت به وب‌سایت</a></header>
         <main id="main-content" class="admin-login-main" tabindex="-1">@yield('content')</main>
     @endif
 </body>

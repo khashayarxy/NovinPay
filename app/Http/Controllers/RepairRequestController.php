@@ -294,7 +294,10 @@ class RepairRequestController extends Controller
         $repair->device_model = $data['device_model'];
         $repair->issue = $data['issue'].(! empty($data['additional_description']) ? "\n\n".$data['additional_description'] : '');
         if (! empty($data['device_serial'])) {
-            $repair->issue .= "\n\nشماره سریال: ".$data['device_serial'];
+            $normalizedSerial = strtoupper(trim((string) $data['device_serial']));
+            if ($normalizedSerial !== '') {
+                $repair->issue .= "\n\nشماره سریال: ".$normalizedSerial;
+            }
         }
         if (! empty($data['accessories'])) {
             $repair->issue .= "\nلوازم همراه: ".implode('، ', array_map(fn ($accessory) => RepairRequest::ACCESSORIES[$accessory], $data['accessories']));

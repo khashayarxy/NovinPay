@@ -15,7 +15,7 @@
             <span class="public-icon"><x-home.icon name="headphones" /></span>
             <h2 id="consultation-title">مشاورهٔ خرید و خدمات</h2>
             <p class="public-hint">برای انتخاب دستگاه مناسب یا راهنمایی خدمات، درخواست مشاوره ثبت کنید تا همکاران ما با شما تماس بگیرند.</p>
-            <a class="np-button np-button--primary" href="{{ route('consultation') }}">ثبت درخواست مشاوره <x-home.icon name="arrow-left" /></a>
+            <a class="np-button np-button--primary" href="{{ route('consultation') }}">ثبت درخواست مشاوره</a>
         </section>
     </div>
 </div>
