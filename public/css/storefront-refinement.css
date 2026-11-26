@@ -1,4 +1,7 @@
 /* Shared storefront controls and surfaces. */
+@media (min-width: 851px) {
+    .global-store-nav, .np-header .store-mobile-search, .np-header .store-mobile-cart, .np-header .np-header__actions { display: none !important; }
+}
 .store-desktop-tools { display: flex; gap: 8px; }
 .store-desktop-tools .np-customer-trigger { position: relative; width: 44px; padding: 0; }
 .store-desktop-tools svg { width: 20px; height: 20px; }

@@ -1,22 +1,27 @@
-@extends('layouts.app')
-
-@section('title', 'نشست منقضی شد')
-
-@section('content')
-    <div class="container-page section">
-        <div class="mx-auto max-w-xl text-center">
-            <p class="text-sm font-semibold text-brand-700">خطای ۴۱۹</p>
-            <h1 class="mt-3 text-2xl font-bold sm:text-3xl">
-                نشست شما منقضی شده است
-            </h1>
-            <p class="mt-4 text-sm leading-8 text-slate-600">
-                به دلیل گذشت زمان، امنیت فرم ارسال‌شده از بین رفته است. لطفاً صفحه را دوباره باز کنید و مجدداً تلاش
-                کنید.
-            </p>
-            <div class="mt-7 flex flex-wrap justify-center gap-3">
-                <a href="{{ route('home') }}" class="btn btn-primary">بازگشت به صفحهٔ اصلی</a>
-                <a href="{{ route('admin.login') }}" class="btn btn-secondary">ورود مدیر</a>
-            </div>
-        </div>
-    </div>
-@endsection
+@php
+    $retryTarget = url('/');
+    $current = request()?->fullUrl();
+    $appOrigin = rtrim((string) config('app.url'), '/');
+    if (is_string($current) && $current !== '' && ($appOrigin === '' || str_starts_with($current, $appOrigin) || str_starts_with($current, request()->getSchemeAndHttpHost()))) {
+        $retryTarget = $current;
+    }
+@endphp
+<x-error-screen
+    code="۴۱۹"
+    badge="خطای ۴۱۹ · انقضای نشست امنیتی"
+    tone="warning"
+    title="نشست شما منقضی شده است"
+    description="به دلیل عدم فعالیت یا گذشت زمان، توکن امنیتی فرم منقضی شده است. لطفاً صفحه را دوباره بارگذاری کرده و مجدداً تلاش کنید."
+    primary-label="بارگذاری مجدد و تلاش دوباره"
+    :primary-url="$retryTarget"
+    secondary-label="بازگشت به صفحهٔ اصلی"
+    :secondary-url="url('/')"
+    tertiary-label="ورود به حساب کاربری"
+    :tertiary-url="url('/login')"
+>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+        <polyline points="21 3 21 9 15 9"/>
+        <polyline points="12 7 12 12 15 14"/>
+    </svg>
+</x-error-screen>

@@ -32,5 +32,7 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="NOTIFICATIONS_ADMIN_PHONES" value=""/>
+        <env name="NOTIFICATIONS_ADMIN_EMAILS" value=""/>
     </php>
 </phpunit>

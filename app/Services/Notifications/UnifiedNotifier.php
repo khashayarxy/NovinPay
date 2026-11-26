@@ -51,8 +51,11 @@ final class UnifiedNotifier
             $adminFields = [
                 'شماره سفارش' => $code,
                 'نام مشتری' => $customerName,
+                'شماره تماس' => $customerPhone ? FaNumber::digits($customerPhone) : 'ثبت نشده',
                 'تعداد اقلام' => $itemCount,
                 'مبلغ کل' => $totalToman,
+                'وضعیت' => 'ثبت جدید — در انتظار بررسی / پرداخت',
+                'زمان ثبت (تهران)' => $this->tehranTimestamp(),
             ];
 
             $this->sendAdminSms(
@@ -66,7 +69,7 @@ final class UnifiedNotifier
                     'product' => mb_strimwidth($productsSummary.' - '.$totalToman, 0, 95, '…'),
                 ],
             );
-            $this->sendAdminEmail('سفارش جدید #'.$code, 'ثبت سفارش خرید جدید', 'یک سفارش جدید در فروشگاه ثبت شد.', $adminFields, 'مشاهده سفارش در پنل', $adminUrl);
+            $this->sendAdminEmail('سفارش جدید #'.$code, 'ثبت سفارش خرید جدید', 'یک سفارش جدید در فروشگاه ثبت شد.', $adminFields, 'مشاهده سفارش در پنل', $adminUrl, 'سفارش جدید', 'info');
 
             if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_order_placed', ['code' => $code, 'total' => $totalToman]);
@@ -76,9 +79,11 @@ final class UnifiedNotifier
                 'ثبت سفارش شما در '.config('business.name', 'نوین‌پی').' (#'.$code.')',
                 'سفارش شما با موفقیت ثبت شد',
                 'سفارش شما دریافت شد و پس از بررسی موجودی و تایید، مراحل ارسال اطلاع‌رسانی خواهد شد.',
-                ['شماره سفارش' => $code, 'مبلغ کل' => $totalToman],
+                ['شماره سفارش' => $code, 'مبلغ کل' => $totalToman, 'وضعیت' => 'دریافت‌شده', 'زمان ثبت' => $this->tehranTimestamp()],
                 'پیگیری در حساب کاربری',
                 url('/account'),
+                'ثبت سفارش',
+                'info',
             );
         }, 'order_placed');
     }
@@ -180,6 +185,7 @@ final class UnifiedNotifier
             $adminFields = [
                 'کد پیگیری' => $ref,
                 'نام مشتری' => $customerName,
+                'شماره تماس' => $customerPhone ? FaNumber::digits($customerPhone) : '—',
                 'دستگاه' => $device,
             ];
             if (! empty($parsed['handover_label'])) {
@@ -189,6 +195,8 @@ final class UnifiedNotifier
                 $adminFields['توضیحات پیک'] = mb_strimwidth($parsed['pickup_notes'], 0, 140, '…');
             }
             $adminFields['شرح مشکل'] = mb_strimwidth(trim((string) ($parsed['problem'] ?: $repair->issue)), 0, 140, '…');
+            $adminFields['وضعیت'] = 'ثبت جدید — در انتظار بررسی';
+            $adminFields['زمان ثبت (تهران)'] = $this->tehranTimestamp();
             $botText = $this->formatBotMessage('🔧 درخواست تعمیر جدید ثبت شد', $adminFields, $adminUrl);
 
             $this->sendAdminSms(
@@ -201,7 +209,7 @@ final class UnifiedNotifier
                     'repair_code' => (string) $repair->tracking_reference,
                 ],
             );
-            $this->sendAdminEmail('درخواست تعمیر جدید #'.$ref, 'ثبت درخواست تعمیر آنلاین', 'یک درخواست تعمیر جدید توسط مشتری ثبت شد.', $adminFields, 'مشاهده درخواست در پنل', $adminUrl);
+            $this->sendAdminEmail('درخواست تعمیر جدید #'.$ref, 'ثبت درخواست تعمیر آنلاین', 'یک درخواست تعمیر جدید توسط مشتری ثبت شد.', $adminFields, 'مشاهده درخواست در پنل', $adminUrl, 'درخواست تعمیر جدید', 'info');
             $this->bale->send($botText, 'repair_req:'.$repair->tracking_reference, 300, $adminUrl);
 
             if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
@@ -282,15 +290,18 @@ final class UnifiedNotifier
             $adminUrl = route('admin.consultations.show', $consultation);
 
             $adminFields = [
+                'کد درخواست' => strtoupper(substr((string) $consultation->public_id, 0, 8)),
                 'نام متقاضی' => $customerName,
                 'موبایل' => $customerPhone ? FaNumber::digits($customerPhone) : '—',
                 'موضوع' => $topic,
                 'پرسش' => mb_strimwidth(trim((string) $consultation->question), 0, 140, '…'),
+                'وضعیت' => 'در انتظار تماس کارشناس',
+                'زمان ثبت (تهران)' => $this->tehranTimestamp(),
             ];
             $botText = $this->formatBotMessage('💬 درخواست مشاوره جدید ثبت شد', $adminFields, $adminUrl);
 
             $this->sendAdminSms('admin_consultation_submitted', ['name' => $customerName, 'topic' => $topic], 'consult:'.$consultation->public_id);
-            $this->sendAdminEmail('درخواست مشاوره جدید از '.$customerName, 'ثبت درخواست مشاوره', 'یک درخواست مشاوره جدید در وب‌سایت ثبت شد.', $adminFields, 'مشاهده درخواست در پنل', $adminUrl);
+            $this->sendAdminEmail('درخواست مشاوره جدید از '.$customerName, 'ثبت درخواست مشاوره', 'یک درخواست مشاوره جدید در وب‌سایت ثبت شد.', $adminFields, 'مشاهده درخواست در پنل', $adminUrl, 'درخواست مشاوره', 'info');
             $this->bale->send($botText, 'consult:'.$consultation->public_id, 300, $adminUrl);
 
             if ($this->telegramTopics->enabledFor('consultations')) {
@@ -345,9 +356,11 @@ final class UnifiedNotifier
                 ($isReview ? 'دیدگاه جدید محصول: ' : 'پرسش جدید محصول: ').$product->name,
                 $isReview ? 'ثبت دیدگاه جدید در انتظار تأیید' : 'ثبت پرسش جدید محصول',
                 'یک دیدگاه جدید توسط کاربر ثبت شد و پس از تأیید شما در صفحه محصول نمایش داده خواهد شد.',
-                $fields,
+                $fields + ['وضعیت' => 'در انتظار تأیید مدیریت', 'زمان ثبت (تهران)' => $this->tehranTimestamp()],
                 'مدیریت دیدگاه‌ها',
                 $adminUrl,
+                'در انتظار تأیید',
+                'warning',
             );
         }, 'product_feedback_submitted');
     }
@@ -398,6 +411,8 @@ final class UnifiedNotifier
                 'نحوه ارسال' => $shippingLabel,
                 'مبلغ پرداخت‌شده' => $amountToman,
                 'کد رهگیری زیبال' => $trackId !== '' ? FaNumber::digits($trackId) : '—',
+                'وضعیت پرداخت' => 'پرداخت موفق و تسویه‌شده',
+                'زمان تأیید (تهران)' => $this->tehranTimestamp(),
             ];
 
             $paidPatternKey = trim((string) config('notifications.sms.patterns.admin_order_paid', '')) !== ''
@@ -421,6 +436,8 @@ final class UnifiedNotifier
                 $fields,
                 'مشاهده سفارش در پنل',
                 $adminUrl,
+                'پرداخت موفق',
+                'success',
             );
 
             $botText = $this->formatBotMessage('✅ پرداخت آنلاین سفارش تأیید شد', $fields, $adminUrl);
@@ -452,6 +469,8 @@ final class UnifiedNotifier
                 'مدل دستگاه' => $device !== '' ? $device : '—',
                 'مبلغ پرداخت‌شده' => $amountToman,
                 'کد رهگیری زیبال' => $trackId !== '' ? FaNumber::digits($trackId) : '—',
+                'وضعیت پرداخت' => 'پرداخت موفق هزینه تعمیر',
+                'زمان تأیید (تهران)' => $this->tehranTimestamp(),
             ];
 
             $this->sendAdminEmail(
@@ -461,6 +480,8 @@ final class UnifiedNotifier
                 $fields,
                 'مشاهده پرونده تعمیر',
                 $adminUrl,
+                'پرداخت تعمیر موفق',
+                'success',
             );
 
             $botText = $this->formatBotMessage('✅ هزینه تعمیر آنلاین پرداخت شد', $fields, $adminUrl);
@@ -672,6 +693,95 @@ final class UnifiedNotifier
     /**
      * @param  array<string, string>  $fields
      */
+    public function dailyDigestEmail(string $dateKey, array $fields, bool $hasAttentionItems = false): bool
+    {
+        $emails = $this->adminEmails();
+        if ($emails === [] || ! config('notifications.email.enabled')) {
+            return false;
+        }
+
+        $dedupeKey = 'novinpay:daily_digest_email:'.$dateKey;
+        try {
+            if (! Cache::add($dedupeKey, true, now()->addHours(20))) {
+                return false;
+            }
+        } catch (\Throwable) {
+        }
+
+        $delivered = false;
+        foreach ($emails as $email) {
+            if ($this->sendMail(
+                recipient: $email,
+                subject: '📊 گزارش جمع‌بندی روزانه نوین‌پی — '.$dateKey,
+                heading: 'گزارش جمع‌بندی ۲۴ ساعته عملیات نوین‌پی',
+                intro: 'خلاصهٔ وضعیت پرداخت‌ها، سفارش‌ها، تعمیرات، مشاوره‌ها، پیامک‌ها و سلامت زیرساخت برای تاریخ '.$dateKey.' در جدول زیر ثبت شده است.',
+                fields: $fields,
+                actionLabel: 'مشاهده داشبورد مدیریت',
+                actionUrl: url('/admin'),
+                statusBadge: $hasAttentionItems ? 'گزارش روزانه · نیازمند بررسی' : 'گزارش روزانه',
+                statusTone: $hasAttentionItems ? 'warning' : 'success',
+            )) {
+                $delivered = true;
+            }
+        }
+
+        return $delivered;
+    }
+
+    /**
+     * @param  array<string, string>  $fields
+     */
+    public function criticalOperationalAlert(
+        string $category,
+        string $subject,
+        string $heading,
+        string $intro,
+        array $fields,
+        string $dedupeKey,
+        int $ttlMinutes = 30,
+        ?string $actionLabel = 'بررسی وضعیت سامانه',
+        ?string $actionUrl = null,
+        string $statusBadge = 'هشدار عملیاتی',
+        string $statusTone = 'danger',
+    ): void {
+        $this->safe(function () use ($category, $subject, $heading, $intro, $fields, $dedupeKey, $ttlMinutes, $actionLabel, $actionUrl, $statusBadge, $statusTone): void {
+            $emails = $this->adminEmails();
+            if ($emails === [] || ! config('notifications.email.enabled')) {
+                return;
+            }
+
+            if ($dedupeKey !== '') {
+                $cacheKey = 'novinpay:ops_alert_email:'.hash('sha256', $category.':'.$dedupeKey);
+                try {
+                    if (! Cache::add($cacheKey, true, now()->addMinutes(max(1, $ttlMinutes)))) {
+                        return;
+                    }
+                } catch (\Throwable) {
+                }
+            }
+
+            $enriched = $fields + ['زمان ثبت هشدار (تهران)' => $this->tehranTimestamp()];
+            $this->sendAdminEmail(
+                subject: $subject,
+                heading: $heading,
+                intro: $intro,
+                fields: $enriched,
+                actionLabel: $actionLabel,
+                actionUrl: $actionUrl ?? url('/admin/system-health'),
+                statusBadge: $statusBadge,
+                statusTone: $statusTone,
+            );
+        }, 'critical_operational_alert_'.$category);
+    }
+
+    private function tehranTimestamp(): string
+    {
+        return FaNumber::digits(now('Asia/Tehran')->format('Y/m/d H:i'));
+    }
+
+    /**
+     * @param  array<string, string>  $fields
+     */
     private function sendAdminEmail(
         string $subject,
         string $heading,
@@ -679,6 +789,8 @@ final class UnifiedNotifier
         array $fields,
         ?string $actionLabel = null,
         ?string $actionUrl = null,
+        ?string $statusBadge = null,
+        string $statusTone = 'info',
     ): void {
         $emails = $this->adminEmails();
         if ($emails === []) {
@@ -695,7 +807,7 @@ final class UnifiedNotifier
             ]);
         }
         foreach ($emails as $email) {
-            $this->sendMail($email, $subject, $heading, $intro, $fields, $actionLabel, $actionUrl);
+            $this->sendMail($email, $subject, $heading, $intro, $fields, $actionLabel, $actionUrl, $statusBadge, $statusTone);
         }
     }
 
@@ -710,6 +822,8 @@ final class UnifiedNotifier
         array $fields = [],
         ?string $actionLabel = null,
         ?string $actionUrl = null,
+        ?string $statusBadge = null,
+        string $statusTone = 'info',
     ): void {
         if (! config('notifications.email.enabled')) {
             return;
@@ -718,7 +832,7 @@ final class UnifiedNotifier
         if ($clean === '' || ! filter_var($clean, FILTER_VALIDATE_EMAIL)) {
             return;
         }
-        $this->sendMail($clean, $subject, $heading, $intro, $fields, $actionLabel, $actionUrl);
+        $this->sendMail($clean, $subject, $heading, $intro, $fields, $actionLabel, $actionUrl, $statusBadge, $statusTone);
     }
 
     /**
@@ -732,7 +846,9 @@ final class UnifiedNotifier
         array $fields,
         ?string $actionLabel = null,
         ?string $actionUrl = null,
-    ): void {
+        ?string $statusBadge = null,
+        string $statusTone = 'info',
+    ): bool {
         try {
             Mail::to($recipient)->send(new UnifiedNotificationMail(
                 mailSubject: $subject,
@@ -741,9 +857,15 @@ final class UnifiedNotifier
                 fields: $fields,
                 actionLabel: $actionLabel,
                 actionUrl: $actionUrl,
+                statusBadge: $statusBadge,
+                statusTone: $statusTone,
             ));
+
+            return true;
         } catch (\Throwable $e) {
             Log::warning('Notification email dispatch failed', ['exception' => $e::class]);
+
+            return false;
         }
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Services\Observability;
 
+use App\Services\Notifications\UnifiedNotifier;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -109,6 +110,28 @@ final class BackupReporter
 
         if ($status !== 'ok') {
             $this->topics->send('errors', "🚨 هشدار بکاپ ({$statusLabel})\n{$message}", 'backup_error:'.$status.':'.now()->format('YmdH'));
+            try {
+                app(UnifiedNotifier::class)->criticalOperationalAlert(
+                    category: 'backup',
+                    subject: "🚨 هشدار بکاپ نوین‌پی — {$statusLabel}",
+                    heading: 'وضعیت بکاپ نیازمند رسیدگی فوری است',
+                    intro: 'بررسی خودکار وضعیت فایل پشتیبان سامانه نوین‌پی نتیجهٔ غیرعادی گزارش کرده است.',
+                    fields: [
+                        'وضعیت بکاپ' => $statusLabel,
+                        'نام فایل' => $fileName ?: 'نامشخص',
+                        'حجم فایل' => $snapshot['size_mb'] !== null ? $snapshot['size_mb'].' مگابایت' : 'نامشخص',
+                        'سن بکاپ' => $ageHours !== null ? round($ageHours, 1)." ساعت (سقف مجاز: {$maxAgeHours} ساعت)" : 'نامشخص',
+                        'توضیحات تکمیلی' => $note !== '' ? mb_substr($note, 0, 180) : '—',
+                    ],
+                    dedupeKey: 'backup_report_fail:'.$status.':'.now()->format('YmdH'),
+                    ttlMinutes: 60,
+                    actionLabel: 'مشاهده سلامت سیستم و بکاپ',
+                    actionUrl: url('/admin/system-health'),
+                    statusBadge: 'هشدار بکاپ',
+                    statusTone: $status === 'stale' ? 'warning' : 'danger',
+                );
+            } catch (Throwable) {
+            }
         }
 
         $this->metrics->storeLatestBackup($snapshot);

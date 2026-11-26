@@ -260,9 +260,9 @@ class HomePageTest extends TestCase
         $xpath = new DOMXPath($document);
         $this->assertSame(3, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
         $quickLinks = $xpath->query('//footer//nav[@aria-label="دسترسی سریع"]//a');
-        $this->assertSame(4, $quickLinks->length);
+        $this->assertSame(3, $quickLinks->length);
         $this->assertSame(
-            ['فروشگاه', 'درخواست تعمیر', 'پیگیری تعمیر', 'مقالات و آموزش‌ها'],
+            ['فروشگاه', 'تعمیرات', 'تماس با ما'],
             array_map(fn ($link) => trim(preg_replace('/\s+/', ' ', $link->textContent)), iterator_to_array($quickLinks)),
         );
         $this->assertSame(0, $xpath->query('//footer//address')->length);

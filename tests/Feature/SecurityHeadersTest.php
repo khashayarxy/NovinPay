@@ -35,14 +35,30 @@ class SecurityHeadersTest extends TestCase
     {
         $this->get('https://localhost/')->assertOk()->assertHeader('Strict-Transport-Security', 'max-age=300');
         $this->get('http://localhost/')->assertOk()->assertHeaderMissing('Strict-Transport-Security');
+
+        $originalEnv = $this->app['env'];
+        try {
+            $this->app['env'] = 'production';
+            $this->get('https://localhost/')->assertOk()
+                ->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+        } finally {
+            $this->app['env'] = $originalEnv;
+        }
     }
 
     public function test_html_policies_preserve_existing_endpoint_csp_and_webotp(): void
     {
         $response = $this->get('/')->assertOk();
-        $response->assertHeader('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
-        $report = $response->headers->get('Content-Security-Policy-Report-Only');
+        $csp = (string) $response->headers->get('Content-Security-Policy');
+        $this->assertStringContainsString("default-src 'self'", $csp);
+        $this->assertStringContainsString("script-src 'self' https://static.neshan.org", $csp);
+        $this->assertStringContainsString("object-src 'none'; base-uri 'self'; frame-ancestors 'self'", $csp);
+        $this->assertStringNotContainsString('unsafe-inline', explode(';', strstr($csp, 'script-src'))[0]);
+        $this->assertStringNotContainsString('unsafe-eval', $csp);
+        $response->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        $report = (string) $response->headers->get('Content-Security-Policy-Report-Only');
         $this->assertStringContainsString("frame-src 'self' https://neshan.org", $report);
+        $this->assertStringContainsString("require-trusted-types-for 'script'", $report);
         $this->assertStringNotContainsString('unsafe-eval', $report);
         $permissions = $response->headers->get('Permissions-Policy');
         $this->assertStringContainsString('payment=()', $permissions);
@@ -53,10 +69,12 @@ class SecurityHeadersTest extends TestCase
             'Content-Security-Policy' => "default-src 'none'; sandbox",
             'Strict-Transport-Security' => 'max-age=86400',
             'Permissions-Policy' => 'camera=()',
+            'Cross-Origin-Opener-Policy' => 'same-origin-allow-popups',
         ]));
         $this->assertSame("default-src 'none'; sandbox", $protected->headers->get('Content-Security-Policy'));
         $this->assertSame('max-age=86400', $protected->headers->get('Strict-Transport-Security'));
         $this->assertSame('camera=()', $protected->headers->get('Permissions-Policy'));
+        $this->assertSame('same-origin-allow-popups', $protected->headers->get('Cross-Origin-Opener-Policy'));
     }
 
     public function test_not_found_response_carries_baseline_security_headers(): void

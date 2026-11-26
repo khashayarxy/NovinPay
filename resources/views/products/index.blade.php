@@ -134,6 +134,7 @@
                         @php($isCurrentSort = ($sort ?? '') === $sortKey)
                         <a href="{{ route('products.index', array_filter(['q' => $term ?: null, 'category' => $category?->value, 'condition' => $condition, 'available' => $onlyAvailable ? '1' : null, 'sort' => $sortKey ?: null])) }}"
                            class="catalog-inline-sort__tab"
+                           @if ($sortKey !== '' || $hasFilters) rel="nofollow" @endif
                            @if ($isCurrentSort) aria-current="true" @endif>{{ $sortLabel }}</a>
                     @endforeach
                 </div>
@@ -179,6 +180,7 @@
                 @php($isCurrentSort = ($sort ?? '') === $sortKey)
                 <a class="catalog-sort-option"
                    href="{{ route('products.index', array_filter(['q' => $term ?: null, 'category' => $category?->value, 'condition' => $condition, 'available' => $onlyAvailable ? '1' : null, 'sort' => $sortKey ?: null])) }}"
+                   @if ($sortKey !== '' || $hasFilters) rel="nofollow" @endif
                    @if ($isCurrentSort) aria-current="true" @endif>
                     <span>{{ $sortLabel }}</span>
                     @if ($isCurrentSort)

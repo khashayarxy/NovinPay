@@ -2,6 +2,7 @@
 
 namespace App\Services\Observability;
 
+use App\Services\Notifications\UnifiedNotifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PDO;
@@ -141,6 +142,23 @@ final class EncryptedDatabaseBackupService
                 $alert = "🚨 خطا در بکاپ خودکار دیتابیس نوین‌پی\nزمان: ".$now->format('Y-m-d H:i:s')."\nنوع خطا: ".$e::class;
                 $this->topics->send('backups', $alert, $force ? null : 'scheduled_db_backup_fail:'.$now->format('YmdH'));
                 $this->topics->send('errors', $alert, 'scheduled_db_backup_err:'.$now->format('YmdH'));
+                app(UnifiedNotifier::class)->criticalOperationalAlert(
+                    category: 'backup',
+                    subject: '🚨 خطا در تهیه بکاپ رمزنگاری‌شده خودکار دیتابیس',
+                    heading: 'تهیه نسخه پشتیبان خودکار دیتابیس ناموفق بود',
+                    intro: 'اجرای زمان‌بندی‌شده بکاپ رمزنگاری‌شده دیتابیس با خطا مواجه شد و نیازمند بررسی مدیر فنی است.',
+                    fields: [
+                        'وضعیت بکاپ' => 'ناموفق',
+                        'فایل هدف' => $fileName,
+                        'کلاس خطا' => $e::class,
+                    ],
+                    dedupeKey: 'scheduled_db_backup_err:'.$now->format('YmdH'),
+                    ttlMinutes: 60,
+                    actionLabel: 'مشاهده سلامت سیستم',
+                    actionUrl: url('/admin/system-health'),
+                    statusBadge: 'خطای بکاپ دیتابیس',
+                    statusTone: 'danger',
+                );
             } catch (Throwable) {
             }
 

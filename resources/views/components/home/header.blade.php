@@ -24,7 +24,7 @@
                         <div class="np-nav__dropdown" role="region" aria-label="دسته‌بندی‌های فروشگاه">
                             <div class="np-nav__dropdown-list">
                                 @foreach ($shopCategories as $category)
-                                    <a href="{{ route('products.index', ['category' => $category->value]) }}" @if ($activeCategory === $category->value) aria-current="page" @endif>
+                                    <a href="{{ route('products.index', ['category' => $category->value]) }}" rel="nofollow" @if ($activeCategory === $category->value) aria-current="page" @endif>
                                         <span>{{ $category->label() }}</span>
                                         <x-storefront.icon name="arrow" class="np-nav__dropdown-arrow" />
                                     </a>

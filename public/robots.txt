@@ -1,4 +1,7 @@
 User-agent: *
-Disallow:
+Disallow: /admin/
+Disallow: /support-chat/operator/
+Disallow: /bot/
+Disallow: /telemetry/
 
 Sitemap: https://novinpaypos.com/sitemap.xml

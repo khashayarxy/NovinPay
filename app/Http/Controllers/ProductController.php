@@ -50,6 +50,18 @@ class ProductController extends Controller
         $sort = $validated['sort'] ?? null;
         $condition = $validated['condition'] ?? null;
         $onlyAvailable = $request->boolean('available');
+        $hasFilters = $term !== '' || $category !== null || $condition !== null || $onlyAvailable || $sort !== null;
+
+        if ($request->query->has('page')) {
+            $rawPage = $request->query('page');
+            if (! is_string($rawPage) || preg_match('/\A[1-9][0-9]{0,4}\z/', $rawPage) !== 1) {
+                abort(404);
+            }
+            if ($rawPage === '1' && array_keys($request->query()) === ['page']) {
+                return response('', 301, ['Location' => route('products.index')]);
+            }
+        }
+
         $products = Product::query()
             ->published()
             ->visibleTo($account)
@@ -77,6 +89,7 @@ class ProductController extends Controller
                 'sort' => $sort,
             ]));
 
+        $isOutOfRangePage = $products->isEmpty() && $products->currentPage() > 1;
         $stock = $products->getCollection()->mapWithKeys(fn (Product $product) => [$product->id => $checkout->confirmedInventory($product)?->available])->all();
 
         $response = response()->view('products.index', [
@@ -91,11 +104,11 @@ class ProductController extends Controller
             'term' => $term,
             'category' => $category,
             'categories' => ProductCategory::storefrontCases(),
-            'hasFilters' => $term !== '' || $category !== null || $condition !== null || $onlyAvailable || $sort !== null,
+            'hasFilters' => $hasFilters,
             'activeFilterCount' => ($category ? 1 : 0) + ($condition ? 1 : 0) + ($onlyAvailable ? 1 : 0),
             'canonical' => rtrim(config('app.url'), '/').route('products.index', [], false)
-                .($products->currentPage() > 1 ? '?page='.$products->currentPage() : ''),
-            'publicRobots' => $term !== '' || $category !== null || array_diff(array_keys($request->query()), ['page'])
+                .($products->currentPage() > 1 && ! $isOutOfRangePage ? '?page='.$products->currentPage() : ''),
+            'publicRobots' => $isOutOfRangePage || $term !== '' || $category !== null || array_diff(array_keys($request->query()), ['page'])
                 ? 'noindex, follow' : 'index, follow',
         ]);
 
@@ -298,6 +311,7 @@ class ProductController extends Controller
             'specGroups' => $specGroups,
             'specs' => $specs,
             'lockedCategory' => $lockedCategory,
+            'canonical' => rtrim(config('app.url'), '/').route('products.compare', [], false),
             'publicRobots' => 'noindex, follow',
         ]);
     }

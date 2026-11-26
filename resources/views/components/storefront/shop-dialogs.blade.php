@@ -54,9 +54,9 @@
         <div class="search-quick-suggestions" aria-label="جستجوهای پیشنهادی">
             <span class="search-quick-suggestions__label">جستجوی سریع:</span>
             <div class="search-quick-suggestions__chips">
-                <a class="search-quick-chip" href="{{ route('products.index', ['q' => 'رول کاغذ']) }}">رول کاغذ</a>
-                <a class="search-quick-chip" href="{{ route('products.index', ['q' => 'کارتخوان سیار']) }}">کارتخوان سیار</a>
-                <a class="search-quick-chip" href="{{ route('products.index', ['q' => 'ME31']) }}"><bdi class="np-latin" dir="ltr">ME31</bdi></a>
+                <a class="search-quick-chip" href="{{ route('products.index', ['q' => 'رول کاغذ']) }}" rel="nofollow">رول کاغذ</a>
+                <a class="search-quick-chip" href="{{ route('products.index', ['q' => 'کارتخوان سیار']) }}" rel="nofollow">کارتخوان سیار</a>
+                <a class="search-quick-chip" href="{{ route('products.index', ['q' => 'ME31']) }}" rel="nofollow"><bdi class="np-latin" dir="ltr">ME31</bdi></a>
             </div>
         </div>
         <button type="submit" class="primary"><x-storefront.icon name="search" />جستجو</button>

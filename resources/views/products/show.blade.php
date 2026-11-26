@@ -74,7 +74,7 @@
                         @elseif ($product->is_sample)
                             <span class="badge badge-sample">داده نمونه</span>
                         @else
-                            <a class="public-inline-link product-compare-link" href="{{ route('products.compare', ['products' => [$product->slug]]) }}"><x-storefront.icon name="compare" /> مقایسهٔ محصول</a>
+                            <a class="public-inline-link product-compare-link" href="{{ route('products.compare', ['products' => [$product->slug]]) }}" rel="nofollow"><x-storefront.icon name="compare" /> مقایسهٔ محصول</a>
                         @endif
                     </div>
                     <h1 id="product-title">{{ \App\Support\LatinText::html($product->displayName()) }}</h1>
