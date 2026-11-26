@@ -41,9 +41,8 @@ const loadCssBundle = () => {
         compiledAppCss = [
             read('resources/css/home.css'),
             read('resources/css/public.css'),
-            read('resources/css/app.css')
-                .replace(/^@import\s+['"][^'"]+['"];\s*$/gm, '')
-                .replace(/^@source\s+['"][^'"]+['"];\s*$/gm, ''),
+            read('resources/css/customer-account.css'),
+            read('resources/css/app.css').replace(/^@(?:import|source)\b[^\r\n]*;/gm, ''),
         ].join('\n');
     }
     return [
@@ -78,7 +77,17 @@ const startFixtureServer = async routes => {
     };
 };
 
-test('Chromium: mobile /products filter & sort sheets open, respond inside, and close via X, backdrop tap, and Escape without freezing scroll or touch', async t => {
+test('Support chat FAQ tab does not auto-focus search input and repair combobox normalizes Persian text & blurs', () => {
+    const customerV2 = readFileSync(new URL('../../resources/support-chat/support-client/customer-v2.js', import.meta.url), 'utf8');
+    assert.ok(!customerV2.includes('searchInput?.focus'), 'FAQ tab switch must never auto-focus #supportFaqSearch');
+
+    const appJs = readFileSync(new URL('../../resources/js/app.js', import.meta.url), 'utf8');
+    assert.ok(appJs.includes('normalizePersianSearch'), 'app.js must define normalizePersianSearch');
+    assert.ok(appJs.includes('inputEl.blur()'), 'Province/city combobox must call inputEl.blur() on selection');
+    assert.ok(!appJs.includes('lastAutoOtpPhone'), 'Step 4 must not auto-send OTP on step entry');
+});
+
+test('Chromium: mobile /products filter & sort sheets slide up/down and close via X, backdrop tap, and Escape without freezing scroll or touch', async t => {
     const executable = findChrome();
     if (!executable) { t.skip('Chromium unavailable'); return; }
     const directory = mkdtempSync(path.join(tmpdir(), 'novinpay-filter-freeze-'));
@@ -178,20 +187,27 @@ test('Chromium: mobile /products filter & sort sheets open, respond inside, and 
                     await wait(20);
                 };
 
-                // 1) Open filter -> verify inside options respond -> close via X button -> verify unlocked & scrollable
+                // 1) Open filter -> verify bottom-sheet slide animation & inside options -> close via X button
                 filterBtn.click();
                 const openImmediate = filterDialog.open;
                 await wait(50);
                 check(filterDialog.open && document.documentElement.classList.contains('storefront-overlay-open'), '1: filter dialog opens and locks scroll (imm=' + openImmediate + ', open=' + filterDialog.open + ', errs=' + window.__runtimeErrors.join('|') + ', cls=' + document.documentElement.className + ')');
+                if (innerWidth <= 767 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    const animIn = getComputedStyle(filterDialog).animationName;
+                    check(animIn === 'np-cart-in-bottom', '1: filter drawer uses np-cart-in-bottom slide animation (got ' + animIn + ', vw=' + innerWidth + ')');
+                }
                 document.getElementById('pos-chip').click();
                 check(document.getElementById('pos-radio').checked, '1: filter chip option responds inside drawer');
                 filterDialog.querySelector('[data-storefront-close]').click();
+                if (innerWidth <= 767 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    check(getComputedStyle(filterDialog).animationName === 'np-cart-out-bottom', '1: filter drawer uses np-cart-out-bottom slide animation on close');
+                }
                 await wait(340);
                 await assertUnlockedAndInteractive('1-close-button');
 
                 // 2) Reopen filter -> close via outside backdrop tap (touch-like click with detail=0 AND standard detail=1)
                 filterBtn.click();
-                await wait(50);
+                await wait(260);
                 check(filterDialog.open, '2a: filter dialog reopens for backdrop tap (detail=0)');
                 const sheetBoundsA = filterDialog.getBoundingClientRect();
                 const backdropY = Math.max(8, Math.floor(sheetBoundsA.top / 2));
@@ -201,7 +217,7 @@ test('Chromium: mobile /products filter & sort sheets open, respond inside, and 
                 await assertUnlockedAndInteractive('2a-backdrop-touch-tap');
 
                 filterBtn.click();
-                await wait(50);
+                await wait(260);
                 check(filterDialog.open, '2b: filter dialog reopens for backdrop tap (detail=1)');
                 const sheetBoundsB = filterDialog.getBoundingClientRect();
                 const backdropYB = Math.max(8, Math.floor(sheetBoundsB.top / 2));
@@ -212,15 +228,15 @@ test('Chromium: mobile /products filter & sort sheets open, respond inside, and 
 
                 // 3) Reopen filter -> verify reset link is hit-testable -> close via Escape key -> verify unlocked
                 filterBtn.click();
-                await wait(50);
+                await wait(60);
+                await Promise.all(filterDialog.getAnimations().map(a => a.finished.catch(() => {})));
                 check(filterDialog.open, '3: filter dialog reopens for Escape');
                 const resetLink = document.getElementById('reset-filters-link');
                 const resetRect = resetLink.getBoundingClientRect();
-                const resetHit = document.elementFromPoint(resetRect.left + 12, resetRect.top + 12);
+                const resetHit = document.elementFromPoint(Math.round(resetRect.left + resetRect.width / 2), Math.round(resetRect.top + resetRect.height / 2));
                 check(resetHit && resetLink.contains(resetHit), '3: reset filters button is hit-testable inside sheet');
                 resetLink.click();
                 check(location.hash === '#reset-filters', '3: reset filters link navigates/activates cleanly');
-                // Reset hash back to overlay hash or close via Escape directly when reopened:
                 if (filterDialog.open) {
                     filterDialog.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}));
                     await wait(340);
@@ -253,7 +269,7 @@ test('Chromium: mobile /products filter & sort sheets open, respond inside, and 
         const result = await runChrome(executable, [
             '--headless=new', '--disable-gpu', '--disable-background-networking',
             '--window-size=390,844', '--no-first-run', '--user-data-dir=' + path.join(directory, 'profile'),
-            '--virtual-time-budget=9000', '--dump-dom', server.origin + '/products',
+            '--virtual-time-budget=9500', '--dump-dom', server.origin + '/products',
         ]);
 
         assert.equal(result.status, 0, result.stderr.slice(-500));
@@ -356,6 +372,15 @@ test('Chromium: multi-viewport smoke across 390x844, 768x1024, and 1440x900 for 
                     <div class="repair-split-card repair-confirm-split">
                         <section class="repair-split-form repair-confirm-main">
                             <div class="repair-confirm-head"><span class="repair-confirm-badge">✓</span><h1 id="confirmation-title">درخواست تعمیر شما ثبت شد</h1></div>
+                            <div class="repair-confirm-stepper">
+                                <ol class="repair-progress repair-progress--4 repair-confirm-progress">
+                                    <li data-stage="complete"><div class="repair-progress__item" data-step-done="true"><span class="repair-progress__num">✓</span><span class="repair-progress__label">ثبت درخواست</span></div></li>
+                                    <li data-stage="current"><div class="repair-progress__item" aria-current="step"><span class="repair-progress__num">۲</span><span class="repair-progress__label">دریافت دستگاه</span></div></li>
+                                    <li data-stage="upcoming"><div class="repair-progress__item"><span class="repair-progress__num">۳</span><span class="repair-progress__label">بررسی و اعلام هزینه</span></div></li>
+                                    <li data-stage="upcoming"><div class="repair-progress__item"><span class="repair-progress__num">۴</span><span class="repair-progress__label">تعمیر و تحویل</span></div></li>
+                                </ol>
+                                <p class="repair-confirm-stepper__note">وضعیت فعلی: <strong>دستگاه هنوز تحویل نشده است</strong></p>
+                            </div>
                             <div class="repair-confirmation-code"><span class="repair-confirmation-code__label">کد پیگیری</span><p class="public-reference" dir="ltr">48291037</p></div>
                             <div class="public-actions repair-confirm-actions"><a href="#track" class="np-button np-button--primary">پیگیری وضعیت تعمیر</a><a href="tel:09362896373" class="np-button np-button--outline">تماس با نوین‌پی</a></div>
                         </section>
@@ -405,6 +430,11 @@ test('Chromium: multi-viewport smoke across 390x844, 768x1024, and 1440x900 for 
                             trigger.click();
                             await wait(50);
                             if (!dlg.open) throw new Error('/products@' + w + 'x' + h + ' filter dialog did not open');
+                            if (w < 768 && !win.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                                if (win.getComputedStyle(dlg).animationName !== 'np-cart-in-bottom') {
+                                    throw new Error('/products@' + w + 'x' + h + ' expected np-cart-in-bottom animation');
+                                }
+                            }
                             dlg.querySelector('[data-storefront-close]').click();
                             await wait(340);
                             if (dlg.open || doc.documentElement.classList.contains('storefront-overlay-open')) {
@@ -440,20 +470,34 @@ test('Chromium: multi-viewport smoke across 390x844, 768x1024, and 1440x900 for 
                             if (w < 960 && trustPane.top + 4 < formPane.bottom) {
                                 throw new Error(page + '@' + w + 'x' + h + ' expected stacked split card on mobile/tablet');
                             }
-                        }
-
-                        if (page === '/repair') {
                             const labels = [...doc.querySelectorAll('.repair-progress__label')].map(el => el.getBoundingClientRect());
-                            for (let i = 0; i < labels.length; i++) {
-                                for (let j = i + 1; j < labels.length; j++) {
-                                    const a = labels[i], b = labels[j];
-                                    const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
-                                    const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-                                    if (overlapX > 1 && overlapY > 1) {
-                                        throw new Error('Stepper label overlap on /repair@' + w + 'x' + h);
+                            if (labels.length === 4) {
+                                const nums = [...doc.querySelectorAll('.repair-progress__num')].map(el => el.getBoundingClientRect());
+                                if (Math.abs(nums[0].top - nums[3].top) > 4) {
+                                    throw new Error(page + '@' + w + 'x' + h + ' expected horizontal 4-column stepper circles');
+                                }
+                                for (let i = 0; i < labels.length; i++) {
+                                    for (let j = i + 1; j < labels.length; j++) {
+                                        const a = labels[i], b = labels[j];
+                                        const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+                                        const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+                                        if (overlapX > 1 && overlapY > 1) {
+                                            throw new Error('Stepper label overlap on ' + page + '@' + w + 'x' + h);
+                                        }
                                     }
                                 }
                             }
+                        }
+
+                        if (page === '/repair/confirmation' && w < 768) {
+                            const mainBox = doc.querySelector('.repair-confirm-main').getBoundingClientRect();
+                            const codeBox = doc.querySelector('.repair-confirmation-code').getBoundingClientRect();
+                            if (codeBox.width < mainBox.width - 40) {
+                                throw new Error('/repair/confirmation@' + w + 'x' + h + ' tracking code card should be full-width on mobile (got ' + codeBox.width + ' inside ' + mainBox.width + ')');
+                            }
+                        }
+
+                        if (page === '/repair') {
                             const toggle = doc.querySelector('[data-other-person-toggle]');
                             const field = doc.querySelector('[data-other-person-field]');
                             const phone = doc.getElementById('responsive_phone');

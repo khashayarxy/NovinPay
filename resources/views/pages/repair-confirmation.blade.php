@@ -4,10 +4,10 @@
 @php
     $handover = session('repair_handover');
     $confirmationSteps = [
-        ['label' => 'ثبت درخواست', 'state' => 'complete', 'at' => null],
-        ['label' => 'دریافت دستگاه', 'state' => 'current', 'note' => 'دستگاه هنوز تحویل نشده است', 'at' => null],
-        ['label' => 'بررسی و اعلام هزینه', 'state' => 'upcoming', 'at' => null],
-        ['label' => 'تعمیر و تحویل', 'state' => 'upcoming', 'at' => null],
+        ['num' => '۱', 'label' => 'ثبت درخواست', 'state' => 'complete'],
+        ['num' => '۲', 'label' => 'دریافت دستگاه', 'state' => 'current'],
+        ['num' => '۳', 'label' => 'بررسی و اعلام هزینه', 'state' => 'upcoming'],
+        ['num' => '۴', 'label' => 'تعمیر و تحویل', 'state' => 'upcoming'],
     ];
 @endphp
 <div class="repair-entry-bg" data-repair-confirmed>
@@ -25,7 +25,25 @@
                 </div>
 
                 <div class="repair-confirm-stepper">
-                    <x-account.timeline :steps="$confirmationSteps" orientation="horizontal" />
+                    <ol class="repair-progress repair-progress--4 repair-confirm-progress" aria-label="مراحل پیگیری تعمیر">
+                        @foreach ($confirmationSteps as $step)
+                            <li data-stage="{{ $step['state'] }}">
+                                <div class="repair-progress__item"
+                                     @if ($step['state'] === 'complete') data-step-done="true" @endif
+                                     @if ($step['state'] === 'current') aria-current="step" @endif>
+                                    <span class="repair-progress__num" aria-hidden="true">
+                                        @if ($step['state'] === 'complete')
+                                            <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="m3 8 3 3 7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        @else
+                                            {{ $step['num'] }}
+                                        @endif
+                                    </span>
+                                    <span class="repair-progress__label">{{ $step['label'] }}</span>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ol>
+                    <p class="repair-confirm-stepper__note">وضعیت فعلی: <strong>دستگاه هنوز تحویل نشده است</strong></p>
                 </div>
 
                 <div class="repair-confirmation-code">

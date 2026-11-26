@@ -16,6 +16,7 @@ use App\Services\CustomerNotifications;
 use App\Services\LegacyCartHold;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Services\Observability\ObservabilityEvents;
+use App\Services\ShoppingCart;
 use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
 use App\Support\FinanceTime;
@@ -176,6 +177,7 @@ class RepairRequestController extends Controller
         ]);
         $request->session()->put('customer_session_version', $account->session_version);
         $request->session()->put('customer_otp_at', now()->timestamp);
+        app(ShoppingCart::class)->mergeGuestIntoAccount($request, $account);
         if (! $request->session()->has('repair_submission_token')) {
             $request->session()->put('repair_submission_token', bin2hex(random_bytes(32)));
         }

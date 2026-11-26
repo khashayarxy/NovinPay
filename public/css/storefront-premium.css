@@ -2025,7 +2025,7 @@ html:has(body.premium-storefront) {
     }
 }
 @media(prefers-reduced-motion:no-preference) {
-    .premium-storefront dialog[open]:not(.category-dialog):not(.np-mobile-drawer) {
+    .premium-storefront dialog[open]:not(.category-dialog):not(.np-mobile-drawer):not(.store-sheet-dialog):not(.store-cart-drawer) {
         animation: overlay-arrive .18s ease-out;
     }
     @keyframes overlay-arrive {
