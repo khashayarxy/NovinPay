@@ -55,16 +55,28 @@ const loadCssBundle = () => {
     ].join('\n').replace(/@font-face\s*\{[^}]*\}/g, '');
 };
 
-const loadCompiledAppJs = () => {
+const loadScriptRoutes = () => {
+    const read = rel => readFileSync(new URL('../../' + rel, import.meta.url), 'utf8');
     const manifestPath = new URL('../../public/build/manifest.json', import.meta.url);
     if (existsSync(manifestPath)) {
         const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
         const appJsFile = manifest['resources/js/app.js']?.file;
         if (appJsFile && existsSync(new URL('../../public/build/' + appJsFile, import.meta.url))) {
-            return readFileSync(new URL('../../public/build/' + appJsFile, import.meta.url), 'utf8');
+            return {
+                '/app.js': {type: 'application/javascript; charset=utf-8', body: read('public/build/' + appJsFile)},
+            };
         }
     }
-    return '';
+    const rawAppJs = read('resources/js/app.js')
+        .replace(/from\s+['"]\.\/mobile-navigation['"]/g, "from '/mobile-navigation.js'")
+        .replace(/from\s+['"]\.\/click-map['"]/g, "from '/click-map.js'")
+        .replace(/from\s+['"]\.\/customer-navigation['"]/g, "from '/customer-navigation.js'");
+    return {
+        '/app.js': {type: 'application/javascript; charset=utf-8', body: rawAppJs},
+        '/mobile-navigation.js': {type: 'application/javascript; charset=utf-8', body: read('resources/js/mobile-navigation.js')},
+        '/click-map.js': {type: 'application/javascript; charset=utf-8', body: read('resources/js/click-map.js')},
+        '/customer-navigation.js': {type: 'application/javascript; charset=utf-8', body: read('resources/js/customer-navigation.js')},
+    };
 };
 
 const startFixtureServer = async routes => {
@@ -94,8 +106,7 @@ test('Chromium: Phase 4 consultation split-card, unified red cart badge, 48x48 m
         return;
     }
 
-    const appJs = loadCompiledAppJs();
-    assert.ok(appJs.length > 0, 'Expected compiled public/build app.js from npm run build');
+    const scriptRoutes = loadScriptRoutes();
     const css = loadCssBundle();
 
     const directory = mkdtempSync(path.join(tmpdir(), 'novinpay-phase4-smoke-'));
@@ -151,7 +162,7 @@ test('Chromium: Phase 4 consultation split-card, unified red cart badge, 48x48 m
         </body></html>`;
 
         const routes = {
-            '/app.js': {type: 'application/javascript; charset=utf-8', body: appJs},
+            ...scriptRoutes,
             '/consultation': {body: consultationHtml},
             '/runner': {
                 body: `<!DOCTYPE html><meta charset="utf-8"><body><iframe id="vp" style="border:0"></iframe><script>
