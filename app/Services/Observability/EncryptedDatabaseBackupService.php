@@ -229,9 +229,11 @@ final class EncryptedDatabaseBackupService
         $driver = $connection->getDriverName();
 
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
-            $native = $this->tryNativeMysqlDump($connection->getConfig());
-            if ($native !== null && $native !== '') {
-                return $native;
+            if ($connection->transactionLevel() === 0) {
+                $native = $this->tryNativeMysqlDump($connection->getConfig());
+                if ($native !== null && $native !== '') {
+                    return $native;
+                }
             }
 
             return $this->exportMysqlViaPdo($connection->getPdo(), (string) $connection->getDatabaseName());
@@ -333,8 +335,12 @@ final class EncryptedDatabaseBackupService
         $out .= '-- Generated UTC: '.gmdate('Y-m-d\TH:i:s\Z')."\n";
         $out .= "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
 
-        $pdo->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
-        $pdo->beginTransaction();
+        $startedOwnTx = false;
+        if (! $pdo->inTransaction()) {
+            $pdo->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+            $pdo->beginTransaction();
+            $startedOwnTx = true;
+        }
         try {
             $tables = $pdo->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'")->fetchAll(PDO::FETCH_NUM);
             foreach ($tables as $row) {
@@ -366,9 +372,11 @@ final class EncryptedDatabaseBackupService
                     $out .= "DROP TRIGGER IF EXISTS {$quotedTrig};\n{$origSql};\n\n";
                 }
             }
-            $pdo->commit();
+            if ($startedOwnTx && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
+            if ($startedOwnTx && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             throw $e;
