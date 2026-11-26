@@ -5,6 +5,7 @@ use App\Http\Middleware\AttachIncidentId;
 use App\Http\Middleware\NormalizeNumericDigits;
 use App\Http\Middleware\PreviewAwareSession;
 use App\Http\Middleware\PublicSiteMaintenance;
+use App\Http\Middleware\ServeGuestPageCache;
 use App\Services\Observability\ObservabilityMetrics;
 use App\Services\Observability\TelegramTopicNotifier;
 use App\Support\SafeDatabaseErrors;
@@ -31,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(PublicSiteMaintenance::class);
         $middleware->prepend(AttachIncidentId::class);
-        $middleware->web(prepend: [NormalizeNumericDigits::class]);
+        $middleware->web(prepend: [ServeGuestPageCache::class, NormalizeNumericDigits::class]);
         $middleware->web(replace: [StartSession::class => PreviewAwareSession::class]);
         $middleware->append(AddSecurityHeaders::class);
 

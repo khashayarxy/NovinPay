@@ -15,7 +15,7 @@
         <div class="gallery-footer">
             <div class="thumbs" role="group" aria-label="انتخاب تصویر">
                 @foreach ($images as $image)
-                    <button type="button" data-gallery-choice aria-pressed="{{ $loop->first ? 'true' : 'false' }}" aria-label="{{ $image['alt'] ?? 'تصویر '.$product->name }}"><x-product-image :product="$product" :image="$image" /></button>
+                    <button type="button" data-gallery-choice aria-pressed="{{ $loop->first ? 'true' : 'false' }}" aria-label="{{ $image['alt'] ?? 'تصویر '.$product->name }}"><x-product-image :product="$product" :image="$image" sizes="56px" /></button>
                 @endforeach
             </div>
             <span class="image-count" data-gallery-count aria-live="polite">{{ \App\Support\FaNumber::digits(1) }} از {{ \App\Support\FaNumber::digits(count($images)) }}</span>

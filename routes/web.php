@@ -188,7 +188,7 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/product-media/{filename}', ProductMediaController::class)
     ->where('filename', '[A-Za-z0-9_-][A-Za-z0-9._-]*\.(?i:jpg|jpeg|png|webp)')
-    ->withoutMiddleware([PreviewAwareSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+    ->withoutMiddleware([ShareErrorsFromSession::class, PreventRequestForgery::class])
     ->name('products.media');
 Route::get('/product-comparison', [ProductController::class, 'compare'])->name('products.compare');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');

@@ -854,6 +854,19 @@
                 }
             } else if (dialog.hasAttribute('data-cart-preload') && cartEpoch === 0 && hydrateCartFromSsr(dialog)) {
                 // Rendered synchronously from SSR cart payload in 0ms; no network wait needed.
+            } else if (dialog.dataset.cartEmptyGuest === '1' && cartEpoch === 0) {
+                const emptyTpl = dialog.querySelector('[data-empty-cart]');
+                if (emptyTpl) {
+                    dialog.querySelector('[data-live-cart]').replaceChildren(emptyTpl.content.cloneNode(true));
+                    dialog.querySelector('[data-cart-summary]').replaceChildren();
+                    const viewLink = dialog.querySelector('[data-cart-view-link]');
+                    if (viewLink) viewLink.hidden = true;
+                    dialog.querySelector('[data-cart-footer]').hidden = true;
+                    dialog.querySelector('[data-cart-retry]').hidden = true;
+                    dialog.querySelector('[data-live-cart]').inert = false;
+                } else {
+                    refreshCart(dialog);
+                }
             } else {
                 refreshCart(dialog);
             }

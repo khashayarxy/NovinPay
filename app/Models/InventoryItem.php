@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\GuestPageCache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class InventoryItem extends Model
 {
     protected $guarded = ['*'];
+
+    protected static function booted(): void
+    {
+        static::saved(static fn () => GuestPageCache::bump());
+        static::deleted(static fn () => GuestPageCache::bump());
+    }
 
     protected function casts(): array
     {

@@ -13,6 +13,10 @@ class PreviewAwareSession extends StartSession
 {
     private bool $readOnlyPreview = false;
 
+    private bool $guestCacheCandidate = false;
+
+    private bool $forcePersistSession = false;
+
     private const READ_ONLY_CHAT_ENDPOINTS = [
         'support-widget.php',
         'support-content.php',
@@ -29,8 +33,11 @@ class PreviewAwareSession extends StartSession
     public function handle($request, Closure $next)
     {
         $isReadMethod = $request->isMethod('GET') || $request->isMethod('HEAD');
+        $this->guestCacheCandidate = $isReadMethod && (bool) $request->attributes->get('guest_public_read_only');
+        $this->forcePersistSession = false;
         $this->readOnlyPreview = ($isReadMethod
-            && $request->routeIs('admin.maintenance.preview', 'admin.maintenance.preview.page', 'support.chat.operator.asset', 'customer.header'))
+            && $request->routeIs('admin.maintenance.preview', 'admin.maintenance.preview.page', 'support.chat.operator.asset', 'customer.header', 'products.media'))
+            || $this->guestCacheCandidate
             || ($isReadMethod && $this->isReadOnlyChatRequest($request));
         try {
             if ($this->readOnlyPreview && $this->sessionConfigured()) {
@@ -41,6 +48,8 @@ class PreviewAwareSession extends StartSession
             return parent::handle($request, $next);
         } finally {
             $this->readOnlyPreview = false;
+            $this->guestCacheCandidate = false;
+            $this->forcePersistSession = false;
         }
     }
 
@@ -91,14 +100,22 @@ class PreviewAwareSession extends StartSession
 
     protected function saveSession($request)
     {
-        if (! $this->readOnlyPreview) {
+        $hasGuestFlash = $this->guestCacheCandidate
+            && $request->hasSession()
+            && ($request->session()->has('errors') || $request->session()->get('_flash.new', []) !== []);
+
+        if (! $this->readOnlyPreview || $this->forcePersistSession || $hasGuestFlash) {
             parent::saveSession($request);
         }
     }
 
     protected function addCookieToResponse(Response $response, Session $session)
     {
-        if (! $this->readOnlyPreview) {
+        if ($this->guestCacheCandidate && ($response->isRedirection() || $session->has('errors') || $session->get('_flash.new', []) !== [])) {
+            $this->forcePersistSession = true;
+        }
+
+        if (! $this->readOnlyPreview || $this->forcePersistSession) {
             parent::addCookieToResponse($response, $session);
         }
     }

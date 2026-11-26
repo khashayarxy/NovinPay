@@ -245,8 +245,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let iranLocations = {};
         let courierZones = {};
-        try { iranLocations = JSON.parse(document.getElementById('repair-iran-locations')?.textContent || '{}') || {}; } catch {}
+        let iranLocationsPromise = null;
+        const iranLocationsEl = document.getElementById('repair-iran-locations');
+        const inlineIranRaw = (iranLocationsEl?.textContent || '').trim();
+        if (inlineIranRaw) {
+            try { iranLocations = JSON.parse(inlineIranRaw) || {}; } catch {}
+        }
         try { courierZones = JSON.parse(document.getElementById('repair-courier-zones')?.textContent || '{}') || {}; } catch {}
+
+        const ensureRepairIranLocations = () => {
+            if (Object.keys(iranLocations).length > 0) return Promise.resolve(iranLocations);
+            const src = iranLocationsEl?.dataset?.src;
+            if (!src || typeof window.fetch !== 'function') return Promise.resolve(iranLocations);
+            if (!iranLocationsPromise) {
+                iranLocationsPromise = window.fetch(src, { credentials: 'same-origin' })
+                    .then((r) => (r.ok ? r.json() : {}))
+                    .then((data) => {
+                        if (data && typeof data === 'object') {
+                            iranLocations = data;
+                            if (provinceSelect?.value) {
+                                const desiredCity = citySelect?.value || citySelect?.dataset?.pendingCity || '';
+                                populateRepairCities(desiredCity);
+                            }
+                        }
+                        return iranLocations;
+                    })
+                    .catch(() => {
+                        iranLocationsPromise = null;
+                        return iranLocations;
+                    });
+            }
+            return iranLocationsPromise;
+        };
+        if (iranLocationsEl?.dataset?.src) {
+            const idle = window.requestIdleCallback || ((fn) => window.setTimeout(fn, 250));
+            idle(() => { ensureRepairIranLocations(); });
+        }
 
         const isPickupSupported = (province, city) => {
             const normProv = normalizePersianSearch(province);
@@ -458,6 +492,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const populateRepairCities = (targetCity = '') => {
             if (!(provinceSelect instanceof HTMLSelectElement) || !(citySelect instanceof HTMLSelectElement)) return;
             const prov = provinceSelect.value;
+            if (prov && Object.keys(iranLocations).length === 0 && iranLocationsEl?.dataset?.src) {
+                if (targetCity) citySelect.dataset.pendingCity = targetCity;
+                ensureRepairIranLocations();
+                return;
+            }
+            delete citySelect.dataset.pendingCity;
             const cities = Array.isArray(iranLocations[prov]) ? iranLocations[prov] : [];
             citySelect.innerHTML = '';
             const placeholder = document.createElement('option');

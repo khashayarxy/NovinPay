@@ -215,7 +215,7 @@
                                     <ul id="repair_province_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
                                     <select id="repair_province" name="province" class="sr-only" tabindex="-1" data-repair-province aria-invalid="{{ $errors->has('province') ? 'true' : 'false' }}">
                                         <option value="">انتخاب استان...</option>
-                                        @foreach (array_keys($iranLocations) as $provinceName)
+                                        @foreach (($iranLocationProvinces ?? array_keys($iranLocations ?? [])) as $provinceName)
                                             <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
                                         @endforeach
                                     </select>
@@ -440,7 +440,7 @@
                     </div>
                 </div>
             </form>
-            <script type="application/json" id="repair-iran-locations">@json($iranLocations)</script>
+            <script type="application/json" id="repair-iran-locations" data-src="{{ versioned_asset('js/iran-locations.json') }}"></script>
             <script type="application/json" id="repair-courier-zones">@json($courierZones)</script>
         </section>
 

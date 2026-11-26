@@ -6,6 +6,7 @@ use App\Enums\AdminAction;
 use App\Models\AdminAccount;
 use App\Models\User;
 use App\Support\AdminHistory;
+use App\Support\GuestPageCache;
 use App\Support\MaintenanceStateFault;
 use App\Support\SiteMaintenanceState;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,7 @@ class SiteMaintenance
                 $html = $enabled ? SiteMaintenanceState::render(base_path()) : '';
                 $this->state->change($input['version'], $enabled, $actor->id, $html);
                 $published = true;
+                GuestPageCache::bump();
                 AdminHistory::record($enabled ? AdminAction::MaintenanceEnabled : AdminAction::MaintenanceDisabled, 'public_website', null, $actor->id);
             }, attempts: 1);
         } catch (\Throwable $exception) {
