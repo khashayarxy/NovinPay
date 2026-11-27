@@ -148,7 +148,7 @@ class CartController extends Controller
         $savedAddressPublicId = $existingDraft['address'] ?? null;
 
         DB::transaction(function () use ($account, $input, &$savedAddressPublicId): void {
-            $fresh = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
+            $fresh = CustomerAccount::query()->findOrFail($account->id);
             $dirty = false;
 
             $fullName = isset($input['full_name']) && is_string($input['full_name']) ? trim($input['full_name']) : '';
@@ -361,7 +361,7 @@ class CartController extends Controller
         // Save inline personal details & optional new address directly inside checkout (no /account detour).
         $addressPublicId = $data['address'] ?? null;
         DB::transaction(function () use ($account, $data, $creatingInlineAddress, &$addressPublicId): void {
-            $fresh = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
+            $fresh = CustomerAccount::query()->findOrFail($account->id);
             $dirty = false;
             if (! empty($data['full_name'])) {
                 $fresh->name = trim($data['full_name']);

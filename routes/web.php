@@ -117,6 +117,8 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
         Route::get('/repairs/requests/{record}', [$controller, 'repairRequest'])->where('record', '[A-Za-z0-9-]{1,35}')->name('repairs.request');
         Route::patch('/repairs/requests/{record}/handover', [$controller, 'updateRepairHandover'])->where('record', '[A-Za-z0-9-]{1,35}')->middleware('throttle:20,1')->name('repairs.request.handover');
         Route::get('/repairs/{record}', [$controller, 'repair'])->whereUuid('record')->name('repairs.show');
+        Route::post('/repairs/{record}/documents', [OrderActivationDocumentsController::class, 'storeForRepair'])
+            ->whereUuid('record')->middleware('throttle:10,1')->name('repairs.documents.store');
         Route::get('/repairs/{record}/receipt', [$controller, 'repairReceipt'])->whereUuid('record')->name('repairs.receipt');
         Route::post('/repairs/{record}/pay', [PaymentController::class, 'startRepair'])->whereUuid('record')->middleware('throttle:10,1,cart-checkout:')->name('repairs.pay');
         Route::get('/orders/{record}', [$controller, 'order'])->whereUuid('record')->name('orders.show');
@@ -415,6 +417,7 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
             }
             Route::get('repairs/{repairCase}/documents/{document}', [RepairCaseController::class, 'document'])->name('repair-cases.document');
             Route::post('repairs/{repairCase}/payment-link', [RepairCaseController::class, 'generatePaymentLink'])->middleware('throttle:20,1')->name('repair-cases.payment-link');
+            Route::post('repairs/{repairCase}/request-activation-docs', [RepairCaseController::class, 'requestActivationDocuments'])->middleware('throttle:20,1')->name('repair-cases.request-activation-docs');
         });
     });
 });

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomerAccount;
+use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Services\ActivationDocumentsService;
 use App\Services\CustomerLogin;
+use App\Support\FaNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -70,6 +72,36 @@ final class OrderActivationDocumentsController extends Controller
         );
     }
 
+    public function storeForRepair(Request $request, string $record, ActivationDocumentsService $service): RedirectResponse
+    {
+        /** @var CustomerAccount $account */
+        $account = Auth::guard('customer')->user();
+        $case = RepairCase::query()
+            ->where('public_id', $record)
+            ->where(function ($q) use ($account): void {
+                $q->where('customer_account_id', $account->id);
+                if ($account->customer_id) {
+                    $q->orWhere('customer_id', $account->customer_id);
+                }
+            })
+            ->firstOrFail();
+
+        $redirectUrl = route('account.repairs.show', $case->public_id).'#activation-documents';
+        if (! in_array((string) $case->activation_docs_status, ['pending_submission', 'needs_revision'], true)) {
+            return redirect()->to($redirectUrl)->withErrors([
+                'documents' => 'در حال حاضر امکان ارسال مدارک فعال‌سازی برای این پرونده تعمیر فعال نیست.',
+            ]);
+        }
+
+        [$slotFiles, $extraFiles, $postalCode] = $this->validateUploadRequest($request, $service);
+        $service->submitRepairDocuments($case, $slotFiles, $extraFiles, $postalCode);
+
+        return redirect()->to($redirectUrl)->with(
+            'success',
+            'مدارک فعال‌سازی شما به‌صورت رمزنگاری‌شده ثبت شد و در صف بررسی کارشناسان نوین‌پی قرار گرفت.',
+        );
+    }
+
     private function processUpload(
         Request $request,
         SalesOrder $order,
@@ -82,11 +114,31 @@ final class OrderActivationDocumentsController extends Controller
             ]);
         }
 
+        [$slotFiles, $extraFiles, $postalCode] = $this->validateUploadRequest($request, $service);
+        $service->submitCustomerDocuments($order, $slotFiles, $extraFiles, $postalCode);
+
+        return redirect()->to($redirectUrl)->with(
+            'success',
+            'مدارک شما به‌صورت رمزنگاری‌شده ثبت شد و در صف بررسی کارشناسان نوین‌پی قرار گرفت.',
+        );
+    }
+
+    /**
+     * @return array{0: array<string, UploadedFile>, 1: list<UploadedFile>, 2: string}
+     */
+    private function validateUploadRequest(Request $request, ActivationDocumentsService $service): array
+    {
+        if ($request->has('postal_code') && is_string($request->input('postal_code'))) {
+            $normalizedPostal = preg_replace('/\D+/', '', FaNumber::normalizeDigits(trim($request->input('postal_code')))) ?? '';
+            $request->merge(['postal_code' => $normalizedPostal]);
+        }
+
         $slots = $service->configuredSlots();
         $maxKb = max(512, (int) config('novinpay.docs_max_file_kb', 8192));
         $maxExtra = max(0, (int) config('novinpay.docs_max_extra_files', 4));
 
         $rules = [
+            'postal_code' => ['required', 'string', 'regex:/\A[0-9]{10}\z/'],
             'slots' => ['required', 'array'],
             'extra_files' => ['nullable', 'array', 'max:'.$maxExtra],
             'extra_files.*' => [
@@ -97,6 +149,7 @@ final class OrderActivationDocumentsController extends Controller
             ],
         ];
         $attributes = [
+            'postal_code' => 'کد پستی ۱۰ رقمی',
             'extra_files' => 'فایل‌های تکمیلی',
             'extra_files.*' => 'فایل تکمیلی',
         ];
@@ -113,7 +166,8 @@ final class OrderActivationDocumentsController extends Controller
         }
 
         $messages = [
-            'required' => 'بارگذاری «:attribute» الزامی است.',
+            'required' => 'تکمیل یا بارگذاری «:attribute» الزامی است.',
+            'postal_code.regex' => 'کد پستی باید دقیقاً ۱۰ رقم بدون خط تیره باشد.',
             'file' => '«:attribute» باید یک فایل معتبر باشد.',
             'mimes' => 'فرمت «:attribute» باید JPG، PNG، WebP یا PDF باشد.',
             'mimetypes' => 'محتوای «:attribute» باید تصویر معتبر یا فایل PDF باشد.',
@@ -121,7 +175,7 @@ final class OrderActivationDocumentsController extends Controller
             'extra_files.max' => 'تعداد فایل‌های تکمیلی بیش از سقف مجاز است.',
         ];
 
-        $request->validate($rules, $messages, $attributes);
+        $validated = $request->validate($rules, $messages, $attributes);
 
         $slotFiles = [];
         foreach (array_keys($slots) as $slotKey) {
@@ -138,11 +192,6 @@ final class OrderActivationDocumentsController extends Controller
             }
         }
 
-        $service->submitCustomerDocuments($order, $slotFiles, $extraFiles);
-
-        return redirect()->to($redirectUrl)->with(
-            'success',
-            'مدارک شما به‌صورت رمزنگاری‌شده ثبت شد و در صف بررسی کارشناسان نوین‌پی قرار گرفت.',
-        );
+        return [$slotFiles, $extraFiles, (string) $validated['postal_code']];
     }
 }

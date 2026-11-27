@@ -3416,4 +3416,256 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             }
         });
     });
+
+    // Custom modern accessible dropdowns replacing native OS <select> popups on storefront forms
+    const initCustomSelects = () => {
+        const selects = document.querySelectorAll(
+            'select[data-custom-select], .np-float-field select:not(.sr-only):not([data-native-select]), #delivery-address, #checkout-province, #checkout-city'
+        );
+        if (!selects.length) return;
+
+        const allInstances = [];
+        const closeAllExcept = (active) => {
+            allInstances.forEach((inst) => {
+                if (inst !== active) inst.close(false);
+            });
+        };
+
+        selects.forEach((select, idx) => {
+            if (!(select instanceof HTMLSelectElement) || select.dataset.npCsReady === '1') return;
+            if (select.closest('.admin-shell')) return;
+            select.dataset.npCsReady = '1';
+
+            const floatWrap = select.closest('.np-float-field');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'np-cs';
+            wrapper.dataset.customSelectWidget = select.id || `select-${idx}`;
+
+            const listId = `${select.id || `np-cs-${idx}`}-listbox`;
+            const trigger = document.createElement('button');
+            trigger.type = 'button';
+            trigger.className = 'np-cs__trigger';
+            trigger.setAttribute('role', 'combobox');
+            trigger.setAttribute('aria-haspopup', 'listbox');
+            trigger.setAttribute('aria-expanded', 'false');
+            trigger.setAttribute('aria-controls', listId);
+            if (select.getAttribute('aria-invalid') === 'true' || select.classList.contains('is-invalid')) {
+                trigger.setAttribute('aria-invalid', 'true');
+            }
+            if (select.id) {
+                const lbl = document.querySelector(`label[for="${CSS.escape(select.id)}"]`);
+                if (lbl) {
+                    if (!lbl.id) lbl.id = `${select.id}-label`;
+                    trigger.setAttribute('aria-labelledby', lbl.id);
+                    lbl.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (!trigger.disabled) {
+                            trigger.focus();
+                            instance.toggle();
+                        }
+                    });
+                }
+            }
+
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'np-cs__value';
+
+            const chevron = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            chevron.setAttribute('class', 'np-cs__chevron');
+            chevron.setAttribute('viewBox', '0 0 20 20');
+            chevron.setAttribute('fill', 'none');
+            chevron.setAttribute('stroke', 'currentColor');
+            chevron.setAttribute('stroke-width', '1.9');
+            chevron.setAttribute('aria-hidden', 'true');
+            chevron.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/>';
+
+            trigger.appendChild(valueSpan);
+            trigger.appendChild(chevron);
+
+            const menu = document.createElement('ul');
+            menu.id = listId;
+            menu.className = 'np-cs__menu';
+            menu.setAttribute('role', 'listbox');
+            menu.hidden = true;
+
+            select.classList.add('np-cs-native');
+            select.tabIndex = -1;
+            select.setAttribute('aria-hidden', 'true');
+
+            select.parentNode.insertBefore(wrapper, select);
+            wrapper.appendChild(select);
+            wrapper.appendChild(trigger);
+            wrapper.appendChild(menu);
+
+            let open = false;
+            let activeIndex = -1;
+
+            const visibleOptions = () =>
+                Array.from(select.options).filter((opt) => !opt.hidden && !(opt.value === '' && opt.disabled));
+
+            const syncDisplay = () => {
+                const selected = select.options[select.selectedIndex];
+                const hasVal = Boolean(selected && selected.value !== '');
+                const labelText = selected ? selected.textContent.trim() : '';
+                valueSpan.textContent = hasVal ? labelText : (floatWrap ? '' : (labelText || 'انتخاب کنید...'));
+                valueSpan.classList.toggle('is-placeholder', !hasVal);
+                wrapper.classList.toggle('has-value', hasVal);
+                if (floatWrap) {
+                    floatWrap.classList.toggle('is-floated', hasVal || open);
+                }
+                trigger.disabled = select.disabled;
+                if (select.getAttribute('aria-invalid') === 'true' || select.classList.contains('is-invalid')) {
+                    trigger.setAttribute('aria-invalid', 'true');
+                } else {
+                    trigger.removeAttribute('aria-invalid');
+                }
+            };
+
+            const renderMenu = () => {
+                menu.innerHTML = '';
+                const opts = visibleOptions();
+                opts.forEach((opt, i) => {
+                    const li = document.createElement('li');
+                    li.className = 'np-cs__option';
+                    li.setAttribute('role', 'option');
+                    li.dataset.value = opt.value;
+                    li.dataset.index = String(i);
+                    const isSelected = opt.selected && opt.value === select.value && opt.value !== '';
+                    li.setAttribute('aria-selected', String(isSelected));
+                    if (isSelected) li.classList.add('is-selected');
+                    if (opt.disabled) li.setAttribute('aria-disabled', 'true');
+
+                    const text = document.createElement('span');
+                    text.textContent = opt.textContent.trim();
+
+                    const check = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    check.setAttribute('class', 'np-cs__check');
+                    check.setAttribute('viewBox', '0 0 20 20');
+                    check.setAttribute('fill', 'none');
+                    check.setAttribute('stroke', 'currentColor');
+                    check.setAttribute('stroke-width', '2.2');
+                    check.setAttribute('aria-hidden', 'true');
+                    check.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/>';
+
+                    li.appendChild(text);
+                    li.appendChild(check);
+
+                    li.addEventListener('mousedown', (e) => e.preventDefault());
+                    li.addEventListener('click', () => {
+                        if (opt.disabled) return;
+                        selectValue(opt.value);
+                        instance.close(true);
+                    });
+
+                    menu.appendChild(li);
+                });
+            };
+
+            const setActive = (index) => {
+                const items = Array.from(menu.querySelectorAll('.np-cs__option:not([aria-disabled="true"])'));
+                if (!items.length) return;
+                const clamped = ((index % items.length) + items.length) % items.length;
+                items.forEach((el, i) => el.classList.toggle('is-active', i === clamped));
+                activeIndex = clamped;
+                items[clamped].scrollIntoView({ block: 'nearest' });
+            };
+
+            const selectValue = (val) => {
+                if (select.value !== val) {
+                    select.value = val;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    select.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                syncDisplay();
+                renderMenu();
+            };
+
+            const instance = {
+                open() {
+                    if (trigger.disabled || open) return;
+                    closeAllExcept(instance);
+                    renderMenu();
+                    open = true;
+                    menu.hidden = false;
+                    wrapper.classList.add('is-open');
+                    trigger.setAttribute('aria-expanded', 'true');
+                    if (floatWrap) floatWrap.classList.add('is-floated');
+                    const items = Array.from(menu.querySelectorAll('.np-cs__option:not([aria-disabled="true"])'));
+                    const selIdx = items.findIndex((el) => el.classList.contains('is-selected'));
+                    setActive(selIdx >= 0 ? selIdx : 0);
+                },
+                close(returnFocus) {
+                    if (!open) return;
+                    open = false;
+                    menu.hidden = true;
+                    wrapper.classList.remove('is-open');
+                    trigger.setAttribute('aria-expanded', 'false');
+                    syncDisplay();
+                    if (returnFocus) trigger.focus();
+                },
+                toggle() {
+                    if (open) instance.close(true);
+                    else instance.open();
+                },
+            };
+
+            trigger.addEventListener('click', () => instance.toggle());
+            trigger.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (!open) {
+                        instance.open();
+                    } else {
+                        setActive(activeIndex + (e.key === 'ArrowDown' ? 1 : -1));
+                    }
+                } else if (e.key === 'Home' && open) {
+                    e.preventDefault();
+                    setActive(0);
+                } else if (e.key === 'End' && open) {
+                    e.preventDefault();
+                    const items = menu.querySelectorAll('.np-cs__option:not([aria-disabled="true"])');
+                    setActive(items.length - 1);
+                } else if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (!open) {
+                        instance.open();
+                    } else {
+                        const activeEl = menu.querySelector('.np-cs__option.is-active');
+                        if (activeEl instanceof HTMLElement && activeEl.dataset.value !== undefined) {
+                            selectValue(activeEl.dataset.value);
+                            instance.close(true);
+                        }
+                    }
+                } else if (e.key === 'Escape' && open) {
+                    e.preventDefault();
+                    instance.close(true);
+                } else if (e.key === 'Tab' && open) {
+                    instance.close(false);
+                }
+            });
+
+            select.addEventListener('change', () => {
+                syncDisplay();
+                if (open) renderMenu();
+            });
+
+            const observer = new MutationObserver(() => {
+                syncDisplay();
+                if (open) renderMenu();
+            });
+            observer.observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'aria-invalid', 'class'] });
+
+            syncDisplay();
+            allInstances.push(instance);
+        });
+
+        document.addEventListener('click', (e) => {
+            const target = e.target;
+            if (!(target instanceof Element) || !target.closest('.np-cs')) {
+                closeAllExcept(null);
+            }
+        });
+    };
+
+    initCustomSelects();
 });

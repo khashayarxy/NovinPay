@@ -18,8 +18,10 @@ use App\Services\LegacyCartHold;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Services\Observability\ObservabilityEvents;
 use App\Services\ShoppingCart;
+use App\Support\AdminRepairMoney;
 use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
+use App\Support\FinanceMoney;
 use App\Support\FinanceTime;
 use App\Support\RepairIdentity;
 use App\Support\RepairPhotoProcessor;
@@ -327,6 +329,12 @@ class RepairRequestController extends Controller
         if (! empty($data['accessories'])) {
             $repair->issue .= "\nلوازم همراه: ".implode('، ', array_map(fn ($accessory) => RepairRequest::ACCESSORIES[$accessory], $data['accessories']));
         }
+        if (! empty($data['activation_status']) && isset(RepairRequest::ACTIVATION_STATUSES[$data['activation_status']])) {
+            $repair->issue .= "\nوضعیت اتصال و فعالسازی: ".RepairRequest::ACTIVATION_STATUSES[$data['activation_status']];
+        }
+        if (! empty($data['tax_file_status']) && isset(RepairRequest::TAX_FILE_STATUSES[$data['tax_file_status']])) {
+            $repair->issue .= "\nوضعیت پرونده مالیاتی: ".RepairRequest::TAX_FILE_STATUSES[$data['tax_file_status']];
+        }
         $locationParts = array_filter([
             trim((string) ($data['province'] ?? '')),
             trim((string) ($data['city'] ?? '')),
@@ -406,8 +414,14 @@ class RepairRequestController extends Controller
         }
 
         $request->session()->forget('repair_submission_token');
-        app(UnifiedNotifier::class)->repairRequestSubmitted($repair);
-        app(ObservabilityEvents::class)->repairCreated($repair);
+        $repairId = $repair->id;
+        dispatch(static function () use ($repairId): void {
+            $freshRepair = RepairRequest::query()->find($repairId);
+            if ($freshRepair) {
+                app(UnifiedNotifier::class)->repairRequestSubmitted($freshRepair);
+                app(ObservabilityEvents::class)->repairCreated($freshRepair);
+            }
+        })->afterResponse();
 
         return redirect()->route('repair.confirmation')
             ->with('repair_reference', $repair->tracking_reference)
@@ -425,11 +439,99 @@ class RepairRequestController extends Controller
 
     public function tracking(Request $request, ?string $code = null): View
     {
+        if ($request->filled('ref') || $request->filled('signature')) {
+            abort_unless($request->hasValidSignature(), 403);
+
+            return $this->signedReadOnlyTracking((string) $request->query('ref'));
+        }
+
         $digest = $this->recoveredPhone($request);
 
         return $code && $digest
             ? $this->trackingResult($code, $digest)
             : view('pages.repair-tracking', ['matched' => null, 'trackingCode' => $code]);
+    }
+
+    private function signedReadOnlyTracking(string $reference): View
+    {
+        $reference = strtoupper(trim(FaNumber::normalizeDigits($reference)));
+        abort_unless($reference !== '' && preg_match('/\A[A-Z0-9-]{1,35}\z/', $reference) === 1, 404);
+
+        // Strictly non-PII projection: never load or expose phone, customer name, or address.
+        $physical = RepairCase::query()
+            ->select(['id', 'status', 'delivery_method', 'simple_workflow', 'device_brand', 'device_model', 'repair_price_toman', 'tracking_reference'])
+            ->where(fn ($query) => $query->where('tracking_digest', RepairIdentity::digest('tracking', $reference))
+                ->orWhereHas('onlineRequest', fn ($source) => $source->where('tracking_reference', $reference)))
+            ->first();
+
+        $repair = ! $physical
+            ? RepairRequest::query()
+                ->select(['id', 'status', 'device_brand', 'device_model', 'created_at', 'tracking_reference'])
+                ->where('tracking_reference', $reference)
+                ->first()
+            : null;
+
+        if (! $physical && ! $repair) {
+            return view('pages.repair-tracking', ['matched' => false, 'trackingCode' => $reference]);
+        }
+
+        $plan = null;
+        $costLabel = null;
+        $settlementLabel = null;
+        if ($physical) {
+            $doc = DB::table('financial_documents')
+                ->where('repair_case_id', $physical->id)
+                ->first(['id', 'charged_minor', 'paid_minor']);
+            if ($doc) {
+                $plan = DeliveryPlan::query()->select('state')->where('financial_document_id', $doc->id)->first();
+                $settled = (int) $doc->charged_minor > 0 && (int) $doc->paid_minor >= (int) $doc->charged_minor;
+                $settlementLabel = $settled ? 'تسویه‌شده' : 'در انتظار تسویه';
+                $costLabel = FinanceMoney::persianToman((int) $doc->charged_minor).' تومان';
+            } elseif ($physical->repair_price_toman !== null) {
+                $costLabel = AdminRepairMoney::display($physical->repair_price_toman);
+                $settlementLabel = 'در انتظار صدور فاکتور';
+            }
+        }
+
+        $sourceBrand = $physical ? $physical->device_brand : $repair->device_brand;
+        $sourceModel = $physical ? $physical->device_model : $repair->device_model;
+        $deliveryLabel = $physical ? match ($physical->delivery_method) {
+            'shipping' => 'ارسال',
+            'pickup', 'in_person' => 'تحویل حضوری',
+            default => 'ثبت‌شده در پذیرش',
+        } : 'ثبت‌شده';
+
+        $trackSummary = [
+            'code' => FaNumber::digits($reference),
+            'device' => RepairIdentity::deviceLabel($sourceBrand, $sourceModel),
+            'delivery' => $deliveryLabel,
+            'cost' => $costLabel,
+            'settlement' => $settlementLabel,
+        ];
+
+        $timeline = $physical
+            ? CustomerTimeline::repair($physical, $plan, public: true)
+            : [
+                ['label' => 'ثبت درخواست', 'state' => 'complete', 'at' => $repair->created_at],
+                ['label' => 'دریافت دستگاه', 'state' => 'current', 'note' => 'در انتظار تحویل دستگاه', 'at' => null],
+                ['label' => 'بررسی و اعلام هزینه', 'state' => 'upcoming', 'at' => null],
+                ['label' => 'تعمیر و تحویل', 'state' => 'upcoming', 'at' => null],
+            ];
+
+        return view('pages.repair-tracking', [
+            'matched' => true,
+            'physicalMatch' => $physical !== null,
+            'physicalStatus' => $physical ? CustomerTimeline::repairStatus($physical, $plan) : null,
+            'trackSummary' => $trackSummary,
+            'canChangeHandover' => false,
+            'signedReadOnly' => true,
+            'nextAction' => $physical ? match ($physical->status) {
+                RepairStage::Ready, RepairStage::ReturnPending => 'دستگاه آماده تحویل است؛ برای تحویل یا پرداخت، با شماره موبایل خود وارد حساب کاربری شوید.',
+                RepairStage::Delivered, RepairStage::Returned => 'فرایند تعمیر و تحویل این دستگاه تکمیل شده است.',
+                default => 'آخرین وضعیت تعمیر دستگاه شما در این صفحه به‌روزرسانی می‌شود.',
+            } : 'برای تغییر تنظیمات تحویل، با شماره موبایل ثبت‌شده پیگیری کنید.',
+            'timeline' => $timeline,
+        ]);
     }
 
     public function recovery(Request $request): View

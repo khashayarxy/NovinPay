@@ -136,6 +136,7 @@ class UnifiedNotificationsTest extends TestCase
 
         // Idempotent replay must NOT resend notifications.
         $checkout->create($account, ['pos-notify-test' => 1], $checkoutKey);
+        app()->terminate();
 
         Mail::assertSent(UnifiedNotificationMail::class, 1);
         Mail::assertSent(UnifiedNotificationMail::class, fn (UnifiedNotificationMail $mail) => $mail->hasTo('admin@novinpaypos.test'));

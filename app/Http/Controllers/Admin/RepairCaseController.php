@@ -8,15 +8,19 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\RepairOperationRequest;
 use App\Http\Requests\SimpleRepairRequest;
 use App\Models\AdminAccount;
+use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
+use App\Models\PaymentTransaction;
 use App\Models\RepairCase;
 use App\Models\RepairRecordRevision;
 use App\Models\RepairRequest;
 use App\Models\User;
+use App\Services\ActivationDocumentsService;
 use App\Services\RepairOperations;
 use App\Services\SimpleRepairRecords;
 use App\Support\AdminHistory;
 use App\Support\FaNumber;
+use App\Support\QrCodeSvg;
 use App\Support\RepairIdentity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -124,11 +128,22 @@ class RepairCaseController extends Controller
         if ($customer) {
             AdminHistory::record(AdminAction::RepairCustomerViewed, 'repair_case', $repairCase->id);
         }
-        $repairCase->load(['currentEstimate', 'onlineRequest:id,tracking_reference', 'delivery']);
+        $repairCase->load(['currentEstimate', 'onlineRequest', 'delivery']);
         $document = $customer && Gate::allows('finance.view') ? FinancialDocument::query()->where('repair_case_id', $repairCase->id)->first() : null;
         $hasDocument = $document !== null || ($customer && Gate::allows('repairs.estimate') && ! Gate::allows('finance.view')
             && FinancialDocument::query()->where('repair_case_id', $repairCase->id)->exists());
-        $financial = ['repairDocument' => $document, 'hasRepairDocument' => $hasDocument];
+        $latestPayment = $document
+            ? PaymentTransaction::query()
+                ->with('paymentAttempt:id,track_id')
+                ->where('financial_document_id', $document->id)
+                ->where('allocated_minor', '>', 0)
+                ->latest('id')
+                ->first()
+            : null;
+        $deliveryPlan = $document
+            ? DeliveryPlan::query()->where('financial_document_id', $document->id)->first()
+            : null;
+        $financial = ['repairDocument' => $document, 'hasRepairDocument' => $hasDocument, 'latestPayment' => $latestPayment, 'deliveryPlan' => $deliveryPlan];
 
         $events = $repairCase->events()->with('actor:id,name')->latest('id')->paginate(20);
         if (! $repairCase->simple_workflow) {
@@ -178,11 +193,38 @@ class RepairCaseController extends Controller
 
         if ($repairCase->simple_workflow) {
             $invoice = Gate::allows('finance.view') ? FinancialDocument::query()->where('repair_case_id', $repairCase->id)->first() : null;
+            $latestPayment = $invoice
+                ? PaymentTransaction::query()
+                    ->where('financial_document_id', $invoice->id)
+                    ->where('allocated_minor', '>', 0)
+                    ->latest('id')
+                    ->first()
+                : null;
+            $signedTrackUrl = $document === 'intake' && $repairCase->tracking_reference
+                ? URL::signedRoute('repair.track', ['ref' => $repairCase->tracking_reference])
+                : null;
+            $qrSvg = $signedTrackUrl ? QrCodeSvg::svg($signedTrackUrl, 128) : null;
 
-            return view('admin.repair-cases.simple-document', ['case' => $repairCase, 'document' => $document, 'invoice' => $invoice]);
+            return view('admin.repair-cases.simple-document', [
+                'case' => $repairCase,
+                'document' => $document,
+                'invoice' => $invoice,
+                'latestPayment' => $latestPayment,
+                'qrSvg' => $qrSvg,
+            ]);
         }
 
         return view('admin.repair-cases.document', ['case' => $repairCase, 'document' => $document]);
+    }
+
+    public function requestActivationDocuments(Request $request, RepairCase $repairCase, ActivationDocumentsService $service): RedirectResponse
+    {
+        Gate::authorize('repairs.transition');
+        $service->requestRepairDocuments($repairCase, $request->user());
+
+        return redirect()
+            ->route('admin.repair-cases.show', $repairCase)
+            ->with('success', 'درخواست ارسال مدارک فعال‌سازی ثبت شد و اطلاع‌رسانی به مشتری انجام می‌گیرد.');
     }
 
     public function generatePaymentLink(Request $request, RepairCase $repairCase): RedirectResponse

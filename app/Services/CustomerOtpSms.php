@@ -26,7 +26,10 @@ final class CustomerOtpSms
     public function sendOutcome(string $phone, string $code): string
     {
         $outcome = $this->ipPanel->sendOutcome($phone, $code);
-        app(ObservabilityEvents::class)->sms('otp', $outcome, $this->provider(), 'customer_otp');
+        $provider = $this->provider();
+        dispatch(static function () use ($outcome, $provider): void {
+            app(ObservabilityEvents::class)->sms('otp', $outcome, $provider, 'customer_otp');
+        })->afterResponse();
 
         return $outcome;
     }

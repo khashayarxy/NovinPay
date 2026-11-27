@@ -188,6 +188,25 @@ final class UnifiedNotifier
         }, 'repair_stage_pattern');
     }
 
+    public function repairActivationDocsRequested(RepairCase $case, string $phone, string $code): void
+    {
+        $this->safe(function () use ($case, $phone, $code): void {
+            $normalized = $this->normalizePhone($phone);
+            if ($normalized === null) {
+                return;
+            }
+            $this->patternSms->send(
+                'repair_status',
+                'activation_docs_req:'.$case->public_id,
+                $normalized,
+                [
+                    'repair_code' => $code,
+                    'status' => 'نیازمند ارسال مدارک فعال‌سازی در حساب کاربری',
+                ],
+            );
+        }, 'repair_activation_docs_requested');
+    }
+
     public function repairRequestSubmitted(RepairRequest $repair, ?string $customerEmail = null): void
     {
         $this->repairCreatedPattern($repair);

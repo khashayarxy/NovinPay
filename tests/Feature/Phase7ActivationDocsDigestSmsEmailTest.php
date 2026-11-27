@@ -134,7 +134,9 @@ class Phase7ActivationDocsDigestSmsEmailTest extends TestCase
             ->assertSee('ارسال مدارک فعال‌سازی و ثبت در سامانه مالیاتی')
             ->assertSee('مدارک شما به‌صورت رمزنگاری‌شده پردازش شده و ۷ روز پس از تحویل دستگاه به‌صورت خودکار حذف می‌شوند.')
             ->assertSee('در انتظار ارسال')
-            ->assertSee('تصویر کارت ملی')
+            ->assertSee('تصویر روی کارت ملی')
+            ->assertSee('تصویر پشت کارت ملی')
+            ->assertSee('کد پستی ۱۰ رقمی')
             ->assertSee('کد مالیاتی (اینتاکد)');
 
         // Also verify unauthenticated short-order tracking /o/{code} after phone verification displays the upload section
@@ -181,10 +183,11 @@ class Phase7ActivationDocsDigestSmsEmailTest extends TestCase
             ->withSession(['customer_session_version' => $this->account->session_version]);
 
         $uploads = [
-            'national_card' => UploadedFile::fake()->image('my-personal-mellicard-0012345678.jpg', 600, 400),
+            'national_card_front' => UploadedFile::fake()->image('my-personal-mellicard-front-0012345678.jpg', 600, 400),
+            'national_card_back' => UploadedFile::fake()->image('my-personal-mellicard-back-0012345678.jpg', 600, 400),
             'birth_certificate' => UploadedFile::fake()->image('shenasname-mahdi.png', 600, 400),
-            'bank_iban' => UploadedFile::fake()->create('sheba-certificate.pdf', 120, 'application/pdf'),
-            'postal_address' => UploadedFile::fake()->image('postal-confirm.jpg', 500, 400),
+            'bank_card_1' => UploadedFile::fake()->create('sheba-certificate.pdf', 120, 'application/pdf'),
+            'bank_card_2' => UploadedFile::fake()->image('bank-card-2.jpg', 500, 400),
             'tax_code' => UploadedFile::fake()->create('intacode.pdf', 90, 'application/pdf'),
         ];
         $extra = [
@@ -192,6 +195,7 @@ class Phase7ActivationDocsDigestSmsEmailTest extends TestCase
         ];
 
         $this->post(route('account.orders.documents.store', $order->public_id), [
+            'postal_code' => '3351611828',
             'slots' => $uploads,
             'extra_files' => $extra,
         ])->assertRedirect(route('account.orders.show', $order->public_id));
@@ -238,12 +242,13 @@ class Phase7ActivationDocsDigestSmsEmailTest extends TestCase
             }
 
             $this->assertEqualsCanonicalizing([
-                '01-kart-meli.jpg',
-                '02-shenasname.png',
-                '03-hesab-sheba.pdf',
-                '04-kode-posti-adres.jpg',
-                '05-kode-maliati.pdf',
-                '06-takmili-1.jpg',
+                '01-kart-meli-roo.jpg',
+                '02-kart-meli-posht.jpg',
+                '03-shenasname.png',
+                '04-kart-banki-1.pdf',
+                '05-kart-banki-2.jpg',
+                '06-kode-maliati.pdf',
+                '07-takmili-1.jpg',
                 'info.txt',
             ], $entryNames);
 
@@ -288,6 +293,7 @@ class Phase7ActivationDocsDigestSmsEmailTest extends TestCase
                 ->withSession(['customer_session_version' => $this->account->session_version]);
 
             $this->post(route('account.orders.documents.store', $order->public_id), [
+                'postal_code' => '3351611828',
                 'slots' => $this->sampleUploads(),
             ])->assertRedirect(route('account.orders.show', $order->public_id));
 
@@ -595,10 +601,10 @@ class Phase7ActivationDocsDigestSmsEmailTest extends TestCase
     private function sampleUploads(): array
     {
         return [
-            'national_card' => UploadedFile::fake()->image('card.jpg', 500, 350),
+            'national_card_front' => UploadedFile::fake()->image('card-front.jpg', 500, 350),
+            'national_card_back' => UploadedFile::fake()->image('card-back.jpg', 500, 350),
             'birth_certificate' => UploadedFile::fake()->image('birth.png', 500, 350),
-            'bank_iban' => UploadedFile::fake()->create('iban.pdf', 100, 'application/pdf'),
-            'postal_address' => UploadedFile::fake()->image('postal.jpg', 500, 350),
+            'bank_card_1' => UploadedFile::fake()->create('card1.pdf', 100, 'application/pdf'),
             'tax_code' => UploadedFile::fake()->create('tax.pdf', 100, 'application/pdf'),
         ];
     }

@@ -1,10 +1,13 @@
 @props([
-    'order',
+    'order' => null,
     'slots' => [],
     'submitAction',
+    'documentsStatus' => null,
+    'revisionReason' => null,
 ])
 @php
-    $docStatus = (string) ($order->documents_status ?: 'pending_submission');
+    $docStatus = (string) ($documentsStatus ?? $order?->documents_status ?: 'pending_submission');
+    $docRevisionReason = $revisionReason ?? $order?->documents_revision_reason;
     $statusLabel = \App\Models\SalesOrder::DOCUMENT_STATUSES[$docStatus] ?? 'در انتظار ارسال';
     $statusBadgeClass = match ($docStatus) {
         'approved' => 'badge badge-success',
@@ -53,7 +56,7 @@
     @if ($docStatus === 'needs_revision')
         <div class="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-7 text-amber-900" role="alert">
             <strong class="block font-bold">نیاز به اصلاح و ارسال مجدد مدارک:</strong>
-            <p class="mt-1">{{ $order->documents_revision_reason ?: 'لطفاً تصاویر مدارک را واضح و کامل مجدداً بارگذاری فرمایید.' }}</p>
+            <p class="mt-1">{{ $docRevisionReason ?: 'لطفاً تصاویر مدارک را واضح و کامل مجدداً بارگذاری فرمایید.' }}</p>
         </div>
     @elseif ($docStatus === 'pending_review')
         <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm leading-7 text-slate-700">
@@ -70,6 +73,26 @@
     @if ($canUpload && $slots !== [])
         <form class="mt-5 space-y-4" method="post" action="{{ $submitAction }}" enctype="multipart/form-data" data-public-submit-loading>
             @csrf
+            <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                <label class="label flex items-center justify-between gap-2" for="doc-postal-code">
+                    <span>کد پستی ۱۰ رقمی</span>
+                    <span class="text-xs font-medium text-rose-600">الزامی</span>
+                </label>
+                <p class="mb-2 text-xs leading-5 text-slate-500">کد پستی ۱۰ رقمی محل فعالیت یا سکونت را بدون خط تیره وارد کنید.</p>
+                <input
+                    id="doc-postal-code"
+                    name="postal_code"
+                    type="text"
+                    inputmode="numeric"
+                    dir="ltr"
+                    maxlength="10"
+                    pattern="[0-9۰-۹]{10}"
+                    value="{{ old('postal_code') }}"
+                    class="input max-w-xs text-left"
+                    placeholder="مثلاً 3351611828"
+                    required
+                >
+            </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 @foreach ($slots as $slotKey => $slot)
                     <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
