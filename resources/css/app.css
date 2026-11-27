@@ -2834,6 +2834,7 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     position: absolute !important;
     width: 1px !important;
     height: 1px !important;
+    min-height: 0 !important;
     padding: 0 !important;
     margin: -1px !important;
     overflow: hidden !important;
@@ -2865,7 +2866,12 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     justify-content: space-between;
     gap: 10px;
     cursor: pointer;
+    box-sizing: border-box;
     transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.np-float-field .np-cs__trigger {
+    min-height: 54px;
 }
 
 .np-cs__trigger:hover:not(:disabled) {

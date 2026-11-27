@@ -3420,7 +3420,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
     // Custom modern accessible dropdowns replacing native OS <select> popups on storefront forms
     const initCustomSelects = () => {
         const selects = document.querySelectorAll(
-            'select[data-custom-select], .np-float-field select:not(.sr-only):not([data-native-select]), #delivery-address, #checkout-province, #checkout-city'
+            'select[data-custom-select], #delivery-address, #checkout-province, #checkout-city'
         );
         if (!selects.length) return;
 
