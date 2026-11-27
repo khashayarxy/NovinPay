@@ -523,6 +523,53 @@ ${adminCssBundle}
 </style>
 </head>
 <body class="admin-site">
+    <div class="admin-shell">
+    <aside id="admin-sidebar" class="admin-sidebar" aria-label="منوی مدیریت">
+        <button type="button" class="admin-mobile-menu-btn admin-mobile-nav-toggle" data-admin-mobile-toggle aria-controls="admin-navigation-panel" aria-expanded="false">فهرست مدیریت</button>
+        <div id="admin-navigation-panel" class="admin-navigation-panel" data-admin-navigation>
+            <nav aria-label="ناوبری مدیریت" class="admin-nav">
+                <a class="admin-nav-direct" href="/admin" aria-current="page"><span>داشبورد مدیریت</span></a>
+                <div class="admin-nav-tier">
+                    <p class="admin-nav-tier-label">عملیات روزانه</p>
+                    <div class="admin-nav-section">
+                        <div class="admin-nav-group" id="nav-group-repairs">
+                            <button type="button" class="admin-nav-group-trigger" id="nav-btn-repairs" aria-expanded="false" aria-controls="nav-sub-repairs">
+                                <span class="admin-nav-group-label"><span>تعمیرات</span></span>
+                                <svg class="admin-nav-chevron-svg" id="nav-chev-repairs" style="transition:none" width="16" height="16" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                            </button>
+                            <div id="nav-sub-repairs" class="admin-nav-children">
+                                <a href="/admin/repairs">پرونده‌های تعمیر</a>
+                                <a href="/admin/repair-requests">درخواست‌های آنلاین</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="admin-nav-section">
+                        <div class="admin-nav-group" id="nav-group-orders">
+                            <button type="button" class="admin-nav-group-trigger" id="nav-btn-orders" aria-expanded="false" aria-controls="nav-sub-orders">
+                                <span class="admin-nav-group-label"><span>سفارش‌ها و کالاها</span></span>
+                                <svg class="admin-nav-chevron-svg" id="nav-chev-orders" style="transition:none" width="16" height="16" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                            </button>
+                            <div id="nav-sub-orders" class="admin-nav-children">
+                                <a href="/admin/orders">لیست سفارش‌ها</a>
+                                <a href="/admin/products">مدیریت محصولات</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="admin-nav-section">
+                        <div class="admin-nav-group" id="nav-group-customers">
+                            <button type="button" class="admin-nav-group-trigger" id="nav-btn-customers" aria-expanded="false" aria-controls="nav-sub-customers">
+                                <span class="admin-nav-group-label"><span>مشتریان</span></span>
+                                <svg class="admin-nav-chevron-svg" style="transition:none" width="16" height="16" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                            </button>
+                            <div id="nav-sub-customers" class="admin-nav-children">
+                                <a href="/admin/customers">لیست مشتریان</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </aside>
     <main style="padding: 24px;">
         <div style="max-width: 280px;">
             <label class="label" for="finance-from">از تاریخ</label>
@@ -553,6 +600,7 @@ ${adminCssBundle}
             <span class="np-file-picker__name" data-np-file-name data-empty-label="فایلی انتخاب نشده است">فایلی انتخاب نشده است</span>
         </div>
     </main>
+    </div>
 
     <script type="module">
         import { initAdminCalendar } from '/resources/js/admin-calendar.js';
@@ -585,6 +633,38 @@ ${adminCssBundle}
 
         const pickerBtnHeight = document.querySelector('.np-file-picker__btn').getBoundingClientRect().height;
 
+        // Exclusive Sidebar Accordion Checks
+        const subRepairs = document.getElementById('nav-sub-repairs');
+        const subOrders = document.getElementById('nav-sub-orders');
+        const subCustomers = document.getElementById('nav-sub-customers');
+        const btnRepairs = document.getElementById('nav-btn-repairs');
+        const btnOrders = document.getElementById('nav-btn-orders');
+        const chevRepairs = document.getElementById('nav-chev-repairs');
+
+        const navInitialCollapsed = [subRepairs, subOrders, subCustomers].every(el => getComputedStyle(el).display === 'none')
+            && btnRepairs.getAttribute('aria-expanded') === 'false'
+            && btnOrders.getAttribute('aria-expanded') === 'false';
+        const chevClosedTransform = getComputedStyle(chevRepairs).transform;
+
+        // 1. Click Repairs -> opens Repairs only
+        btnRepairs.click();
+        const afterOpenRepairs = getComputedStyle(subRepairs).display === 'grid'
+            && btnRepairs.getAttribute('aria-expanded') === 'true'
+            && getComputedStyle(subOrders).display === 'none';
+        const chevOpenTransform = getComputedStyle(chevRepairs).transform;
+
+        // 2. Click Orders -> opens Orders and auto-collapses Repairs (exclusive accordion)
+        btnOrders.click();
+        const afterSwitchToOrders = getComputedStyle(subOrders).display === 'grid'
+            && btnOrders.getAttribute('aria-expanded') === 'true'
+            && getComputedStyle(subRepairs).display === 'none'
+            && btnRepairs.getAttribute('aria-expanded') === 'false';
+
+        // 3. Click Orders again -> collapses Orders
+        btnOrders.click();
+        const afterCollapseOrders = getComputedStyle(subOrders).display === 'none'
+            && btnOrders.getAttribute('aria-expanded') === 'false';
+
         document.body.setAttribute('data-admin-probe', JSON.stringify({
             closedDisplay,
             openDisplay,
@@ -599,6 +679,11 @@ ${adminCssBundle}
             ordersHidden,
             casesHidden,
             pickerBtnHeight,
+            navInitialCollapsed,
+            afterOpenRepairs,
+            chevRotated: chevClosedTransform !== chevOpenTransform,
+            afterSwitchToOrders,
+            afterCollapseOrders,
         }));
     });
     </script>
@@ -657,6 +742,11 @@ ${adminCssBundle}
         assert.equal(p.ordersHidden, true, 'Inactive tab panel must hide');
         assert.equal(p.casesHidden, false, 'Selected tab panel must show');
         assert.ok(p.pickerBtnHeight >= 34, `Persian file picker button must render cleanly in admin, height=${p.pickerBtnHeight}`);
+        assert.equal(p.navInitialCollapsed, true, 'All sidebar groups must start collapsed by default on dashboard');
+        assert.equal(p.afterOpenRepairs, true, 'Clicking a closed sidebar group must expand its submenu');
+        assert.equal(p.chevRotated, true, 'Expanding a sidebar group must rotate its chevron SVG');
+        assert.equal(p.afterSwitchToOrders, true, 'Expanding another sidebar group must auto-collapse the previously open group');
+        assert.equal(p.afterCollapseOrders, true, 'Clicking an already open sidebar group must collapse it');
     } finally {
         if (server) await new Promise(r => server.close(() => r()));
         try { rmSync(directory, {recursive: true, force: true}); } catch {}

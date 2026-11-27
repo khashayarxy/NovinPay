@@ -169,12 +169,20 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
         $this->admin->refresh();
         $adminSession = ['admin_session_version' => 1];
 
-        $this->actingAs($this->admin)
+        $dashboard = $this->actingAs($this->admin)
             ->withSession($adminSession)
             ->get('/admin')
             ->assertOk()
             ->assertSee('admin-stat-grid', false)
-            ->assertSee('رضا نادری');
+            ->assertSee('رضا نادری')
+            ->assertDontSee('class="admin-nav-group" open', false);
+        $this->assertSame(0, preg_match_all('/class="admin-nav-group"\s+open\b/', $dashboard->getContent()));
+
+        $ordersPage = $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get('/admin/orders')
+            ->assertOk();
+        $this->assertSame(1, preg_match_all('/class="admin-nav-group"\s+open\b/', $ordersPage->getContent()));
 
         $adminPages = [
             '/admin/repair-requests',

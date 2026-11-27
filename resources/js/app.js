@@ -1266,18 +1266,22 @@ runWhenDomReady(() => {
             adminMobileToggle?.focus();
         });
         const groups = [...adminNavigation.querySelectorAll('.admin-nav-group')];
+        const initialOpenGroup = groups.find((group) => group.hasAttribute('open')) || null;
 
         groups.forEach((group) => {
             const button = group.querySelector('.admin-nav-group-trigger');
+            if (!(button instanceof HTMLButtonElement)) return;
             const setOpen = (value) => {
                 group.toggleAttribute('open', value);
                 button.setAttribute('aria-expanded', String(value));
             };
+            setOpen(group === initialOpenGroup);
             button.addEventListener('click', () => {
                 const next = !group.hasAttribute('open');
-                groups.filter(other => other !== group).forEach(other => {
+                groups.forEach((other) => {
+                    if (other === group) return;
                     other.removeAttribute('open');
-                    other.querySelector('.admin-nav-group-trigger').setAttribute('aria-expanded', 'false');
+                    other.querySelector('.admin-nav-group-trigger')?.setAttribute('aria-expanded', 'false');
                 });
                 setOpen(next);
             });
