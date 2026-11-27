@@ -8,6 +8,7 @@ use App\Http\Requests\CommerceRequest;
 use App\Models\Customer;
 use App\Models\InventoryItem;
 use App\Models\SalesOrder;
+use App\Services\ActivationDocumentsService;
 use App\Services\CommerceManagement;
 use App\Support\AdminHistory;
 use App\Support\CommerceAccess;
@@ -129,5 +130,45 @@ class OrderController extends Controller
         $reservations = DB::table('stock_reservations')->leftJoin('inventory_units', 'inventory_units.id', '=', 'stock_reservations.inventory_unit_id')->whereIn('sales_order_line_id', $lines->modelKeys())->whereIn('status', ['active', 'fulfilled'])->orderBy('stock_reservations.id')->paginate(30, ['stock_reservations.status', 'stock_reservations.quantity', 'inventory_units.serial']);
 
         return view('admin.orders.show', ['order' => $order, 'customer' => $customer, 'contact' => $contact, 'lines' => $lines, 'reservations' => $reservations, 'events' => $order->events()->latest('id')->paginate(15, ['*'], 'history_page')]);
+    }
+
+    public function approveDocuments(Request $request, SalesOrder $order, ActivationDocumentsService $service)
+    {
+        abort_unless($request->user()->can('orders.confirm') && CommerceAccess::contact(), 403);
+        $service->approve($order, $request->user());
+
+        return redirect()->route('admin.orders.show', $order)->with('success', 'وضعیت مدارک فعال‌سازی به «تأیید شده» تغییر یافت.');
+    }
+
+    public function revisionDocuments(Request $request, SalesOrder $order, ActivationDocumentsService $service)
+    {
+        abort_unless($request->user()->can('orders.confirm') && CommerceAccess::contact(), 403);
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:3', 'max:250'],
+        ], [
+            'reason.required' => 'لطفاً علت نیاز به اصلاح مدارک را به فارسی بنویسید.',
+        ]);
+
+        $service->requestRevision($order, $request->user(), $data['reason']);
+
+        return redirect()->route('admin.orders.show', $order)->with('success', 'وضعیت مدارک به «نیاز به اصلاح» تغییر یافت و به مشتری اطلاع‌رسانی شد.');
+    }
+
+    public function purgeDocuments(Request $request, SalesOrder $order, ActivationDocumentsService $service)
+    {
+        abort_unless($request->user()->can('orders.confirm') && CommerceAccess::contact(), 403);
+        $service->purgeOrderDocuments($order, $request->user());
+
+        return redirect()->route('admin.orders.show', $order)->with('success', 'فایل مدارک از تلگرام و حافظه موقت پاکسازی شد.');
+    }
+
+    public function retryDocumentsTelegram(Request $request, SalesOrder $order, ActivationDocumentsService $service)
+    {
+        abort_unless($request->user()->can('orders.confirm') && CommerceAccess::contact(), 403);
+        if ($service->retryRetainedTelegramDelivery($order)) {
+            return redirect()->route('admin.orders.show', $order)->with('success', 'فایل رمزنگاری‌شده به تلگرام ارسال و از سرور حذف شد.');
+        }
+
+        return redirect()->route('admin.orders.show', $order)->withErrors(['documents' => 'ارسال مجدد به تلگرام ناموفق بود یا فایلی در سرور وجود ندارد.']);
     }
 }

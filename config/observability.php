@@ -44,6 +44,9 @@ return [
             'consultations' => env('TELEGRAM_TOPIC_CONSULTATIONS_ID') ? (int) env('TELEGRAM_TOPIC_CONSULTATIONS_ID') : null,
             'support_chat' => env('TELEGRAM_TOPIC_SUPPORT_CHAT_ID') ? (int) env('TELEGRAM_TOPIC_SUPPORT_CHAT_ID') : null,
             'reviews' => env('TELEGRAM_TOPIC_REVIEWS_ID') ? (int) env('TELEGRAM_TOPIC_REVIEWS_ID') : null,
+            'documents' => (env('TELEGRAM_TOPIC_DOCUMENTS') ?: env('TELEGRAM_TOPIC_DOCUMENTS_ID'))
+                ? (int) (env('TELEGRAM_TOPIC_DOCUMENTS') ?: env('TELEGRAM_TOPIC_DOCUMENTS_ID'))
+                : null,
         ],
     ],
 ];
