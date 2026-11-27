@@ -2876,17 +2876,16 @@ html:has(body.premium-storefront) {
 
 /* Inline product cart stepper & compact added-to-cart bar */
 .np-inline-stepper {
-    display: inline-grid;
-    grid-template-columns: 38px minmax(34px, 1fr) 38px;
+    display: inline-flex;
     align-items: center;
-    justify-items: center;
-    height: 44px;
+    gap: 4px;
+    height: 42px;
     padding: 3px;
-    gap: 2px;
     border: 1.5px solid #cbd5e1;
     border-radius: 12px;
     background: #ffffff;
     box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+    box-sizing: border-box;
     overflow: hidden;
     transition: border-color .15s ease, box-shadow .15s ease;
 }
@@ -2900,18 +2899,22 @@ html:has(body.premium-storefront) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
     border: 0;
     border-radius: 9px;
     background: #f8fafc;
     color: #075da6;
-    font-size: 18px;
-    font-weight: 700;
     line-height: 1;
     cursor: pointer;
     padding: 0;
     transition: background-color .15s ease, color .15s ease, transform .1s ease;
+}
+.np-inline-stepper__btn svg {
+    display: block;
+    width: 16px;
+    height: 16px;
 }
 .np-inline-stepper__btn:hover:not(:disabled) { background: #e0f2fe; color: #0369a1; }
 .np-inline-stepper__btn:active:not(:disabled) { transform: scale(0.95); }
@@ -2932,7 +2935,7 @@ html:has(body.premium-storefront) {
     align-items: center;
     justify-content: center;
     min-width: 32px;
-    height: 36px;
+    height: 34px;
     line-height: 1;
     text-align: center;
     font-size: 15px;
@@ -2946,8 +2949,18 @@ html:has(body.premium-storefront) {
     justify-content: space-between;
     gap: 10px;
 }
-.purchase-stock-row .stock { margin: 0; flex: 0 1 auto; }
-.np-inline-stepper--purchase { width: 132px; flex: 0 0 auto; margin-top: 0; }
+.purchase-stock-row .stock {
+    margin: 0;
+    flex: 0 1 auto;
+    height: 42px;
+    min-height: 42px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    padding-block: 0;
+    box-sizing: border-box;
+}
+.np-inline-stepper--purchase { width: auto; flex: 0 0 auto; margin-top: 0; }
 
 .np-added-bar {
     position: fixed;

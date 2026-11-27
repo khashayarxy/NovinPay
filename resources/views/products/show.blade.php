@@ -161,12 +161,16 @@
                     <button class="primary" type="submit" form="product-cart-form" data-dock-add-btn @if($dockCartQty > 0) hidden @endif><x-storefront.icon name="cart" />افزودن به سبد خرید</button>
                     <div class="product-dock-in-cart" data-dock-in-cart @if($dockCartQty <= 0) hidden @endif>
                         <div class="np-inline-stepper np-inline-stepper--dock" data-inline-stepper @if($dockCartQty <= 0) hidden @endif>
-                            <button type="button" class="np-inline-stepper__btn np-inline-stepper__btn--inc" data-stepper-inc aria-label="افزایش تعداد در سبد خرید" @disabled($dockCartQty >= $dockMaxQty)>+</button>
+                            <button type="button" class="np-inline-stepper__btn np-inline-stepper__btn--inc" data-stepper-inc aria-label="افزایش تعداد در سبد خرید" @disabled($dockCartQty >= $dockMaxQty)>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                            </button>
                             <span class="np-inline-stepper__count" data-stepper-count>{{ \App\Support\FaNumber::digits(max(1, $dockCartQty)) }}</span>
                             <button type="button" class="np-inline-stepper__btn np-inline-stepper__btn--dec" data-stepper-dec data-mode="{{ $dockCartQty <= 1 ? 'remove' : 'decrement' }}" aria-label="{{ $dockCartQty <= 1 ? 'حذف از سبد خرید' : 'کاهش تعداد' }}">
-                                <span class="np-inline-stepper__minus" @if($dockCartQty <= 1) hidden @endif>−</span>
+                                <span class="np-inline-stepper__minus" @if($dockCartQty <= 1) hidden @endif aria-hidden="true">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+                                </span>
                                 <span class="np-inline-stepper__trash" @if($dockCartQty > 1) hidden @endif aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                                 </span>
                             </button>
                         </div>
