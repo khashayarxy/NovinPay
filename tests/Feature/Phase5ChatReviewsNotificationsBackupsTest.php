@@ -270,7 +270,8 @@ class Phase5ChatReviewsNotificationsBackupsTest extends TestCase
             && ($req['recipients'] ?? null) === ['+989129998877']
             && ($req['code'] ?? null) === 'mfae2yqje8msw9e');
 
-        // Submit repair request -> Admin Email + Admin SMS (shared fallback pattern 309p3u2jo5b7qds) BOTH sent!
+        // Submit repair request -> Admin Email + dedicated Admin SMS pattern BOTH sent (legacy 309p3u2jo5b7qds fallback removed in Phase 8)!
+        config(['notifications.sms.patterns.admin_repair_submitted' => 'patAdminRepair55']);
         $token = bin2hex(random_bytes(32));
         $this->actingAs($account, 'customer')
             ->withSession(['customer_session_version' => 1, 'repair_submission_token' => $token])
@@ -287,7 +288,8 @@ class Phase5ChatReviewsNotificationsBackupsTest extends TestCase
             && str_contains($m->mailSubject, 'درخواست تعمیر جدید'));
         Http::assertSent(fn (HttpRequest $req) => $req->url() === 'https://edge.ippanel.com/v1/api/send'
             && ($req['recipients'] ?? null) === ['+989129998877']
-            && ($req['code'] ?? null) === '309p3u2jo5b7qds');
+            && ($req['code'] ?? null) === 'patAdminRepair55');
+        Http::assertNotSent(fn (HttpRequest $req) => ($req['code'] ?? null) === '309p3u2jo5b7qds');
     }
 
     public function test_encrypted_db_backup_runs_twice_daily_uploads_document_to_telegram_and_decrypts_cleanly(): void

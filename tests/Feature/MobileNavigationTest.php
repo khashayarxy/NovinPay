@@ -35,7 +35,7 @@ class MobileNavigationTest extends TestCase
             'tracking query' => ['/repair/track?from=menu', 'repair.track'],
             'tracking trailing slash' => ['/repair/track/', 'repair.track'],
             'contact' => ['/contact', 'contact'],
-            'consultation has repair CTA but is unrelated' => ['/consultation', null],
+            'consultation' => ['/consultation', 'consultation'],
             'privacy' => ['/privacy', null],
             'terms' => ['/terms', null],
             'articles' => ['/articles', 'articles.index'],
@@ -106,10 +106,10 @@ class MobileNavigationTest extends TestCase
 
         $menu = $xpath->query('//nav[@id="mobile-navigation"]')->item(0);
         $links = $xpath->query('./a', $menu);
-        $this->assertSame(['صفحه اصلی', 'فروشگاه', 'تعمیرات کارتخوان', 'پیگیری تعمیرات', 'مقالات و آموزش‌ها', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
+        $this->assertSame(['صفحه اصلی', 'فروشگاه', 'درخواست تعمیر', 'پیگیری تعمیر', 'درخواست مشاوره', 'مقالات و آموزش‌ها', 'تماس با ما'], array_map(fn ($link) => trim($link->textContent), iterator_to_array($links)));
         $this->assertSame(0, $xpath->query('//a[normalize-space(.)="تعمیرگاه" or normalize-space(.)="خدمات و تعمیرات"]')->length);
-        $this->assertSame(array_map(fn ($name) => route($name), ['home', 'products.index', 'repair', 'repair.track', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
-        $this->assertSame(6, $xpath->query('./a/*[@aria-hidden="true"]', $menu)->length);
+        $this->assertSame(array_map(fn ($name) => route($name), ['home', 'products.index', 'repair', 'repair.track', 'consultation', 'articles.index', 'contact']), array_map(fn ($link) => $link->getAttribute('href'), iterator_to_array($links)));
+        $this->assertSame(7, $xpath->query('./a/*[@aria-hidden="true"]', $menu)->length);
         $this->assertSame(0, $xpath->query('./section[contains(@class,"np-drawer-categories")]', $menu)->length);
         $this->assertSame(1, $xpath->query('//header//*[@data-desktop-shop-dropdown]')->length);
         $this->assertSame(1, $xpath->query('//header//*[@data-desktop-repair-dropdown]')->length);
