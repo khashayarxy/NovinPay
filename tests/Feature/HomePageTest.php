@@ -232,7 +232,7 @@ class HomePageTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new DOMXPath($document);
         $this->assertSame(5, $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]/a | //header//nav[@aria-label="ناوبری اصلی"]/div[@data-desktop-shop-dropdown or @data-desktop-repair-dropdown]/a')->length);
-        $this->assertSame(6, $xpath->query('//dialog[@id="mobile-drawer"]//nav[@aria-label="ناوبری موبایل"]/a')->length);
+        $this->assertSame(7, $xpath->query('//dialog[@id="mobile-drawer"]//nav[@aria-label="ناوبری موبایل"]/a')->length);
         $desktop = $xpath->query('//header//nav[@aria-label="ناوبری اصلی"]')->item(0);
         $this->assertSame(
             ['صفحه اصلی', 'فروشگاه', 'تعمیرات', 'تماس با ما', 'مقاله‌ها'],
@@ -260,9 +260,9 @@ class HomePageTest extends TestCase
         $xpath = new DOMXPath($document);
         $this->assertSame(3, $xpath->query('//footer/div/div[contains(@class,"np-footer__grid")]/*')->length);
         $quickLinks = $xpath->query('//footer//nav[@aria-label="دسترسی سریع"]//a');
-        $this->assertSame(3, $quickLinks->length);
+        $this->assertSame(4, $quickLinks->length);
         $this->assertSame(
-            ['فروشگاه', 'تعمیرات', 'تماس با ما'],
+            ['فروشگاه', 'درخواست تعمیر', 'پیگیری تعمیر', 'تماس با ما'],
             array_map(fn ($link) => trim(preg_replace('/\s+/', ' ', $link->textContent)), iterator_to_array($quickLinks)),
         );
         $this->assertSame(0, $xpath->query('//footer//address')->length);

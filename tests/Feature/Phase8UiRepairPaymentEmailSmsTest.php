@@ -444,10 +444,10 @@ class Phase8UiRepairPaymentEmailSmsTest extends TestCase
         app(ActivationDocumentsService::class)->approve($order, $this->admin);
         Mail::assertSent(UnifiedNotificationMail::class, fn (UnifiedNotificationMail $m) => $m->hasTo('sara.mohammadi@example.com') && str_contains($m->mailSubject, 'تأیید مدارک فعال‌سازی'));
 
-        // 4. Consultation submitted -> sends customer email when matching account email exists
+        // 4. Consultation submitted (even as guest via phone_digest lookup) -> sends customer email when matching account email exists
+        auth('customer')->logout();
         $consultToken = bin2hex(random_bytes(32));
-        $this->actingAs($this->account, 'customer')
-            ->withSession(['customer_session_version' => 1, 'consultation_token' => $consultToken])
+        $this->withSession(['consultation_token' => $consultToken])
             ->post('/consultation', [
                 'submission_token' => $consultToken,
                 'customer_name' => 'سارا محمدی',

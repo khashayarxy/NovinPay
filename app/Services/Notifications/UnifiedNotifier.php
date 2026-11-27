@@ -19,6 +19,7 @@ use App\Services\IpPanel;
 use App\Services\Observability\ObservabilityEvents;
 use App\Services\Observability\TelegramTopicNotifier;
 use App\Support\FaNumber;
+use App\Support\RepairIdentity;
 use App\Support\RepairPaymentCode;
 use App\Support\RepairTracking;
 use Illuminate\Support\Facades\Cache;
