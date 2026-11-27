@@ -39,6 +39,13 @@
             </section>
             <x-account.settlement :document="$document" :plan="$plan" :paid-at-display="$paidAtDisplay ?? null" />
         </div>
+        @if(! empty($docsEligible))
+            <x-orders.activation-documents
+                :order="$order"
+                :slots="$docSlots ?? []"
+                :submit-action="route('account.orders.documents.store', $order->public_id)"
+            />
+        @endif
     </div>
 </div>
 @endsection

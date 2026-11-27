@@ -311,7 +311,9 @@ final class UnifiedNotifier
             }
 
             if ($customerPhone !== null) {
-                $this->sendSms($customerPhone, 'customer_consultation_submitted', ['name' => $customerName, 'topic' => $topic]);
+                $this->sendIpPanelOptionalPattern($customerPhone, 'consultation_submitted', [
+                    'name' => $customerName,
+                ]);
             }
             $this->sendCustomerEmail(
                 $customerEmail,
@@ -363,6 +365,76 @@ final class UnifiedNotifier
                 'warning',
             );
         }, 'product_feedback_submitted');
+    }
+
+    public function orderDocumentsApproved(SalesOrder $order): void
+    {
+        $this->safe(function () use ($order): void {
+            $order->loadMissing('customer');
+            $code = strtoupper(substr((string) $order->public_id, 0, 8));
+            $phone = $this->resolveOrderCustomerPhone($order);
+            if ($phone !== null) {
+                $this->sendIpPanelOptionalPattern($phone, 'documents_approved', [
+                    'order_code' => $code,
+                ]);
+            }
+        }, 'order_documents_approved');
+    }
+
+    public function orderDocumentsRevision(SalesOrder $order, string $reason): void
+    {
+        $this->safe(function () use ($order, $reason): void {
+            $order->loadMissing('customer');
+            $code = strtoupper(substr((string) $order->public_id, 0, 8));
+            $phone = $this->resolveOrderCustomerPhone($order);
+            if ($phone !== null) {
+                $this->sendIpPanelOptionalPattern($phone, 'documents_revision', [
+                    'order_code' => $code,
+                    'reason' => mb_strimwidth(trim($reason), 0, 120, '…'),
+                ]);
+            }
+        }, 'order_documents_revision');
+    }
+
+    private function resolveOrderCustomerPhone(SalesOrder $order): ?string
+    {
+        if ($order->customer_account_id) {
+            $account = CustomerAccount::query()->find($order->customer_account_id);
+            if ($account?->is_active && $account->verified_at) {
+                $normalized = $this->normalizePhone($account->phone);
+                if ($normalized !== null) {
+                    return $normalized;
+                }
+            }
+        }
+
+        return $this->normalizePhone($order->customer?->contact_phone);
+    }
+
+    /**
+     * Send an optional IPPanel customer pattern SMS (gracefully no-oping when pattern code or IPPanel is unconfigured).
+     *
+     * @param  array<string, scalar>  $params
+     */
+    private function sendIpPanelOptionalPattern(string $phone, string $patternKey, array $params): void
+    {
+        $pattern = trim((string) config('notifications.sms.patterns.'.$patternKey, ''));
+        if ($pattern === '') {
+            return;
+        }
+        if ($this->ipPanel->patternConfigurationIssue() !== null) {
+            return;
+        }
+
+        try {
+            $outcome = $this->ipPanel->sendPattern($phone, $pattern, $params);
+            app(ObservabilityEvents::class)->sms('notification', $outcome, 'ippanel', $patternKey);
+        } catch (\Throwable $e) {
+            Log::warning('Optional IPPanel pattern dispatch failed safely', [
+                'pattern_key' => $patternKey,
+                'exception' => $e::class,
+            ]);
+        }
     }
 
     public function orderPaid(SalesOrder $order, FinancialDocument $document, PaymentTransaction $transaction): void

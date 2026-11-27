@@ -17,7 +17,14 @@
                     } }}</p>
                 </div>
                 <x-account.timeline :steps="$timeline" />
-                <a class="public-inline-link" href="{{ route('account.index', ['section' => 'orders']) }}">سفارش‌های من</a>
+                @if(! empty($docsEligible) && isset($trackedOrder))
+                    <x-orders.activation-documents
+                        :order="$trackedOrder"
+                        :slots="$docSlots ?? []"
+                        :submit-action="route('account.orders.short.documents.store', ['code' => $code])"
+                    />
+                @endif
+                <a class="public-inline-link mt-4 inline-block" href="{{ route('account.index', ['section' => 'orders']) }}">سفارش‌های من</a>
             @else
                 @if ($timeline === [])<p class="public-notice public-notice--error" role="alert">سفارشی با این کد و شماره پیدا نشد.</p>@endif
                 <form class="public-form" method="post" action="{{ route('account.orders.track', ['code' => $code]) }}" data-public-submit-loading>

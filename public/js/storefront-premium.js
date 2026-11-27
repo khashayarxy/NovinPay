@@ -1,5 +1,6 @@
 // Shared storefront enhancement. Routes, authentication and cart validation stay in Laravel.
 (() => {
+    'use strict';
     if (typeof HTMLDialogElement === 'undefined' || typeof HTMLDialogElement.prototype.showModal !== 'function') return;
     const body = document.body;
     const root = document.documentElement;
@@ -920,6 +921,7 @@
         });
     });
     function register(dialog, callbacks = {}) {
+        if (!dialog || !dialog.id) return;
         const registered = layers.get(dialog.id);
         if (registered?.dialog === dialog) {
             Object.assign(registered, callbacks);
@@ -933,7 +935,7 @@
         let outside = false;
         const isOutside = event => {
             if (event.target !== dialog) return false;
-            const surface = layers.get(dialog.id).surface ?? dialog;
+            const surface = layers.get(dialog.id)?.surface ?? dialog;
             const bounds = surface.getBoundingClientRect();
             return event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
         };

@@ -14,6 +14,7 @@ use App\Services\Notifications\BaleNotifier;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Services\Observability\ObservabilityMetrics;
 use App\Services\Observability\TelegramTopicNotifier;
+use App\Support\FaNumber;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -129,7 +130,38 @@ final class TelegramDailyDigestCommand extends Command
         ];
 
         $text = implode("\n", $lines);
-        $sentTelegram = $topics->send('digest', $text, "daily_digest:{$dateKey}", 60);
+        $baseAdminUrl = rtrim((string) config('app.url', 'https://novinpaypos.com'), '/');
+        $settledFa = FaNumber::digits((string) $settledCount).' مورد';
+        $repairsFa = FaNumber::digits((string) $newRepairs).' مورد';
+        $consultsFa = FaNumber::digits((string) $newConsultations).' مورد';
+        $revenueFa = FaNumber::digits(number_format($revenueToman)).' تومان';
+
+        $digestHeader = "📊 گزارش جمع‌بندی روزانه نوین‌پی ({$dateKey})\n"
+            .'خلاصهٔ شاخص‌های کلیدی فروش، تعمیرات، مشاوره و وضعیت بکاپ:';
+        $digestTableKeyboard = [
+            [
+                ['text' => $settledFa, 'url' => $baseAdminUrl.'/admin/orders'],
+                ['text' => '🛒 تعداد سفارش‌های موفق امروز', 'url' => $baseAdminUrl.'/admin/orders'],
+            ],
+            [
+                ['text' => $repairsFa, 'url' => $baseAdminUrl.'/admin/repair-requests'],
+                ['text' => '🛠️ تعداد درخواست‌های تعمیر جدید', 'url' => $baseAdminUrl.'/admin/repair-requests'],
+            ],
+            [
+                ['text' => $consultsFa, 'url' => $baseAdminUrl.'/admin/consultations'],
+                ['text' => '💬 تعداد درخواست‌های مشاوره / تماس جدید', 'url' => $baseAdminUrl.'/admin/consultations'],
+            ],
+            [
+                ['text' => $revenueFa, 'url' => $baseAdminUrl.'/admin/orders'],
+                ['text' => '💳 مجموع فروش آنلاین (زیبال)', 'url' => $baseAdminUrl.'/admin/orders'],
+            ],
+            [
+                ['text' => $backupStatus, 'url' => $baseAdminUrl.'/admin/system-health'],
+                ['text' => '🔐 وضعیت آخرین بکاپ دیتابیس', 'url' => $baseAdminUrl.'/admin/system-health'],
+            ],
+        ];
+
+        $sentTelegram = $topics->sendWithKeyboard('digest', $digestHeader, $digestTableKeyboard, "daily_digest:{$dateKey}", 60);
         $sentBale = $bale->send($text, "daily_digest:{$dateKey}", 60);
 
         $emailFields = [

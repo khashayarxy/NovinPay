@@ -25,6 +25,7 @@ use App\Http\Controllers\CustomerAccountController;
 use App\Http\Controllers\CustomerThreePathAuthController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\OrderActivationDocumentsController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Payments\PaymentController;
 use App\Http\Controllers\Payments\ReceiptController;
@@ -114,6 +115,8 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
         Route::patch('/repairs/requests/{record}/handover', [$controller, 'updateRepairHandover'])->where('record', '[A-Za-z0-9-]{1,35}')->middleware('throttle:20,1')->name('repairs.request.handover');
         Route::get('/repairs/{record}', [$controller, 'repair'])->whereUuid('record')->name('repairs.show');
         Route::get('/orders/{record}', [$controller, 'order'])->whereUuid('record')->name('orders.show');
+        Route::post('/orders/{record}/documents', [OrderActivationDocumentsController::class, 'storeForAccount'])
+            ->whereUuid('record')->middleware('throttle:10,1')->name('orders.documents.store');
         Route::post('password', [$controller, 'password'])->middleware('throttle:10,1')->name('password.update');
         Route::post('password-skip', [$controller, 'skipPassword'])->name('password.skip');
         Route::post('logout', [$controller, 'logout'])->block(20, 15)->name('logout');
@@ -142,6 +145,8 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
         ->where('code', '[A-Fa-f0-9]{8}')->middleware('throttle:60,1')->name('account.orders.short');
     Route::post('/o/{code}', [CustomerAccountController::class, 'trackOrder'])
         ->where('code', '[A-Fa-f0-9]{8}')->middleware('throttle:repair-track')->name('account.orders.track');
+    Route::post('/o/{code}/documents', [OrderActivationDocumentsController::class, 'storeForShortOrder'])
+        ->where('code', '[A-Fa-f0-9]{8}')->middleware('throttle:10,1')->name('account.orders.short.documents.store');
     Route::get('/r/{code}', [RepairRequestController::class, 'tracking'])
         ->where('code', '[1-9][0-9]{7}')->middleware('throttle:60,1')->name('repair.track.short');
     Route::get('/repair/track/recovery', [RepairRequestController::class, 'recovery'])->name('repair.track.recovery');
@@ -356,6 +361,10 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
             foreach (['reserve', 'release', 'cancel', 'confirm', 'fulfill'] as $action) {
                 Route::post('orders/{order}/'.$action, [$controller, 'update'])->defaults('operation', 'order.'.$action)->middleware('throttle:30,1')->name('orders.'.$action);
             }
+            Route::post('orders/{order}/documents/approve', [$controller, 'approveDocuments'])->middleware('throttle:20,1')->name('orders.documents.approve');
+            Route::post('orders/{order}/documents/revision', [$controller, 'revisionDocuments'])->middleware('throttle:20,1')->name('orders.documents.revision');
+            Route::post('orders/{order}/documents/purge', [$controller, 'purgeDocuments'])->middleware('throttle:20,1')->name('orders.documents.purge');
+            Route::post('orders/{order}/documents/retry-telegram', [$controller, 'retryDocumentsTelegram'])->middleware('throttle:10,1')->name('orders.documents.retry');
         });
         Route::middleware('can:customers.view')->group(function (): void {
             $controller = CustomerController::class;

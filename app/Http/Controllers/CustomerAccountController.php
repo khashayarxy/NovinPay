@@ -15,6 +15,7 @@ use App\Models\ProductFeedback;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
+use App\Services\ActivationDocumentsService;
 use App\Services\CustomerEmailLogin;
 use App\Services\CustomerLogin;
 use App\Services\GoogleAuthService;
@@ -559,20 +560,51 @@ class CustomerAccountController extends Controller
         return view('account.repair', ['repair' => $repair, 'case' => true, 'timeline' => CustomerTimeline::repair($repair, $plan), 'document' => $document, 'plan' => $plan, 'paidAtDisplay' => $paidAtDisplay]);
     }
 
-    public function order(string $record)
+    public function order(string $record, ActivationDocumentsService $activationDocs)
     {
         $account = Auth::guard('customer')->user();
         $order = SalesOrder::query()->where($this->owned($account))->where('public_id', $record)
             ->with(['lines', 'events' => fn ($q) => $q->orderBy('id')])->firstOrFail();
         [$document, $plan, $paidAtDisplay] = $this->settlement($account, 'sales_order_id', $order->id);
 
-        return view('account.order', ['order' => $order, 'timeline' => CustomerTimeline::order($order, $plan), 'document' => $document, 'plan' => $plan, 'paidAtDisplay' => $paidAtDisplay]);
+        return view('account.order', [
+            'order' => $order,
+            'timeline' => CustomerTimeline::order($order, $plan),
+            'document' => $document,
+            'plan' => $plan,
+            'paidAtDisplay' => $paidAtDisplay,
+            'docsEligible' => $activationDocs->isEligibleForDocuments($order, $document),
+            'docSlots' => $activationDocs->configuredSlots(),
+        ]);
     }
 
-    public function shortOrder(Request $request, string $code, CustomerLogin $login)
+    public function shortOrder(Request $request, string $code, CustomerLogin $login, ActivationDocumentsService $activationDocs)
     {
         $account = $login->authenticatedAccount($request);
         if (! $account) {
+            $matches = SalesOrder::query()
+                ->where('public_id', 'like', strtolower($code).'%')
+                ->limit(2)
+                ->with(['events:id,sales_order_id,to_status,created_at'])
+                ->get();
+            if ($matches->count() === 1) {
+                $order = $matches->first();
+                $verifiedUntil = (int) $request->session()->get('verified_short_order_docs.'.$order->public_id, 0);
+                if ($verifiedUntil >= now()->timestamp) {
+                    $document = FinancialDocument::query()->where('sales_order_id', $order->id)->first();
+                    $plan = $document ? DeliveryPlan::query()->where('financial_document_id', $document->id)->first() : null;
+                    $timeline = array_map(fn ($step) => array_replace($step, ['at' => null]), CustomerTimeline::order($order, $plan));
+
+                    return view('pages.order-tracking', [
+                        'code' => $code,
+                        'timeline' => $timeline,
+                        'trackedOrder' => $order,
+                        'docsEligible' => $activationDocs->isEligibleForDocuments($order, $document),
+                        'docSlots' => $activationDocs->configuredSlots(),
+                    ]);
+                }
+            }
+
             return view('pages.order-tracking', ['code' => $code, 'timeline' => null]);
         }
         $matches = SalesOrder::query()->where($this->owned($account))
@@ -582,7 +614,7 @@ class CustomerAccountController extends Controller
         return redirect()->route('account.orders.show', ['record' => $matches->first()]);
     }
 
-    public function trackOrder(Request $request, string $code)
+    public function trackOrder(Request $request, string $code, ActivationDocumentsService $activationDocs)
     {
         $phone = RepairIdentity::phone($request->input('contact_phone'));
         $matches = SalesOrder::query()->where('public_id', 'like', strtolower($code).'%')->limit(2)
@@ -598,8 +630,17 @@ class CustomerAccountController extends Controller
         $document = $valid ? FinancialDocument::query()->where('sales_order_id', $order->id)->first() : null;
         $plan = $document ? DeliveryPlan::query()->where('financial_document_id', $document->id)->first() : null;
         $timeline = $valid ? array_map(fn ($step) => array_replace($step, ['at' => null]), CustomerTimeline::order($order, $plan)) : [];
+        if ($valid && $order) {
+            $request->session()->put('verified_short_order_docs.'.$order->public_id, now()->addMinutes(30)->timestamp);
+        }
 
-        return view('pages.order-tracking', ['code' => $code, 'timeline' => $timeline]);
+        return view('pages.order-tracking', [
+            'code' => $code,
+            'timeline' => $timeline,
+            'trackedOrder' => $valid ? $order : null,
+            'docsEligible' => $valid && $order ? $activationDocs->isEligibleForDocuments($order, $document) : false,
+            'docSlots' => $valid && $order ? $activationDocs->configuredSlots() : [],
+        ]);
     }
 
     private function settlement(CustomerAccount $account, string $column, int $id): array

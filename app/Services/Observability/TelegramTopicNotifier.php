@@ -23,6 +23,7 @@ final class TelegramTopicNotifier
         'consultations',
         'support_chat',
         'reviews',
+        'documents',
     ];
 
     public function enabledFor(string $topic): bool
@@ -242,6 +243,250 @@ final class TelegramTopicNotifier
             Log::warning('Telegram topic document transport error', [
                 'topic' => $topic,
                 'exception' => $e::class,
+            ]);
+        }
+
+        return false;
+    }
+
+    /**
+     * Send a message to a topic with an explicit multi-row/multi-column InlineKeyboardMarkup.
+     *
+     * @param  list<list<array<string, string>>>  $inlineKeyboard
+     */
+    public function sendWithKeyboard(
+        string $topic,
+        string $text,
+        array $inlineKeyboard,
+        ?string $dedupeKey = null,
+        ?int $throttleSeconds = null,
+    ): bool {
+        if (! $this->enabledFor($topic)) {
+            Log::notice('Telegram topic keyboard message skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+
+            return false;
+        }
+
+        $threadId = $this->threadId($topic);
+        $fallbackToGeneral = (bool) config('observability.telegram_topics.fallback_to_general', true);
+        if ($threadId === null && ! $fallbackToGeneral) {
+            return false;
+        }
+
+        $clean = trim(self::redact($text));
+        if ($clean === '') {
+            return false;
+        }
+
+        if ($dedupeKey !== null && $dedupeKey !== '') {
+            $ttl = max(1, $throttleSeconds ?? (int) config('observability.telegram_topics.throttle_seconds', 300));
+            $cacheKey = 'tg_topic_dedupe:'.hash('sha256', $topic.':'.$dedupeKey);
+            try {
+                if (! Cache::add($cacheKey, true, now()->addSeconds($ttl))) {
+                    return false;
+                }
+            } catch (Throwable) {
+            }
+        }
+
+        $base = rtrim((string) config('observability.telegram_topics.api_base', 'https://api.telegram.org'), '/');
+        $token = (string) config('observability.telegram_topics.bot_token');
+        $chatId = trim((string) config('observability.telegram_topics.chat_id'));
+
+        $payload = [
+            'chat_id' => $chatId,
+            'text' => mb_substr($clean, 0, 3900),
+            'disable_web_page_preview' => true,
+        ];
+        if ($threadId !== null) {
+            $payload['message_thread_id'] = $threadId;
+        }
+        if ($inlineKeyboard !== []) {
+            $payload['reply_markup'] = ['inline_keyboard' => $inlineKeyboard];
+        }
+
+        try {
+            $response = Http::withoutRedirecting()
+                ->connectTimeout(3)
+                ->timeout(6)
+                ->acceptJson()
+                ->post($base.'/bot'.$token.'/sendMessage', $payload);
+
+            if ($response->successful() && $response->json('ok') === true) {
+                return true;
+            }
+
+            $desc = strtolower((string) $response->json('description', ''));
+            if ($threadId !== null && $fallbackToGeneral && $response->status() === 400 && str_contains($desc, 'thread')) {
+                unset($payload['message_thread_id']);
+                $retry = Http::withoutRedirecting()
+                    ->connectTimeout(3)
+                    ->timeout(6)
+                    ->acceptJson()
+                    ->post($base.'/bot'.$token.'/sendMessage', $payload);
+                if ($retry->successful() && $retry->json('ok') === true) {
+                    return true;
+                }
+            }
+        } catch (Throwable $e) {
+            Log::warning('Telegram topic keyboard message transport error', [
+                'topic' => $topic,
+                'exception' => $e::class,
+            ]);
+        }
+
+        return false;
+    }
+
+    /**
+     * Upload a document to a topic and return the confirmed Telegram chat_id and message_id.
+     *
+     * @param  list<list<array<string, string>>>  $inlineKeyboard
+     * @return array{ok: bool, chat_id: ?string, message_id: ?int}
+     */
+    public function sendDocumentWithResult(
+        string $topic,
+        string $filePath,
+        string $caption = '',
+        ?string $downloadName = null,
+        array $inlineKeyboard = [],
+    ): array {
+        $failed = ['ok' => false, 'chat_id' => null, 'message_id' => null];
+        if (! $this->enabledFor($topic)) {
+            Log::notice('Telegram topic document with result skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+
+            return $failed;
+        }
+        if (! is_file($filePath) || is_link($filePath) || ! is_readable($filePath)) {
+            Log::warning('Telegram topic document with result skipped', ['topic' => $topic, 'reason' => 'file_unreadable']);
+
+            return $failed;
+        }
+
+        $threadId = $this->threadId($topic);
+        $fallbackToGeneral = (bool) config('observability.telegram_topics.fallback_to_general', true);
+        if ($threadId === null && ! $fallbackToGeneral) {
+            return $failed;
+        }
+
+        $base = rtrim((string) config('observability.telegram_topics.api_base', 'https://api.telegram.org'), '/');
+        $token = (string) config('observability.telegram_topics.bot_token');
+        $chatId = trim((string) config('observability.telegram_topics.chat_id'));
+        $cleanCaption = mb_substr(trim(self::redact($caption)), 0, 950);
+        $name = $downloadName ?: basename($filePath);
+
+        $fields = ['chat_id' => $chatId];
+        if ($cleanCaption !== '') {
+            $fields['caption'] = $cleanCaption;
+        }
+        if ($threadId !== null) {
+            $fields['message_thread_id'] = (string) $threadId;
+        }
+        if ($inlineKeyboard !== []) {
+            $fields['reply_markup'] = json_encode(['inline_keyboard' => $inlineKeyboard], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        try {
+            $contents = file_get_contents($filePath);
+            if (! is_string($contents)) {
+                return $failed;
+            }
+
+            $response = Http::withoutRedirecting()
+                ->connectTimeout(5)
+                ->timeout(45)
+                ->acceptJson()
+                ->attach('document', $contents, $name)
+                ->post($base.'/bot'.$token.'/sendDocument', $fields);
+
+            $desc = strtolower((string) $response->json('description', ''));
+            if (! ($response->successful() && $response->json('ok') === true)
+                && $threadId !== null
+                && $fallbackToGeneral
+                && $response->status() === 400
+                && str_contains($desc, 'thread')) {
+                unset($fields['message_thread_id']);
+                $response = Http::withoutRedirecting()
+                    ->connectTimeout(5)
+                    ->timeout(45)
+                    ->acceptJson()
+                    ->attach('document', $contents, $name)
+                    ->post($base.'/bot'.$token.'/sendDocument', $fields);
+            }
+
+            if ($response->successful() && $response->json('ok') === true) {
+                $msgId = $response->json('result.message_id');
+                $resolvedChatId = (string) ($response->json('result.chat.id') ?? $chatId);
+                if (is_numeric($msgId) && (int) $msgId > 0) {
+                    return [
+                        'ok' => true,
+                        'chat_id' => $resolvedChatId,
+                        'message_id' => (int) $msgId,
+                    ];
+                }
+            }
+
+            Log::warning('Telegram topic document with result failed', [
+                'topic' => $topic,
+                'http_status' => $response->status(),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('Telegram topic document with result transport error', [
+                'topic' => $topic,
+                'exception' => $e::class,
+            ]);
+        }
+
+        return $failed;
+    }
+
+    /**
+     * Delete a previously sent Telegram message safely (treating already-deleted messages as purged).
+     */
+    public function deleteMessage(string $chatId, int $messageId): bool
+    {
+        $token = (string) config('observability.telegram_topics.bot_token', '');
+        $cleanChatId = trim($chatId);
+        if (! $this->validToken($token) || $cleanChatId === '' || $messageId <= 0) {
+            return false;
+        }
+
+        $base = rtrim((string) config('observability.telegram_topics.api_base', 'https://api.telegram.org'), '/');
+        try {
+            $response = Http::withoutRedirecting()
+                ->connectTimeout(4)
+                ->timeout(10)
+                ->acceptJson()
+                ->post($base.'/bot'.$token.'/deleteMessage', [
+                    'chat_id' => $cleanChatId,
+                    'message_id' => $messageId,
+                ]);
+
+            if ($response->successful() && $response->json('ok') === true) {
+                return true;
+            }
+
+            $desc = strtolower((string) $response->json('description', ''));
+            if ($response->status() === 400 && (
+                str_contains($desc, 'message to delete not found')
+                || str_contains($desc, 'message identifier is not specified')
+                || str_contains($desc, "message can't be deleted")
+            )) {
+                Log::info('Telegram message already absent or non-deletable during purge', [
+                    'message_id' => $messageId,
+                ]);
+
+                return true;
+            }
+
+            Log::warning('Telegram deleteMessage returned non-OK', [
+                'http_status' => $response->status(),
+                'message_id' => $messageId,
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('Telegram deleteMessage transport error', [
+                'exception' => $e::class,
+                'message_id' => $messageId,
             ]);
         }
 

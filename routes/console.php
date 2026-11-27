@@ -83,6 +83,11 @@ Schedule::command('novinpay:telegram-encrypted-backup')
     ->withoutOverlapping(30)
     ->when(fn () => (bool) config('observability.backups.scheduled_enabled', true) && (bool) config('observability.telegram_topics.enabled'));
 
+Schedule::command('novinpay:purge-activation-documents')
+    ->dailyAt('03:15')
+    ->timezone('Asia/Tehran')
+    ->withoutOverlapping(15);
+
 Artisan::command('operations:status', function (OperationalReadiness $operations): int {
     $status = $operations->status();
     $this->line(json_encode($status, JSON_THROW_ON_ERROR));
