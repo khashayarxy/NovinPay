@@ -31,8 +31,20 @@ class ZibalPayments
 
     public function ownedDocument(CustomerAccount $account, string $reference, bool $lock = false): FinancialDocument
     {
-        abort_unless($account->is_active && $account->customer_id, 403);
-        $query = FinancialDocument::query()->where('public_id', $reference)->where('customer_id', $account->customer_id);
+        abort_unless($account->is_active, 403);
+        $query = FinancialDocument::query()
+            ->where('public_id', $reference)
+            ->where(function ($owner) use ($account): void {
+                if ($account->customer_id) {
+                    $owner->where('customer_id', $account->customer_id);
+                } else {
+                    $owner->whereRaw('1 = 0');
+                }
+                $owner->orWhereExists(fn ($repair) => $repair->selectRaw('1')
+                    ->from('repair_cases')
+                    ->whereColumn('repair_cases.id', 'financial_documents.repair_case_id')
+                    ->where('repair_cases.customer_account_id', $account->id));
+            });
         foreach (['sales_orders' => 'sales_order_id', 'repair_cases' => 'repair_case_id'] as $table => $column) {
             // A legacy CRM link must not override an explicitly assigned account.
             $query->whereNotExists(fn ($source) => $source->selectRaw('1')->from($table)
@@ -49,24 +61,30 @@ class ZibalPayments
         abort_unless(Str::isUuid($operation) && $amountMinor > 0 && $amountMinor % 10 === 0, 422, 'مبلغ باید به ریال صحیح قابل تبدیل باشد.');
         $rial = intdiv($amountMinor, 10);
         abort_unless($rial >= config('payments.zibal.min_rial') && $rial <= config('payments.zibal.max_rial'), 422);
-        [$attempt, $created] = DB::transaction(function () use ($account, $documentId, $amountMinor, $rial, $operation): array {
+        [$attempt, $created, $description] = DB::transaction(function () use ($account, $documentId, $amountMinor, $rial, $operation): array {
             $fresh = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
             abort_unless($fresh->is_active && $fresh->session_version === $account->session_version, 403);
             $document = $this->ownedDocument($fresh, $documentId, true);
+            $description = 'پرداخت سفارش نوین‌پی';
             if ($document->sales_order_id) {
                 $linkedOrder = SalesOrder::query()->find($document->sales_order_id);
                 if ($linkedOrder) {
                     $this->assertOrderPaymentTestAccess($fresh, $linkedOrder);
                 }
+            } elseif ($document->repair_case_id) {
+                $repairRef = RepairCase::query()->whereKey($document->repair_case_id)->value('tracking_reference');
+                $description = $repairRef ? 'پرداخت هزینه تعمیر نوین‌پی — کد '.$repairRef : 'پرداخت هزینه تعمیر نوین‌پی';
             }
             $prior = PaymentAttempt::query()->where('operation_key', $operation)->first();
             if ($prior) {
                 abort_unless($prior->customer_account_id === $account->id && $prior->financial_document_id === $document->id && $prior->amount_minor === $amountMinor, 409);
 
-                return [$prior, false];
+                return [$prior, false, $description];
             }
             app(FinancialOperations::class)->reconcile($document);
-            self::shippingReady($document);
+            if (! $document->repair_case_id) {
+                self::shippingReady($document);
+            }
             abort_unless($amountMinor <= $document->charged_minor - $document->paid_minor, 409, 'مبلغ از ماندهٔ سند بیشتر است.');
             abort_if(PaymentAttempt::query()->where('financial_document_id', $document->id)->whereNotIn('state', ['settled', 'failed'])->exists(), 409, 'پرداخت قبلی هنوز تعیین تکلیف نشده است؛ دوباره پرداخت نکنید.');
             $attempt = new PaymentAttempt;
@@ -76,12 +94,12 @@ class ZibalPayments
             $attempt->save();
             $this->event($attempt, 'request_started');
 
-            return [$attempt, true];
+            return [$attempt, true, $description];
         }, 3);
         if (! $created) {
             return $attempt;
         }
-        $response = $this->gateway->call('request', ['amount' => $rial, 'orderId' => $attempt->public_id, 'callbackUrl' => config('payments.zibal.callback_url'), 'description' => 'پرداخت سفارش نوین‌پی']);
+        $response = $this->gateway->call('request', ['amount' => $rial, 'orderId' => $attempt->public_id, 'callbackUrl' => config('payments.zibal.callback_url'), 'description' => $description]);
 
         return DB::transaction(function () use ($attempt, $response): PaymentAttempt {
             $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
@@ -244,6 +262,114 @@ class ZibalPayments
             'orderId' => $attempt->public_id,
             'callbackUrl' => config('payments.zibal.callback_url'),
             'description' => 'پرداخت سفارش نوین‌پی',
+        ]);
+
+        return DB::transaction(function () use ($attempt, $response): PaymentAttempt {
+            $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
+            $track = ZibalGateway::trackNumber($response['trackId'] ?? null);
+            if (($response['result'] ?? null) === 100 && $track !== null) {
+                $current->track_id = (string) $track;
+                $current->state = 'pending';
+            } elseif (in_array($response['result'] ?? null, self::REQUEST_REJECTIONS, true)) {
+                $current->state = 'failed';
+            } else {
+                $current->state = 'uncertain';
+            }
+            $current->retry_at = now()->addMinutes(2);
+            $current->save();
+            $this->event($current, $current->state === 'failed' ? 'request_rejected_'.$response['result'] : $current->state);
+
+            return $current;
+        }, 3);
+    }
+
+    public function startForCustomerRepair(CustomerAccount $account, RepairCase $repairCase, string $operation): PaymentAttempt
+    {
+        abort_unless($this->gateway->available(), 503, 'پرداخت آنلاین هنوز فعال نشده است.');
+        abort_unless(Str::isUuid($operation), 422);
+
+        [$attempt, $created, $rial, $trackingRef] = DB::transaction(function () use ($account, $repairCase, $operation): array {
+            $freshAccount = CustomerAccount::query()->lockForUpdate()->findOrFail($account->id);
+            abort_unless($freshAccount->is_active && $freshAccount->session_version === $account->session_version, 403);
+
+            $case = RepairCase::query()->lockForUpdate()->findOrFail($repairCase->id);
+            $ownsCase = (int) $case->customer_account_id === (int) $freshAccount->id
+                || ($case->customer_account_id === null && $freshAccount->customer_id && (int) $case->customer_id === (int) $freshAccount->customer_id);
+            abort_unless($ownsCase, 403);
+
+            $document = FinancialDocument::query()->where('repair_case_id', $case->id)->lockForUpdate()->firstOrFail();
+            app(FinancialOperations::class)->reconcile($document);
+
+            if (! $freshAccount->customer_id && $document->customer_id && ! CustomerAccount::query()->where('customer_id', $document->customer_id)->whereKeyNot($freshAccount->id)->exists()) {
+                $freshAccount->customer_id = $document->customer_id;
+                $freshAccount->save();
+            }
+
+            $balance = $document->charged_minor - $document->paid_minor;
+            abort_unless($balance > 0 && $balance % 10 === 0, 409, 'ماندهٔ قابل پرداختی برای این پرونده وجود ندارد.');
+
+            $rial = intdiv($balance, 10);
+            abort_unless($rial >= config('payments.zibal.min_rial') && $rial <= config('payments.zibal.max_rial'), 422, 'مبلغ پرداخت خارج از محدوده مجاز درگاه است.');
+
+            $prior = PaymentAttempt::query()->where('operation_key', $operation)->first();
+            if ($prior) {
+                abort_unless(
+                    (int) $prior->customer_account_id === (int) $freshAccount->id
+                    && (int) $prior->financial_document_id === (int) $document->id
+                    && (int) $prior->amount_minor === (int) $balance,
+                    409
+                );
+
+                return [$prior, false, $rial, (string) $case->tracking_reference];
+            }
+
+            $active = PaymentAttempt::query()
+                ->where('financial_document_id', $document->id)
+                ->whereNotIn('state', ['settled', 'failed'])
+                ->latest('id')
+                ->first();
+            if ($active) {
+                if (
+                    $active->state === 'pending'
+                    && $active->track_id
+                    && (int) $active->amount_minor === (int) $balance
+                    && (int) $active->customer_account_id === (int) $freshAccount->id
+                    && hash_equals($active->merchant_digest, $this->merchantDigest())
+                ) {
+                    return [$active, false, $rial, (string) $case->tracking_reference];
+                }
+                abort(409, 'پرداخت قبلی هنوز تعیین تکلیف نشده است؛ دوباره پرداخت نکنید.');
+            }
+
+            $attempt = new PaymentAttempt;
+            foreach ([
+                'public_id' => (string) Str::uuid(),
+                'financial_document_id' => $document->id,
+                'customer_account_id' => $freshAccount->id,
+                'operation_key' => $operation,
+                'amount_minor' => $balance,
+                'amount_rial' => $rial,
+                'document_version' => $document->version,
+                'merchant_digest' => $this->merchantDigest(),
+                'state' => 'requesting',
+            ] as $key => $value) {
+                $attempt->$key = $value;
+            }
+            $attempt->save();
+            $this->event($attempt, 'request_started');
+
+            return [$attempt, true, $rial, (string) $case->tracking_reference];
+        }, 3);
+
+        if (! $created) {
+            return $attempt;
+        }
+
+        $response = $this->gateway->call('request', [
+            'amount' => $rial,
+            'orderId' => $attempt->public_id,
+            'callbackUrl' => config('payments.zibal.callback_url'),
+            'description' => 'پرداخت هزینه تعمیر نوین‌پی — کد '.$trackingRef,
         ]);
 
         return DB::transaction(function () use ($attempt, $response): PaymentAttempt {

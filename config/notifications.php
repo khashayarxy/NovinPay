@@ -12,11 +12,6 @@ foreach (PatternSms::PATTERNS as $event => $pattern) {
         ?: trim((string) env('NOTIFICATIONS_PANELCHI_PATTERN_'.$suffix))
         ?: $pattern;
 }
-foreach (['repair_created_in_person', 'repair_created_postal', 'repair_created_courier'] as $methodEvent) {
-    if ($patternSmsPatterns[$methodEvent] === '') {
-        $patternSmsPatterns[$methodEvent] = $patternSmsPatterns['repair_created'];
-    }
-}
 
 $adminPhonesRaw = trim((string) env('NOTIFICATIONS_ADMIN_PHONES', ''));
 $adminEmailsRaw = trim((string) env('NOTIFICATIONS_ADMIN_EMAILS', ''));
@@ -66,7 +61,7 @@ return [
 
     'email' => [
         'enabled' => in_array($emailEnabledEnv, [null, ''], true)
-            ? ($adminEmailsRaw !== '')
+            ? ($adminEmailsRaw !== '' || in_array(strtolower(trim((string) env('MAIL_MAILER', ''))), ['smtp', 'resend', 'failover'], true))
             : filter_var($emailEnabledEnv, FILTER_VALIDATE_BOOL),
     ],
 

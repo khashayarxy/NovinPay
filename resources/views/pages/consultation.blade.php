@@ -20,22 +20,24 @@
                         <input type="hidden" name="submission_token" value="{{ $token }}" />
 
                         <div class="public-form__grid">
-                            <x-operation-field name="customer_name" label="نام و نام خانوادگی" autocomplete="name" :maxlength="100" />
-                            <x-operation-field name="contact_phone" label="شماره موبایل" type="tel" inputmode="numeric" autocomplete="tel" :maxlength="11" />
+                            <x-operation-field name="customer_name" label="نام و نام خانوادگی" autocomplete="name" :maxlength="100" :retain="true" :floating="true" />
+                            <x-operation-field name="contact_phone" label="شماره موبایل" type="tel" inputmode="numeric" autocomplete="tel" :maxlength="11" :retain="true" :floating="true" />
                         </div>
 
-                        <div>
-                            <label class="label" for="consultation-topic">موضوع مشاوره</label>
-                            <select class="input" id="consultation-topic" name="topic" required>
-                                <option value="">موضوع را انتخاب کنید</option>
-                                @foreach (\App\Models\Consultation::TOPICS as $value => $label)
-                                    <option value="{{ $value }}">{{ $label }}</option>
-                                @endforeach
-                            </select>
+                        <div class="public-field">
+                            <div class="np-float-field" data-float-field>
+                                <select class="input" id="consultation-topic" name="topic" required>
+                                    <option value="">موضوع را انتخاب کنید</option>
+                                    @foreach (\App\Models\Consultation::TOPICS as $value => $label)
+                                        <option value="{{ $value }}" @selected(old('topic') === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <label class="label" for="consultation-topic">موضوع مشاوره</label>
+                            </div>
                         </div>
 
-                        <x-operation-field name="device_info" label="مدل یا اطلاعات مرتبط دستگاه (اختیاری)" :required="false" :maxlength="200" />
-                        <x-operation-field name="question" label="پرسش شما (حداقل ۱۰ کاراکتر)" kind="textarea" />
+                        <x-operation-field name="device_info" label="مدل یا اطلاعات مرتبط دستگاه (اختیاری)" :required="false" :maxlength="200" :retain="true" :floating="true" />
+                        <x-operation-field name="question" label="پرسش شما (حداقل ۱۰ کاراکتر)" kind="textarea" :retain="true" :floating="true" />
 
                         <div class="consultation-form-actions">
                             <button class="np-button np-button--primary" type="submit" data-loading-label="در حال ارسال...">ثبت درخواست مشاوره</button>

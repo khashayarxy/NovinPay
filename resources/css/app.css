@@ -1191,6 +1191,44 @@
         overflow-wrap: anywhere;
     }
 
+    @media (max-width: 767px) {
+        .repair-summary-box {
+            padding: 14px 15px;
+            gap: 12px;
+        }
+
+        .repair-summary-box__item {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            gap: 4px;
+            padding-bottom: 11px;
+            text-align: right;
+        }
+
+        .repair-summary-box__item span {
+            display: block;
+            width: 100%;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #64748b;
+            text-align: right;
+        }
+
+        .repair-summary-box__item strong {
+            display: block;
+            width: 100%;
+            font-size: 0.9rem;
+            font-weight: 700;
+            line-height: 1.65;
+            color: #0f274a;
+            text-align: right;
+            direction: rtl;
+            unicode-bidi: plaintext;
+        }
+    }
+
     .repair-step-actions {
         display: flex;
         flex-wrap: wrap;
@@ -2632,4 +2670,286 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     .admin-topbar { gap: .5rem; }
     .admin-user { flex-wrap: wrap; }
     .admin-table-wrap { max-inline-size: 100%; overflow-x: auto; }
+}
+
+/* Phase 8: RTL Material Design Outlined Floating Labels, Compact Repair/Recovery UX & Dashboard Zibal CTA */
+.np-float-field {
+    --np-float-bg: #ffffff;
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.np-float-field :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), textarea, select) {
+    display: block;
+    width: 100%;
+    min-height: 50px;
+    padding: 14px 14px 10px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    background-color: var(--np-float-bg, #ffffff);
+    color: #0f172a;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    box-sizing: border-box;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.np-float-field textarea {
+    min-height: 104px;
+    padding-top: 18px;
+    line-height: 1.7;
+}
+
+.np-float-field select {
+    padding-top: 13px;
+    padding-bottom: 9px;
+    padding-left: 36px;
+}
+
+.np-float-field :is(input, textarea):not(:focus)::placeholder {
+    color: transparent !important;
+    opacity: 0 !important;
+}
+
+.np-float-field :is(input, textarea):focus::placeholder {
+    color: #94a3b8;
+    opacity: 1;
+    transition: opacity 0.15s ease;
+}
+
+.np-float-field > label {
+    position: absolute;
+    right: 12px;
+    left: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0 !important;
+    padding: 0 5px;
+    font-size: 0.89rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: #64748b;
+    background: transparent;
+    pointer-events: none;
+    direction: rtl;
+    text-align: right;
+    max-width: calc(100% - 24px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 2;
+    transition:
+        top 0.16s cubic-bezier(0.2, 0, 0, 1),
+        transform 0.16s cubic-bezier(0.2, 0, 0, 1),
+        font-size 0.16s cubic-bezier(0.2, 0, 0, 1),
+        color 0.16s ease,
+        background 0.16s ease;
+}
+
+.np-float-field:has(textarea) > label {
+    top: 16px;
+    transform: none;
+}
+
+.np-float-field.is-floated > label,
+.np-float-field:has(select) > label,
+.np-float-field:has(:is(input, textarea):focus) > label,
+.np-float-field:has(:is(input, textarea):not(:placeholder-shown)) > label,
+.np-float-field:has(:is(input, textarea):-webkit-autofill) > label,
+.np-float-field:has(:is(input, textarea):autofill) > label {
+    top: 0;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    background: linear-gradient(to bottom, transparent 44%, var(--np-float-bg, #ffffff) 44%);
+}
+
+.np-float-field:has(:is(input, textarea, select):focus) > label {
+    color: #075da6;
+}
+
+.np-float-field :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select):focus {
+    border-color: #098cf7;
+    box-shadow: 0 0 0 3px rgb(9 140 247 / 13%);
+    outline: none;
+}
+
+.np-float-field :is(input, textarea, select)[aria-invalid="true"],
+.np-float-field :is(input, textarea, select).is-invalid {
+    border-color: #dc2626;
+}
+
+.np-float-field:has(:is(input, textarea, select)[aria-invalid="true"], :is(input, textarea, select).is-invalid) > label {
+    color: #dc2626;
+}
+
+.np-float-field :is(input, textarea)[readonly] {
+    --np-float-bg: #f8fafc;
+    background-color: #f8fafc;
+    color: #475569;
+}
+
+.np-float-field:has(:is(input, textarea)[readonly]) > label {
+    background: linear-gradient(to bottom, transparent 44%, #f8fafc 44%);
+}
+
+.np-auth__label-row--end {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -4px;
+}
+
+.repair-card-head {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eaf1f8;
+}
+
+.repair-card-head__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 14px;
+}
+
+.repair-card-head h1 {
+    margin: 0;
+    font-size: clamp(1.12rem, 2vw, 1.35rem);
+    font-weight: 800;
+    line-height: 1.45;
+    color: #0f2440;
+}
+
+.repair-card-head__link {
+    font-size: 0.84rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.repair-step__head {
+    margin-bottom: 10px;
+}
+
+.repair-step__head h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f2440;
+}
+
+.repair-recovery-intro {
+    margin-bottom: 16px;
+}
+
+.repair-recovery-intro h1 {
+    margin: 0 0 6px;
+    font-size: clamp(1.18rem, 2.2vw, 1.42rem);
+    font-weight: 800;
+    color: #0f2440;
+}
+
+.repair-recovery-intro p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.75;
+    color: #475569;
+}
+
+.repair-recovery-actions,
+.repair-recovery-actions .repair-recovery-submit {
+    width: 100%;
+}
+
+.repair-recovery-actions .repair-recovery-submit {
+    justify-content: center;
+}
+
+.np-account-row-group {
+    display: grid;
+    gap: 0;
+}
+
+.np-account-repair-pay-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    margin-top: -4px;
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    border: 1px solid #d5e6f7;
+    border-radius: 0 0 12px 12px;
+    background: #f5faff;
+}
+
+.np-account-repair-pay-bar__amount {
+    font-size: 0.84rem;
+    color: #334155;
+}
+
+.np-account-repair-pay-bar__amount strong {
+    color: #0f2440;
+    font-weight: 700;
+}
+
+.np-account-repair-pay-bar__btn {
+    min-height: 38px;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+}
+
+.np-repair-pay-cta {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #e8f0f8;
+}
+
+.np-repair-pay-cta__btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 46px;
+}
+
+.np-repair-pay-cta__hint {
+    margin: 8px 0 0;
+    font-size: 0.79rem;
+    color: #64748b;
+    text-align: center;
+}
+
+.np-repair-receipts {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #e8f0f8;
+}
+
+.np-repair-receipts h3 {
+    margin: 0 0 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.np-repair-receipts__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+    font-size: 0.83rem;
+    color: #1e293b;
+}
+
+.np-repair-receipts__list li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #f8fafc;
 }

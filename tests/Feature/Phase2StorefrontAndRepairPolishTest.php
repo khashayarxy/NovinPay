@@ -124,7 +124,7 @@ class Phase2StorefrontAndRepairPolishTest extends TestCase
             ->assertSee('شماره تماس تحویل‌دهنده');
     }
 
-    public function test_method_specific_repair_created_sms_patterns_fallback_to_generic_and_use_dedicated_when_configured(): void
+    public function test_method_specific_repair_created_sms_patterns_skip_gracefully_when_blank_and_use_dedicated_when_configured(): void
     {
         config([
             'notifications.pattern_sms.enabled' => true,
@@ -140,10 +140,9 @@ class Phase2StorefrontAndRepairPolishTest extends TestCase
         $customer = $this->createVerifiedCustomer('09127778899');
         $this->actingAs($customer, 'customer')->withSession(['customer_session_version' => 1]);
 
-        // Case 1: Method-specific patterns unset -> automatically fall back to generic repair_created (309p3u2jo5b7qds)
+        // Case 1: Method-specific patterns unset -> gracefully skip SMS (deprecated generic repair_created never fires)
         config([
             'notifications.pattern_sms.patterns' => [
-                'repair_created' => '309p3u2jo5b7qds',
                 'repair_created_in_person' => '',
                 'repair_created_postal' => '',
                 'repair_created_courier' => '',
@@ -153,7 +152,7 @@ class Phase2StorefrontAndRepairPolishTest extends TestCase
 
         $this->get(route('repair'));
         $this->post(route('repair.store'), [
-            'customer_name' => 'مشتری پستی فالبک',
+            'customer_name' => 'مشتری پستی بدون الگو',
             'device_brand' => 'PAX',
             'device_model' => 'S90',
             'issue' => 'دستگاه روشن نمی‌شود و باتری شارژ نگه نمی‌دارد.',
@@ -163,12 +162,11 @@ class Phase2StorefrontAndRepairPolishTest extends TestCase
             'submission_token' => session('repair_submission_token'),
         ])->assertRedirect(route('repair.confirmation'));
 
-        Http::assertSent(fn (HttpRequest $req) => $req['code'] === '309p3u2jo5b7qds');
+        Http::assertNothingSent();
 
-        // Case 2: Dedicated method-specific patterns configured -> each handover method uses its own pattern code
+        // Case 2: Dedicated method-specific patterns configured -> each handover method uses exclusively its own pattern code
         config([
             'notifications.pattern_sms.patterns' => [
-                'repair_created' => '309p3u2jo5b7qds',
                 'repair_created_in_person' => 'patInPerson111',
                 'repair_created_postal' => 'patPostal222',
                 'repair_created_courier' => 'patCourier333',

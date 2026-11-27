@@ -16,8 +16,9 @@
                 @endforeach
             </div>
         </section>
-        <a class="menu-row" href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif><x-storefront.icon name="repair" /><span>تعمیرات کارتخوان</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
-        <a class="menu-row" href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif><x-storefront.icon name="search" /><span>پیگیری تعمیرات</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
+        <a class="menu-row" href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif><x-storefront.icon name="repair" /><span>درخواست تعمیر</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
+        <a class="menu-row" href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif><x-storefront.icon name="search" /><span>پیگیری تعمیر</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
+        <a class="menu-row" href="{{ route('consultation') }}" @if (request()->routeIs('consultation*')) aria-current="page" @endif><x-storefront.icon name="headset" /><span>درخواست مشاوره</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
         <a class="menu-row" href="{{ route('articles.index') }}" @if (request()->routeIs('articles.*')) aria-current="page" @endif><x-storefront.icon name="book" /><span>مقالات و آموزش‌ها</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
         <a class="menu-row" href="{{ route('contact') }}" @if (request()->routeIs('contact')) aria-current="page" @endif><x-storefront.icon name="phone" /><span>تماس با ما</span><x-storefront.icon name="arrow" class="menu-chevron" /></a>
     </nav>

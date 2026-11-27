@@ -78,8 +78,10 @@
                                 @csrf
                                 <input type="hidden" name="flow" value="{{ $flow }}">
                                 <input type="hidden" name="request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-                                <label for="account-phone">شماره موبایل یا ایمیل</label>
-                                <input id="account-phone" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" value="{{ old('identifier') }}" required>
+                                <div class="np-float-field" data-float-field>
+                                    <input id="account-phone" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" placeholder=" " value="{{ old('identifier') }}" required>
+                                    <label for="account-phone">شماره موبایل یا ایمیل</label>
+                                </div>
                                 <p class="np-field-error" role="status" data-send-status hidden></p>
                                 <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ارسال کد تأیید</button>
                             </form>
@@ -102,8 +104,10 @@
                                 <input type="hidden" name="flow" value="{{ $flow }}">
                                 <input type="hidden" name="request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                                 <input type="hidden" name="recover" value="1">
-                                <label for="account-forgot-identifier">شماره موبایل یا ایمیل</label>
-                                <input id="account-forgot-identifier" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" value="{{ old('identifier', $phone ?? $loginEmail ?? '') }}" required>
+                                <div class="np-float-field" data-float-field>
+                                    <input id="account-forgot-identifier" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" enterkeyhint="go" maxlength="254" placeholder=" " value="{{ old('identifier', $phone ?? $loginEmail ?? '') }}" required>
+                                    <label for="account-forgot-identifier">شماره موبایل یا ایمیل</label>
+                                </div>
                                 <p class="np-field-error" role="status" data-send-status hidden></p>
                                 <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('otp') }}">ارسال کد بازیابی</button>
                             </form>
@@ -117,14 +121,18 @@
                                 @if($phone)
                                     <input type="hidden" name="flow" value="{{ $flow }}">
                                 @endif
-                                <label for="account-pw-identifier">شماره موبایل یا ایمیل</label>
-                                <input id="account-pw-identifier" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" maxlength="254" value="{{ old('identifier', $phone ?? $loginEmail ?? '') }}" required>
+                                <div class="np-float-field" data-float-field>
+                                    <input id="account-pw-identifier" type="text" name="identifier" dir="ltr" autocomplete="username" inputmode="email" maxlength="254" placeholder=" " value="{{ old('identifier', $phone ?? $loginEmail ?? '') }}" required>
+                                    <label for="account-pw-identifier">شماره موبایل یا ایمیل</label>
+                                </div>
 
-                                <div class="np-auth__label-row">
+                                <div class="np-float-field" data-float-field>
+                                    <x-account.password id="account-password" name="password" autocomplete="current-password" enterkeyhint="go" placeholder=" " />
                                     <label for="account-password">رمز عبور</label>
+                                </div>
+                                <div class="np-auth__label-row np-auth__label-row--end">
                                     <a class="np-auth__forgot" href="{{ route('account.login', ['method' => 'forgot']) }}">فراموشی رمز عبور</a>
                                 </div>
-                                <x-account.password id="account-password" name="password" autocomplete="current-password" enterkeyhint="go" />
 
                                 <button type="submit" class="np-account-primary" data-account-wait="{{ $wait('password') }}">ورود به پنل کاربری</button>
                             </form>

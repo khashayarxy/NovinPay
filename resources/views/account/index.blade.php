@@ -12,6 +12,7 @@
         'security' => 'امنیت حساب',
     ];
     $feedbackStatuses = ['approved' => 'منتشرشده', 'pending' => 'در انتظار بررسی', 'rejected' => 'تأییدنشده'];
+    $zibalReady = app(\App\Services\ZibalGateway::class)->available();
 @endphp
 <div class="np-account np-container">
     <header class="np-account-banner">
@@ -107,6 +108,7 @@
                         @php
                             $deviceLabel = \App\Support\RepairIdentity::deviceLabel($repair->device_brand, $repair->device_model);
                             $repairStatusLabel = \App\Support\CustomerTimeline::repairStatus($repair);
+                            $repairBalanceMinor = (int) ($repairPayableMap[$repair->id] ?? 0);
                             $repairTone = match ($repair->status) {
                                 \App\Enums\RepairStage::Ready, \App\Enums\RepairStage::Repaired, \App\Enums\RepairStage::Delivered => 'success',
                                 \App\Enums\RepairStage::WaitingApproval => 'warning',
@@ -114,20 +116,32 @@
                                 default => 'info',
                             };
                         @endphp
-                        <a class="np-account-row" href="{{ route('account.repairs.show', $repair->public_id) }}">
-                            <span class="np-account-row__main">
-                                <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', $deviceLabel))<bdi class="np-latin-code" dir="ltr">{{ $deviceLabel }}</bdi>@else{{ $deviceLabel }}@endif</span>
-                                <span class="np-account-row__meta">
-                                    <span>کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
-                                    <span class="np-account-dot" aria-hidden="true">·</span>
-                                    <span><x-finance-time :value="$repair->received_at ?? $repair->created_at" :with-time="false" /></span>
+                        <div class="np-account-row-group">
+                            <a class="np-account-row" href="{{ route('account.repairs.show', $repair->public_id) }}">
+                                <span class="np-account-row__main">
+                                    <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', $deviceLabel))<bdi class="np-latin-code" dir="ltr">{{ $deviceLabel }}</bdi>@else{{ $deviceLabel }}@endif</span>
+                                    <span class="np-account-row__meta">
+                                        <span>کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
+                                        <span class="np-account-dot" aria-hidden="true">·</span>
+                                        <span><x-finance-time :value="$repair->received_at ?? $repair->created_at" :with-time="false" /></span>
+                                    </span>
                                 </span>
-                            </span>
-                            <span class="np-account-row__end">
-                                <span class="np-account-pill np-account-pill--{{ $repairTone }}">{{ $repairStatusLabel }}</span>
-                                <svg class="np-account-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-                            </span>
-                        </a>
+                                <span class="np-account-row__end">
+                                    <span class="np-account-pill np-account-pill--{{ $repairTone }}">{{ $repairStatusLabel }}</span>
+                                    <svg class="np-account-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                                </span>
+                            </a>
+                            @if($repairBalanceMinor > 0)
+                                <div class="np-account-repair-pay-bar">
+                                    <span class="np-account-repair-pay-bar__amount">مانده هزینه تعمیر: <strong>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($repairBalanceMinor)) }} تومان</strong></span>
+                                    <form method="post" action="{{ route('account.repairs.pay', $repair->public_id) }}" data-prevent-double-submit>
+                                        @csrf
+                                        <input type="hidden" name="operation_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                                        <button type="submit" class="np-button np-button--primary np-account-repair-pay-bar__btn" @disabled(! $zibalReady)>پرداخت آنلاین با زیبال</button>
+                                    </form>
+                                </div>
+                            @endif
+                        </div>
                     @endforeach
                     @foreach($requests as $repair)
                         @php($deviceLabel = \App\Support\RepairIdentity::deviceLabel($repair->device_brand, $repair->device_model))
@@ -209,18 +223,30 @@
                     <h2>اطلاعات شخصی</h2>
                     <form method="post" class="np-account-form" data-prevent-double-submit action="{{ route('account.profile') }}">
                         @csrf
-                        <label for="profile-name">نام و نام خانوادگی</label>
-                        <input id="profile-name" name="name" value="{{ old('name', $account->name) }}" autocomplete="name" minlength="2" maxlength="100" @class(['is-invalid' => $errors->has('name')]) @error('name') aria-invalid="true" @enderror required>
-                        @error('name')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
+                        <div class="np-account-form__field">
+                            <div class="np-float-field" data-float-field>
+                                <input id="profile-name" name="name" placeholder=" " value="{{ old('name', $account->name) }}" autocomplete="name" minlength="2" maxlength="100" @class(['is-invalid' => $errors->has('name')]) @error('name') aria-invalid="true" @enderror required>
+                                <label for="profile-name">نام و نام خانوادگی</label>
+                            </div>
+                            @error('name')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
+                        </div>
                         @if($account->email)
-                            <label for="profile-email">نشانی ایمیل</label>
-                            <input id="profile-email" type="email" value="{{ $account->email }}" dir="ltr" readonly>
+                            <div class="np-account-form__field">
+                                <div class="np-float-field" data-float-field>
+                                    <input id="profile-email" type="email" placeholder=" " value="{{ $account->email }}" dir="ltr" readonly>
+                                    <label for="profile-email">نشانی ایمیل</label>
+                                </div>
+                            </div>
                         @endif
-                        <label for="profile-mobile">شماره موبایل</label>
-                        <input id="profile-mobile" type="tel" value="{{ $account->phone ? \App\Support\FaNumber::digits($account->phone) : '' }}" placeholder="ثبت نشده" dir="ltr" readonly>
-                        <div class="np-account-field-help">
-                            <small>{{ $account->phone ? 'تغییر شماره به تأیید دوباره مالکیت آن نیاز دارد.' : 'شماره موبایلی برای این حساب ثبت نشده است.' }}</small>
-                            <a class="np-account-link np-account-link--inline" href="{{ route('account.index', ['section' => 'security']) }}">{{ $account->phone ? 'تغییر شماره موبایل' : 'تنظیم شماره موبایل' }}</a>
+                        <div class="np-account-form__field">
+                            <div class="np-float-field" data-float-field>
+                                <input id="profile-mobile" type="tel" value="{{ $account->phone ? \App\Support\FaNumber::digits($account->phone) : '' }}" placeholder="ثبت نشده" dir="ltr" readonly>
+                                <label for="profile-mobile">شماره موبایل</label>
+                            </div>
+                            <div class="np-account-field-help">
+                                <small>{{ $account->phone ? 'تغییر شماره به تأیید دوباره مالکیت آن نیاز دارد.' : 'شماره موبایلی برای این حساب ثبت نشده است.' }}</small>
+                                <a class="np-account-link np-account-link--inline" href="{{ route('account.index', ['section' => 'security']) }}">{{ $account->phone ? 'تغییر شماره موبایل' : 'تنظیم شماره موبایل' }}</a>
+                            </div>
                         </div>
                         <button class="np-account-primary" type="submit">ذخیره اطلاعات</button>
                     </form>
@@ -273,21 +299,33 @@
                         <form method="post" class="np-account-form" data-prevent-double-submit action="{{ route('account.password.update') }}">
                             @csrf
                             @if($account->password && !$recentOtp)
-                                <label for="current-password">رمز عبور فعلی</label>
-                                <x-account.password id="current-password" name="current_password" autocomplete="current-password" />
-                                @error('current_password')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
+                                <div class="np-account-form__field">
+                                    <div class="np-float-field" data-float-field>
+                                        <x-account.password id="current-password" name="current_password" autocomplete="current-password" placeholder=" " />
+                                        <label for="current-password">رمز عبور فعلی</label>
+                                    </div>
+                                    @error('current_password')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
+                                </div>
                             @endif
-                            <label for="new-password">رمز عبور جدید</label>
-                            <x-account.password id="new-password" name="password" autocomplete="new-password" minlength="10" aria-describedby="password-guidance" data-password-strength-input />
-                            <div class="np-password-meter" data-password-strength hidden aria-live="polite">
-                                <div class="np-password-meter__bars" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-                                <small class="np-password-meter__label" data-password-strength-label></small>
+                            <div class="np-account-form__field">
+                                <div class="np-float-field" data-float-field>
+                                    <x-account.password id="new-password" name="password" autocomplete="new-password" minlength="10" placeholder=" " aria-describedby="password-guidance" data-password-strength-input />
+                                    <label for="new-password">رمز عبور جدید</label>
+                                </div>
+                                <div class="np-password-meter" data-password-strength hidden aria-live="polite">
+                                    <div class="np-password-meter__bars" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                                    <small class="np-password-meter__label" data-password-strength-label></small>
+                                </div>
+                                <small id="password-guidance">حداقل ۱۰ کاراکتر وارد کنید. یک عبارت طولانی که به‌راحتی به خاطر می‌سپارید انتخاب کنید.</small>
+                                @error('password')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
                             </div>
-                            <small id="password-guidance">حداقل ۱۰ کاراکتر وارد کنید. یک عبارت طولانی که به‌راحتی به خاطر می‌سپارید انتخاب کنید.</small>
-                            @error('password')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
-                            <label for="password-confirmation">تکرار رمز عبور جدید</label>
-                            <x-account.password id="password-confirmation" name="password_confirmation" autocomplete="new-password" minlength="10" />
-                            @error('password_confirmation')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
+                            <div class="np-account-form__field">
+                                <div class="np-float-field" data-float-field>
+                                    <x-account.password id="password-confirmation" name="password_confirmation" autocomplete="new-password" minlength="10" placeholder=" " />
+                                    <label for="password-confirmation">تکرار رمز عبور جدید</label>
+                                </div>
+                                @error('password_confirmation')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
+                            </div>
                             <button class="np-account-primary" type="submit">ذخیره رمز عبور</button>
                         </form>
                     @else

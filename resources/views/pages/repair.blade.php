@@ -55,18 +55,15 @@
 <div class="repair-entry-bg">
 <div class="np-container public-section repair-entry">
     <div class="repair-entry-shell">
-        <header class="store-page-intro repair-hero-intro">
-            <div class="repair-hero-intro__row">
-                <div>
-                    <h1>ثبت درخواست تعمیر کارتخوان</h1>
-                    <p>در چهار مرحلهٔ ساده درخواست خود را ثبت کنید و کد پیگیری بگیرید.</p>
-                </div>
-                <a class="public-inline-link" href="{{ route('repair.track') }}">پیگیری درخواست قبلی</a>
-            </div>
-        </header>
-
         <div class="repair-split-card">
-        <section class="repair-split-form" aria-label="ثبت درخواست تعمیر">
+        <section class="repair-split-form" aria-labelledby="repair-form-title">
+            <header class="repair-card-head">
+                <div class="repair-card-head__row">
+                    <h1 id="repair-form-title">ثبت درخواست تعمیر کارتخوان</h1>
+                    <a class="public-inline-link repair-card-head__link" href="{{ route('repair.track') }}">پیگیری تعمیر</a>
+                </div>
+            </header>
+
             <x-form-errors />
 
             <form method="post"
@@ -115,7 +112,6 @@
                 <div class="repair-step" data-step="1" @if($initialStep !== 1) hidden @endif>
                     <div class="repair-step__head">
                         <h2>مشخصات دستگاه</h2>
-                        <p>برند دستگاه کارتخوان را انتخاب کنید و مدل آن را بنویسید.</p>
                     </div>
                     <fieldset class="repair-choice-fieldset">
                         <legend class="label">برند دستگاه <span class="required-mark">*</span></legend>
@@ -160,7 +156,6 @@
                 <div class="repair-step" data-step="2" @if($initialStep !== 2) hidden @endif>
                     <div class="repair-step__head">
                         <h2>مشکل دستگاه</h2>
-                        <p>موضوع اصلی مشکل را انتخاب کنید و توضیح کوتاهی دربارهٔ ایراد دستگاه بنویسید.</p>
                     </div>
                     <div class="repair-issue-grid" role="group" aria-label="مشکلات رایج دستگاه">
                         @foreach ($issuePresets as [$label, $icon, $isUpgrade])
@@ -191,27 +186,23 @@
                 <div class="repair-step" data-step="3" @if($initialStep !== 3) hidden @endif>
                     <div class="repair-step__head">
                         <h2>اطلاعات تماس و تحویل</h2>
-                        <p>مشخصات تماس، استان و شهر و نحوهٔ تحویل دستگاه را وارد کنید.</p>
                     </div>
 
                     <div class="public-form__grid">
                         <x-repair-field name="customer_name" label="نام و نام خانوادگی">
                             <input id="customer_name" name="customer_name" value="{{ $customerName }}" class="input" autocomplete="name" required minlength="2" maxlength="100" placeholder="مثلاً علی رضایی" aria-invalid="{{ $errors->has('customer_name') ? 'true' : 'false' }}" aria-describedby="customer_name-feedback">
                         </x-repair-field>
-                        <x-repair-field name="contact_phone" label="شماره موبایل">
+                        <x-repair-field name="contact_phone" label="شماره موبایل" :hint="!$isGuest ? 'شماره موبایل حساب کاربری شما تأیید شده است.' : null">
                             <input @if(!$isGuest) readonly @endif value="{{ $customerPhone !== '' ? \App\Support\FaNumber::digits($customerPhone) : '' }}" type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">
-                            @if(!$isGuest)
-                                <p class="public-hint">شماره موبایل حساب کاربری شما تأیید شده است.</p>
-                            @endif
                         </x-repair-field>
                     </div>
 
                     <div class="repair-location-block" data-repair-location>
                         <div class="public-form__grid">
                             <div class="public-field">
-                                <label for="repair_province_search">استان <span aria-hidden="true">*</span></label>
-                                <div class="np-searchable-select" data-searchable-select="province">
+                                <div class="np-searchable-select np-float-field" data-searchable-select="province" data-float-field>
                                     <input type="text" id="repair_province_search" class="input np-searchable-select__input" placeholder="جستجو یا انتخاب استان…" autocomplete="off" value="{{ $selectedProvince }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_province_list">
+                                    <label for="repair_province_search">استان <span aria-hidden="true">*</span></label>
                                     <ul id="repair_province_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
                                     <select id="repair_province" name="province" class="sr-only" tabindex="-1" data-repair-province aria-invalid="{{ $errors->has('province') ? 'true' : 'false' }}">
                                         <option value="">انتخاب استان...</option>
@@ -223,9 +214,9 @@
                                 <p class="public-field-error" data-field-error="province" role="alert" @unless($errors->has('province')) hidden @endunless>@error('province'){{ $message }}@enderror</p>
                             </div>
                             <div class="public-field">
-                                <label for="repair_city_search">شهر <span aria-hidden="true">*</span></label>
-                                <div class="np-searchable-select" data-searchable-select="city">
+                                <div class="np-searchable-select np-float-field" data-searchable-select="city" data-float-field>
                                     <input type="text" id="repair_city_search" class="input np-searchable-select__input" placeholder="ابتدا استان را انتخاب کنید…" autocomplete="off" value="{{ $selectedCity }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_city_list">
+                                    <label for="repair_city_search">شهر <span aria-hidden="true">*</span></label>
                                     <ul id="repair_city_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
                                     <select id="repair_city" name="city" class="sr-only" tabindex="-1" data-repair-city data-selected-city="{{ $selectedCity }}" aria-invalid="{{ $errors->has('city') ? 'true' : 'false' }}">
                                         <option value="">ابتدا استان را انتخاب کنید...</option>
@@ -237,7 +228,7 @@
 
                         <div class="repair-handover-section" data-handover-section>
                             <h3 class="repair-handover-title">نحوهٔ تحویل دستگاه به نوین‌پی <span class="required-mark">*</span></h3>
-                            <p class="repair-handover-hint" data-handover-hint>پس از انتخاب استان و شهر، روش‌های در دسترس برای منطقهٔ شما فعال می‌شود.</p>
+                            <p class="repair-handover-hint" data-handover-hint hidden></p>
                             <div class="repair-handover-grid" role="radiogroup" aria-label="نحوهٔ تحویل دستگاه">
                                 <label class="repair-choice-card repair-choice-card--handover" data-handover-option="self_ship">
                                     <input type="radio" name="handover_method" value="self_ship" @checked($selectedHandover === 'self_ship')>
@@ -324,13 +315,17 @@
                                 <input type="hidden" name="pickup_longitude" value="{{ $pickupLng }}" data-map-lng>
                             </div>
                             <div class="public-field">
-                                <label for="pickup_address">نشانی دقیق جهت دریافت دستگاه <span aria-hidden="true">*</span></label>
-                                <textarea id="pickup_address" name="pickup_address" class="input" rows="2" maxlength="500" placeholder="خیابان، کوچه، پلاک، طبقه و واحد" aria-invalid="{{ $errors->has('pickup_address') ? 'true' : 'false' }}">{{ $pickupAddress }}</textarea>
+                                <div class="np-float-field" data-float-field>
+                                    <textarea id="pickup_address" name="pickup_address" class="input" rows="2" maxlength="500" placeholder="خیابان، کوچه، پلاک، طبقه و واحد" aria-invalid="{{ $errors->has('pickup_address') ? 'true' : 'false' }}">{{ $pickupAddress }}</textarea>
+                                    <label for="pickup_address">نشانی دقیق جهت دریافت دستگاه <span aria-hidden="true">*</span></label>
+                                </div>
                                 <p class="public-field-error" data-field-error="pickup_address" role="alert" @unless($errors->has('pickup_address')) hidden @endunless>@error('pickup_address'){{ $message }}@enderror</p>
                             </div>
                             <div class="public-field">
-                                <label for="pickup_notes">توضیحات برای پیک (اختیاری)</label>
-                                <input id="pickup_notes" name="pickup_notes" type="text" value="{{ $pickupNotes }}" class="input" maxlength="300" placeholder="مثلاً بازهٔ زمانی مناسب، زنگ یا طبقه، توضیحات دسترسی" aria-invalid="{{ $errors->has('pickup_notes') ? 'true' : 'false' }}">
+                                <div class="np-float-field" data-float-field>
+                                    <input id="pickup_notes" name="pickup_notes" type="text" value="{{ $pickupNotes }}" class="input" maxlength="300" placeholder="مثلاً بازهٔ زمانی مناسب، زنگ یا طبقه، توضیحات دسترسی" aria-invalid="{{ $errors->has('pickup_notes') ? 'true' : 'false' }}">
+                                    <label for="pickup_notes">توضیحات برای پیک (اختیاری)</label>
+                                </div>
                                 <p class="public-field-error" data-field-error="pickup_notes" role="alert" @unless($errors->has('pickup_notes')) hidden @endunless>@error('pickup_notes'){{ $message }}@enderror</p>
                             </div>
                             <div class="repair-courier-alt">
@@ -342,8 +337,10 @@
                                     <span class="repair-choice-card__title">فرد دیگری دستگاه را به پیک تحویل می‌دهد</span>
                                 </label>
                                 <div class="public-field repair-courier-alt__field" data-other-person-field @unless($hasOtherPerson) hidden @endunless>
-                                    <label for="responsive_phone">شماره تماس تحویل‌دهنده</label>
-                                    <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input repair-rtl-phone-input" dir="ltr" inputmode="numeric" autocomplete="tel" data-digits-only="11" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
+                                    <div class="np-float-field" data-float-field>
+                                        <input id="responsive_phone" name="responsive_phone" type="tel" value="{{ $responsivePhone }}" class="input repair-rtl-phone-input" dir="ltr" inputmode="numeric" autocomplete="tel" data-digits-only="11" maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('responsive_phone') ? 'true' : 'false' }}">
+                                        <label for="responsive_phone">شماره تماس تحویل‌دهنده</label>
+                                    </div>
                                     <p class="public-field-error" data-field-error="responsive_phone" role="alert" @unless($errors->has('responsive_phone')) hidden @endunless>@error('responsive_phone'){{ $message }}@enderror</p>
                                 </div>
                             </div>
@@ -360,7 +357,6 @@
                 <div class="repair-step" data-step="4" @if($initialStep !== 4) hidden @endif>
                     <div class="repair-step__head">
                         <h2>بازبینی و ثبت نهایی</h2>
-                        <p>{{ $isGuest ? 'ابتدا خلاصهٔ اطلاعات را بررسی و تأیید کنید تا کد پیامکی برای ثبت نهایی ارسال شود.' : 'اطلاعات زیر را بررسی کنید و درخواست تعمیر را ثبت نهایی کنید.' }}</p>
                     </div>
 
                     <div class="repair-summary-box" data-repair-summary>
@@ -417,9 +413,11 @@
                                     </p>
                                 @endif
                                 <div class="public-field">
-                                    <label for="repair_auth_code">کد تأیید شش‌رقمی <span aria-hidden="true">*</span></label>
                                     <div class="repair-inline-auth__row">
-                                        <input id="repair_auth_code" type="text" class="input repair-otp-input" dir="ltr" inputmode="numeric" data-digits-only="6" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+                                        <div class="np-float-field" data-float-field>
+                                            <input id="repair_auth_code" type="text" class="input repair-otp-input" dir="ltr" inputmode="numeric" data-digits-only="6" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+                                            <label for="repair_auth_code">کد تأیید شش‌رقمی <span aria-hidden="true">*</span></label>
+                                        </div>
                                         <button type="button" class="np-button np-button--primary" data-auth-verify-btn>تأیید و ثبت درخواست</button>
                                     </div>
                                     <p class="public-field-error" data-field-error="repair_auth_code" role="alert" hidden></p>

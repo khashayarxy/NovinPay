@@ -39,7 +39,8 @@
                 <h2>دسترسی سریع</h2>
                 <nav class="np-footer__links" aria-label="دسترسی سریع">
                     <a href="{{ route('products.index') }}">فروشگاه</a>
-                    <a href="{{ route('repair') }}">تعمیرات</a>
+                    <a href="{{ route('repair') }}">درخواست تعمیر</a>
+                    <a href="{{ route('repair.track') }}">پیگیری تعمیر</a>
                     <a href="{{ route('contact') }}">تماس با ما</a>
                 </nav>
             </div>
