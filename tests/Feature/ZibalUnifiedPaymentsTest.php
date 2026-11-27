@@ -366,10 +366,13 @@ class ZibalUnifiedPaymentsTest extends TestCase
     {
         [$order] = $this->createPayableOrder(3500000);
         [$case, $document] = $this->createPayableRepair(3500000);
+        $case->inbound_method = 'in_person';
         config([
             'notifications.pattern_sms.enabled' => null,
             'notifications.pattern_sms.provider' => null,
-            'notifications.pattern_sms.patterns' => [],
+            'notifications.pattern_sms.patterns' => [
+                'repair_created_in_person' => 'patRepairInPerson01',
+            ],
             'customer.sms_provider' => 'ippanel',
             'customer.ippanel.enabled' => true,
             'customer.ippanel.api_key' => 'ippanel-test-token',
@@ -398,7 +401,7 @@ class ZibalUnifiedPaymentsTest extends TestCase
             'mfae2yqje8msw9e' => ['order_code', 'name', 'product'],
             '694jmegiuep02i6' => ['order_code'],
             'yksd5440vew1loy' => ['order_code', 'tracking_code'],
-            '309p3u2jo5b7qds' => ['name', 'repair_code'],
+            'patRepairInPerson01' => ['name', 'repair_code'],
             'a7h9o09htzyjk17' => ['repair_code', 'pay_code'],
             'hn7sgk679tfdxvt' => ['repair_code', 'status'],
             'u2fc816s2qo1u5t' => ['order_code'],

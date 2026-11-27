@@ -189,7 +189,6 @@
                 <input type="hidden" name="kind" value="{{ $kind }}">
                 <div hidden><label for="website-{{ $kind }}">وب‌سایت</label><input id="website-{{ $kind }}" name="website" tabindex="-1" autocomplete="off"></div>
                 <div class="product-feedback-form__head">
-                    <label class="label" for="body-{{ $kind }}">{{ $kind === 'question' ? 'پرسش شما' : ($ownReview ? 'ویرایش دیدگاه شما' : 'ثبت دیدگاه شما') }}</label>
                     @if ($kind === 'review' && $ownReview?->status === 'pending')
                         <span class="product-feedback-status-pill product-feedback-status-pill--pending">دیدگاه شما در انتظار بررسی مدیریت است</span>
                     @elseif ($kind === 'review' && $ownReview?->status === 'rejected')
@@ -211,7 +210,10 @@
                         <label class="rating-none-option"><input type="radio" name="rating" value="" @checked(! old('rating', $ownReview?->rating))> بدون امتیاز</label>
                     </fieldset>
                 @endif
-                <textarea class="input product-feedback-textarea" id="body-{{ $kind }}" name="body" rows="4" minlength="5" maxlength="1500" placeholder="تجربهٔ خود را از کارکرد، کیفیت ساخت، آنتن‌دهی و باتری محصول بنویسید (بدون شماره تماس یا اطلاعات شخصی)." required>{{ old('kind') === $kind ? old('body') : ($kind === 'review' ? $ownReview?->body : '') }}</textarea>
+                <div class="np-float-field" data-float-field>
+                    <textarea class="input product-feedback-textarea" id="body-{{ $kind }}" name="body" rows="4" minlength="5" maxlength="1500" placeholder="تجربهٔ خود را از کارکرد، کیفیت ساخت، آنتن‌دهی و باتری محصول بنویسید (بدون شماره تماس یا اطلاعات شخصی)." required>{{ old('kind') === $kind ? old('body') : ($kind === 'review' ? $ownReview?->body : '') }}</textarea>
+                    <label class="label" for="body-{{ $kind }}">{{ $kind === 'question' ? 'پرسش شما' : ($ownReview ? 'ویرایش دیدگاه شما' : 'ثبت دیدگاه شما') }}</label>
+                </div>
                 <div class="product-feedback-form__actions">
                     <button type="submit" class="btn btn-primary">{{ $kind === 'review' ? ($ownReview ? 'به‌روزرسانی دیدگاه' : 'ارسال دیدگاه') : 'ارسال پرسش' }}</button>
                 </div>

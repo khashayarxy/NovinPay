@@ -15,7 +15,6 @@ final class PatternSms
         'order_confirmed' => 'mfae2yqje8msw9e',
         'order_preparing' => '694jmegiuep02i6',
         'order_shipped' => 'yksd5440vew1loy',
-        'repair_created' => '309p3u2jo5b7qds',
         'repair_created_in_person' => '',
         'repair_created_postal' => '',
         'repair_created_courier' => '',
@@ -76,11 +75,6 @@ final class PatternSms
             return $configured;
         }
 
-        if (in_array($event, ['repair_created_in_person', 'repair_created_postal', 'repair_created_courier'], true)) {
-            return trim((string) config('notifications.pattern_sms.patterns.repair_created'))
-                ?: self::PATTERNS['repair_created'];
-        }
-
         return self::PATTERNS[$event];
     }
 
@@ -96,7 +90,12 @@ final class PatternSms
         }
 
         $pattern = $this->resolvePattern($event);
-        if (! array_key_exists($event, self::PATTERNS) || ! preg_match('/\A[A-Za-z0-9]{1,80}\z/D', $pattern)) {
+        if (! array_key_exists($event, self::PATTERNS) || $pattern === '') {
+            Log::debug('SMS pattern skipped (unconfigured)', $context);
+
+            return;
+        }
+        if (! preg_match('/\A[A-Za-z0-9]{1,80}\z/D', $pattern)) {
             Log::warning('SMS pattern skipped', $context + ['reason' => 'invalid_pattern']);
 
             return;

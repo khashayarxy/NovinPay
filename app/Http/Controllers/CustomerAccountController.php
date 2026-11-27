@@ -30,6 +30,7 @@ use App\Support\CustomerTimeline;
 use App\Support\FaNumber;
 use App\Support\PaymentDate;
 use App\Support\RepairIdentity;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -445,6 +446,21 @@ class CustomerAccountController extends Controller
                     });
             });
 
+        $repairList = in_array($section, ['overview', 'repairs'], true) ? $this->listing($repairs, $section, 'repairs_page') : [];
+        $repairIds = collect($repairList instanceof Paginator ? $repairList->items() : $repairList)
+            ->pluck('id')
+            ->filter()
+            ->values();
+        $repairPayableMap = $repairIds->isNotEmpty()
+            ? FinancialDocument::query()
+                ->whereIn('repair_case_id', $repairIds)
+                ->get(['repair_case_id', 'charged_minor', 'paid_minor'])
+                ->mapWithKeys(fn (FinancialDocument $doc) => [
+                    (int) $doc->repair_case_id => max(0, (int) ($doc->charged_minor - $doc->paid_minor)),
+                ])
+                ->all()
+            : [];
+
         return view('account.index', [
             'account' => $account,
             'section' => $section,
@@ -454,7 +470,8 @@ class CustomerAccountController extends Controller
                     + (clone $requests)->whereDoesntHave('physicalCase')->whereNotIn('status', ['cancelled', 'completed', 'delivered', 'returned'])->count(),
                 'orders' => (clone $orders)->count(),
             ] : [],
-            'repairs' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($repairs, $section, 'repairs_page') : [],
+            'repairs' => $repairList,
+            'repairPayableMap' => $repairPayableMap,
             'requests' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($requests->whereDoesntHave('physicalCase'), $section, 'requests_page') : [],
             'orders' => in_array($section, ['overview', 'orders'], true) ? $this->listing((clone $orders)->with('lines'), $section, 'orders_page') : [],
             'reviews' => $section === 'reviews'
@@ -555,9 +572,20 @@ class CustomerAccountController extends Controller
         $account = Auth::guard('customer')->user();
         $repair = RepairCase::query()->where($this->owned($account))->where('public_id', $record)
             ->with(['onlineRequest' => fn ($q) => $q->where($this->owned($account)), 'currentEstimate.decision', 'delivery', 'events' => fn ($q) => $q->orderBy('id')])->firstOrFail();
-        [$document, $plan, $paidAtDisplay] = $this->settlement($account, 'repair_case_id', $repair->id);
+        [$document, $plan, $paidAtDisplay] = $this->settlement($account, 'repair_case_id', $repair->id, allowOwnedSource: true);
+        $paymentTransactions = $document
+            ? PaymentTransaction::query()->where('financial_document_id', $document->id)->latest('id')->get()
+            : collect();
 
-        return view('account.repair', ['repair' => $repair, 'case' => true, 'timeline' => CustomerTimeline::repair($repair, $plan), 'document' => $document, 'plan' => $plan, 'paidAtDisplay' => $paidAtDisplay]);
+        return view('account.repair', [
+            'repair' => $repair,
+            'case' => true,
+            'timeline' => CustomerTimeline::repair($repair, $plan),
+            'document' => $document,
+            'plan' => $plan,
+            'paidAtDisplay' => $paidAtDisplay,
+            'paymentTransactions' => $paymentTransactions,
+        ]);
     }
 
     public function order(string $record, ActivationDocumentsService $activationDocs)
@@ -643,9 +671,15 @@ class CustomerAccountController extends Controller
         ]);
     }
 
-    private function settlement(CustomerAccount $account, string $column, int $id): array
+    private function settlement(CustomerAccount $account, string $column, int $id, bool $allowOwnedSource = false): array
     {
-        $document = FinancialDocument::query()->where('customer_id', $account->customer_id ?? 0)->where($column, $id)->first();
+        $query = FinancialDocument::query()->where($column, $id);
+        if (! $allowOwnedSource) {
+            $query->where('customer_id', $account->customer_id ?? 0);
+        } elseif ($account->customer_id) {
+            $query->where(fn ($q) => $q->where('customer_id', $account->customer_id)->orWhereNotNull('repair_case_id'));
+        }
+        $document = $query->first();
         $plan = $document ? DeliveryPlan::query()->where('financial_document_id', $document->id)->first() : null;
         $paidAtDisplay = null;
         if ($document && $document->paid_minor > 0) {

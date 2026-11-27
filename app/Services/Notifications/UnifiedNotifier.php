@@ -19,6 +19,7 @@ use App\Services\IpPanel;
 use App\Services\Observability\ObservabilityEvents;
 use App\Services\Observability\TelegramTopicNotifier;
 use App\Support\FaNumber;
+use App\Support\RepairIdentity;
 use App\Support\RepairPaymentCode;
 use App\Support\RepairTracking;
 use Illuminate\Support\Facades\Cache;
@@ -74,14 +75,15 @@ final class UnifiedNotifier
             if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_order_placed', ['code' => $code, 'total' => $totalToman]);
             }
+            $resolvedEmail = $this->resolveOrderCustomerEmail($order, $customerEmail);
             $this->sendCustomerEmail(
-                $customerEmail,
+                $resolvedEmail,
                 'ثبت سفارش شما در '.config('business.name', 'نوین‌پی').' (#'.$code.')',
                 'سفارش شما با موفقیت ثبت شد',
                 'سفارش شما دریافت شد و پس از بررسی موجودی و تایید، مراحل ارسال اطلاع‌رسانی خواهد شد.',
                 ['شماره سفارش' => $code, 'مبلغ کل' => $totalToman, 'وضعیت' => 'دریافت‌شده', 'زمان ثبت' => $this->tehranTimestamp()],
                 'پیگیری در حساب کاربری',
-                url('/account'),
+                route('account.orders.show', $order->public_id),
                 'ثبت سفارش',
                 'info',
             );
@@ -102,14 +104,17 @@ final class UnifiedNotifier
             if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
                 $this->sendSms($customerPhone, 'customer_order_shipped', ['code' => $code, 'tracking' => $trackingText]);
             }
+            $resolvedEmail = $this->resolveOrderCustomerEmail($order, $customerEmail);
             $this->sendCustomerEmail(
-                $customerEmail,
+                $resolvedEmail,
                 'سفارش شما ارسال شد (#'.$code.')',
                 'سفارش شما تحویل شرکت حمل شد',
                 'سفارش شما ارسال شده است و می‌توانید وضعیت آن را با کد پیگیری زیر دنبال کنید.',
                 ['شماره سفارش' => $code, 'کد پیگیری ارسال' => $trackingText],
                 'مشاهده سفارش در حساب کاربری',
-                url('/account'),
+                route('account.orders.show', $order->public_id),
+                'ارسال سفارش',
+                'info',
             );
         }, 'order_shipped');
     }
@@ -141,21 +146,33 @@ final class UnifiedNotifier
     {
         $this->safe(function () use ($repair): void {
             $code = (string) $repair->tracking_reference;
-            $event = 'repair_created';
+            $event = null;
             if ($repair instanceof RepairRequest) {
                 $handoverKey = $repair->parsedIssue()['handover_key'] ?? null;
                 $event = match ($handoverKey) {
                     'in_person' => 'repair_created_in_person',
-                    'self_ship' => 'repair_created_postal',
-                    'doorstep_pickup' => 'repair_created_courier',
-                    default => 'repair_created',
+                    'self_ship', 'postal', 'post', 'tipax' => 'repair_created_postal',
+                    'doorstep_pickup', 'courier' => 'repair_created_courier',
+                    default => null,
+                };
+            } else {
+                $event = match ((string) ($repair->inbound_method ?? '')) {
+                    'in_person' => 'repair_created_in_person',
+                    'post', 'tipax' => 'repair_created_postal',
+                    'courier' => 'repair_created_courier',
+                    default => null,
                 };
             }
+
+            if ($event === null) {
+                return;
+            }
+
             $this->patternSms->send($event, $code, $this->normalizePhone($repair->contact_phone), [
                 'name' => (string) $repair->customer_name,
                 'repair_code' => $code,
             ]);
-        }, 'repair_created');
+        }, 'repair_created_flow_pattern');
     }
 
     public function repairStagePattern(RepairCase $case): void
@@ -203,26 +220,28 @@ final class UnifiedNotifier
                 patternKey: 'admin_repair_submitted',
                 params: ['code' => (string) $repair->tracking_reference, 'device' => $device],
                 dedupeIdentity: 'repair_submitted:'.$repair->tracking_reference,
-                fallbackEvent: 'repair_created',
-                fallbackParams: [
-                    'name' => mb_strimwidth('مدیر ('.$customerName.' - '.$device.')', 0, 75, '…'),
-                    'repair_code' => (string) $repair->tracking_reference,
-                ],
             );
             $this->sendAdminEmail('درخواست تعمیر جدید #'.$ref, 'ثبت درخواست تعمیر آنلاین', 'یک درخواست تعمیر جدید توسط مشتری ثبت شد.', $adminFields, 'مشاهده درخواست در پنل', $adminUrl, 'درخواست تعمیر جدید', 'info');
             $this->bale->send($botText, 'repair_req:'.$repair->tracking_reference, 300, $adminUrl);
 
-            if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
+            if ($customerPhone !== null && config('notifications.pattern_sms.enabled') === false) {
                 $this->sendSms($customerPhone, 'customer_repair_submitted', ['code' => (string) $repair->tracking_reference, 'device' => $device]);
             }
+            $resolvedEmail = $this->resolveRepairCustomerEmail($repair, $customerEmail);
+            $customerFields = ['کد پیگیری' => $ref, 'دستگاه' => $device];
+            if (! empty($parsed['handover_label'])) {
+                $customerFields['نحوه تحویل'] = $parsed['handover_label'];
+            }
             $this->sendCustomerEmail(
-                $customerEmail,
+                $resolvedEmail,
                 'درخواست تعمیر شما ثبت شد (کد پیگیری: '.$ref.')',
                 'درخواست تعمیر دستگاه ثبت شد',
                 'درخواست شما با موفقیت ثبت شد. می‌توانید وضعیت آن را با کد پیگیری زیر دنبال کنید.',
-                ['کد پیگیری' => $ref, 'دستگاه' => $device],
+                $customerFields,
                 'پیگیری درخواست تعمیر',
-                route('repair.track'),
+                RepairTracking::url((string) $repair->tracking_reference),
+                'ثبت درخواست تعمیر',
+                'info',
             );
         }, 'repair_request_submitted');
     }
@@ -266,14 +285,28 @@ final class UnifiedNotifier
                 $fields['کد پیگیری ارسال'] = trim((string) $tracking);
             }
 
+            $doc = FinancialDocument::query()->where('repair_case_id', $case->id)->first();
+            $hasUnpaidBalance = $doc && ($doc->charged_minor - $doc->paid_minor) > 0;
+            $actionLabel = $hasUnpaidBalance ? 'مشاهده و پرداخت آنلاین هزینه تعمیر' : 'پیگیری تعمیر در حساب کاربری';
+            $actionUrl = $case->customer_account_id
+                ? route('account.repairs.show', $case->public_id)
+                : ($hasUnpaidBalance
+                    ? route('payments.repair.short', ['code' => RepairPaymentCode::issue($case->public_id, now()->addDays(14)->timestamp)])
+                    : RepairTracking::url($ref));
+
+            $resolvedEmail = $this->resolveRepairCustomerEmail($case, $customerEmail);
             $this->sendCustomerEmail(
-                $customerEmail,
+                $resolvedEmail,
                 'به‌روزرسانی وضعیت تعمیر #'.$refFa.' ('.$statusLabel.')',
                 'وضعیت پرونده تعمیر شما به‌روزرسانی شد',
-                'آخرین وضعیت پرونده تعمیر دستگاه شما در سامانه ثبت شد.',
+                $hasUnpaidBalance
+                    ? 'هزینهٔ تعمیر دستگاه شما تعیین شده است و می‌توانید از طریق حساب کاربری یا لینک زیر آنلاین تسویه کنید.'
+                    : 'آخرین وضعیت پرونده تعمیر دستگاه شما در سامانه ثبت شد.',
                 $fields,
-                'پیگیری تعمیر',
-                route('repair.track'),
+                $actionLabel,
+                $actionUrl,
+                $statusLabel,
+                $hasUnpaidBalance ? 'warning' : 'info',
             );
         }, 'repair_status_updated');
     }
@@ -318,12 +351,17 @@ final class UnifiedNotifier
                     'name' => $customerName,
                 ]);
             }
+            $resolvedEmail = $this->resolvePhoneCustomerEmail($customerPhone, $customerEmail);
             $this->sendCustomerEmail(
-                $customerEmail,
+                $resolvedEmail,
                 'درخواست مشاوره شما در '.config('business.name', 'نوین‌پی').' ثبت شد',
                 'درخواست مشاوره شما دریافت شد',
                 'کارشناسان ما در کوتاه‌ترین زمان با شما تماس خواهند گرفت.',
-                ['موضوع' => $topic],
+                ['نام متقاضی' => $customerName, 'موضوع' => $topic],
+                'مشاهده فروشگاه',
+                route('products.index'),
+                'درخواست مشاوره',
+                'info',
             );
         }, 'consultation_submitted');
     }
@@ -381,6 +419,19 @@ final class UnifiedNotifier
                     'order_code' => $code,
                 ]);
             }
+
+            $customerEmail = $this->resolveOrderCustomerEmail($order);
+            $this->sendCustomerEmail(
+                $customerEmail,
+                'تأیید مدارک فعال‌سازی سفارش #'.$code,
+                'مدارک فعال‌سازی شما تأیید شد',
+                'مدارک ارسالی شما بررسی و تأیید شد. فرآیند فعال‌سازی و آماده‌سازی دستگاه شما در حال انجام است.',
+                ['کد سفارش' => $code, 'وضعیت مدارک' => 'تأیید شده'],
+                'مشاهده وضعیت سفارش',
+                route('account.orders.show', $order->public_id),
+                'مدارک تأیید شد',
+                'success',
+            );
         }, 'order_documents_approved');
     }
 
@@ -389,14 +440,133 @@ final class UnifiedNotifier
         $this->safe(function () use ($order, $reason): void {
             $order->loadMissing('customer');
             $code = strtoupper(substr((string) $order->public_id, 0, 8));
+            $cleanReason = trim($reason);
             $phone = $this->resolveOrderCustomerPhone($order);
             if ($phone !== null) {
                 $this->sendIpPanelOptionalPattern($phone, 'documents_revision', [
                     'order_code' => $code,
-                    'reason' => mb_strimwidth(trim($reason), 0, 120, '…'),
+                    'reason' => mb_strimwidth($cleanReason, 0, 120, '…'),
                 ]);
             }
+
+            $customerEmail = $this->resolveOrderCustomerEmail($order);
+            $this->sendCustomerEmail(
+                $customerEmail,
+                'نیاز به اصلاح مدارک فعال‌سازی سفارش #'.$code,
+                'مدارک فعال‌سازی نیازمند اصلاح است',
+                'لطفاً توضیح زیر را مطالعه کرده و تصویر اصلاح‌شدهٔ مدارک را از طریق حساب کاربری بارگذاری فرمایید.',
+                [
+                    'کد سفارش' => $code,
+                    'وضعیت مدارک' => 'نیاز به اصلاح',
+                    'علت اعلام‌شده' => $cleanReason !== '' ? $cleanReason : 'نیاز به بارگذاری مجدد تصویر خوانا',
+                ],
+                'اصلاح و ارسال مجدد مدارک',
+                route('account.orders.show', $order->public_id),
+                'نیاز به اصلاح مدارک',
+                'warning',
+            );
         }, 'order_documents_revision');
+    }
+
+    private function resolveOrderCustomerEmail(SalesOrder $order, ?string $explicitEmail = null): ?string
+    {
+        if (is_string($explicitEmail) && filter_var(trim($explicitEmail), FILTER_VALIDATE_EMAIL)) {
+            return trim($explicitEmail);
+        }
+
+        if ($order->customer_account_id) {
+            $account = CustomerAccount::query()->find($order->customer_account_id);
+            if ($account?->is_active && is_string($account->email) && filter_var(trim($account->email), FILTER_VALIDATE_EMAIL)) {
+                return trim($account->email);
+            }
+        }
+
+        if ($order->customer_id) {
+            $byCustomer = CustomerAccount::query()
+                ->where('customer_id', $order->customer_id)
+                ->where('is_active', true)
+                ->whereNotNull('email')
+                ->latest('id')
+                ->first();
+            if ($byCustomer && is_string($byCustomer->email) && filter_var(trim($byCustomer->email), FILTER_VALIDATE_EMAIL)) {
+                return trim($byCustomer->email);
+            }
+        }
+
+        $order->loadMissing('customer');
+
+        return $this->resolvePhoneCustomerEmail($this->normalizePhone($order->customer?->contact_phone));
+    }
+
+    private function resolveRepairCustomerEmail(RepairRequest|RepairCase $repair, ?string $explicitEmail = null): ?string
+    {
+        if (is_string($explicitEmail) && filter_var(trim($explicitEmail), FILTER_VALIDATE_EMAIL)) {
+            return trim($explicitEmail);
+        }
+
+        if ($repair->customer_account_id) {
+            $account = CustomerAccount::query()->find($repair->customer_account_id);
+            if ($account?->is_active && is_string($account->email) && filter_var(trim($account->email), FILTER_VALIDATE_EMAIL)) {
+                return trim($account->email);
+            }
+        }
+
+        if ($repair instanceof RepairCase) {
+            $onlineReqAccountId = $repair->onlineRequest()->value('customer_account_id');
+            if ($onlineReqAccountId) {
+                $reqAccount = CustomerAccount::query()->find($onlineReqAccountId);
+                if ($reqAccount?->is_active && is_string($reqAccount->email) && filter_var(trim($reqAccount->email), FILTER_VALIDATE_EMAIL)) {
+                    return trim($reqAccount->email);
+                }
+            }
+            if ($repair->customer_id) {
+                $byCustomer = CustomerAccount::query()
+                    ->where('customer_id', $repair->customer_id)
+                    ->where('is_active', true)
+                    ->whereNotNull('email')
+                    ->latest('id')
+                    ->first();
+                if ($byCustomer && is_string($byCustomer->email) && filter_var(trim($byCustomer->email), FILTER_VALIDATE_EMAIL)) {
+                    return trim($byCustomer->email);
+                }
+            }
+        }
+
+        return $this->resolvePhoneCustomerEmail($this->normalizePhone($repair->contact_phone));
+    }
+
+    private function resolvePhoneCustomerEmail(?string $phone, ?string $explicitEmail = null): ?string
+    {
+        if (is_string($explicitEmail) && filter_var(trim($explicitEmail), FILTER_VALIDATE_EMAIL)) {
+            return trim($explicitEmail);
+        }
+
+        $authUser = auth('customer')->user();
+        if ($authUser instanceof CustomerAccount && $authUser->is_active && is_string($authUser->email) && filter_var(trim($authUser->email), FILTER_VALIDATE_EMAIL)) {
+            $authPhone = $this->normalizePhone($authUser->phone);
+            if ($phone === null || $authPhone === null || $authPhone === $phone) {
+                return trim($authUser->email);
+            }
+        }
+
+        if ($phone !== null) {
+            $digests = [
+                RepairIdentity::digest('customer-phone', $phone),
+                RepairIdentity::digest('customer-account-phone', $phone),
+                RepairIdentity::digest('phone', $phone),
+            ];
+            $account = CustomerAccount::query()
+                ->whereIn('phone_digest', $digests)
+                ->where('is_active', true)
+                ->whereNotNull('email')
+                ->latest('id')
+                ->first();
+            if ($account && is_string($account->email) && filter_var(trim($account->email), FILTER_VALIDATE_EMAIL)) {
+                return trim($account->email);
+            }
+        }
+
+        return null;
     }
 
     private function resolveOrderCustomerPhone(SalesOrder $order): ?string
@@ -518,6 +688,25 @@ final class UnifiedNotifier
             $botText = $this->formatBotMessage('✅ پرداخت آنلاین سفارش تأیید شد', $fields, $adminUrl);
             $this->telegramTopics->send('orders', $botText, 'order_paid:'.$order->public_id);
             $this->bale->send($botText, 'order_paid:'.$order->public_id, 300, $adminUrl);
+
+            $customerEmail = $this->resolveOrderCustomerEmail($order);
+            $this->sendCustomerEmail(
+                $customerEmail,
+                'تأیید پرداخت و ثبت نهایی سفارش #'.$code,
+                'پرداخت سفارش شما با موفقیت انجام شد',
+                'وجه سفارش شما تأیید شد. برای تسریع در فعال‌سازی و ثبت مالیاتی دستگاه، می‌توانید مدارک خود را در صفحه سفارش بارگذاری کنید.',
+                [
+                    'کد سفارش' => $code,
+                    'اقلام سفارش' => $itemSummary,
+                    'مبلغ پرداخت‌شده' => $amountToman,
+                    'کد رهگیری پرداخت' => $trackId !== '' ? FaNumber::digits($trackId) : '—',
+                    'نحوه تحویل' => $shippingLabel,
+                ],
+                'مشاهده سفارش و ارسال مدارک',
+                route('account.orders.show', $order->public_id),
+                'پرداخت موفق',
+                'success',
+            );
         }, 'order_paid');
     }
 
@@ -562,6 +751,26 @@ final class UnifiedNotifier
             $botText = $this->formatBotMessage('✅ هزینه تعمیر آنلاین پرداخت شد', $fields, $adminUrl);
             $this->telegramTopics->send('repairs', $botText, 'repair_paid:'.$transaction->public_id);
             $this->bale->send($botText, 'repair_paid:'.$transaction->public_id, 300, $adminUrl);
+
+            $customerEmail = $this->resolveRepairCustomerEmail($repairCase);
+            $this->sendCustomerEmail(
+                $customerEmail,
+                'رسید پرداخت هزینه تعمیر #'.FaNumber::digits($ref),
+                'هزینه تعمیر دستگاه با موفقیت پرداخت شد',
+                'پرداخت آنلاین هزینه تعمیر دستگاه شما ثبت و تأیید شد.',
+                [
+                    'کد پیگیری تعمیر' => FaNumber::digits($ref),
+                    'مدل دستگاه' => $device !== '' ? $device : '—',
+                    'مبلغ پرداخت‌شده' => $amountToman,
+                    'کد رهگیری پرداخت' => $trackId !== '' ? FaNumber::digits($trackId) : '—',
+                ],
+                'مشاهده پرونده تعمیر',
+                $repairCase->customer_account_id
+                    ? route('account.repairs.show', $repairCase->public_id)
+                    : RepairTracking::url($ref),
+                'پرداخت موفق',
+                'success',
+            );
         }, 'repair_paid');
     }
 

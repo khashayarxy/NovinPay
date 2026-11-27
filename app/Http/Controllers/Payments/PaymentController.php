@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Payments;
 
 use App\Http\Controllers\Controller;
+use App\Models\CustomerAccount;
 use App\Models\FinancialDocument;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentTransaction;
@@ -27,6 +28,18 @@ class PaymentController extends Controller
     {
         $data = $request->validate(['amount' => ['required', 'string', 'max:20'], 'operation_key' => ['required', 'uuid']]);
         $attempt = $payments->start(Auth::guard('customer')->user(), $document, FinanceMoney::minor($data['amount']), $data['operation_key']);
+        $destination = $attempt->state === 'pending' && $attempt->track_id ? 'payments.connect' : 'payments.result';
+
+        return redirect()->route($destination, $attempt->public_id, 303);
+    }
+
+    public function startRepair(Request $request, string $record, ZibalPayments $payments)
+    {
+        $data = $request->validate(['operation_key' => ['required', 'uuid']]);
+        /** @var CustomerAccount $account */
+        $account = Auth::guard('customer')->user();
+        $case = RepairCase::query()->where('public_id', $record)->firstOrFail();
+        $attempt = $payments->startForCustomerRepair($account, $case, $data['operation_key']);
         $destination = $attempt->state === 'pending' && $attempt->track_id ? 'payments.connect' : 'payments.result';
 
         return redirect()->route($destination, $attempt->public_id, 303);

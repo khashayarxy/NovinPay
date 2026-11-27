@@ -627,7 +627,8 @@ body.public-site button[data-support-launcher]::before {
     .homepage .np-hero__art { min-height: 0; max-width: clamp(220px, calc(var(--storefront-unlocked-viewport, 100vw) * .65), 260px); }
     .np-footer .np-footer__grid { gap: 12px; padding-block: 14px; }
     .np-footer .np-footer__brand { flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 10px; padding-block-end: 12px; }
-    .np-footer .np-footer__bottom { padding-block: 8px; }
+    .np-footer .np-footer__bottom { padding-block: 10px; padding-inline: 64px; }
+    body.public-site:has(.global-store-nav) .np-footer { padding-block-end: calc(68px + env(safe-area-inset-bottom, 0px)); }
 }
 .np-customer-header:has(.store-desktop-tools) { display: flex; align-items: center; gap: 8px; }
 [data-customer-guest] > svg { flex: none; width: 18px; height: 18px; }

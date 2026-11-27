@@ -598,9 +598,11 @@
     .np-footer__zibal { height: 34px; max-width: 38px; }
     .np-footer__nezam,
     .np-footer__shaparak { width: 40px; max-height: 40px; }
-    .np-footer__links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .np-footer__links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .np-footer__links a { min-height: 40px; padding-inline: 8px; border: 1px solid #d9e6f3; border-radius: 9px; background: #fff; justify-content: center; font-size: 12.5px; text-align: center; }
     .np-footer__phone { min-height: 44px; }
+    body.public-site .np-footer { padding-block-end: calc(64px + env(safe-area-inset-bottom, 0px)); }
+    .np-footer__bottom { padding-inline: 64px; }
 }
 @media (max-width: 520px) {
     .np-footer__grid { grid-template-columns: 1fr; }

@@ -114,6 +114,7 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
         Route::get('/repairs/requests/{record}', [$controller, 'repairRequest'])->where('record', '[A-Za-z0-9-]{1,35}')->name('repairs.request');
         Route::patch('/repairs/requests/{record}/handover', [$controller, 'updateRepairHandover'])->where('record', '[A-Za-z0-9-]{1,35}')->middleware('throttle:20,1')->name('repairs.request.handover');
         Route::get('/repairs/{record}', [$controller, 'repair'])->whereUuid('record')->name('repairs.show');
+        Route::post('/repairs/{record}/pay', [PaymentController::class, 'startRepair'])->whereUuid('record')->middleware('throttle:10,1,cart-checkout:')->name('repairs.pay');
         Route::get('/orders/{record}', [$controller, 'order'])->whereUuid('record')->name('orders.show');
         Route::post('/orders/{record}/documents', [OrderActivationDocumentsController::class, 'storeForAccount'])
             ->where('record', '[A-Za-z0-9-]{8,36}')->middleware('throttle:10,1')->name('orders.documents.store');

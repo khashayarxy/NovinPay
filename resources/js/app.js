@@ -346,6 +346,7 @@ runWhenDomReady(() => {
             const getOptions = () => [...selectEl.options].filter((o) => o.value !== '');
             const syncInputFromSelect = () => {
                 inputEl.value = selectEl.value || '';
+                wrapper.classList.toggle('is-floated', Boolean(inputEl.value.trim()));
                 if (key === 'city') {
                     inputEl.placeholder = provinceSelect?.value ? 'جستجو یا انتخاب شهر…' : 'ابتدا استان را انتخاب کنید…';
                 }
@@ -690,10 +691,14 @@ runWhenDomReady(() => {
             if (!(otherPersonToggle instanceof HTMLInputElement) || !(otherPersonField instanceof HTMLElement)) return;
             const checked = otherPersonToggle.checked;
             otherPersonField.hidden = !checked;
+            const isMobileOrTouch = Boolean(
+                window.matchMedia?.('(max-width: 850px), (pointer: coarse), (hover: none)')?.matches
+            );
             if (!checked && responsivePhoneInput) {
                 responsivePhoneInput.value = '';
+                responsivePhoneInput.closest('[data-float-field]')?.classList.remove('is-floated');
                 setFieldError('responsive_phone', '');
-            } else if (checked && focusInput) {
+            } else if (checked && focusInput && !isMobileOrTouch) {
                 responsivePhoneInput?.focus();
             }
         };
@@ -3103,4 +3108,30 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             });
         });
     }
+
+    // Phase 8: Keep Material floating-label wrappers synchronized on pre-filled, programmatic, and autofill updates
+    const syncFloatField = (wrapper) => {
+        if (!(wrapper instanceof HTMLElement)) return;
+        const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select');
+        if (!control) return;
+        const isSelect = control instanceof HTMLSelectElement;
+        const hasValue = isSelect || String(control.value || '').length > 0 || document.activeElement === control;
+        wrapper.classList.toggle('is-floated', hasValue);
+    };
+
+    const initFloatingFields = (root = document) => {
+        root.querySelectorAll('[data-float-field]').forEach((wrapper) => {
+            syncFloatField(wrapper);
+            if (wrapper.dataset.floatBound === '1') return;
+            wrapper.dataset.floatBound = '1';
+            const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select');
+            if (!control) return;
+            ['input', 'change', 'focus', 'blur'].forEach((evt) => {
+                control.addEventListener(evt, () => syncFloatField(wrapper));
+            });
+        });
+    };
+
+    initFloatingFields();
+    window.setTimeout(() => initFloatingFields(), 180);
 });

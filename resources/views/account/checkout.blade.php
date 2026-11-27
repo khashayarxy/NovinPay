@@ -70,23 +70,31 @@
                         <legend>مرحله ۱ · مشخصات</legend>
                         <div class="checkout-form-grid">
                             <div class="checkout-field">
-                                <label for="checkout-full-name">نام و نام خانوادگی</label>
-                                <input id="checkout-full-name" name="full_name" type="text" class="checkout-input @error('full_name') is-invalid @enderror" value="{{ $defaultFullName }}" autocomplete="name" maxlength="100" placeholder="مثلاً علی محمدی">
+                                <div class="np-float-field" data-float-field>
+                                    <input id="checkout-full-name" name="full_name" type="text" class="checkout-input @error('full_name') is-invalid @enderror" value="{{ $defaultFullName }}" autocomplete="name" maxlength="100" placeholder="مثلاً علی محمدی">
+                                    <label for="checkout-full-name">نام و نام خانوادگی</label>
+                                </div>
                                 <p class="checkout-field-error" data-error-for="full_name" @unless($errors->has('full_name')) hidden @endunless>@error('full_name'){{ $message }}@enderror</p>
                             </div>
                             <div class="checkout-field">
-                                <label for="checkout-mobile">شماره موبایل</label>
-                                <input id="checkout-mobile" name="mobile" type="tel" dir="ltr" inputmode="numeric" data-digits-only="11" class="checkout-input @error('mobile') is-invalid @enderror" value="{{ $defaultMobile }}" autocomplete="tel" maxlength="11" placeholder="09123456789">
+                                <div class="np-float-field" data-float-field>
+                                    <input id="checkout-mobile" name="mobile" type="tel" dir="ltr" inputmode="numeric" data-digits-only="11" class="checkout-input @error('mobile') is-invalid @enderror" value="{{ $defaultMobile }}" autocomplete="tel" maxlength="11" placeholder="09123456789">
+                                    <label for="checkout-mobile">شماره موبایل</label>
+                                </div>
                                 <p class="checkout-field-error" data-error-for="mobile" @unless($errors->has('mobile')) hidden @endunless>@error('mobile'){{ $message }}@enderror</p>
                             </div>
                             <div class="checkout-field">
-                                <label for="checkout-national-code">کد ملی (۱۰ رقمی)</label>
-                                <input id="checkout-national-code" name="national_code" type="text" dir="ltr" inputmode="numeric" data-digits-only="10" class="checkout-input @error('national_code') is-invalid @enderror" value="{{ $defaultNationalCode }}" maxlength="10" placeholder="۰۰۱۲۳۴۵۶۷۸">
+                                <div class="np-float-field" data-float-field>
+                                    <input id="checkout-national-code" name="national_code" type="text" dir="ltr" inputmode="numeric" data-digits-only="10" class="checkout-input @error('national_code') is-invalid @enderror" value="{{ $defaultNationalCode }}" maxlength="10" placeholder="۰۰۱۲۳۴۵۶۷۸">
+                                    <label for="checkout-national-code">کد ملی (۱۰ رقمی)</label>
+                                </div>
                                 <p class="checkout-field-error" data-error-for="national_code" @unless($errors->has('national_code')) hidden @endunless>@error('national_code'){{ $message }}@enderror</p>
                             </div>
                             <div class="checkout-field">
-                                <label for="checkout-email">ایمیل (اختیاری)</label>
-                                <input id="checkout-email" name="email" type="email" dir="ltr" class="checkout-input @error('email') is-invalid @enderror" value="{{ $defaultEmail }}" autocomplete="email" maxlength="150" placeholder="name@example.com">
+                                <div class="np-float-field" data-float-field>
+                                    <input id="checkout-email" name="email" type="email" dir="ltr" class="checkout-input @error('email') is-invalid @enderror" value="{{ $defaultEmail }}" autocomplete="email" maxlength="150" placeholder="name@example.com">
+                                    <label for="checkout-email">ایمیل (اختیاری)</label>
+                                </div>
                                 <p class="checkout-field-error" data-error-for="email" @unless($errors->has('email')) hidden @endunless>@error('email'){{ $message }}@enderror</p>
                             </div>
                         </div>
@@ -117,8 +125,7 @@
 
                             <div class="checkout-saved-address-box" data-address-section="saved" @if($defaultAddressMode !== 'saved') hidden @endif>
                                 <div class="checkout-field">
-                                    <label for="delivery-address">نشانی ذخیره‌شده</label>
-                                    <div class="commerce-select">
+                                    <div class="commerce-select np-float-field" data-float-field>
                                         <select id="delivery-address" name="address" class="checkout-input @error('address') is-invalid @enderror">
                                             <option value="">انتخاب نشانی</option>
                                             @foreach ($addresses as $address)
@@ -132,6 +139,7 @@
                                                         @selected($defaultAddressId === $address->public_id)>{{ $address->recipient }} · {{ $address->province }}، {{ $address->city }} · {{ $address->address }}</option>
                                             @endforeach
                                         </select>
+                                        <label for="delivery-address">نشانی ذخیره‌شده</label>
                                         <x-storefront.icon name="chevron-down" />
                                     </div>
                                     <p class="checkout-field-error" data-error-for="address" @unless($errors->has('address')) hidden @endunless>@error('address'){{ $message }}@enderror</p>
@@ -166,33 +174,41 @@
 
                             <div class="checkout-form-grid">
                                 <div class="checkout-field">
-                                    <label for="checkout-province">استان</label>
-                                    <select id="checkout-province" name="province" class="checkout-input @error('province') is-invalid @enderror" data-iran-province>
-                                        <option value="">انتخاب استان</option>
-                                        @foreach (array_keys($iranLocations) as $provinceName)
-                                            <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
-                                        @endforeach
-                                    </select>
+                                    <div class="np-float-field" data-float-field>
+                                        <select id="checkout-province" name="province" class="checkout-input @error('province') is-invalid @enderror" data-iran-province>
+                                            <option value="">انتخاب استان</option>
+                                            @foreach (array_keys($iranLocations) as $provinceName)
+                                                <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
+                                            @endforeach
+                                        </select>
+                                        <label for="checkout-province">استان</label>
+                                    </div>
                                     <p class="checkout-field-error" data-error-for="province" @unless($errors->has('province')) hidden @endunless>@error('province'){{ $message }}@enderror</p>
                                 </div>
                                 <div class="checkout-field">
-                                    <label for="checkout-city">شهر</label>
-                                    <select id="checkout-city" name="city" class="checkout-input @error('city') is-invalid @enderror" data-iran-city data-selected-city="{{ $selectedCity }}">
-                                        <option value="">{{ $selectedProvince !== '' ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}</option>
-                                        @foreach ($citiesForProvince as $cityName)
-                                            <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>
-                                        @endforeach
-                                    </select>
+                                    <div class="np-float-field" data-float-field>
+                                        <select id="checkout-city" name="city" class="checkout-input @error('city') is-invalid @enderror" data-iran-city data-selected-city="{{ $selectedCity }}">
+                                            <option value="">{{ $selectedProvince !== '' ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}</option>
+                                            @foreach ($citiesForProvince as $cityName)
+                                                <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>
+                                            @endforeach
+                                        </select>
+                                        <label for="checkout-city">شهر</label>
+                                    </div>
                                     <p class="checkout-field-error" data-error-for="city" @unless($errors->has('city')) hidden @endunless>@error('city'){{ $message }}@enderror</p>
                                 </div>
                                 <div class="checkout-field checkout-field--full">
-                                    <label for="checkout-street">آدرس دقیق</label>
-                                    <textarea id="checkout-street" name="street_address" rows="2" class="checkout-input @error('street_address') is-invalid @enderror" maxlength="400" placeholder="خیابان، کوچه، پلاک، واحد">{{ $defaultStreet }}</textarea>
+                                    <div class="np-float-field" data-float-field>
+                                        <textarea id="checkout-street" name="street_address" rows="2" class="checkout-input @error('street_address') is-invalid @enderror" maxlength="400" placeholder="خیابان، کوچه، پلاک، واحد">{{ $defaultStreet }}</textarea>
+                                        <label for="checkout-street">آدرس دقیق</label>
+                                    </div>
                                     <p class="checkout-field-error" data-error-for="street_address" @unless($errors->has('street_address')) hidden @endunless>@error('street_address'){{ $message }}@enderror</p>
                                 </div>
                                 <div class="checkout-field">
-                                    <label for="checkout-postal-code">کد پستی (۱۰ رقمی)</label>
-                                    <input id="checkout-postal-code" name="postal_code" type="text" dir="ltr" inputmode="numeric" data-digits-only="10" class="checkout-input @error('postal_code') is-invalid @enderror" value="{{ $defaultPostal }}" maxlength="10" placeholder="۳۳۵۱۶۱۲۳۴۵">
+                                    <div class="np-float-field" data-float-field>
+                                        <input id="checkout-postal-code" name="postal_code" type="text" dir="ltr" inputmode="numeric" data-digits-only="10" class="checkout-input @error('postal_code') is-invalid @enderror" value="{{ $defaultPostal }}" maxlength="10" placeholder="۳۳۵۱۶۱۲۳۴۵">
+                                        <label for="checkout-postal-code">کد پستی (۱۰ رقمی)</label>
+                                    </div>
                                     <p class="checkout-field-error" data-error-for="postal_code" @unless($errors->has('postal_code')) hidden @endunless>@error('postal_code'){{ $message }}@enderror</p>
                                 </div>
                             </div>

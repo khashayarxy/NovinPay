@@ -3,19 +3,19 @@
 @section('content')
 <div class="np-container public-section repair-track-page">
     <div class="repair-track-shell">
-        <header class="store-page-intro">
-            <h1>بازیابی کد پیگیری تعمیر</h1>
-            <p>
-                @if ($verified)
-                    کدهای پیگیری ثبت‌شده برای شماره موبایل شما به ترتیب جدیدترین درخواست نمایش داده شده است.
-                @elseif ($challenge)
-                    کد شش‌رقمی ارسال‌شده به شماره موبایل خود را وارد کنید.
-                @else
-                    شماره موبایلی که با آن درخواست تعمیر ثبت کرده‌اید را وارد کنید تا کد تأیید پیامکی ارسال شود.
-                @endif
-            </p>
-        </header>
-        <section class="public-panel">
+        <section class="public-panel repair-recovery-panel" aria-labelledby="recovery-title">
+            <header class="store-page-intro repair-recovery-intro">
+                <h1 id="recovery-title">بازیابی کد پیگیری تعمیر</h1>
+                <p>
+                    @if ($verified)
+                        کدهای پیگیری ثبت‌شده برای شماره موبایل شما به ترتیب جدیدترین درخواست نمایش داده شده است.
+                    @elseif ($challenge)
+                        کد شش‌رقمی ارسال‌شده به شماره موبایل خود را وارد کنید.
+                    @else
+                        شماره موبایل ثبت‌شده را وارد کنید تا کد تأیید پیامک شود.
+                    @endif
+                </p>
+            </header>
             <x-form-errors />
             @if ($verified)
                 <div class="repair-recovery-results">
@@ -64,8 +64,8 @@
                     <x-repair-field name="code" label="کد تأیید پیامکی">
                         <input class="input public-code-input repair-recovery-code-input" id="code" name="code" dir="ltr" inputmode="numeric" data-digits-only="6" autocomplete="one-time-code" placeholder="••••••" minlength="6" maxlength="6" autofocus required>
                     </x-repair-field>
-                    <div class="repair-entry-actions repair-track-actions">
-                        <button type="submit" class="np-button np-button--primary" data-loading-label="در حال ارسال...">تأیید و نمایش کدهای پیگیری</button>
+                    <div class="repair-entry-actions repair-track-actions repair-recovery-actions">
+                        <button type="submit" class="np-button np-button--primary repair-recovery-submit" data-loading-label="در حال ارسال...">تأیید و نمایش کدهای پیگیری</button>
                     </div>
                 </form>
                 <form class="repair-recovery-resend" method="post" action="{{ route('repair.track.recovery.send') }}">
@@ -79,8 +79,8 @@
                     <x-repair-field name="contact_phone" label="شماره موبایل">
                         <input class="input" id="contact_phone" name="contact_phone" type="tel" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" autocomplete="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹" value="{{ old('contact_phone', '') }}" required>
                     </x-repair-field>
-                    <div class="repair-entry-actions repair-track-actions">
-                        <button type="submit" class="np-button np-button--primary" data-loading-label="در حال ارسال...">دریافت کد تأیید</button>
+                    <div class="repair-entry-actions repair-track-actions repair-recovery-actions">
+                        <button type="submit" class="np-button np-button--primary repair-recovery-submit" data-loading-label="در حال ارسال...">دریافت کد تأیید</button>
                     </div>
                 </form>
             @endif

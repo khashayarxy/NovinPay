@@ -57,7 +57,9 @@
                     @csrf
                     <x-repair-field name="tracking_reference" label="کد پیگیری">
                         <input id="tracking_reference" name="tracking_reference" value="{{ old('tracking_reference', $trackingCode ?? '') }}" class="input public-code-input" dir="ltr" inputmode="numeric" data-digits-only="8" autocomplete="off" spellcheck="false" required minlength="8" maxlength="8" placeholder="۱۲۳۴۵۶۷۸" aria-invalid="{{ $errors->has('tracking_reference') ? 'true' : 'false' }}" aria-describedby="tracking_reference-feedback">
-                        <p class="repair-field-helper-link"><a class="public-inline-link" href="{{ route('repair.track.recovery') }}">فراموشی کد پیگیری؟</a></p>
+                        <x-slot:after>
+                            <p class="repair-field-helper-link"><a class="public-inline-link" href="{{ route('repair.track.recovery') }}">فراموشی کد پیگیری؟</a></p>
+                        </x-slot:after>
                     </x-repair-field>
                     <x-repair-field name="contact_phone" label="شماره موبایل">
                         <input type="tel" id="contact_phone" name="contact_phone" class="input" dir="ltr" inputmode="numeric" data-digits-only="11" autocomplete="tel" required maxlength="11" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-invalid="{{ $errors->has('contact_phone') ? 'true' : 'false' }}" aria-describedby="contact_phone-feedback">

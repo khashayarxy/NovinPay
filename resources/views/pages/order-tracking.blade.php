@@ -31,7 +31,7 @@
                     @csrf
                     <p>شماره موبایل ثبت‌شده برای سفارش را وارد کنید.</p>
                     <x-repair-field name="contact_phone" label="شماره موبایل">
-                        <input class="input" type="tel" id="contact_phone" name="contact_phone" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" autocomplete="tel" required>
+                        <input class="input" type="tel" id="contact_phone" name="contact_phone" dir="ltr" inputmode="numeric" data-digits-only="11" maxlength="11" autocomplete="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required>
                     </x-repair-field>
                     <button type="submit" class="np-button np-button--primary" data-loading-label="در حال ارسال...">بررسی وضعیت</button>
                 </form>

@@ -47,7 +47,7 @@
                         <div class="np-nav__dropdown np-nav__dropdown--compact" role="region" aria-label="خدمات تعمیرات">
                             <div class="np-nav__dropdown-list">
                                 <a href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif>
-                                    <span>ثبت درخواست تعمیر</span>
+                                    <span>درخواست تعمیر</span>
                                     <x-storefront.icon name="arrow" class="np-nav__dropdown-arrow" />
                                 </a>
                                 <a href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif>
@@ -97,8 +97,9 @@
         <nav id="mobile-navigation" aria-label="ناوبری موبایل">
             <a href="{{ route('home') }}" @if (request()->routeIs('home')) aria-current="page" @endif><x-storefront.icon name="home" class="np-nav-icon" /><span>صفحه اصلی</span></a>
             <a href="{{ route('products.index') }}" @if (request()->routeIs('products.*')) aria-current="page" @endif><x-storefront.icon name="shop" class="np-nav-icon" /><span>فروشگاه</span></a>
-            <a href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif><x-storefront.icon name="repair" class="np-nav-icon" /><span>تعمیرات کارتخوان</span></a>
-            <a href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif><x-storefront.icon name="search" class="np-nav-icon" /><span>پیگیری تعمیرات</span></a>
+            <a href="{{ route('repair') }}" @if (request()->routeIs('repair', 'repair.store', 'repair.confirmation')) aria-current="page" @endif><x-storefront.icon name="repair" class="np-nav-icon" /><span>درخواست تعمیر</span></a>
+            <a href="{{ route('repair.track') }}" @if (request()->routeIs('repair.track*')) aria-current="page" @endif><x-storefront.icon name="search" class="np-nav-icon" /><span>پیگیری تعمیر</span></a>
+            <a href="{{ route('consultation') }}" @if (request()->routeIs('consultation*')) aria-current="page" @endif><x-storefront.icon name="headset" class="np-nav-icon" /><span>درخواست مشاوره</span></a>
             <a href="{{ route('articles.index') }}" @if (request()->routeIs('articles.*')) aria-current="page" @endif><x-storefront.icon name="book" class="np-nav-icon" /><span>مقالات و آموزش‌ها</span></a>
             <a href="{{ route('contact') }}" @if (request()->routeIs('contact')) aria-current="page" @endif><x-storefront.icon name="phone" class="np-nav-icon" /><span>تماس با ما</span></a>
         </nav>

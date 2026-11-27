@@ -160,7 +160,13 @@
                         </dialog>
                     </section>
                 @else
-                    <x-account.settlement :document="$document" :plan="$plan" :paid-at-display="$paidAtDisplay ?? null" />
+                    <x-account.settlement
+                        :document="$document"
+                        :plan="$plan"
+                        :paid-at-display="$paidAtDisplay ?? null"
+                        :repair="$case ? $repair : null"
+                        :payment-transactions="$paymentTransactions ?? collect()"
+                    />
                 @endif
             </div>
         </div>
