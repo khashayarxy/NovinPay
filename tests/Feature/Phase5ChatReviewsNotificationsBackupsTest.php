@@ -144,8 +144,7 @@ class Phase5ChatReviewsNotificationsBackupsTest extends TestCase
             'https://api.telegram.org/*' => Http::response(['ok' => true], 200),
         ]);
 
-        // Simulate production .env where NOTIFICATIONS_ADMIN_PHONES & NOTIFICATIONS_ADMIN_EMAILS are set,
-        // while dedicated NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_ORDER / ADMIN_REPAIR are blank!
+        // Phase 11: admin SMS strictly uses dedicated admin patterns (no customer fallback).
         config([
             'customer.ippanel.enabled' => true,
             'customer.ippanel.api_key' => 'live-ippanel-key',
@@ -153,9 +152,9 @@ class Phase5ChatReviewsNotificationsBackupsTest extends TestCase
             'notifications.admin.phones' => ['09129998877'],
             'notifications.admin.emails' => ['owner@novinpaypos.com'],
             'notifications.sms.enabled' => true,
-            'notifications.sms.admin_shared_pattern_fallback' => true,
-            'notifications.sms.patterns.admin_order_placed' => '',
-            'notifications.sms.patterns.admin_order_paid' => '',
+            'notifications.sms.admin_shared_pattern_fallback' => false,
+            'notifications.sms.patterns.admin_order_placed' => 'esscve0hlccir9p',
+            'notifications.sms.patterns.admin_order_paid' => 'esscve0hlccir9p',
             'notifications.sms.patterns.admin_repair_submitted' => '',
             'notifications.pattern_sms.enabled' => true,
             'notifications.pattern_sms.provider' => 'ippanel',
@@ -263,10 +262,13 @@ class Phase5ChatReviewsNotificationsBackupsTest extends TestCase
 
         OrderPaid::dispatch($order, $doc, $tx);
 
-        // Admin Email + Admin SMS (shared fallback pattern mfae2yqje8msw9e) BOTH sent on OrderPaid!
+        // Admin Email + dedicated Admin SMS (esscve0hlccir9p) BOTH sent on OrderPaid; customer order_confirmed goes only to customer!
         Mail::assertSent(UnifiedNotificationMail::class, fn (UnifiedNotificationMail $m) => $m->hasTo('owner@novinpaypos.com')
             && str_contains($m->mailSubject, 'پرداخت سفارش'));
         Http::assertSent(fn (HttpRequest $req) => $req->url() === 'https://edge.ippanel.com/v1/api/send'
+            && ($req['recipients'] ?? null) === ['+989129998877']
+            && ($req['code'] ?? null) === 'esscve0hlccir9p');
+        Http::assertNotSent(fn (HttpRequest $req) => $req->url() === 'https://edge.ippanel.com/v1/api/send'
             && ($req['recipients'] ?? null) === ['+989129998877']
             && ($req['code'] ?? null) === 'mfae2yqje8msw9e');
 
