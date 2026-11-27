@@ -385,15 +385,17 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
         $this->admin->refresh();
         $adminSession = ['admin_session_version' => 1];
 
-        // 1. Intake uses clean brand <select> (without name attribute) instead of 6-button pill grid
-        $this->actingAs($this->admin)
+        // 1. Walk-in intake uses clean brand <select> (editable, not disabled) instead of 6-button pill grid
+        $walkIn = $this->actingAs($this->admin)
             ->withSession($adminSession)
             ->get('/admin/repairs/intake')
             ->assertOk()
             ->assertSee('data-intake-brand-select', false)
+            ->assertSee('admin-intake-row--4', false)
             ->assertDontSee('admin-brand-pills', false);
+        $this->assertDoesNotMatchRegularExpression('/<select[^>]*id="intake-brand-select"[^>]*disabled/', $walkIn->getContent());
 
-        // 1b. Pre-filled intake from online request separates structured fields from problem description cleanly
+        // 1b. Pre-filled intake from online request separates استان/شهر, locks customer-submitted values, keeps empty fields editable
         $onlineReq = RepairRequest::forceCreate([
             'tracking_reference' => '55667788',
             'submission_digest' => bin2hex(random_bytes(32)),
@@ -402,7 +404,7 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
             'phone_digest' => RepairIdentity::digest('phone', '09123334455'),
             'device_brand' => 'PAX',
             'device_model' => 'PAX S910',
-            'issue' => "دستگاه شارژ نمی‌شود و خاموش می‌شود\n\nشماره سریال: SN99887766\nلوازم همراه: شارژر، باتری\nاستان و شهر: تهران - شهریار\nنحوه تحویل دستگاه: خودم حضوری میارم",
+            'issue' => "دستگاه شارژ نمی‌شود و خاموش می‌شود\n\nلوازم همراه: شارژر، باتری\nاستان و شهر: تهران - شهریار\nنحوه تحویل دستگاه: خودم حضوری میارم",
             'status' => RepairRequestStatus::OnlineSubmitted,
         ]);
 
@@ -410,15 +412,29 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
             ->withSession($adminSession)
             ->get('/admin/repairs/intake?request='.$onlineReq->id)
             ->assertOk()
-            ->assertSee('admin-intake-grid', false)
+            ->assertSee('admin-intake-row--customer', false)
+            ->assertSee('admin-intake-row--4', false)
+            ->assertSee('id="intake-province"', false)
+            ->assertSee('id="intake-city"', false)
+            ->assertSee('value="تهران"', false)
+            ->assertSee('value="شهریار"', false)
+            ->assertSee('value="خودم حضوری میارم"', false)
             ->assertSee('value="S910"', false)
             ->assertDontSee('value="PAX S910"', false)
-            ->assertSee('value="SN99887766"', false)
-            ->assertSee('value="شارژر، باتری"', false)
-            ->assertSee('value="تهران - شهریار"', false)
-            ->assertSee('value="خودم حضوری میارم"', false);
+            ->assertSee('value="شارژر، باتری"', false);
 
-        preg_match('/<textarea[^>]*name="issue"[^>]*>(.*?)<\/textarea>/s', $intakeFromOnline->getContent(), $issueMatch);
+        $html = $intakeFromOnline->getContent();
+        $this->assertMatchesRegularExpression('/<select[^>]*id="intake-brand-select"[^>]*disabled/', $html);
+        $this->assertMatchesRegularExpression('/<input[^>]*name="customer_name"[^>]*readonly/', $html);
+        $this->assertMatchesRegularExpression('/<input[^>]*name="contact_phone"[^>]*readonly/', $html);
+        $this->assertMatchesRegularExpression('/<input[^>]*name="device_model"[^>]*readonly/', $html);
+        $this->assertMatchesRegularExpression('/<input[^>]*name="accessories"[^>]*readonly/', $html);
+        $this->assertMatchesRegularExpression('/<textarea[^>]*name="issue"[^>]*readonly/', $html);
+        // Empty serial & physical_condition remain editable for the intake operator
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]*name="device_serial"[^>]*readonly/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<textarea[^>]*name="physical_condition"[^>]*readonly/', $html);
+
+        preg_match('/<textarea[^>]*name="issue"[^>]*>(.*?)<\/textarea>/s', $html, $issueMatch);
         $issueTextarea = trim(html_entity_decode($issueMatch[1] ?? '', ENT_QUOTES, 'UTF-8'));
         $this->assertSame('دستگاه شارژ نمی‌شود و خاموش می‌شود', $issueTextarea);
         $this->assertStringNotContainsString('لوازم همراه:', $issueTextarea);
@@ -426,7 +442,7 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
         $this->assertStringNotContainsString('نحوه تحویل دستگاه:', $issueTextarea);
         $this->assertStringNotContainsString('شماره سریال:', $issueTextarea);
 
-        // Submitting pre-filled simple_intake preserves accessories & clean issue cleanly
+        // Submitting pre-filled simple_intake preserves accessories, brand & operator-entered serial cleanly
         $intakeToken = session('repair_intake_token');
         $this->actingAs($this->admin)
             ->withSession($adminSession + ['repair_intake_token' => $intakeToken])
