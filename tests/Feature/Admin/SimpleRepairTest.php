@@ -135,7 +135,7 @@ class SimpleRepairTest extends TestCase
         $this->get(route('admin.repair-cases.show', $case))
             ->assertOk()
             ->assertSee('وضعیت تسویه')
-            ->assertSee('سند مالی صادر نشده')
+            ->assertSee('فاکتور صادر نشده')
             ->assertDontSee('تسویه شد')
             ->assertDontSee('repair-history-details" open', false)
             ->assertDontSee('technician_id')

@@ -187,8 +187,12 @@
 
         <div>
             <label class="label" for="image">تصویر اصلی محصول</label>
-            <input class="input" type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp"
-                aria-describedby="image-hint">
+            <div class="np-file-picker" data-np-file-picker>
+                <input class="sr-only" type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp"
+                    aria-describedby="image-hint" data-np-file-input>
+                <label for="image" class="np-file-picker__btn">انتخاب تصویر</label>
+                <span class="np-file-picker__name" data-np-file-name data-empty-label="فایلی انتخاب نشده است">فایلی انتخاب نشده است</span>
+            </div>
             <p class="mt-1 text-xs leading-6 text-slate-500" id="image-hint">
                 فرمت‌های JPEG، PNG یا WebP حداکثر ۲ مگابایت.
             </p>
@@ -197,9 +201,12 @@
             @enderror
         </div>
 
-        <section class="admin-advanced-details">
-            <h2>گالری تصاویر و متن جایگزین (اختیاری)</h2>
-            <div class="space-y-4 pt-3">
+        <details class="admin-accordion" @if ($hasGalleryErrors || !empty($product->galleryImages())) open @endif>
+            <summary>
+                <span>گالری تصاویر و متن جایگزین (اختیاری)</span>
+                <svg class="admin-accordion__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="admin-accordion__body space-y-4">
                 <div>
                     <label class="label" for="image_alt">متن جایگزین تصویر اصلی</label>
                     <input class="input" id="image_alt" name="image_alt" type="text" maxlength="160"
@@ -227,13 +234,17 @@
                 @endif
                 <fieldset class="space-y-3">
                     <legend class="label">تصاویر گالری</legend>
-                    <p class="text-xs leading-6 text-slate-500">تا دو تصویر به ترتیب انتخاب کنید. بارگذاری تصاویر جدید جایگزین گالری فعلی می‌شود.</p>
+                    <p class="text-xs leading-6 text-slate-500">تا دو تصویر تکمیلی انتخاب کنید.</p>
                     @for ($index = 0; $index < 2; $index++)
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
                                 <label class="label" for="gallery-image-{{ $index }}">تصویر گالری {{ \App\Support\FaNumber::digits($index + 1) }}</label>
-                                <input class="input" type="file" id="gallery-image-{{ $index }}" name="gallery_images[{{ $index }}]"
-                                    accept="image/jpeg,image/png,image/webp">
+                                <div class="np-file-picker" data-np-file-picker>
+                                    <input class="sr-only" type="file" id="gallery-image-{{ $index }}" name="gallery_images[{{ $index }}]"
+                                        accept="image/jpeg,image/png,image/webp" data-np-file-input>
+                                    <label for="gallery-image-{{ $index }}" class="np-file-picker__btn">انتخاب تصویر</label>
+                                    <span class="np-file-picker__name" data-np-file-name data-empty-label="فایلی انتخاب نشده است">فایلی انتخاب نشده است</span>
+                                </div>
                             </div>
                             <div>
                                 <label class="label" for="gallery-alt-{{ $index }}">متن جایگزین تصویر گالری {{ \App\Support\FaNumber::digits($index + 1) }}</label>
@@ -249,12 +260,16 @@
                     @endforeach
                 </fieldset>
             </div>
-        </section>
+        </details>
     </div>
 
-    <section class="admin-section admin-advanced-details space-y-3">
-        <h2>مشخصات فنی (اختیاری)</h2>
-        <p class="text-xs leading-6 text-slate-500">هر ردیف یک «برچسب و مقدار» است؛ ردیف‌های خالی نادیده گرفته می‌شوند.</p>
+    <details class="admin-accordion" @if (!empty($existingSpecs) || $errors->hasAny(['spec_labels', 'spec_values'])) open @endif>
+        <summary>
+            <span>جدول مشخصات فنی (اختیاری)</span>
+            <svg class="admin-accordion__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="admin-accordion__body space-y-3">
+            <p class="text-xs leading-6 text-slate-500">هر ردیف یک «برچسب و مقدار» است؛ ردیف‌های خالی نادیده گرفته می‌شوند.</p>
 
         <div id="spec-rows" class="space-y-3" data-spec-next-index="{{ $specNextIndex }}">
             @foreach ($existingSpecs as $label => $value)
@@ -321,14 +336,18 @@
             </div>
         </template>
 
-        <button type="button" class="btn btn-secondary" data-add-spec-row>افزودن ردیف مشخصات</button>
-    </section>
+            <button type="button" class="btn btn-secondary" data-add-spec-row>افزودن ردیف مشخصات</button>
+        </div>
+    </details>
 
     @include('admin.products._storefront')
 
-    <section class="admin-section admin-advanced-details space-y-4" >
-        <h2>تنظیمات پیشرفته و فنی (اسلاگ، داده نمونه و تاریخ قیمت)</h2>
-        <div class="grid gap-4 pt-2 sm:grid-cols-2">
+    <details class="admin-accordion" @if ($hasAdvancedErrors) open @endif>
+        <summary>
+            <span>تنظیمات پیشرفته (نشانی اسلاگ، داده نمونه و تاریخ قیمت)</span>
+            <svg class="admin-accordion__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="admin-accordion__body grid gap-4 sm:grid-cols-2">
             <div>
                 <label class="label" for="slug">اسلاگ (نشانی دستی)</label>
                 <input class="input" type="text" id="slug" name="slug"
@@ -347,10 +366,10 @@
             </div>
             @if (!$product->price_changed_at && $product->exists && \App\Support\ProductSale::priceConfirmed($product))
                 <div class="sm:col-span-2">
-                    <label class="label" for="historical_price_date">تاریخ مستند قیمت فعلی (اختیاری)</label>
+                    <label class="label" for="historical_price_date">تاریخ ثبت قیمت فعلی (اختیاری)</label>
                     <input class="input" id="historical_price_date" name="historical_price_date" dir="ltr" maxlength="10"
                         placeholder="۱۴۰۵/۰۸/۱۰" value="{{ old('historical_price_date') }}" aria-describedby="price-date-help">
-                    <p id="price-date-help" class="mt-1 text-xs text-slate-500">اگر تاریخ دقیق معلوم است، بدون تغییر قیمت وارد کنید. تغییر قیمت جدید خودکار ثبت می‌شود.</p>
+                    <p id="price-date-help" class="mt-1 text-xs text-slate-500">تغییرات قیمت جدید به‌طور خودکار تاریخ می‌خورند.</p>
                 </div>
             @endif
             <div class="sm:col-span-2">
@@ -362,7 +381,7 @@
                 </label>
             </div>
         </div>
-    </section>
+    </details>
 
     <div class="admin-form-footer">
         <button type="submit" class="btn btn-primary">{{ $submitLabel }}</button>

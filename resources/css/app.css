@@ -2702,9 +2702,39 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
 }
 
 .np-float-field select {
-    padding-top: 13px;
-    padding-bottom: 9px;
-    padding-left: 36px;
+    min-height: 54px;
+    height: 54px;
+    padding: 16px 14px 8px 40px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.45;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475e73' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 13px center;
+    background-size: 16px 16px;
+    cursor: pointer;
+    text-overflow: ellipsis;
+}
+
+.np-float-field select::picker-icon,
+.commerce-select.np-float-field > svg {
+    display: none;
+}
+
+.np-float-field select option {
+    color: #0f172a;
+    background-color: #ffffff;
+}
+
+.np-float-field select option[hidden] {
+    display: none;
+}
+
+.np-float-field:has(select:not(.sr-only) option[value=""]:checked) select:not(:focus) {
+    color: transparent;
 }
 
 .np-float-field :is(input, textarea):not(:focus)::placeholder {
@@ -2747,14 +2777,18 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
         background 0.16s ease;
 }
 
+.np-float-field:has(select:not(.sr-only)):not(.is-floated) > label {
+    max-width: calc(100% - 48px);
+}
+
 .np-float-field:has(textarea) > label {
     top: 16px;
     transform: none;
 }
 
 .np-float-field.is-floated > label,
-.np-float-field:has(select) > label,
-.np-float-field:has(:is(input, textarea):focus) > label,
+.np-float-field:has(:is(input, textarea, select:not(.sr-only)):focus) > label,
+.np-float-field:has(select:not(.sr-only) option:checked:not([value=""])) > label,
 .np-float-field:has(:is(input, textarea):not(:placeholder-shown)) > label,
 .np-float-field:has(:is(input, textarea):-webkit-autofill) > label,
 .np-float-field:has(:is(input, textarea):autofill) > label {

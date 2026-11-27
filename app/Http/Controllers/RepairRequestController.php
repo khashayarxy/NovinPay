@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -637,8 +638,97 @@ class RepairRequestController extends Controller
         return $this->trackingResult($data['tracking_reference'], RepairIdentity::digest('phone', $data['contact_phone']));
     }
 
-    private function trackingResult(string $reference, string $phoneDigest): View
+    public function updateTrackedHandover(Request $request): View|RedirectResponse
     {
+        $rawGrant = $request->input('track_grant');
+        $grant = null;
+        if (is_string($rawGrant) && $rawGrant !== '') {
+            try {
+                $decoded = json_decode(Crypt::decryptString($rawGrant), true, 512, JSON_THROW_ON_ERROR);
+                if (is_array($decoded)) {
+                    $grant = $decoded;
+                }
+            } catch (\Throwable) {
+                $grant = null;
+            }
+        }
+
+        $reference = is_string($grant['reference'] ?? null) ? $grant['reference'] : null;
+        $phoneDigest = is_string($grant['phone_digest'] ?? null) ? $grant['phone_digest'] : null;
+        $expires = (int) ($grant['expires'] ?? 0);
+
+        if ($reference === null || $phoneDigest === null || $expires < now()->timestamp) {
+            return redirect()->route('repair.track')
+                ->withErrors(['tracking_reference' => 'نشست پیگیری منقضی شده است؛ لطفاً کد پیگیری و شماره موبایل را دوباره وارد کنید.']);
+        }
+
+        $repair = RepairRequest::query()->where('tracking_reference', $reference)->first();
+        if (
+            ! $repair
+            || ! hash_equals($repair->phone_digest ?? str_repeat('0', 64), $phoneDigest)
+            || $repair->physicalCase()->exists()
+            || $repair->status !== RepairRequestStatus::OnlineSubmitted
+        ) {
+            return redirect()->route('repair.track')
+                ->withErrors(['tracking_reference' => 'امکان تغییر نحوهٔ تحویل برای این درخواست وجود ندارد.']);
+        }
+
+        $input = $request->all();
+        if (isset($input['responsive_phone']) && is_string($input['responsive_phone']) && trim($input['responsive_phone']) !== '') {
+            $input['responsive_phone'] = RepairIdentity::phone($input['responsive_phone']);
+        } else {
+            $input['responsive_phone'] = null;
+        }
+
+        $allowedMethods = $repair->isCourierEligible()
+            ? ['self_ship', 'in_person', 'doorstep_pickup']
+            : ['self_ship', 'in_person'];
+
+        $validator = Validator::make($input, [
+            'handover_method' => ['required', 'in:'.implode(',', $allowedMethods)],
+            'pickup_address' => ['required_if:handover_method,doorstep_pickup', 'nullable', 'string', 'min:10', 'max:400'],
+            'responsive_phone' => ['nullable', 'regex:/\A09[0-9]{9}\z/D'],
+        ], [
+            'handover_method.required' => 'لطفاً نحوهٔ تحویل دستگاه را انتخاب کنید.',
+            'handover_method.in' => 'دریافت با پیک در شهر ثبت‌شده فعال نیست.',
+            'pickup_address.required_if' => 'برای دریافت با پیک، وارد کردن نشانی تحویل الزامی است.',
+            'pickup_address.min' => 'نشانی تحویل باید حداقل ۱۰ کاراکتر باشد.',
+            'responsive_phone.regex' => 'شماره تماس پاسخگو باید ۱۱ رقمی معتبر با ۰۹ باشد.',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->trackingResult(
+                $reference,
+                $phoneDigest,
+                openHandover: true,
+                submittedInput: $input,
+            )->withErrors($validator);
+        }
+
+        $data = $validator->validated();
+        $repair->updateHandoverMethod(
+            $data['handover_method'],
+            $data['pickup_address'] ?? null,
+            null,
+            null,
+            $data['responsive_phone'] ?? null,
+        );
+        app(ObservabilityEvents::class)->repairHandoverUpdated($repair, $data['handover_method']);
+
+        return $this->trackingResult(
+            $reference,
+            $phoneDigest,
+            statusBanner: 'نحوهٔ تحویل دستگاه با موفقیت تغییر کرد.',
+        );
+    }
+
+    private function trackingResult(
+        string $reference,
+        string $phoneDigest,
+        ?string $statusBanner = null,
+        bool $openHandover = false,
+        array $submittedInput = [],
+    ): View {
         // Only retrieve minimal non-PII summary fields after both tracking code AND phone match.
         $physical = RepairCase::query()->select(['id', 'phone_digest', 'status', 'delivery_method', 'simple_workflow', 'device_brand', 'device_model', 'repair_request_id'])
             ->where(fn ($query) => $query->where('tracking_digest', RepairIdentity::digest('tracking', $reference))
@@ -655,6 +745,11 @@ class RepairRequestController extends Controller
 
         $isMatched = $physicalMatch || ($matched && $repair?->status === RepairRequestStatus::OnlineSubmitted);
         $trackSummary = null;
+        $canChangeHandover = false;
+        $currentHandover = 'in_person';
+        $courierEligible = false;
+        $trackGrant = null;
+
         if ($isMatched) {
             $sourceBrand = $physicalMatch ? ($physical->device_brand ?? $repair?->device_brand) : $repair?->device_brand;
             $sourceModel = $physicalMatch ? ($physical->device_model ?: $repair?->device_model) : $repair?->device_model;
@@ -669,6 +764,19 @@ class RepairRequestController extends Controller
                         default => $badge['label'],
                     };
                 }
+                if (! $physicalMatch && $repair->status === RepairRequestStatus::OnlineSubmitted) {
+                    $parsed = $repair->parsedIssue();
+                    $canChangeHandover = true;
+                    $currentHandover = is_string($submittedInput['handover_method'] ?? null)
+                        ? $submittedInput['handover_method']
+                        : ($parsed['handover_key'] ?? 'in_person');
+                    $courierEligible = $repair->isCourierEligible();
+                    $trackGrant = Crypt::encryptString(json_encode([
+                        'reference' => $reference,
+                        'phone_digest' => $phoneDigest,
+                        'expires' => now()->addMinutes(30)->timestamp,
+                    ], JSON_THROW_ON_ERROR));
+                }
             }
             if ($deliveryLabel === null && $physicalMatch) {
                 $deliveryLabel = match ($physical->delivery_method) {
@@ -680,7 +788,6 @@ class RepairRequestController extends Controller
 
             $trackSummary = [
                 'code' => FaNumber::digits($reference),
-                'code_raw' => $reference,
                 'device' => RepairIdentity::deviceLabel($sourceBrand, $sourceModel),
                 'delivery' => $deliveryLabel ?? 'ثبت‌شده',
             ];
@@ -700,6 +807,14 @@ class RepairRequestController extends Controller
             'physicalMatch' => $physicalMatch,
             'physicalStatus' => $physicalMatch ? CustomerTimeline::repairStatus($physical, $plan) : null,
             'trackSummary' => $trackSummary,
+            'canChangeHandover' => $canChangeHandover,
+            'currentHandover' => $currentHandover,
+            'courierEligible' => $courierEligible,
+            'trackGrant' => $trackGrant,
+            'statusBanner' => $statusBanner,
+            'openHandover' => $openHandover,
+            'draftPickupAddress' => is_string($submittedInput['pickup_address'] ?? null) ? $submittedInput['pickup_address'] : '',
+            'draftResponsivePhone' => is_string($submittedInput['responsive_phone'] ?? null) ? $submittedInput['responsive_phone'] : '',
             'nextAction' => $physicalMatch ? match ($physical->status) {
                 RepairStage::WaitingApproval => 'برای بررسی و تأیید برآورد، جزئیات تعمیر را در حساب کاربری باز کنید.',
                 RepairStage::Ready, RepairStage::ReturnPending => 'برای تحویل دستگاه، با نوین‌پی هماهنگ کنید.',

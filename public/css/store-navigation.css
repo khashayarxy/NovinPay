@@ -69,7 +69,7 @@
 }
 @media (max-width: 359px) {
     html:has(.global-store-nav) { --store-nav-height: 54px; }
-    .global-store-nav a > span:not([data-store-cart-count]) {
+    .global-store-nav a > span:not([data-store-cart-count]):not(.global-store-nav__icon-wrap) {
         position: absolute;
         inline-size: 1px;
         block-size: 1px;

@@ -91,6 +91,35 @@ export function initAdminCalendar(root) {
     dialog.querySelector('[data-next]').addEventListener('click', () => shift(1));
     dialog.querySelector('[data-clear]').addEventListener('click', () => { write(null); dialog.close(); });
     dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', event => {
+        if (event.target === dialog) dialog.close();
+    });
+
+    let activeAnchor = null;
+    function positionCalendar(anchor) {
+        if (!anchor || typeof anchor.getBoundingClientRect !== 'function') return;
+        const rect = anchor.getBoundingClientRect();
+        const vw = document.documentElement?.clientWidth || window.innerWidth || 1024;
+        const vh = document.documentElement?.clientHeight || window.innerHeight || 768;
+        const calWidth = Math.min(308, vw - 24);
+        const estHeight = 336;
+        let left = rect.right - calWidth;
+        if (left < 12) left = 12;
+        if (left + calWidth > vw - 12) left = Math.max(12, vw - calWidth - 12);
+        let top = rect.bottom + 6;
+        if (top + estHeight > vh - 12 && rect.top > estHeight + 12) {
+            top = rect.top - estHeight - 6;
+        } else if (top + estHeight > vh - 12) {
+            top = Math.max(12, vh - estHeight - 12);
+        }
+        dialog.style?.setProperty('--cal-top', `${Math.round(top)}px`);
+        dialog.style?.setProperty('--cal-left', `${Math.round(left)}px`);
+    }
+    if (typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('resize', () => {
+            if (dialog.open && activeAnchor) positionCalendar(activeAnchor);
+        });
+    }
 
     for (const field of dates) {
         const timed = field.type === 'datetime-local';
@@ -136,6 +165,7 @@ export function initAdminCalendar(root) {
             queueMicrotask(() => { input.value = displayDate(original); update(); });
         });
         picker.addEventListener('click', () => {
+            activeAnchor = wrapper;
             chosen = field.value ? Date.parse(field.value.slice(0, 10) + 'T00:00:00Z') : null;
             const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tehran' }).format(new Date());
             [year, month] = jalaliParts(chosen ?? Date.parse(today + 'T00:00:00Z'));
@@ -145,6 +175,7 @@ export function initAdminCalendar(root) {
                 update();
             };
             render();
+            positionCalendar(wrapper);
             dialog.showModal();
             (grid.querySelector('[aria-pressed=true]') ?? grid.querySelector('button'))?.focus();
         });

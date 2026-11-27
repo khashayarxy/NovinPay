@@ -77,22 +77,12 @@ class RepairRequest extends Model
             return null;
         }
 
-        $issue = (string) $this->issue;
-        if (! str_contains($issue, 'نحوه تحویل دستگاه:')) {
-            return null;
-        }
-
-        if (str_contains($issue, 'حضوری')) {
-            return ['label' => 'حضوری', 'tone' => 'info'];
-        }
-        if (str_contains($issue, 'پست') || str_contains($issue, 'تیپاکس') || str_contains($issue, 'ارسال')) {
-            return ['label' => 'پستی', 'tone' => 'warning'];
-        }
-        if (str_contains($issue, 'پیک')) {
-            return ['label' => 'پیک', 'tone' => 'success'];
-        }
-
-        return null;
+        return match ($this->parsedIssue()['handover_key']) {
+            'in_person' => ['label' => 'حضوری', 'tone' => 'info'],
+            'self_ship' => ['label' => 'پستی', 'tone' => 'warning'],
+            'doorstep_pickup' => ['label' => 'پیک', 'tone' => 'success'],
+            default => null,
+        };
     }
 
     /**

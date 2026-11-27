@@ -268,7 +268,7 @@ class AdminFoundationTest extends TestCase
         $repair = $this->repair();
         $this->actingAs(User::factory()->staff(['repairs.view'])->create());
         foreach (['/admin/repair-requests', '/admin/repair-requests/'.$repair->id] as $uri) {
-            $response = $this->get($uri)->assertOk()->assertSee('دریافت فیزیکی');
+            $response = $this->get($uri)->assertOk()->assertSee($repair->device_brand->value);
             foreach ([$repair->customer_name, $repair->contact_phone, 'PRIVATE-MODEL', 'PRIVATE-ISSUE'] as $private) {
                 $response->assertDontSee($private);
             }

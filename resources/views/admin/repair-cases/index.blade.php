@@ -4,7 +4,6 @@
 <header class="admin-page-heading">
     <div>
         <h1>پرونده‌های تعمیر</h1>
-        <p>برای مشاهده یا به‌روزرسانی وضعیت هر پرونده، روی ردیف آن کلیک کنید.</p>
     </div>
     @can('repairs.intake')
         <a class="btn btn-primary" href="{{ route('admin.repair-cases.create') }}">+ پذیرش جدید</a>
@@ -13,11 +12,13 @@
 <x-admin.errors />
 <section class="admin-panel admin-collection">
     <div class="admin-collection-tools">
-        <form method="post" action="{{ route('admin.repair-cases.search') }}" class="admin-toolbar">
-            @csrf
-            <div class="admin-form-grid">
-                <x-operation-field name="q" type="search" label="جست‌وجوی پرونده" :required="false" :maxlength="120" />
-                <div>
+        <div class="flex flex-wrap items-end gap-3">
+            <form method="post" action="{{ route('admin.repair-cases.search') }}" class="admin-toolbar flex-1">
+                @csrf
+                <div class="admin-toolbar__grow">
+                    <x-operation-field name="q" type="search" label="جست‌وجوی پرونده (نام، موبایل یا کد پیگیری)" :required="false" :maxlength="120" />
+                </div>
+                <div class="admin-toolbar__select">
                     <label class="label" for="repair-filter">وضعیت</label>
                     <select class="input" id="repair-filter" name="status">
                         <option value="">همه وضعیت‌ها</option>
@@ -26,15 +27,15 @@
                         @endforeach
                     </select>
                 </div>
-            </div>
-            <button class="btn btn-secondary" type="submit">جست‌وجو</button>
-        </form>
-        @if($criteria)
-            <form method="post" action="{{ route('admin.repair-cases.reset') }}">
-                @csrf
-                <button class="admin-text-link">نمایش همه</button>
+                <button class="btn btn-secondary" type="submit">جست‌وجو</button>
             </form>
-        @endif
+            @if($criteria)
+                <form method="post" action="{{ route('admin.repair-cases.reset') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-secondary btn-sm">نمایش همه</button>
+                </form>
+            @endif
+        </div>
     </div>
     @if($cases->isEmpty())
         <x-admin.empty-state title="پرونده‌ای پیدا نشد" icon="tool">

@@ -36,7 +36,7 @@
         <div class="admin-permissions">@foreach($permissions as $permission)<label><input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked(in_array($permission->value, $selectedPermissions, true))><span>{{ $permission->label() }}</span></label>@endforeach</div>
     </fieldset>
     <input type="hidden" name="is_active" value="0"><label class="admin-checkbox"><input type="checkbox" name="is_active" value="1" @checked($activeChecked)> حساب فعال باشد</label>
-    <div class="admin-notice"><h2>تأیید مدیر کل</h2><p>ثبت تغییر، نشست‌های قبلی همکار را لغو می‌کند.</p><label class="label" for="current_password">رمز عبور فعلی مدیر کل</label><input class="input" id="current_password" name="current_password" type="password" autocomplete="section-owner current-password" required maxlength="255"></div>
+    <div class="admin-notice"><h2>تأیید مدیر کل</h2><p>ثبت تغییر، نشست‌های قبلی همکار را لغو می‌کند.</p><div class="admin-autofill-trap" aria-hidden="true"><input type="text" tabindex="-1" autocomplete="username"><input type="password" tabindex="-1" autocomplete="current-password"></div><label class="label" for="current_password">رمز عبور فعلی مدیر کل</label><input class="input" id="current_password" name="current_password" type="password" autocomplete="new-password" required maxlength="255"></div>
     <div class="admin-actions"><button class="btn btn-primary" type="submit">{{ $staff ? 'ذخیرهٔ تغییرات' : 'ایجاد حساب همکار' }}</button><a class="btn btn-secondary" href="{{ route('admin.staff.index') }}">انصراف</a></div>
 </form>
 </div>

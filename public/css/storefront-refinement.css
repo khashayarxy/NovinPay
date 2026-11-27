@@ -26,9 +26,24 @@
     z-index: 3;
 }
 .store-cart-count[hidden] { display: none; }
+.global-store-nav__icon-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex: none;
+}
 .global-store-nav .store-cart-count {
-    inset-block-start: 2px;
-    inset-inline-end: calc(50% - 20px);
+    inset-block-start: -6px;
+    inset-inline-end: -9px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 10px;
+    background: #b4232d;
+    box-shadow: 0 0 0 2px #ffffff;
 }
 .global-store-nav a[aria-current] { background: #f0f7fe; }
 .global-store-nav a[aria-current]::after { height: 2px; width: 12px; }
@@ -980,18 +995,19 @@ button[data-loading="true"] {
 }
 .checkout-gateway-card {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 16px;
+    align-items: center;
+    gap: 14px;
+    padding: 15px 18px;
     border: 1.5px solid #dce7f2;
-    border-radius: 12px;
+    border-radius: 14px;
     background: #fff;
     cursor: pointer;
     transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
 }
-.checkout-gateway-card:has(input:checked) {
+.checkout-gateway-card:has(input:checked),
+.checkout-gateway-card--zibal {
     border-color: #098cf7;
-    background: #f5faff;
+    background: linear-gradient(135deg, #f4f9ff 0%, #ffffff 100%);
     box-shadow: 0 0 0 3px rgb(9 140 247 / 12%);
 }
 .checkout-gateway-card__body {
@@ -1004,11 +1020,16 @@ button[data-loading="true"] {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 12px;
+}
+.checkout-gateway-card__title-row strong {
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: #0f2942;
 }
 .checkout-gateway-card__logo {
-    width: auto;
-    height: 26px;
+    width: 35px;
+    height: 42px;
     object-fit: contain;
     flex: none;
 }
@@ -1036,9 +1057,41 @@ button[data-loading="true"] {
 .checkout-confirm-list dd { margin: 0; font-weight: 500; color: #122940; font-size: 14px; }
 .checkout-confirm-total { color: #0674cf !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) {
-    .checkout-step { padding: 5px 10px; font-size: 12px; }
+    .checkout-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .checkout-steps {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        width: 100%;
+    }
+    .checkout-step {
+        flex: 1 1 auto;
+        justify-content: center;
+        gap: 4px;
+        padding: 5px 6px;
+        font-size: 11px;
+        white-space: nowrap;
+        min-width: 0;
+    }
+    .checkout-step__num {
+        width: 18px;
+        height: 18px;
+        font-size: 10.5px;
+        flex: none;
+    }
     .checkout-step-actions { flex-direction: column-reverse; align-items: stretch; }
     .checkout-step-actions .commerce-action { width: 100%; justify-content: center; }
+}
+@media (max-width: 400px) {
+    .checkout-steps { gap: 3px; }
+    .checkout-step { gap: 3px; padding: 4px 5px; font-size: 10.5px; }
+    .checkout-step__num { width: 17px; height: 17px; font-size: 10px; }
 }
 
 /* 4-Step Checkout Form Fields, Red Inline Errors & Interactive Map */

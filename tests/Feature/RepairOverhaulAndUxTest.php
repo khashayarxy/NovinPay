@@ -272,7 +272,8 @@ class RepairOverhaulAndUxTest extends TestCase
             ->assertOk()
             ->assertSee('repair-track-layout', false)
             ->assertSee('مراحل و راهنمای پیگیری تعمیر')
-            ->assertSee('class="public-inline-link" href="'.route('repair').'"', false)
+            ->assertSee('repair-track-action-btn', false)
+            ->assertSee('href="'.route('repair').'"', false)
             ->assertDontSee('np-location');
     }
 

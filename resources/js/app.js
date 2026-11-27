@@ -221,7 +221,9 @@ runWhenDomReady(() => {
         const steps = [...repairStepper.querySelectorAll('[data-step]')];
         const indicators = [...repairStepper.querySelectorAll('[data-step-indicator]')];
         const alertBox = repairStepper.querySelector('[data-step-alert]');
+        const brandSelect = repairStepper.querySelector('select[name="device_brand"]');
         const brandRadios = [...repairStepper.querySelectorAll('input[name="device_brand"]')];
+        const getSelectedBrand = () => (brandSelect instanceof HTMLSelectElement ? brandSelect.value.trim() : (brandRadios.find((r) => r.checked)?.value || ''));
         const modelInput = repairStepper.querySelector('#device_model');
         const serialInput = repairStepper.querySelector('#device_serial');
         const issueInput = repairStepper.querySelector('#issue');
@@ -321,6 +323,7 @@ runWhenDomReady(() => {
         };
 
         const fieldInputMap = {
+            device_brand: brandSelect || brandRadios[0],
             device_model: modelInput,
             device_serial: serialInput,
             issue: issueInput,
@@ -461,7 +464,7 @@ runWhenDomReady(() => {
         const saveDraft = () => {
             try {
                 const draft = {
-                    device_brand: brandRadios.find((r) => r.checked)?.value || '',
+                    device_brand: getSelectedBrand(),
                     device_model: modelInput?.value || '',
                     device_serial: serialInput?.value || '',
                     accessories: [...repairStepper.querySelectorAll('input[name="accessories[]"]:checked')].map((el) => el.value),
@@ -541,7 +544,7 @@ runWhenDomReady(() => {
         };
 
         const syncSummary = () => {
-            const brand = brandRadios.find((r) => r.checked)?.value || '';
+            const brand = getSelectedBrand();
             const model = (modelInput?.value || '').trim();
             const serial = (serialInput?.value || '').trim();
             const accessories = [...repairStepper.querySelectorAll('input[name="accessories[]"]:checked')]
@@ -616,10 +619,10 @@ runWhenDomReady(() => {
         const validateStep = (step) => {
             clearAllErrors();
             if (step === 1) {
-                const brand = brandRadios.find((r) => r.checked);
+                const brand = getSelectedBrand();
                 if (!brand) {
                     setFieldError('device_brand', 'لطفاً برند دستگاه را انتخاب کنید.');
-                    brandRadios[0]?.focus();
+                    (brandSelect || brandRadios[0])?.focus();
                     return false;
                 }
                 const model = (modelInput?.value || '').trim();
@@ -708,6 +711,7 @@ runWhenDomReady(() => {
         });
 
         // Clear inline field errors as the user interacts
+        brandSelect?.addEventListener('change', () => setFieldError('device_brand', ''));
         brandRadios.forEach((r) => r.addEventListener('change', () => setFieldError('device_brand', '')));
         handoverRadios.forEach((r) => r.addEventListener('change', () => setFieldError('handover_method', '')));
         Object.entries(fieldInputMap).forEach(([key, input]) => {
@@ -1165,14 +1169,18 @@ runWhenDomReady(() => {
         });
 
         // Restore draft if no server-rendered old values exist
-        const hasServerValues = Boolean(brandRadios.some((r) => r.checked) || (modelInput?.value || '').trim() || (issueInput?.value || '').trim());
+        const hasServerValues = Boolean(getSelectedBrand() || (modelInput?.value || '').trim() || (issueInput?.value || '').trim());
         if (!hasServerValues) {
             try {
                 const saved = JSON.parse(window.sessionStorage?.getItem(draftKey) || 'null');
                 if (saved && typeof saved === 'object') {
                     if (saved.device_brand) {
-                        const br = brandRadios.find((r) => r.value === saved.device_brand);
-                        if (br) br.checked = true;
+                        if (brandSelect instanceof HTMLSelectElement && [...brandSelect.options].some((o) => o.value === saved.device_brand)) {
+                            brandSelect.value = saved.device_brand;
+                        } else {
+                            const br = brandRadios.find((r) => r.value === saved.device_brand);
+                            if (br) br.checked = true;
+                        }
                     }
                     if (saved.device_model && modelInput) modelInput.value = saved.device_model;
                     if (saved.device_serial && serialInput) serialInput.value = saved.device_serial;
@@ -1258,18 +1266,22 @@ runWhenDomReady(() => {
             adminMobileToggle?.focus();
         });
         const groups = [...adminNavigation.querySelectorAll('.admin-nav-group')];
+        const initialOpenGroup = groups.find((group) => group.hasAttribute('open')) || null;
 
         groups.forEach((group) => {
             const button = group.querySelector('.admin-nav-group-trigger');
+            if (!(button instanceof HTMLButtonElement)) return;
             const setOpen = (value) => {
                 group.toggleAttribute('open', value);
                 button.setAttribute('aria-expanded', String(value));
             };
+            setOpen(group === initialOpenGroup);
             button.addEventListener('click', () => {
                 const next = !group.hasAttribute('open');
-                groups.filter(other => other !== group).forEach(other => {
+                groups.forEach((other) => {
+                    if (other === group) return;
                     other.removeAttribute('open');
-                    other.querySelector('.admin-nav-group-trigger').setAttribute('aria-expanded', 'false');
+                    other.querySelector('.admin-nav-group-trigger')?.setAttribute('aria-expanded', 'false');
                 });
                 setOpen(next);
             });
@@ -1416,7 +1428,11 @@ runWhenDomReady(() => {
                 citySelect.innerHTML = '';
                 const placeholder = document.createElement('option');
                 placeholder.value = '';
-                placeholder.textContent = province ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید';
+                placeholder.disabled = true;
+                placeholder.hidden = true;
+                if (!preserveCity) {
+                    placeholder.selected = true;
+                }
                 citySelect.append(placeholder);
                 cities.forEach((city) => {
                     const option = document.createElement('option');
@@ -1429,6 +1445,8 @@ runWhenDomReady(() => {
                     citySelect.value = preserveCity;
                     citySelect.dataset.selectedCity = preserveCity;
                 }
+                citySelect.closest('[data-float-field]')?.classList.toggle('is-floated', Boolean(citySelect.value) || document.activeElement === citySelect);
+                provinceSelect.closest('[data-float-field]')?.classList.toggle('is-floated', Boolean(provinceSelect.value) || document.activeElement === provinceSelect);
             };
             form._populateIranCities = populateCities;
             if (provinceSelect.value) {
@@ -1950,14 +1968,12 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             }
         }
         const paymentInput = form.querySelector('input[name="payment_method"]:checked');
-        const payment = paymentInput ? paymentInput.value : 'request';
+        const payment = paymentInput ? paymentInput.value : 'zibal';
         if (confirmPayment) {
-            confirmPayment.textContent = paymentInput?.dataset.paymentLabel || (payment === 'zibal' ? 'پرداخت آنلاین با درگاه زیبال' : 'ثبت درخواست سفارش');
+            confirmPayment.textContent = paymentInput?.dataset.paymentLabel || 'پرداخت آنلاین با درگاه زیبال';
         }
         if (submitBtn instanceof HTMLButtonElement) {
-            submitBtn.textContent = payment === 'zibal'
-                ? (submitBtn.dataset.labelZibal || 'پرداخت آنلاین با زیبال')
-                : (submitBtn.dataset.labelRequest || 'ثبت درخواست سفارش');
+            submitBtn.textContent = submitBtn.dataset.labelZibal || 'پرداخت آنلاین با زیبال';
         }
     };
 
@@ -2017,7 +2033,10 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                     const sel = form.querySelector('select[name="address"]');
                     if (sel instanceof HTMLSelectElement && !sel.value) {
                         const opt = sel.querySelector(`option[value="${data.address_id}"]`);
-                        if (opt) sel.value = data.address_id;
+                        if (opt) {
+                            sel.value = data.address_id;
+                            sel.closest('[data-float-field]')?.classList.add('is-floated');
+                        }
                     }
                 }
             }).catch(() => {});
@@ -2104,11 +2123,9 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         panels.forEach((panel) => {
             panel.classList.toggle('is-active', Number(panel.dataset.checkoutStep) === target);
         });
-        const step1Done = isStep1QuietlyValid();
-        const step2Done = isStep2QuietlyReady();
         indicators.forEach((ind) => {
             const num = Number(ind.dataset.stepIndicator);
-            const done = num < target || (num === 1 && step1Done && target !== 1) || (num === 2 && step1Done && step2Done && target !== 2);
+            const done = num < target;
             ind.classList.toggle('is-active', num === target);
             ind.classList.toggle('is-done', done);
             if (num === target) ind.setAttribute('aria-current', 'step');
@@ -2794,7 +2811,81 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 }
             }
         }
+
+        const openMenus = document.querySelectorAll('details.admin-more-menu[open]');
+        if (openMenus.length > 0) {
+            openMenus.forEach((menu) => {
+                if (event.target instanceof Node && !menu.contains(event.target)) {
+                    menu.open = false;
+                }
+            });
+        }
+
+        const tabBtn = event.target instanceof Element ? event.target.closest('[data-admin-tab]') : null;
+        if (tabBtn instanceof HTMLButtonElement) {
+            const tabGroup = tabBtn.closest('[data-admin-tabs]');
+            const container = tabGroup?.parentElement;
+            const targetKey = tabBtn.getAttribute('data-admin-tab');
+            if (tabGroup && container && targetKey) {
+                tabGroup.querySelectorAll('[data-admin-tab]').forEach((btn) => {
+                    btn.setAttribute('aria-selected', String(btn === tabBtn));
+                });
+                container.querySelectorAll('[data-admin-tab-panel]').forEach((panel) => {
+                    if (panel instanceof HTMLElement) {
+                        panel.hidden = panel.getAttribute('data-admin-tab-panel') !== targetKey;
+                    }
+                });
+            }
+            return;
+        }
+
+        const mergeBtn = event.target instanceof Element ? event.target.closest('[data-prefill-merge]') : null;
+        if (mergeBtn instanceof HTMLButtonElement) {
+            const destId = mergeBtn.getAttribute('data-merge-id') || '';
+            const destVersion = mergeBtn.getAttribute('data-merge-version') || '';
+            const accordion = document.getElementById('customer-merge-accordion');
+            if (accordion instanceof HTMLDetailsElement) {
+                accordion.open = true;
+                const destInput = accordion.querySelector('input[name="destination"]');
+                const verInput = accordion.querySelector('input[name="destination_version"]');
+                if (destInput instanceof HTMLInputElement) destInput.value = destId;
+                if (verInput instanceof HTMLInputElement) verInput.value = destVersion;
+                accordion.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
     });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('details.admin-more-menu[open]').forEach((menu) => {
+                menu.open = false;
+            });
+        }
+    });
+
+    if (document.body.classList.contains('admin-site')) {
+        document.addEventListener('keydown', (event) => {
+            if (event.target instanceof HTMLInputElement) {
+                event.target.dataset.userEdited = '1';
+            }
+        }, true);
+        document.addEventListener('paste', (event) => {
+            if (event.target instanceof HTMLInputElement) {
+                event.target.dataset.userEdited = '1';
+            }
+        }, true);
+        const scrubFalseAdminAutofill = () => {
+            document.querySelectorAll('form input:not([type="email"]):not([type="password"]):not([type="hidden"])').forEach((input) => {
+                if (!(input instanceof HTMLInputElement)) return;
+                if (input.name === 'email' || input.dataset.userEdited === '1') return;
+                if (input.defaultValue === '' && input.value.includes('@') && input.form?.querySelector('input[type="password"]')) {
+                    input.value = '';
+                }
+            });
+        };
+        window.setTimeout(scrubFalseAdminAutofill, 120);
+        window.setTimeout(scrubFalseAdminAutofill, 450);
+    }
 
     document.querySelectorAll('[data-repair-handover-form]').forEach((form) => {
         const pickupBox = form.querySelector('[data-handover-pickup-fields]');
@@ -3112,10 +3203,9 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
     // Phase 8: Keep Material floating-label wrappers synchronized on pre-filled, programmatic, and autofill updates
     const syncFloatField = (wrapper) => {
         if (!(wrapper instanceof HTMLElement)) return;
-        const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select');
+        const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select:not(.sr-only)');
         if (!control) return;
-        const isSelect = control instanceof HTMLSelectElement;
-        const hasValue = isSelect || String(control.value || '').length > 0 || document.activeElement === control;
+        const hasValue = String(control.value || '').length > 0 || document.activeElement === control;
         wrapper.classList.toggle('is-floated', hasValue);
     };
 
@@ -3124,7 +3214,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             syncFloatField(wrapper);
             if (wrapper.dataset.floatBound === '1') return;
             wrapper.dataset.floatBound = '1';
-            const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select');
+            const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select:not(.sr-only)');
             if (!control) return;
             ['input', 'change', 'focus', 'blur'].forEach((evt) => {
                 control.addEventListener(evt, () => syncFloatField(wrapper));
@@ -3238,6 +3328,11 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             const serial = chip.dataset.deviceSerial || '';
             document.querySelectorAll('[data-prefill-device]').forEach((c) => c.classList.toggle('is-selected', c === chip));
             if (brand) {
+                const selectEl = document.querySelector('select[name="device_brand"]');
+                if (selectEl instanceof HTMLSelectElement) {
+                    selectEl.value = brand;
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                }
                 const radio = document.querySelector(`input[name="device_brand"][value="${CSS.escape(brand)}"]`);
                 if (radio instanceof HTMLInputElement) {
                     radio.checked = true;

@@ -4,7 +4,6 @@
 <header class="admin-page-heading">
     <div>
         <h1>درخواست‌های آنلاین تعمیر</h1>
-        <p>ثبت فرم آنلاین به معنی دریافت فیزیکی دستگاه نیست. برای مشاهده و پذیرش، روی هر ردیف کلیک کنید.</p>
     </div>
     <span class="admin-status">{{ \App\Support\FaNumber::digits($repairs->total()) }} درخواست</span>
 </header>
@@ -26,15 +25,13 @@
             @if($status !== 'all')
                 <input type="hidden" name="status" value="{{ $status }}">
             @endif
-            <div class="admin-form-grid">
-                <div>
-                    <label class="label" for="repair-requests-q">{{ $canReadCustomer ? 'جست‌وجو (نام مشتری، موبایل یا کد پیگیری)' : 'جست‌وجو با کد پیگیری' }}</label>
-                    <input class="input" id="repair-requests-q" name="q" type="search" maxlength="100" value="{{ $searchQuery }}" placeholder="{{ $canReadCustomer ? 'مثلاً نام مشتری، ۰۹۱۲... یا کد پیگیری' : 'کد پیگیری' }}">
-                </div>
+            <div class="admin-toolbar__grow">
+                <label class="label" for="repair-requests-q">{{ $canReadCustomer ? 'جست‌وجو (نام مشتری، موبایل یا کد پیگیری)' : 'جست‌وجو با کد پیگیری' }}</label>
+                <input class="input" id="repair-requests-q" name="q" type="search" maxlength="100" value="{{ $searchQuery }}" placeholder="{{ $canReadCustomer ? 'مثلاً نام مشتری، ۰۹۱۲... یا کد پیگیری' : 'کد پیگیری' }}">
             </div>
             <button class="btn btn-secondary" type="submit">جست‌وجو</button>
             @if($searchQuery !== '' || $status !== 'all')
-                <a class="admin-text-link" href="{{ route('admin.repairs.index') }}">نمایش همه</a>
+                <a class="btn btn-secondary btn-sm" href="{{ route('admin.repairs.index') }}">نمایش همه</a>
             @endif
         </form>
     </div>

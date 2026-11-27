@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 @section('title', 'جزئیات مشاوره')
 @section('content')
-<header class="admin-page-heading"><div><p class="admin-eyebrow">درخواست مشاوره · نسخهٔ {{ \App\Support\FaNumber::digits($consultation->version) }}</p><h1>{{ \App\Models\Consultation::TOPICS[$consultation->topic] }}</h1><p class="crm-code">{{ $consultation->public_id }}</p></div><a class="admin-text-link" href="{{ route('admin.consultations.index') }}">صندوق مشاوره ←</a></header><x-admin.errors/>
-<div class="repair-status-banner"><div><span class="admin-eyebrow">مرحلهٔ فعلی</span><h2>{{ \App\Models\Consultation::STATUSES[$consultation->status] }}</h2><p>ثبت: <x-finance-time :value="$consultation->created_at" /></p></div><p>همکار مسئول: <strong>{{ $consultation->assignee?->name ?? 'تخصیص نیافته' }}</strong></p></div>
+<header class="admin-page-heading"><div><h1>{{ \App\Models\Consultation::TOPICS[$consultation->topic] }}</h1><p class="crm-code">{{ $consultation->public_id }}</p></div><a class="admin-text-link" href="{{ route('admin.consultations.index') }}">صندوق مشاوره ←</a></header><x-admin.errors/>
+<div class="repair-status-banner"><div><h2>{{ \App\Models\Consultation::STATUSES[$consultation->status] }}</h2><p>ثبت: <x-finance-time :value="$consultation->created_at" /></p></div><p>همکار مسئول: <strong>{{ $consultation->assignee?->name ?? 'تخصیص نیافته' }}</strong></p></div>
 <x-customer-association :record="$consultation"/>
 <nav class="admin-actions repair-jump-links" aria-label="میانبرهای مشاوره"><a class="admin-text-link" href="#consultation-details">اطلاعات درخواست ↓</a>@if($history)<a class="admin-text-link" href="#consultation-history">سابقهٔ تماس ↓</a>@endif @can('consultations.manage')<a class="admin-text-link" href="#consultation-actions">عملیات مشاوره ↓</a>@endcan</nav>
 <div class="crm-two-column mt-6"><div class="repair-main-stack"><section class="admin-panel" id="consultation-details"><h2>پرسش و اطلاعات اعلام‌شده</h2>

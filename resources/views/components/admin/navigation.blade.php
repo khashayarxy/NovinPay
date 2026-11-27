@@ -45,6 +45,7 @@
         ['عملیات روزانه', $dailyGroups, true],
         ['محتوا و تنظیمات', $systemGroups, false],
     ];
+    $hasExpandedGroup = false;
 @endphp
 <nav aria-label="ناوبری مدیریت" class="admin-nav">
     @if(!$account->must_change_password && $allows('dashboard.view'))
@@ -67,19 +68,26 @@
         <div @class(['admin-nav-tier', 'admin-nav-tier--secondary' => !$isPrimary])>
             <p class="admin-nav-tier-label">{{ $tierLabel }}</p>
             @foreach($renderedGroups as $label => [$icon, $visible])
-                @php($current = collect($visible)->contains(fn ($link) => request()->routeIs(...(array) $link[2])))
+                @php
+                    $current = collect($visible)->contains(fn ($link) => request()->routeIs(...(array) $link[2]));
+                    $isOpen = $current && ! $hasExpandedGroup;
+                    if ($isOpen) {
+                        $hasExpandedGroup = true;
+                    }
+                    $subId = 'admin-nav-sub-'.$loop->parent->index.'-'.$loop->index;
+                @endphp
                 @if(count($visible) === 1)
                     <a class="admin-nav-direct" href="{{ route($visible[0][1]) }}" data-admin-category @if($current) aria-current="page" @endif>
                         <x-home.icon :name="$icon" /><span>{{ $visible[0][3] }}</span>
                     </a>
                 @else
                     <div @class(['admin-nav-section', 'admin-nav-current' => $current])>
-                        <div class="admin-nav-group" @if($current) open @endif>
-                            <button type="button" class="admin-nav-group-trigger" aria-expanded="{{ $current ? 'true' : 'false' }}">
+                        <div class="admin-nav-group" @if($isOpen) open @endif>
+                            <button type="button" class="admin-nav-group-trigger" aria-expanded="{{ $isOpen ? 'true' : 'false' }}" aria-controls="{{ $subId }}">
                                 <span class="admin-nav-group-label"><x-home.icon :name="$icon" /><span>{{ $label }}</span></span>
                                 <svg class="admin-nav-chevron-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                             </button>
-                            <div class="admin-nav-children">
+                            <div id="{{ $subId }}" class="admin-nav-children">
                                 @foreach($visible as [$ability, $route, $active, $text])
                                     <a href="{{ route($route) }}" @if(request()->routeIs(...(array) $active)) aria-current="page" @endif>{{ $text }}</a>
                                 @endforeach

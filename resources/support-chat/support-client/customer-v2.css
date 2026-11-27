@@ -75,6 +75,7 @@ html[data-support-surface=customer-v2],html[data-support-surface=customer-v2] bo
 html[data-support-theme=dark] .support-skeleton__bubble{background:linear-gradient(90deg,#1c2b42 25%,#263a57 50%,#1c2b42 75%);background-size:200% 100%}
 @keyframes support-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 [data-connection-state] .support-skeleton,[data-init-state=failed] .support-skeleton,[data-init-state=ready] .support-skeleton{display:none}
+[data-support-stable-shell][data-init-state=initializing]:not([data-connection-state]) :is(.support-init-dots,[data-init-text]){display:none}
 [data-support-stable-shell][data-connection-state] .support-init-status{inset:8px 12px auto;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:8px 12px;border-radius:10px;background:var(--surface);pointer-events:auto}
 [data-connection-state] .support-init-dots{display:none}
 [data-support-stable-shell]:not([data-init-state=ready]) .support-conversation>:not(.support-init-status){visibility:hidden}

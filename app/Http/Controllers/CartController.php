@@ -321,7 +321,7 @@ class CartController extends Controller
             'operation_key' => ['required', 'uuid'],
             'quote' => ['required', 'string', 'size:64'],
             'method' => ['required', Rule::in(array_keys(DeliveryManagement::CHECKOUT_METHODS))],
-            'payment_method' => ['nullable', Rule::in(['zibal', 'request'])],
+            'payment_method' => ['nullable', Rule::in(['zibal'])],
             'full_name' => ['nullable', 'string', 'min:2', 'max:100'],
             'mobile' => ['nullable', 'regex:/^09[0-9]{9}$/'],
             'national_code' => ['nullable', 'regex:/^[0-9]{10}$/', function (string $attribute, mixed $value, \Closure $fail): void {
@@ -436,24 +436,25 @@ class CartController extends Controller
         }
         $request->session()->put('checkout_draft', $draftToSave);
 
-        $order = $cart->place($request, $data['operation_key'], $data['quote'], $data['method'], $addressPublicId);
-
-        $paymentMethod = $data['payment_method'] ?? 'request';
-        if ($paymentMethod === 'zibal' && $gateway->available()) {
-            $freshAccount = CustomerAccount::query()->findOrFail($account->id);
-            $attempt = $payments->startForOrderCheckout(
-                $freshAccount,
-                $order,
-                $data['method'],
-                $addressPublicId,
-                $data['operation_key']
-            );
-            $destination = $attempt->state === 'pending' && $attempt->track_id ? 'payments.connect' : 'payments.result';
-
-            return redirect()->route($destination, $attempt->public_id, 303);
+        if (! $gateway->available()) {
+            return redirect()->route('cart.checkout')
+                ->withErrors(['payment_method' => 'پرداخت آنلاین فعلاً در دسترس نیست. لطفاً دقایقی دیگر دوباره تلاش کنید.'])
+                ->withInput();
         }
 
-        return redirect()->route('account.index', ['section' => 'orders'])->with('success', 'درخواست سفارش ثبت شد. پس از تأیید موجودی، صورت‌حساب و روش تحویل در حساب شما نمایش داده می‌شود.');
+        $order = $cart->place($request, $data['operation_key'], $data['quote'], $data['method'], $addressPublicId);
+
+        $freshAccount = CustomerAccount::query()->findOrFail($account->id);
+        $attempt = $payments->startForOrderCheckout(
+            $freshAccount,
+            $order,
+            $data['method'],
+            $addressPublicId,
+            $data['operation_key']
+        );
+        $destination = $attempt->state === 'pending' && $attempt->track_id ? 'payments.connect' : 'payments.result';
+
+        return redirect()->route($destination, $attempt->public_id, 303);
     }
 
     public static function isValidIranNationalCode(string $code): bool

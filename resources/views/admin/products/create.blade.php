@@ -4,11 +4,11 @@
 
 @section('content')
     <div class="admin-form-surface">
+        <a href="{{ route('admin.products.index') }}" class="admin-back-link">← فهرست محصولات</a>
         <header class="admin-page-heading">
             <div>
                 <h1>افزودن محصول</h1>
             </div>
-            <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">فهرست محصولات</a>
         </header>
 
         @include('admin.products._form', [
