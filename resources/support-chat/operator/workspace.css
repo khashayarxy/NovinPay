@@ -15,8 +15,8 @@ html[data-support-surface=operator][data-support-theme=light] .stat-pill{backgro
 .nav-group-children{padding-inline-start:8px;display:flex;flex-direction:column;gap:4px;margin-top:4px}
 #viewReplies{padding:24px clamp(16px,3vw,36px)}#viewReplies>.admin-card{max-width:800px;padding:20px;margin-top:16px;border:1px solid var(--support-border);border-radius:14px}#quickReplyFeedback{color:var(--support-muted);font-size:12px;margin-top:8px}
 @media(min-width:900px){.admin-sidebar.collapsed .nav-group>h3{justify-content:center;width:48px;margin-inline:auto;padding:0}.admin-sidebar.collapsed .nav-group-chevron{display:none}.admin-sidebar.collapsed .nav-group-children{padding:0}}
-:root[data-support-surface=operator]{--support-primary:#0866ff!important;--support-deep:#0053d5!important;--support-accent:#0866ff!important;--support-focus:#5595ff;--support-hover:#0866ff12;--accent:#0866ff}
-:root[data-support-surface=operator][data-support-theme=dark]{--support-canvas:#101a2b;--support-surface:#19263b;--support-elevated:#22324a;--support-text:#e8edf5;--support-muted:#a6b4c9;--support-border:#304057;--support-hover:#0866ff20;--support-focus:#79adff}
+:root[data-support-surface=operator]{--support-primary:#1d5bd6!important;--support-deep:#174cb8!important;--support-accent:#1d5bd6!important;--support-focus:#5595ff;--support-hover:#1d5bd614;--accent:#1d5bd6}
+:root[data-support-surface=operator][data-support-theme=dark]{--support-canvas:#0f172a;--support-surface:#172338;--support-elevated:#203049;--support-text:#e8edf5;--support-muted:#a6b4c9;--support-border:#2d3f5b;--support-hover:#1d5bd624;--support-focus:#79adff}
 :root[data-support-surface=operator][data-support-theme=light]{--support-canvas:#f3f5f9;--support-surface:#ffffff;--support-elevated:#f8fafc;--support-text:#17243b;--support-muted:#64748b;--support-border:#e2e8f0;--support-border-interactive:#cbd5e1;--support-shadow-subtle:0 1px 2px rgba(15,23,42,0.04)}
 html[data-support-surface=operator] .app-header{height:56px;padding-inline:20px;background:var(--support-surface);color:var(--support-text);border-bottom:1px solid var(--support-border)}
 html[data-support-surface=operator] .brand>.support-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;color:white;background:var(--support-primary);font-size:19px}
@@ -198,6 +198,33 @@ html[data-support-surface=operator] #messageStream,html[data-support-surface=ope
 body.overlay-open #messageStream,body.overlay-open #conversations{overflow-y:hidden}
 html[data-support-surface=operator] #settings{width:min(760px,calc(100vw - 24px));max-height:calc(100dvh - 32px);padding:0 16px 16px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:transparent transparent}
 #settings>.dialog-heading{top:0;min-height:64px;padding:10px 0;background:var(--support-surface)}#settings>.dialog-heading h2{margin:0;font-size:16px}#settings>.dialog-heading button{margin:0}
+
+/* Phase 9 operator inbox, satisfaction badges, quick-reply strip & context chips */
+html[data-support-surface=operator] #conversations button[data-unread=true]{background:rgba(29,91,214,0.05)}
+html[data-support-surface=operator] #conversations button[data-unread=true] .conversation-copy strong{font-weight:700;color:var(--support-text)}
+.conversation-name-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}
+.conversation-name-row strong{min-width:0;flex:0 1 auto}
+.conversation-badges{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.unread-count-badge{display:inline-flex!important;align-items:center;justify-content:center;min-width:20px!important;height:20px!important;padding:0 6px;border-radius:999px!important;background:var(--support-primary)!important;color:#fff!important;font-size:10.5px;font-weight:700;line-height:1}
+.op-status-pill,.op-csat-pill,.op-context-badge,.op-context-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:600;line-height:1.45;white-space:nowrap}
+.op-status-pill--new{background:rgba(29,91,214,.12);color:#1d5bd6}
+.op-status-pill--awaiting_reply{background:rgba(217,119,6,.14);color:#b45309}
+.op-status-pill--resolved{background:rgba(100,116,139,.14);color:var(--support-muted)}
+html[data-support-theme=dark] .op-status-pill--new{background:rgba(96,165,250,.18);color:#93c5fd}
+html[data-support-theme=dark] .op-status-pill--awaiting_reply{background:rgba(245,158,11,.18);color:#fcd34d}
+.op-csat-pill--positive,.op-detail-csat--positive{background:rgba(16,185,129,.14);color:#047857}
+.op-csat-pill--negative,.op-detail-csat--negative{background:rgba(239,68,68,.14);color:#b91c1c}
+html[data-support-theme=dark] .op-csat-pill--positive,html[data-support-theme=dark] .op-detail-csat--positive{color:#6ee7b7}
+html[data-support-theme=dark] .op-csat-pill--negative,html[data-support-theme=dark] .op-detail-csat--negative{color:#fca5a5}
+.op-header-context{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:3px}
+.op-context-badge{background:var(--support-elevated);border:1px solid var(--support-border);color:var(--support-muted)}
+.op-context-chip{background:rgba(29,91,214,.1);border:1px solid rgba(29,91,214,.25);color:var(--support-primary);text-decoration:none}
+.op-context-chip:hover{background:rgba(29,91,214,.18)}
+.op-context-refs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.op-quick-reply-bar{display:flex;align-items:center;gap:6px;overflow-x:auto;padding:0 0 8px;margin-bottom:6px;border-bottom:1px solid var(--support-border);scrollbar-width:none}
+.op-quick-reply-bar::-webkit-scrollbar{display:none}
+.op-quick-chip{flex:0 0 auto;min-height:30px!important;padding:4px 10px!important;border-radius:999px!important;border:1px solid var(--support-border)!important;background:var(--support-elevated)!important;color:var(--support-text)!important;font-size:11px!important;font-weight:500;white-space:nowrap}
+.op-quick-chip:hover{border-color:var(--support-primary)!important;color:var(--support-primary)!important}
 #settings>.settings-tabs{top:64px;margin:0;padding:8px 0;background:var(--support-surface)}
 #settings>[data-settings-panel]{border:0;border-radius:0;margin:0;padding:14px 0;background:transparent}
 #settings [data-settings-panel] [data-settings-panel]{border:0;border-top:1px solid var(--support-border);border-radius:0;margin:16px 0 0;padding:16px 0;background:transparent}

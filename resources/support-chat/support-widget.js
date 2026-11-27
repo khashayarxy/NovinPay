@@ -9,7 +9,7 @@ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=docu
 const frameUrl=new URL('support-widget.php',root);
 const frame=document.createElement('iframe');frame.title='پشتیبانی';frame.hidden=true;frame.setAttribute('allow','clipboard-write');
 let frameBooted=false,configLoaded=false;
-const loadConfig=()=>{if(configLoaded)return;configLoaded=true;fetch(new URL('api.php?widget_config=1',root),{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(c=>{sourcePaths=Array.isArray(c.source_paths)?c.source_paths:[];visibility();if(c.customer_v2===true||c.local_v2===true){button.style.background='#0866ff';button.dataset.supportV2Launcher='1';frame.dataset.supportV2Frame='1';}else if(/^#[a-f0-9]{6}$/i.test(c.color))button.style.background=c.color;if(c.name)button.title='پشتیبانی '+c.name;}).catch(()=>{});};
+const loadConfig=()=>{if(configLoaded)return;configLoaded=true;fetch(new URL('api.php?widget_config=1',root),{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(c=>{sourcePaths=Array.isArray(c.source_paths)?c.source_paths:[];visibility();if(c.customer_v2===true||c.local_v2===true){button.style.background='#1d5bd6';button.dataset.supportV2Launcher='1';frame.dataset.supportV2Frame='1';}else if(/^#[a-f0-9]{6}$/i.test(c.color))button.style.background=c.color;if(c.name)button.title='پشتیبانی '+c.name;}).catch(()=>{});};
 const bootFrame=()=>{if(frameBooted)return;frameBooted=true;if(sourceEl?.dataset?.supportV2!=='1')loadConfig();frame.src=frameUrl;};
 frame.id='supportWidgetFrame';frame.dataset.supportFrame='';frame.dataset.state='closed';frame.inert=true;button.setAttribute('aria-controls',frame.id);
 const overlays=window.StorefrontOverlays;
@@ -22,7 +22,7 @@ if(dialog){
 }
 const badge=document.createElement('span');badge.hidden=true;badge.className='support-launcher-badge';button.append(badge);
 let sourcePaths=[],open=false,transition=0,closingTimer=null;const visibility=()=>frame.contentWindow?.postMessage({type:'support-widget-visibility',visible:open,source_path:sourcePaths.includes(location.pathname)?location.pathname:null},location.origin);
-const show=()=>{const version=++transition;clearTimeout(closingTimer);open=true;frame.hidden=false;fit();frame.inert=false;button.setAttribute('aria-expanded','true');requestAnimationFrame(()=>requestAnimationFrame(()=>{if(version!==transition||!open)return;frame.dataset.state='open';visibility();}));};
+const show=()=>{const version=++transition;clearTimeout(closingTimer);open=true;frame.hidden=false;fit();frame.inert=false;button.setAttribute('aria-expanded','true');requestAnimationFrame(()=>{if(version!==transition||!open)return;frame.dataset.state='open';visibility();});};
 const close=(immediate=false)=>{++transition;open=false;frame.inert=true;frame.dataset.state='closing';button.hidden=false;button.setAttribute('aria-expanded','false');visibility();clearTimeout(closingTimer);
  const hide=()=>{if(!open){frame.hidden=true;frame.dataset.state='closed';}};
  if(immediate){hide();return;}button.focus({preventScroll:true});closingTimer=setTimeout(hide,matchMedia('(prefers-reduced-motion:reduce)').matches?0:220);
@@ -66,7 +66,7 @@ document.body.append(button,frame);
 if(dialog)document.body.append(dialog);
 const accentVisibility=()=>button.dataset.accentPaused=String(document.hidden);document.addEventListener('visibilitychange',accentVisibility);accentVisibility();
 if(sourceEl?.dataset?.supportV2==='1'){
- button.style.background='#0866ff';
+ button.style.background='#1d5bd6';
  button.dataset.supportV2Launcher='1';
  frame.dataset.supportV2Frame='1';
  button.title='پشتیبانی '+(sourceEl.dataset.supportName||'نوین‌پی');

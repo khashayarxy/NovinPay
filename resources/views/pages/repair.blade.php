@@ -4,10 +4,13 @@
 @section('content')
 @php
     $isGuest = ! auth('customer')->check();
-    $selectedBrand = old('device_brand', '');
+    $prefill = $prefillDevice ?? null;
+    $savedCustomerDevices = $savedDevices ?? collect();
+    $selectedBrand = old('device_brand', $prefill->device_brand ?? '');
     $selectedBrand = is_string($selectedBrand) ? $selectedBrand : '';
-    $selectedModel = old('device_model', '');
+    $selectedModel = old('device_model', $prefill->device_model ?? '');
     $selectedModel = is_string($selectedModel) ? $selectedModel : '';
+    $selectedSerial = strtoupper((string) old('device_serial', $prefill->device_serial ?? ''));
     $selectedIssue = old('issue', '');
     $selectedIssue = is_string($selectedIssue) ? $selectedIssue : '';
     $selectedAccessories = old('accessories', []);
@@ -113,6 +116,28 @@
                     <div class="repair-step__head">
                         <h2>مشخصات دستگاه</h2>
                     </div>
+                    @if($savedCustomerDevices->isNotEmpty())
+                        <div class="repair-saved-devices" data-saved-devices-picker aria-label="دستگاه‌های ثبت‌شده قبلی شما">
+                            <span class="repair-saved-devices__label">انتخاب سریع از دستگاه‌های شما:</span>
+                            <div class="repair-saved-devices__chips">
+                                @foreach($savedCustomerDevices as $dev)
+                                    <button
+                                        type="button"
+                                        class="repair-saved-device-chip"
+                                        data-prefill-device
+                                        data-device-brand="{{ $dev->device_brand }}"
+                                        data-device-model="{{ $dev->device_model }}"
+                                        data-device-serial="{{ $dev->device_serial ?? '' }}"
+                                    >
+                                        <bdi dir="ltr" class="np-latin-code">{{ \App\Support\RepairIdentity::deviceLabel($dev->device_brand, $dev->device_model) }}</bdi>
+                                        @if(! empty($dev->device_serial))
+                                            <small dir="ltr" class="np-latin-code">({{ $dev->device_serial }})</small>
+                                        @endif
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     <fieldset class="repair-choice-fieldset">
                         <legend class="label">برند دستگاه <span class="required-mark">*</span></legend>
                         <div class="repair-brand-grid" role="radiogroup" aria-label="برند دستگاه">
@@ -130,7 +155,7 @@
                             <input id="device_model" name="device_model" value="{{ $selectedModel }}" class="input np-latin-mixed" dir="rtl" placeholder="مثلاً ME31" required maxlength="100" aria-invalid="{{ $errors->has('device_model') ? 'true' : 'false' }}" aria-describedby="device_model-feedback">
                         </x-repair-field>
                         <x-repair-field name="device_serial" label="شماره سریال دستگاه (اختیاری)" :required="false">
-                            <input id="device_serial" name="device_serial" value="{{ strtoupper((string) old('device_serial', '')) }}" class="input np-latin-mixed pos-serial-input" dir="ltr" autocapitalize="characters" spellcheck="false" autocomplete="off" data-pos-serial maxlength="100" placeholder="کد S/N درج‌شده روی برچسب پشت دستگاه" aria-invalid="{{ $errors->has('device_serial') ? 'true' : 'false' }}" aria-describedby="device_serial-feedback">
+                            <input id="device_serial" name="device_serial" value="{{ $selectedSerial }}" class="input np-latin-mixed pos-serial-input" dir="ltr" autocapitalize="characters" spellcheck="false" autocomplete="off" data-pos-serial maxlength="100" placeholder="کد S/N درج‌شده روی برچسب پشت دستگاه" aria-invalid="{{ $errors->has('device_serial') ? 'true' : 'false' }}" aria-describedby="device_serial-feedback">
                         </x-repair-field>
                     </div>
                     <fieldset class="repair-choice-fieldset">

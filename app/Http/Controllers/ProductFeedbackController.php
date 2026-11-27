@@ -5,13 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\CustomerAccount;
 use App\Models\Product;
 use App\Models\ProductFeedback;
+use App\Models\ProductFeedbackHelpfulVote;
 use App\Services\Notifications\UnifiedNotifier;
 use App\Services\ProductPurchaseVerification;
+use App\Support\FaNumber;
 use App\Support\PaymentTestProduct;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -74,5 +78,98 @@ class ProductFeedbackController extends Controller
         }, 3);
 
         return redirect()->route('products.show', $product)->with('feedback_status', 'گزارش شما ثبت شد.');
+    }
+
+    public function toggleHelpful(Request $request, Product $product, ProductFeedback $feedback): RedirectResponse|JsonResponse
+    {
+        $account = Auth::guard('customer')->user();
+        abort_unless(
+            $product->is_published
+            && ! $product->is_sample
+            && PaymentTestProduct::canSeeProduct($product, $account)
+            && $feedback->product_id === $product->id
+            && $feedback->status === 'approved'
+            && $feedback->kind === 'review',
+            404
+        );
+
+        abort_unless(Schema::hasTable('product_feedback_helpful_votes'), 503);
+
+        $voterDigest = self::ensureVoterDigest($request);
+
+        [$voted, $count] = DB::transaction(function () use ($feedback, $account, $voterDigest): array {
+            $entry = ProductFeedback::query()->lockForUpdate()->findOrFail($feedback->id);
+            abort_unless($entry->status === 'approved' && $entry->kind === 'review', 404);
+
+            $existing = ProductFeedbackHelpfulVote::query()
+                ->where('product_feedback_id', $entry->id)
+                ->where('voter_digest', $voterDigest)
+                ->first();
+
+            if ($existing) {
+                $existing->delete();
+                $isVoted = false;
+            } else {
+                $vote = new ProductFeedbackHelpfulVote;
+                $vote->forceFill([
+                    'product_feedback_id' => $entry->id,
+                    'customer_account_id' => $account instanceof CustomerAccount ? $account->id : null,
+                    'voter_digest' => $voterDigest,
+                ])->save();
+                $isVoted = true;
+            }
+
+            $total = ProductFeedbackHelpfulVote::query()
+                ->where('product_feedback_id', $entry->id)
+                ->count();
+
+            $entry->helpful_count = $total;
+            $entry->save();
+
+            return [$isVoted, $total];
+        }, 3);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'voted' => $voted,
+                'helpful_count' => $count,
+                'helpful_count_fa' => FaNumber::digits($count),
+            ]);
+        }
+
+        return redirect()->to(route('products.show', $product).'#product-review');
+    }
+
+    public static function peekVoterDigest(Request $request): ?string
+    {
+        $account = Auth::guard('customer')->user();
+        if ($account instanceof CustomerAccount && $account->is_active) {
+            return hash_hmac('sha256', 'helpful-vote:account:'.$account->id, (string) config('app.key'));
+        }
+        if (! $request->hasSession()) {
+            return null;
+        }
+        $token = $request->session()->get('helpful_voter_token');
+        if (! is_string($token) || strlen($token) < 32) {
+            return null;
+        }
+
+        return hash_hmac('sha256', 'helpful-vote:session:'.$token, (string) config('app.key'));
+    }
+
+    public static function ensureVoterDigest(Request $request): string
+    {
+        $account = Auth::guard('customer')->user();
+        if ($account instanceof CustomerAccount && $account->is_active) {
+            return hash_hmac('sha256', 'helpful-vote:account:'.$account->id, (string) config('app.key'));
+        }
+        $token = $request->session()->get('helpful_voter_token');
+        if (! is_string($token) || strlen($token) < 32) {
+            $token = bin2hex(random_bytes(24));
+            $request->session()->put('helpful_voter_token', $token);
+        }
+
+        return hash_hmac('sha256', 'helpful-vote:session:'.$token, (string) config('app.key'));
     }
 }

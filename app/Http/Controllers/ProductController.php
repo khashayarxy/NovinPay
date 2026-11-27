@@ -7,6 +7,7 @@ use App\Enums\ProductCondition;
 use App\Enums\StockStatus;
 use App\Models\Product;
 use App\Models\ProductFeedback;
+use App\Models\ProductFeedbackHelpfulVote;
 use App\Services\CustomerLogin;
 use App\Services\ProductPurchaseVerification;
 use App\Services\ShoppingCart;
@@ -17,6 +18,7 @@ use App\Support\ProductSale;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -24,6 +26,7 @@ class ProductController extends Controller
 {
     private const REVIEW_SORTS = [
         'newest' => 'تازه‌ترین',
+        'helpful' => 'مفیدترین',
         'highest' => 'بیشترین امتیاز',
         'lowest' => 'کمترین امتیاز',
     ];
@@ -143,6 +146,7 @@ class ProductController extends Controller
         $reviewSort = $request->query('review_sort');
         $reviewSort = is_string($reviewSort) && isset(self::REVIEW_SORTS[$reviewSort]) ? $reviewSort : 'newest';
         $ownReview = null;
+        $votedFeedbackIds = [];
         if (! $product->is_sample) {
             $manual = preg_split('/[,\s]+/', $product->product_details['related_slugs'] ?? '', -1, PREG_SPLIT_NO_EMPTY);
             $relatedQuery = Product::query()->published()->where('is_sample', false)
@@ -167,16 +171,28 @@ class ProductController extends Controller
             }
             $public = ProductFeedback::query()->where('product_id', $product->id)->where('status', 'approved');
             $reviews = (clone $public)->where('kind', 'review');
-            if ($reviewSort !== 'newest') {
+            if ($reviewSort === 'helpful') {
+                $reviews->orderByDesc('helpful_count');
+            } elseif ($reviewSort !== 'newest') {
                 $reviews->orderByRaw('CASE WHEN verified_buyer = 1 AND rating BETWEEN 1 AND 5 THEN 0 ELSE 1 END')
                     ->orderByRaw('CASE WHEN verified_buyer = 1 AND rating BETWEEN 1 AND 5 THEN rating ELSE NULL END '
                         .($reviewSort === 'highest' ? 'DESC' : 'ASC'));
             }
+            $reviewPaginator = $reviews->latest('id')->paginate(8, ['*'], 'review_page')->fragment('product-review');
             $feedback = collect([
-                'review' => $reviews->latest('id')->paginate(8, ['*'], 'review_page')->fragment('product-review'),
+                'review' => $reviewPaginator,
             ]);
             if ($reviewSort !== 'newest') {
                 $feedback->each(fn ($page) => $page->appends(['review_sort' => $reviewSort]));
+            }
+            $voterDigest = ProductFeedbackController::peekVoterDigest($request);
+            if ($voterDigest !== null && $reviewPaginator->isNotEmpty() && Schema::hasTable('product_feedback_helpful_votes')) {
+                $votedFeedbackIds = ProductFeedbackHelpfulVote::query()
+                    ->whereIn('product_feedback_id', $reviewPaginator->getCollection()->pluck('id'))
+                    ->where('voter_digest', $voterDigest)
+                    ->pluck('product_feedback_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
             }
             $counts = (clone $public)->where('kind', 'review')->where('verified_buyer', true)
                 ->whereBetween('rating', [1, 5])->selectRaw('rating, COUNT(*) AS total')->groupBy('rating')
@@ -217,6 +233,7 @@ class ProductController extends Controller
             'feedbackAccount' => $account,
             'canRate' => $account && $purchase->verified($account, $product),
             'ownReview' => $ownReview,
+            'votedFeedbackIds' => $votedFeedbackIds,
             'canonical' => rtrim($request->getHost() === 'novinpaypos.test' ? config('business.public_url') : config('app.url'), '/')
                 .route('products.show', $product, false),
             'publicRobots' => $product->isPrivatePaymentTest()

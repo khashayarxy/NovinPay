@@ -87,13 +87,30 @@
         position: relative;
         z-index: 2;
         display: inline-flex;
+        align-items: center;
+        justify-content: center;
         flex: 0 0 44px;
         width: 44px;
         height: 44px;
         padding: 0;
         margin-inline-start: auto;
+        overflow: visible;
     }
     .product-detail-page .store-mobile-cart svg { width: 20px; height: 20px; }
+    .product-detail-page .store-mobile-cart .store-cart-count {
+        inset-block-start: -4px;
+        inset-inline-end: -4px;
+        min-width: 19px;
+        height: 19px;
+        padding: 0 4.5px;
+        border-radius: 999px;
+        background: #b4232d;
+        color: #fff;
+        font-size: 10.5px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 0 0 2px #ffffff;
+    }
 }
 @media (max-width: 767px) {
     html:has(body.product-detail-page) {

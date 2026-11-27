@@ -14,7 +14,11 @@ class ProductFeedback extends Model
 
     protected function casts(): array
     {
-        return ['verified_buyer' => 'boolean', 'rating' => 'integer'];
+        return [
+            'verified_buyer' => 'boolean',
+            'rating' => 'integer',
+            'helpful_count' => 'integer',
+        ];
     }
 
     public function product(): BelongsTo
@@ -25,5 +29,10 @@ class ProductFeedback extends Model
     public function reports(): HasMany
     {
         return $this->hasMany(ProductFeedbackReport::class);
+    }
+
+    public function helpfulVotes(): HasMany
+    {
+        return $this->hasMany(ProductFeedbackHelpfulVote::class, 'product_feedback_id');
     }
 }

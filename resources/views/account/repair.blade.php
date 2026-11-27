@@ -6,12 +6,24 @@
     $parsed = ! $case && method_exists($repair, 'parsedIssue') ? $repair->parsedIssue() : null;
     $canEditHandover = ! $case && $repair->status === \App\Enums\RepairRequestStatus::OnlineSubmitted;
     $currentHandover = old('handover_method', $parsed['handover_key'] ?? 'self_ship');
+    $isRepairSettled = $case && $document && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor;
 @endphp
 <div class="np-account np-account-detail np-container">
-    <a class="np-account-link" href="{{ route('account.index', ['section' => 'repairs']) }}">بازگشت به تعمیرات</a>
+    <div class="np-detail-topbar">
+        <a class="np-account-link" href="{{ route('account.index', ['section' => 'repairs']) }}">بازگشت به تعمیرات</a>
+        @if($isRepairSettled)
+            <a class="np-button np-button--outline np-detail-receipt-btn" href="{{ route('account.repairs.receipt', $repair->public_id) }}">مشاهده و چاپ رسید</a>
+        @endif
+    </div>
     <header class="np-account-banner">
         <div>
-            <p>پیگیری تعمیر <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></p>
+            <p class="np-banner-code-row">
+                <span>پیگیری تعمیر <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
+                <button type="button" class="np-banner-copy-btn" data-copy-code="{{ $repair->tracking_reference }}" aria-label="کپی کد پیگیری {{ $repair->tracking_reference }}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    <span data-copy-code-label>کپی</span>
+                </button>
+            </p>
             <h1>@if(preg_match('/[A-Za-z]/', $deviceLabel))<bdi class="np-latin-code" dir="ltr">{{ $deviceLabel }}</bdi>@else{{ $deviceLabel }}@endif</h1>
             <p>{{ $case ? \App\Support\CustomerTimeline::repairStatus($repair, $plan) : 'درخواست ثبت شد؛ دستگاه هنوز دریافت نشده است.' }}</p>
         </div>
@@ -166,6 +178,7 @@
                         :paid-at-display="$paidAtDisplay ?? null"
                         :repair="$case ? $repair : null"
                         :payment-transactions="$paymentTransactions ?? collect()"
+                        :receipt-url="$isRepairSettled ? route('account.repairs.receipt', $repair->public_id) : null"
                     />
                 @endif
             </div>

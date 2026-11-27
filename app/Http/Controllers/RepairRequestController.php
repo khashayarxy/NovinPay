@@ -11,6 +11,7 @@ use App\Models\CustomerAccount;
 use App\Models\DeliveryPlan;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
+use App\Services\CustomerDeviceRegistry;
 use App\Services\CustomerLogin;
 use App\Services\CustomerNotifications;
 use App\Services\LegacyCartHold;
@@ -38,7 +39,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class RepairRequestController extends Controller
 {
-    public function create(Request $request): View|RedirectResponse
+    public function create(Request $request, CustomerDeviceRegistry $deviceRegistry): View|RedirectResponse
     {
         if (! $request->session()->has('repair_submission_token')) {
             $request->session()->put('repair_submission_token', bin2hex(random_bytes(32)));
@@ -47,6 +48,27 @@ class RepairRequestController extends Controller
         $authExpiresAt = (int) $request->session()->get('repair_auth_expires_at', 0);
         if ($authExpiresAt > 0 && now()->timestamp > $authExpiresAt && $request->session()->has('repair_auth_challenge')) {
             $request->session()->forget(['repair_auth_challenge', 'repair_auth_expires_at']);
+        }
+
+        $account = Auth::guard('customer')->user();
+        $savedDevices = $account instanceof CustomerAccount
+            ? $deviceRegistry->forAccount($account, 6)
+            : collect();
+        $prefillDevice = null;
+        if ($account instanceof CustomerAccount && $request->filled('device')) {
+            $prefillDevice = $deviceRegistry->findOwned($account, (string) $request->query('device'));
+        } elseif ($request->filled('brand') || $request->filled('model')) {
+            $brandCandidate = $deviceRegistry->normalizeBrand((string) $request->query('brand', ''));
+            $modelCandidate = trim((string) $request->query('model', ''));
+            $serialCandidate = trim((string) $request->query('serial', ''));
+            if ($modelCandidate !== '') {
+                $prefillDevice = (object) [
+                    'public_id' => null,
+                    'device_brand' => $brandCandidate,
+                    'device_model' => mb_substr($modelCandidate, 0, 100),
+                    'device_serial' => $serialCandidate !== '' ? mb_substr(strtoupper($serialCandidate), 0, 100) : null,
+                ];
+            }
         }
 
         return view('pages.repair', [
@@ -59,6 +81,8 @@ class RepairRequestController extends Controller
             'authDisplayPhone' => $request->session()->get('repair_auth_phone_display'),
             'authResendAt' => (int) $request->session()->get('repair_auth_resend_at', 0),
             'localDevOtp' => app()->isLocal() ? CustomerLogin::localDevOtpFor($request->session()->get('repair_auth_challenge')) : null,
+            'savedDevices' => $savedDevices,
+            'prefillDevice' => $prefillDevice,
         ]);
     }
 
@@ -334,7 +358,7 @@ class RepairRequestController extends Controller
         $storedPaths = [];
         try {
             // The unique submission digest also prevents concurrent double submits.
-            DB::transaction(function () use ($repair, $account, $request, &$storedPaths): void {
+            DB::transaction(function () use ($repair, $account, $request, $data, &$storedPaths): void {
                 // A reset and a new request serialize on the same owner row.
                 $owner = CustomerAccount::query()->lockForUpdate()->find($account->id);
                 abort_unless($owner?->is_active && $owner->session_version === $request->session()->get('customer_session_version')
@@ -343,6 +367,14 @@ class RepairRequestController extends Controller
                 $repair->customer_id = $owner->customer_id;
                 $repair->tracking_reference = RepairTracking::reserve();
                 $repair->save();
+                app(CustomerDeviceRegistry::class)->record(
+                    $owner,
+                    $repair->device_brand->value,
+                    (string) $repair->device_model,
+                    ! empty($data['device_serial']) ? strtoupper(trim((string) $data['device_serial'])) : null,
+                    'repair',
+                    (string) $repair->tracking_reference,
+                );
                 if ($request->hasFile('device_photo')) {
                     $photoPath = $repair->photoPath();
                     $compressed = RepairPhotoProcessor::compress($request->file('device_photo'));

@@ -6,12 +6,30 @@
 .store-desktop-tools .np-customer-trigger { position: relative; width: 44px; padding: 0; }
 .store-desktop-tools svg { width: 20px; height: 20px; }
 .store-cart-count {
-    position: absolute; inset-inline-end: 2px; inset-block-start: 1px;
-    min-width: 17px; padding: 0 3px; border-radius: 8px; background: #075da6; color: white;
-    font-size: 10px; line-height: 17px; text-align: center;
+    position: absolute;
+    inset-inline-end: -4px;
+    inset-block-start: -4px;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #b4232d;
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 2px #ffffff;
+    pointer-events: none;
+    z-index: 3;
 }
-.store-cart-count { background: #b4232d; color: #fff; }
 .store-cart-count[hidden] { display: none; }
+.global-store-nav .store-cart-count {
+    inset-block-start: 2px;
+    inset-inline-end: calc(50% - 20px);
+}
 .global-store-nav a[aria-current] { background: #f0f7fe; }
 .global-store-nav a[aria-current]::after { height: 2px; width: 12px; }
 .global-store-nav svg { stroke-width: 1.7; }
