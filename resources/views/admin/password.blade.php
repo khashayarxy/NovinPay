@@ -2,7 +2,7 @@
 @section('title', 'امنیت حساب من')
 @section('content')
 <div class="admin-form-surface">
-<header class="admin-page-heading"><div><h1>امنیت حساب من</h1><p>رمز عبور شخصی خود را تغییر دهید؛ نشست‌های قبلی پس از ذخیره لغو می‌شوند.</p></div></header>
+<header class="admin-page-heading"><div><h1>امنیت حساب من</h1></div></header>
 @if($account->must_change_password)<div class="admin-notice"><h2>پیش از ادامه، رمز عبور اولیه را تغییر دهید</h2><p>برای دسترسی به بخش‌های مجاز، ابتدا رمز عبور شخصی تازه تعیین کنید.</p></div>@endif
 <x-admin.errors />
 <form class="admin-panel admin-form" method="post" action="{{ route('admin.password.update') }}">@csrf @method('PUT')

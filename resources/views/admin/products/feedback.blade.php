@@ -8,7 +8,6 @@
     <div class="admin-form-surface space-y-4">
         <header class="admin-page-heading">
             <div>
-                <span class="admin-eyebrow">مدیریت دیدگاه و پرسش</span>
                 <h1>{{ $product->name }}</h1>
             </div>
             <div class="admin-actions">

@@ -4,7 +4,6 @@
 <div class="admin-form-surface">
     <header class="admin-page-heading">
         <div>
-            <span class="admin-eyebrow">مدیریت فروش</span>
             <h1>{{ $order ? 'ویرایش پیش‌نویس سفارش' : 'سفارش جدید' }}</h1>
         </div>
         <a class="btn btn-secondary" href="{{ route('admin.orders.index') }}">فهرست سفارش‌ها</a>

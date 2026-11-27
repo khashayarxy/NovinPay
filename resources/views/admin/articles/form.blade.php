@@ -2,7 +2,7 @@
 @section('title',$article?'ویرایش پیش‌نویس':'مقالهٔ جدید')
 @section('content')
 <div class="admin-form-surface">
-<header class="admin-page-heading"><div><h1>{{ $article?'ویرایش پیش‌نویس':'مقالهٔ جدید' }}</h1><p>ذخیره به معنی انتشار نیست. نامک پس از ایجاد ثابت می‌ماند.</p></div><a class="btn btn-secondary" href="{{ route('admin.articles.index') }}">فهرست مقاله‌ها</a></header>
+<header class="admin-page-heading"><div><h1>{{ $article?'ویرایش پیش‌نویس':'مقالهٔ جدید' }}</h1></div><a class="btn btn-secondary" href="{{ route('admin.articles.index') }}">فهرست مقاله‌ها</a></header>
 <x-admin.errors/>
 <section class="admin-panel"><form class="admin-form article-form" method="post" action="{{ $article?route('admin.articles.update',$article):route('admin.articles.store') }}">@csrf
 @if($article) @method('PUT')<input type="hidden" name="version" value="{{ $article->version }}"><p class="crm-code">{{ $article->slug }}</p>@else<x-finance-field name="slug" label="نامک یکتا؛ حروف، عدد و خط تیره" :maxlength="120"/>@endif

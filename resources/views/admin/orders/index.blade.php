@@ -4,7 +4,6 @@
 <header class="admin-page-heading">
     <div>
         <h1>لیست سفارش‌ها</h1>
-        <p>پیگیری سفارش‌های فروش، رزرو موجودی و مدارک فعال‌سازی.</p>
     </div>
     <div class="admin-actions">
         @can('orders.fulfill')<a class="btn btn-secondary" href="{{ route('admin.deliveries.index') }}">مدیریت ارسال</a>@endcan

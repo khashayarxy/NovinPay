@@ -5,7 +5,6 @@
     <header class="admin-page-heading">
         <div>
             <h1>سلامت سیستم و لاگ‌ها</h1>
-            <p class="admin-hint">نمای فقط‌خواندنی وضعیت زیرساخت، آمار عملیاتی امروز و لاگ‌های پاک‌سازی‌شدهٔ سرور</p>
         </div>
         <a class="btn btn-secondary" href="{{ route('admin.system-health.index', ['channel' => $logs['channel'], 'level' => $logs['level']]) }}">به‌روزرسانی وضعیت</a>
     </header>

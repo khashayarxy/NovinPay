@@ -8,7 +8,6 @@
             <h1>درخواست آنلاین #{{ \App\Support\FaNumber::digits($repair->id) }}</h1>
             <x-admin.status :tone="$physicalCase ? 'success' : 'warning'">{{ $physicalCase ? 'دریافت دستگاه ثبت شده است' : 'دستگاه هنوز پذیرش نشده است' }}</x-admin.status>
         </div>
-        <p>{{ $physicalCase ? 'پرونده فیزیکی این دستگاه ثبت شده است.' : 'پس از تحویل گرفتن دستگاه، پذیرش فیزیکی را ثبت کنید.' }}</p>
     </div>
     <div class="admin-actions">
         @if($physicalCase)

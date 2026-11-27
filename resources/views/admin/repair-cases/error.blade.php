@@ -4,7 +4,6 @@
 <div class="admin-form-surface">
     <header class="admin-page-heading">
         <div>
-            <span class="admin-eyebrow">عدم امکان ثبت عملیات</span>
             <h1>عملیات انجام نشد</h1>
         </div>
     </header>

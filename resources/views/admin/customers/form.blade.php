@@ -5,7 +5,6 @@
     <a class="admin-back-link" href="{{ route('admin.customers.index') }}">← دفتر مشتریان</a>
     <header class="admin-page-heading">
         <div>
-            <span class="admin-eyebrow">دفتر مشتریان</span>
             <h1>{{ $customer ? 'ویرایش اطلاعات مشتری' : 'ثبت مشتری جدید' }}</h1>
         </div>
     </header>

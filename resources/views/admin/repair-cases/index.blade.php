@@ -4,7 +4,6 @@
 <header class="admin-page-heading">
     <div>
         <h1>پرونده‌های تعمیر</h1>
-        <p>فهرست دستگاه‌های پذیرش‌شده و پیگیری وضعیت تعمیر و تحویل.</p>
     </div>
     @can('repairs.intake')
         <a class="btn btn-primary" href="{{ route('admin.repair-cases.create') }}">+ پذیرش جدید</a>

@@ -4,7 +4,6 @@
 <header class="admin-page-heading">
     <div>
         <h1>لیست مشتریان</h1>
-        <p>پروفایل‌های ثبت‌شده و خلاصهٔ سفارش‌ها و تعمیرات متصل.</p>
     </div>
     @can('customers.manage')
         @can('customers.contact')

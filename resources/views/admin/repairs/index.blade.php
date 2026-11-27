@@ -4,7 +4,6 @@
 <header class="admin-page-heading">
     <div>
         <h1>درخواست‌های آنلاین تعمیر</h1>
-        <p>درخواست‌های ثبت‌شده در وب‌سایت؛ هنگام دریافت فیزیکی دستگاه، پذیرش پرونده را ثبت کنید.</p>
     </div>
     <span class="admin-status">{{ \App\Support\FaNumber::digits($repairs->total()) }} درخواست</span>
 </header>

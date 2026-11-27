@@ -41,7 +41,6 @@
     <a class="admin-back-link" href="{{ route('admin.repair-cases.index') }}">← پرونده‌های تعمیر</a>
     <header class="admin-page-heading">
         <div>
-            <span class="admin-eyebrow">پذیرش حضوری یا مرسوله</span>
             <h1>پذیرش جدید تعمیر</h1>
         </div>
     </header>
@@ -121,8 +120,7 @@
             <x-operation-field name="physical_condition" label="وضعیت ظاهری هنگام دریافت" kind="textarea" :mark-required="true"/>
         </div>
 
-        <div class="admin-form-footer justify-between">
-            <span class="admin-muted">فقط هنگام تحویل فیزیکی دستگاه ثبت شود (<span class="admin-required">*</span> الزامی).</span>
+        <div class="admin-form-footer">
             <button type="submit" class="btn btn-primary admin-btn-mobile-full">ثبت پذیرش</button>
         </div>
     </form>

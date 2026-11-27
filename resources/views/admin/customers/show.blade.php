@@ -33,7 +33,6 @@
 <a class="admin-back-link" href="{{ route('admin.customers.index') }}">← دفتر مشتریان</a>
 <header class="admin-page-heading">
     <div>
-        <span class="admin-eyebrow">پروفایل مشتری · نسخهٔ {{ \App\Support\FaNumber::digits($customer->version) }}</span>
         <div class="repair-case-header__title-row">
             <h1>{{ $contact ? $customer->name : 'پروفایل با اطلاعات محدود' }}</h1>
             <x-admin.status :tone="$customer->merged_into_id ? 'info' : ($customer->is_active ? 'success' : 'warning')">

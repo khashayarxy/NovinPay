@@ -1,6 +1,5 @@
 <header class="admin-page-heading">
     <div>
-        <span class="admin-eyebrow">دفتر مالی و تسویه</span>
         <h1>{{ $heading }}</h1>
     </div>
     <nav class="admin-view-switch mb-0" aria-label="بخش‌های مالی">

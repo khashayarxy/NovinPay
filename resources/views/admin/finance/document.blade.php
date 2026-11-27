@@ -7,7 +7,6 @@
 @endif
 <section class="repair-status-banner">
     <div>
-        <span class="admin-eyebrow">وضعیت تسویه</span>
         <h2>{{ \App\Support\FinanceInput::STATES[$document->settlement()] }}</h2>
         <p>{{ $valid ? 'دفتر و ماندهٔ این سند تطبیق دارد.' : 'مغایرت تشخیص داده شد؛ عملیات متوقف است.' }}</p>
     </div>

@@ -4,7 +4,6 @@
 <header class="admin-page-heading">
     <div>
         <h1>مدیریت ارسال و تحویل</h1>
-        <p>برای مشاهدهٔ نشانی و ثبت مراحل آماده‌سازی یا تحویل هر سفارش، روی «مدیریت ارسال» کلیک کنید.</p>
     </div>
     <span class="admin-status">{{ \App\Support\FaNumber::digits($plans->total()) }} مورد در انتظار</span>
 </header>

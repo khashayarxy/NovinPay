@@ -5,7 +5,6 @@
 @section('content')
     <header class="admin-page-heading admin-dashboard-heading">
         <div>
-            <span class="admin-eyebrow"><x-finance-time :value="now()" :with-time="false" /></span>
             <h1>داشبورد مدیریت</h1>
         </div>
         <div class="admin-actions">

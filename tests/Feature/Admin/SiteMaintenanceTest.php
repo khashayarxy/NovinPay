@@ -205,7 +205,7 @@ class SiteMaintenanceTest extends TestCase
     {
         $this->actingAs(User::factory()->superAdmin()->create());
         $activity = AdminActivity::count();
-        $this->get('/admin/maintenance/preview')->assertOk()->assertSee('فقط پیش‌نمایش');
+        $this->get('/admin/maintenance/preview')->assertOk()->assertSee('پیش‌نمایش، حالت نگهداری را فعال نمی‌کند');
         $response = $this->get('/admin/maintenance/preview/page')->assertOk()
             ->assertHeader('X-NovinPay-Maintenance-Preview', 'true')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));

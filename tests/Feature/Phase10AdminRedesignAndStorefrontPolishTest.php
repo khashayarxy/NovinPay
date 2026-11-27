@@ -392,6 +392,8 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
             ->assertOk()
             ->assertSee('data-intake-brand-select', false)
             ->assertSee('admin-intake-row--4', false)
+            ->assertDontSee('admin-eyebrow', false)
+            ->assertDontSee('فقط هنگام تحویل فیزیکی')
             ->assertDontSee('admin-brand-pills', false);
         $this->assertDoesNotMatchRegularExpression('/<select[^>]*id="intake-brand-select"[^>]*disabled/', $walkIn->getContent());
 

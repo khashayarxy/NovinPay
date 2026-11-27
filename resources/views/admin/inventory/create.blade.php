@@ -4,9 +4,7 @@
 <div class="admin-form-surface">
     <header class="admin-page-heading">
         <div>
-            <span class="admin-eyebrow">انبار فیزیکی</span>
             <h1>تعریف کالای موجودی</h1>
-            <p>حالت سریالی یا تعدادی پس از ثبت قابل تغییر نیست.</p>
         </div>
         <a class="btn btn-secondary" href="{{ route('admin.inventory.index') }}">بازگشت به انبار</a>
     </header>

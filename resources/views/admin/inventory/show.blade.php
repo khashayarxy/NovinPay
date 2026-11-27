@@ -3,7 +3,6 @@
 @section('content')
 <header class="admin-page-heading">
     <div>
-        <span class="admin-eyebrow">{{ 'کالای '.\App\Enums\ProductCondition::from($item->condition)->label() }} · {{ $item->serialized ? 'کنترل سریالی' : 'کنترل تعدادی' }}</span>
         <h1>{{ $item->name }}</h1>
         <div class="admin-id-row">
             <span class="repair-code-chip" dir="ltr">{{ $item->sku }}</span>
