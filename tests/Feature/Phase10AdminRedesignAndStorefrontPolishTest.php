@@ -393,6 +393,65 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
             ->assertSee('data-intake-brand-select', false)
             ->assertDontSee('admin-brand-pills', false);
 
+        // 1b. Pre-filled intake from online request separates structured fields from problem description cleanly
+        $onlineReq = RepairRequest::forceCreate([
+            'tracking_reference' => '55667788',
+            'submission_digest' => bin2hex(random_bytes(32)),
+            'customer_name' => 'سارا محمدی',
+            'contact_phone' => '09123334455',
+            'phone_digest' => RepairIdentity::digest('phone', '09123334455'),
+            'device_brand' => 'PAX',
+            'device_model' => 'PAX S910',
+            'issue' => "دستگاه شارژ نمی‌شود و خاموش می‌شود\n\nشماره سریال: SN99887766\nلوازم همراه: شارژر، باتری\nاستان و شهر: تهران - شهریار\nنحوه تحویل دستگاه: خودم حضوری میارم",
+            'status' => RepairRequestStatus::OnlineSubmitted,
+        ]);
+
+        $intakeFromOnline = $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get('/admin/repairs/intake?request='.$onlineReq->id)
+            ->assertOk()
+            ->assertSee('admin-intake-grid', false)
+            ->assertSee('value="S910"', false)
+            ->assertDontSee('value="PAX S910"', false)
+            ->assertSee('value="SN99887766"', false)
+            ->assertSee('value="شارژر، باتری"', false)
+            ->assertSee('value="تهران - شهریار"', false)
+            ->assertSee('value="خودم حضوری میارم"', false);
+
+        preg_match('/<textarea[^>]*name="issue"[^>]*>(.*?)<\/textarea>/s', $intakeFromOnline->getContent(), $issueMatch);
+        $issueTextarea = trim(html_entity_decode($issueMatch[1] ?? '', ENT_QUOTES, 'UTF-8'));
+        $this->assertSame('دستگاه شارژ نمی‌شود و خاموش می‌شود', $issueTextarea);
+        $this->assertStringNotContainsString('لوازم همراه:', $issueTextarea);
+        $this->assertStringNotContainsString('استان و شهر:', $issueTextarea);
+        $this->assertStringNotContainsString('نحوه تحویل دستگاه:', $issueTextarea);
+        $this->assertStringNotContainsString('شماره سریال:', $issueTextarea);
+
+        // Submitting pre-filled simple_intake preserves accessories & clean issue cleanly
+        $intakeToken = session('repair_intake_token');
+        $this->actingAs($this->admin)
+            ->withSession($adminSession + ['repair_intake_token' => $intakeToken])
+            ->post('/admin/repairs/intake', [
+                'simple_intake' => '1',
+                'submission_token' => $intakeToken,
+                'repair_request_id' => $onlineReq->id,
+                'customer_name' => 'سارا محمدی',
+                'contact_phone' => '09123334455',
+                'device_model' => 'S910',
+                'device_serial' => 'SN99887766',
+                'accessories' => 'شارژر، باتری',
+                'issue' => 'دستگاه شارژ نمی‌شود و خاموش می‌شود',
+                'physical_condition' => 'بدون شکستگی ظاهری',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $createdCase = RepairCase::query()->where('repair_request_id', $onlineReq->id)->sole();
+        $this->assertSame('شارژر، باتری', $createdCase->accessories);
+        $this->assertSame('S910', $createdCase->device_model);
+        $this->assertSame(RepairBrand::Pax, $createdCase->device_brand);
+        $this->assertSame('SN99887766', $createdCase->device_serial);
+        $this->assertSame('دستگاه شارژ نمی‌شود و خاموش می‌شود', $createdCase->issue);
+
         // 2. Ready repair case offers compact print menu + inline invoice & in-person settlement without page-hopping
         $readyCase = RepairCase::forceCreate([
             'public_id' => (string) Str::uuid(),

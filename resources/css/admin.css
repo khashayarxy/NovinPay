@@ -966,6 +966,21 @@ a.admin-stat-card:hover {
     color: var(--admin-ink-soft);
 }
 .admin-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); gap: 0.85rem; align-items: start; }
+.admin-intake-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: stretch;
+}
+.admin-intake-grid > fieldset {
+    height: 100%;
+    align-content: start;
+}
+@media (max-width: 720px) {
+    .admin-intake-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
 .admin-form-footer {
     display: flex;
     flex-wrap: wrap;

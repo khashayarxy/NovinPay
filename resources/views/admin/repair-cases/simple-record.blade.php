@@ -105,6 +105,12 @@
             <dd><bdi dir="ltr" class="repair-code-chip">{{ $case->device_serial }}</bdi></dd>
         </div>
         @endif
+        @if($case->accessories)
+        <div>
+            <dt>لوازم همراه</dt>
+            <dd>{{ $case->accessories }}</dd>
+        </div>
+        @endif
     </dl>
     <dl class="repair-callout-grid">
         <div class="repair-fact--full repair-callout">

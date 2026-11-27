@@ -57,6 +57,7 @@ class RepairOperationRequest extends FormRequest
                 'contact_phone' => ['required', 'string', 'regex:/\A09[0-9]{9}\z/'],
                 'device_model' => ['required', 'string', 'max:100'],
                 'device_serial' => ['nullable', 'string', 'max:120'],
+                'accessories' => ['nullable', 'string', 'max:500'],
                 'issue' => ['required', 'string', 'max:2000'],
                 'physical_condition' => ['required', 'string', 'max:2000'],
                 'received_at' => ['prohibited'], 'device_brand' => ['prohibited'],
