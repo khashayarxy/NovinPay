@@ -47,6 +47,7 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
             'payments.zibal.merchant' => 'zibal-live-merchant-test',
             'payments.zibal.sandbox' => false,
             'payments.zibal.live_requests' => true,
+            'payments.zibal.callback_url' => 'https://novinpaypos.test/payments/zibal/callback',
         ]);
 
         $this->admin = User::factory()->superAdmin()->create();
