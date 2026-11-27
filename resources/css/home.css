@@ -158,15 +158,15 @@
 .np-location__map { display: block; width: 100%; border: 0; }
 .np-map-preview { position: relative; flex: 1; min-height: 280px; overflow: hidden; background: #edf5fc; color-scheme: light; touch-action: pan-y pinch-zoom; }
 /* A translucent surface keeps provider streets readable without backdrop filters. */
-.np-map-overlay { position: absolute; inset: 0; z-index: 1; background: rgba(255, 255, 255, .45); }
+.np-map-overlay { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgb(255 255 255 / 26%) 0%, rgb(237 245 252 / 64%) 100%); }
 .np-map-frame { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; border: 0; background: #edf5fc; color-scheme: light; pointer-events: none; }
 [data-map-active="true"] .np-map-frame { pointer-events: auto; }
 [data-map-active="true"] .np-map-preview { touch-action: auto; }
 .np-map-overlay[hidden] { display: none; }
-.np-map-preview__action { position: absolute; z-index: 2; inset-inline: 16px; top: 72%; transform: translateY(-50%); display: flex; justify-content: center; pointer-events: none; }
+.np-map-preview__action { position: absolute; z-index: 2; inset-inline: 16px; bottom: 20px; top: auto; transform: none; display: flex; justify-content: center; pointer-events: none; }
 .np-map-preview__action .np-button { pointer-events: auto; }
 .np-map-preview__action .np-button[hidden] { display: none; }
-.np-map-preview__action .np-button { min-height: 44px; padding-inline: 24px; background: var(--color-brand-700); color: #fff; border-color: transparent; }
+.np-map-preview__action .np-button { min-height: 44px; padding-inline: 22px; border-radius: 999px; background: var(--color-brand-700); color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgb(7 93 166 / 24%); }
 .np-map-preview__action .np-button:hover { background: #14548a; }
 .np-map-preview__action .np-button:focus-visible,.np-location__maps a:focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 3px; }
 .np-location__notice { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 6px; color: #52678b; font-size: 12px; line-height: 1.9; }

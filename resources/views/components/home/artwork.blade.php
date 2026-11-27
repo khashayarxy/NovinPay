@@ -3,7 +3,7 @@
 @php
     $source = config('homepage.artwork.' . $name);
     $hasImage = is_string($source) && $source !== '' && is_file(public_path($source));
-    $terminalSizes = '(max-width: 560px) 220px, (max-width: 850px) 260px, 310px';
+    $terminalSizes = '(max-width: 380px) 195px, (max-width: 850px) 215px, 300px';
 @endphp
 
 @if ($hasImage)

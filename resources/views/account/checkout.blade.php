@@ -5,10 +5,6 @@
     $zibalAvailable = $zibalAvailable ?? app(\App\Services\ZibalGateway::class)->available();
     $defaultAddress = $defaultAddress ?? $addresses->first();
     $checkoutDraft = $checkoutDraft ?? [];
-    $defaultPayment = old('payment_method', $checkoutDraft['payment_method'] ?? ($zibalAvailable ? 'zibal' : 'request'));
-    if ($defaultPayment === 'zibal' && ! $zibalAvailable) {
-        $defaultPayment = 'request';
-    }
     $iranLocations = $iranLocations ?? config('iran_locations', []);
     $selectedProvince = (string) old('province', $checkoutDraft['province'] ?? $defaultAddress?->province ?? '');
     $selectedCity = (string) old('city', $checkoutDraft['city'] ?? $defaultAddress?->city ?? '');
@@ -250,31 +246,21 @@
                 <div class="checkout-step-panel" data-checkout-step="4">
                     <fieldset class="commerce-panel">
                         <legend>مرحله ۴ · پرداخت</legend>
-                        <div class="commerce-choices checkout-payment-choices">
-                            @if ($zibalAvailable)
-                                <label class="commerce-choice checkout-gateway-card">
-                                    <input type="radio" name="payment_method" value="zibal" @checked($defaultPayment === 'zibal') data-payment-label="پرداخت آنلاین با درگاه زیبال">
+                        @if ($zibalAvailable)
+                            <div class="commerce-choices checkout-payment-choices">
+                                <label class="commerce-choice checkout-gateway-card checkout-gateway-card--zibal">
+                                    <input type="radio" name="payment_method" value="zibal" checked data-payment-label="پرداخت آنلاین با درگاه زیبال">
                                     <span class="checkout-gateway-card__body">
                                         <span class="checkout-gateway-card__title-row">
                                             <strong>پرداخت آنلاین با درگاه زیبال</strong>
-                                            <img src="{{ versioned_asset('images/zibal-trust-light.svg') }}" width="22" height="26" alt="زیبال" class="checkout-gateway-card__logo" loading="lazy" decoding="async">
+                                            <img src="{{ versioned_asset('images/zibal-trust-light.svg') }}" width="35" height="42" alt="زیبال" class="checkout-gateway-card__logo" loading="lazy" decoding="async">
                                         </span>
-                                        <small>کلیه کارت‌های عضو شتاب · تأیید آنی و انتقال امن به درگاه پرداخت</small>
                                     </span>
                                 </label>
-                            @endif
-
-                            <label class="commerce-choice checkout-gateway-card">
-                                <input type="radio" name="payment_method" value="request" @checked($defaultPayment === 'request') data-payment-label="ثبت سفارش (کارت‌به‌کارت / شماره شبا پس از تأیید)">
-                                <span class="checkout-gateway-card__body">
-                                    <strong>ثبت درخواست سفارش (پرداخت پس از تأیید / کارت‌به‌کارت)</strong>
-                                    <small>ثبت سفارش بدون پرداخت آنلاین؛ پس از بررسی، امکان تسویه حضوری یا کارت‌به‌کارت / شبا فعال می‌شود.</small>
-                                </span>
-                            </label>
-                        </div>
-                        @unless ($zibalAvailable)
-                            <p class="commerce-notice mt-3">پرداخت آنلاین فعلاً در دسترس نیست. ثبت درخواست، پرداخت یا رزرو کالا ایجاد نمی‌کند.</p>
-                        @endunless
+                            </div>
+                        @else
+                            <p class="commerce-notice mt-3">پرداخت آنلاین فعلاً در دسترس نیست. لطفاً دقایقی دیگر برای پرداخت مجدداً تلاش کنید.</p>
+                        @endif
                         <p class="checkout-field-error" data-error-for="payment_method" @unless($errors->has('payment_method')) hidden @endunless>@error('payment_method'){{ $message }}@enderror</p>
 
                         <dl class="checkout-confirm-list">
@@ -292,7 +278,7 @@
                             </div>
                             <div>
                                 <dt>نحوه پرداخت</dt>
-                                <dd data-confirm-payment>{{ $defaultPayment === 'zibal' ? 'پرداخت آنلاین با درگاه زیبال' : 'ثبت درخواست سفارش' }}</dd>
+                                <dd data-confirm-payment>پرداخت آنلاین با درگاه زیبال</dd>
                             </div>
                             <div>
                                 <dt>مبلغ قابل پرداخت</dt>
@@ -302,8 +288,8 @@
 
                         <div class="checkout-step-actions">
                             <button type="button" class="commerce-action commerce-action--secondary" data-checkout-prev="3">مرحله قبل</button>
-                            <button class="commerce-action commerce-action--primary commerce-action--prominent" type="submit" data-checkout-submit data-label-zibal="پرداخت آنلاین با زیبال" data-label-request="ثبت درخواست سفارش">
-                                {{ $defaultPayment === 'zibal' ? 'پرداخت آنلاین با زیبال' : 'ثبت درخواست سفارش' }}
+                            <button class="commerce-action commerce-action--primary commerce-action--prominent" type="submit" data-checkout-submit data-label-zibal="پرداخت آنلاین با زیبال" @disabled(! $zibalAvailable)>
+                                پرداخت آنلاین با زیبال
                             </button>
                         </div>
                         <p class="commerce-checkout-status" data-checkout-status role="status" hidden></p>

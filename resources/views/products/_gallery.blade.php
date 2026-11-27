@@ -30,6 +30,23 @@
             @endif
         </dialog>
     @else
-        <p class="product-empty-photo">تصویر واقعی کالا هنوز ثبت نشده است.</p>
+        <div class="product-empty-photo" role="img" aria-label="تصویر واقعی کالا هنوز ثبت نشده است">
+            <span class="product-empty-photo__art" aria-hidden="true">
+                <svg viewBox="0 0 120 96" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                    <rect x="34" y="8" width="52" height="80" rx="10" fill="#dbeafe" stroke="#93c5fd" stroke-width="2" />
+                    <rect x="41" y="16" width="38" height="22" rx="4" fill="#ffffff" />
+                    <rect x="46" y="45" width="8" height="7" rx="2" fill="#ffffff" />
+                    <rect x="58" y="45" width="8" height="7" rx="2" fill="#ffffff" />
+                    <rect x="70" y="45" width="8" height="7" rx="2" fill="#ffffff" />
+                    <rect x="46" y="57" width="8" height="7" rx="2" fill="#ffffff" />
+                    <rect x="58" y="57" width="8" height="7" rx="2" fill="#ffffff" />
+                    <rect x="70" y="57" width="8" height="7" rx="2" fill="#ffffff" />
+                    <rect x="46" y="69" width="8" height="7" rx="2" fill="#ffffff" />
+                    <rect x="58" y="69" width="8" height="7" rx="2" fill="#ffffff" />
+                    <rect x="70" y="69" width="8" height="7" rx="2" fill="#ffffff" />
+                </svg>
+            </span>
+            <p class="product-empty-photo__label">تصویر واقعی کالا هنوز ثبت نشده است.</p>
+        </div>
     @endif
 </section>

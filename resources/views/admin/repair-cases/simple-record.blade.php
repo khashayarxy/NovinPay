@@ -31,9 +31,35 @@
             @endif
         </p>
     </div>
-    <a class="btn btn-secondary" href="{{ route('admin.repair-cases.index') }}">پرونده‌های تعمیر</a>
+    <div class="admin-actions">
+        @can('operate', [$case, 'print'])
+            <a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.document', [$case, 'intake']) }}">رسید پذیرش</a>
+            <a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.document', [$case, 'summary']) }}">صورتحساب تعمیر</a>
+            @if($case->delivery)<a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.document', [$case, 'delivery']) }}">رسید تحویل</a>@endif
+        @endcan
+        @can('finance.view')
+            <a class="btn btn-secondary btn-sm" href="{{ route('admin.finance.sources.show', ['type' => 'repair', 'reference' => $case->public_id]) }}">سند مالی</a>
+        @endcan
+        <a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.index') }}">پرونده‌های تعمیر</a>
+    </div>
 </header>
 <x-admin.errors />
+@php
+    $simpleOrder = ['received' => 1, 'repairing' => 2, 'ready' => 3, 'delivered' => 4];
+    $currentRank = $simpleOrder[$status] ?? 0;
+@endphp
+<ol class="admin-step-strip mb-4" aria-label="مراحل پرونده تعمیر">
+    @foreach (['received' => 'پذیرش‌شده', 'repairing' => 'در حال تعمیر', 'ready' => 'آماده تحویل', 'delivered' => 'تحویل‌شده'] as $stepKey => $stepLabel)
+        @php
+            $stepRank = $simpleOrder[$stepKey];
+            $stepState = $currentRank > $stepRank ? 'done' : ($currentRank === $stepRank ? 'active' : 'upcoming');
+        @endphp
+        <li @class(['admin-step-strip__item', 'is-done' => $stepState === 'done', 'is-active' => $stepState === 'active'])>
+            <span class="admin-step-strip__dot">{{ \App\Support\FaNumber::digits($stepRank) }}</span>
+            <span>{{ $stepLabel }}</span>
+        </li>
+    @endforeach
+</ol>
 @if($customer)
 <section class="admin-panel repair-hero-card mb-4" aria-labelledby="repair-device-context">
     <div class="admin-panel-heading">
@@ -116,7 +142,7 @@
                             @foreach($carriers as $value => $label)<option value="{{ $value }}" @selected($case->delivery_carrier === $value)>{{ $label }}</option>@endforeach
                         </select>
                         @if($case->delivery_carrier)
-                        <label class="admin-checkbox"><input type="checkbox" name="clear_delivery_carrier" value="1" @disabled(!$shipping)> پاک کردن شرکت ارسال ذخیره‌شده</label>
+                        <label class="admin-checkbox mt-2"><input type="checkbox" name="clear_delivery_carrier" value="1" @disabled(!$shipping)> پاک کردن شرکت ارسال ذخیره‌شده</label>
                         @endif
                     </div>
                 </div>
@@ -128,8 +154,13 @@
 
     <aside @class(['admin-record-context' => $hasWorkForm, 'contents' => !$hasWorkForm])>
         @if($showMoney)
-        <section @class(['admin-panel', 'mb-3' => $hasWorkForm]) aria-labelledby="repair-finance">
-            <div class="admin-panel-heading"><h2 id="repair-finance">هزینه و تسویه</h2></div>
+        <section class="admin-panel" aria-labelledby="repair-finance">
+            <div class="admin-panel-heading">
+                <h2 id="repair-finance">هزینه و تسویه</h2>
+                @can('finance.view')
+                    <a class="admin-text-link" href="{{ route('admin.finance.sources.show', ['type' => 'repair', 'reference' => $case->public_id]) }}">سند مالی ←</a>
+                @endcan
+            </div>
             <dl class="admin-record-facts">
                 <div><dt>هزینه تعمیر</dt><dd><strong>{{ \App\Support\AdminRepairMoney::display($price) }}</strong></dd></div>
                 @if($price === null && $case->currentEstimate)<div><dt>برآورد قبلی</dt><dd>{{ \App\Support\AdminRepairMoney::display($case->currentEstimate->total()) }}</dd></div>@endif
@@ -139,10 +170,8 @@
                         <dd class="repair-settlement-state">
                             @if($settled)
                                 <x-admin.status tone="success">تسویه شد</x-admin.status>
-                                <span class="admin-muted">پرداخت کامل در سند ثبت شده است.</span>
                             @elseif($repairDocument)
                                 <x-admin.status tone="warning">در انتظار تسویه</x-admin.status>
-                                <span class="admin-muted">پرداخت کامل در سند ثبت نشده است.</span>
                             @else
                                 <x-admin.status tone="neutral">سند مالی صادر نشده</x-admin.status>
                             @endif
@@ -164,7 +193,7 @@
                         <option value="in_person" @selected($case->settlement_method === 'in_person')>حضوری</option>
                         <option value="online" @selected($case->settlement_method === 'online')>اینترنتی</option>
                     </select>
-                    <button class="btn btn-secondary" type="submit">ذخیره روش پرداخت</button>
+                    <button class="btn btn-secondary btn-sm" type="submit">ذخیره روش پرداخت</button>
                 </form>
             @endif
             @endcan
@@ -173,9 +202,9 @@
         @include('admin.repair-cases._payment-link-card')
         @endif
 
-        <section @class(['admin-panel', 'mb-3' => $hasWorkForm]) aria-labelledby="repair-handover">
+        <section class="admin-panel" aria-labelledby="repair-handover">
             <div class="admin-panel-heading"><h2 id="repair-handover">تحویل دستگاه</h2></div>
-            <p class="mt-3">{{ $shipping ? 'ارسال' : ($case->delivery_method === 'in_person' ? 'حضوری' : 'روش تحویل مشخص نشده است.') }}
+            <p>{{ $shipping ? 'ارسال' : ($case->delivery_method === 'in_person' ? 'حضوری' : 'روش تحویل مشخص نشده است.') }}
                 @if($shipping && isset($carriers[$case->delivery_carrier])) · {{ $carriers[$case->delivery_carrier] }} @endif
             </p>
             @if($case->delivery)
@@ -207,20 +236,10 @@
     </aside>
 </div>
 
-<section class="admin-panel mt-3 repair-documents-bar" aria-labelledby="repair-documents">
-    <h2 id="repair-documents">اسناد تعمیر</h2>
-    <nav class="admin-actions" aria-labelledby="repair-documents">
-        @can('operate', [$case, 'print'])
-            <a class="btn btn-secondary" href="{{ route('admin.repair-cases.document', [$case, 'intake']) }}">رسید پذیرش</a>
-            <a class="btn btn-secondary" href="{{ route('admin.repair-cases.document', [$case, 'summary']) }}">صورتحساب تعمیر</a>
-            @if($case->delivery)<a class="btn btn-secondary" href="{{ route('admin.repair-cases.document', [$case, 'delivery']) }}">رسید تحویل</a>@endif
-        @endcan
-        @can('finance.view')<a class="btn btn-secondary" href="{{ route('admin.finance.sources.show', ['type' => 'repair', 'reference' => $case->public_id]) }}">سند مالی</a>@endcan
-    </nav>
-</section>
-
-<section class="admin-panel mt-3 repair-history-details">
-    <h2><span>سوابق پرونده <span class="admin-muted">({{ \App\Support\FaNumber::digits($events->total()) }} مورد)</span></span></h2>
+<section class="admin-panel mt-4 repair-history-details">
+    <div class="admin-panel-heading">
+        <h2>سوابق پرونده <span class="admin-muted">({{ \App\Support\FaNumber::digits($events->total()) }} مورد)</span></h2>
+    </div>
     <ol class="repair-history">
     @forelse($events as $event)
         @php
@@ -256,6 +275,6 @@
     {{ $events->links() }}
 </section>
 @else
-<p>برای مشاهده اطلاعات مشتری، دسترسی لازم است.</p>
+<section class="admin-panel"><p>برای مشاهده اطلاعات مشتری، دسترسی لازم است.</p></section>
 @endif
 @endsection

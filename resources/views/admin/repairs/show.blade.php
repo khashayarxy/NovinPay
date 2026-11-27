@@ -4,10 +4,10 @@
 <header class="admin-page-heading repair-request-header">
     <div>
         <div class="repair-case-header__title-row">
-            <h1>درخواست آنلاین شمارهٔ {{ \App\Support\FaNumber::digits($repair->id) }}</h1>
+            <h1>درخواست آنلاین #{{ \App\Support\FaNumber::digits($repair->id) }}</h1>
             <x-admin.status :tone="$physicalCase ? 'success' : 'warning'">{{ $physicalCase ? 'دریافت دستگاه ثبت شده است' : 'دستگاه هنوز پذیرش نشده است' }}</x-admin.status>
         </div>
-        <p>{{ $physicalCase ? 'ثبت اولیهٔ مشتری؛ اطلاعات دریافت در پروندهٔ مرتبط نگهداری می‌شود.' : 'پذیرش را هنگام دریافت واقعی دستگاه ثبت کنید.' }}</p>
+        <p>{{ $physicalCase ? 'پرونده فیزیکی این دستگاه ثبت شده است.' : 'پس از تحویل گرفتن دستگاه، پذیرش فیزیکی را ثبت کنید.' }}</p>
     </div>
     <div class="admin-actions">
         @if($physicalCase)
@@ -25,16 +25,17 @@
 <x-customer-association :record="$repair" :subtle="true" />
 <div class="admin-detail-grid mt-4">
     <section class="admin-panel" aria-labelledby="request-data-title">
-        <h2 id="request-data-title">اطلاعات درخواست</h2>
+        <div class="admin-panel-heading">
+            <h2 id="request-data-title">مشخصات ثبت</h2>
+        </div>
         <dl class="admin-definition">
-            <div><dt>کد پیگیری عمومی</dt><dd><bdi dir="ltr">{{ preg_match('/\A[0-9]+\z/', $repair->tracking_reference) ? \App\Support\FaNumber::digits($repair->tracking_reference) : $repair->tracking_reference }}</bdi></dd></div>
+            <div><dt>کد پیگیری عمومی</dt><dd><bdi dir="ltr" class="repair-code-chip">{{ preg_match('/\A[0-9]+\z/', $repair->tracking_reference) ? \App\Support\FaNumber::digits($repair->tracking_reference) : $repair->tracking_reference }}</bdi></dd></div>
             <div><dt>زمان ثبت</dt><dd><x-finance-time :value="$repair->created_at" /></dd></div>
             <div><dt>وضعیت</dt><dd>{{ $physicalCase ? 'دریافت دستگاه ثبت شده است' : $repair->status->label() }}</dd></div>
             @unless($showCustomerData)
                 <div><dt>برند</dt><dd><bdi>{{ $repair->device_brand->value }}</bdi></dd></div>
             @endunless
         </dl>
-        <p class="admin-hint">سوابق هزینه، تعمیر و تحویل در پروندهٔ فیزیکی جداگانه نگهداری می‌شوند.</p>
     </section>
     <section class="admin-panel repair-hero-card" aria-labelledby="customer-data-title">
         @if($showCustomerData)
@@ -60,16 +61,15 @@
             </dl>
             @if ($hasPhoto || !empty($sidePhotos))
                 <div class="admin-actions mt-3">
-                    @if ($hasPhoto)<a class="btn btn-secondary" href="{{ route('admin.repairs.photo', $repair) }}">دریافت عکس دستگاه</a>@endif
+                    @if ($hasPhoto)<a class="btn btn-secondary btn-sm" href="{{ route('admin.repairs.photo', $repair) }}">دریافت عکس دستگاه</a>@endif
                     @foreach ($sidePhotos ?? [] as $sideKey => $sidePath)
-                        <a class="btn btn-secondary" href="{{ route('admin.repairs.photo', [$repair, 'side' => $sideKey]) }}">دریافت عکس ({{ \App\Models\RepairRequest::PHOTO_SIDES[$sideKey] ?? $sideKey }})</a>
+                        <a class="btn btn-secondary btn-sm" href="{{ route('admin.repairs.photo', [$repair, 'side' => $sideKey]) }}">عکس {{ \App\Models\RepairRequest::PHOTO_SIDES[$sideKey] ?? $sideKey }}</a>
                     @endforeach
                 </div>
             @endif
-            <p class="admin-hint">مشاهدهٔ این اطلاعات در تاریخچهٔ فعالیت ثبت می‌شود.</p>
         @else
             <h2 id="customer-data-title">اطلاعات شخصی محدود است</h2>
-            <p class="admin-hint">نام، شماره، مدل دستگاه و شرح مشکل به مجوز جداگانه نیاز دارند و برای این حساب نمایش داده نمی‌شوند.</p>
+            <p class="admin-hint">مشاهدهٔ نام، شماره و شرح مشکل نیازمند مجوز اطلاعات مشتری است.</p>
         @endif
     </section>
 </div>

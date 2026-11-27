@@ -6,7 +6,7 @@
     @push('preload-head')
         <link rel="preload" as="image" type="image/avif"
               imagesrcset="{{ asset('images/home/novinpay-terminal-clean-320.avif') }} 320w, {{ asset('images/home/novinpay-terminal-clean-400.avif') }} 400w, {{ asset('images/home/novinpay-terminal-clean-480.avif') }} 480w, {{ asset('images/home/novinpay-terminal-clean-640.avif') }} 640w, {{ asset('images/home/novinpay-terminal-clean-853.avif') }} 853w"
-              imagesizes="(max-width: 560px) 220px, (max-width: 850px) 260px, 310px"
+              imagesizes="(max-width: 380px) 195px, (max-width: 850px) 215px, 300px"
               fetchpriority="high">
     @endpush
 @endif

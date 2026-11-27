@@ -221,7 +221,9 @@ runWhenDomReady(() => {
         const steps = [...repairStepper.querySelectorAll('[data-step]')];
         const indicators = [...repairStepper.querySelectorAll('[data-step-indicator]')];
         const alertBox = repairStepper.querySelector('[data-step-alert]');
+        const brandSelect = repairStepper.querySelector('select[name="device_brand"]');
         const brandRadios = [...repairStepper.querySelectorAll('input[name="device_brand"]')];
+        const getSelectedBrand = () => (brandSelect instanceof HTMLSelectElement ? brandSelect.value.trim() : (brandRadios.find((r) => r.checked)?.value || ''));
         const modelInput = repairStepper.querySelector('#device_model');
         const serialInput = repairStepper.querySelector('#device_serial');
         const issueInput = repairStepper.querySelector('#issue');
@@ -321,6 +323,7 @@ runWhenDomReady(() => {
         };
 
         const fieldInputMap = {
+            device_brand: brandSelect || brandRadios[0],
             device_model: modelInput,
             device_serial: serialInput,
             issue: issueInput,
@@ -461,7 +464,7 @@ runWhenDomReady(() => {
         const saveDraft = () => {
             try {
                 const draft = {
-                    device_brand: brandRadios.find((r) => r.checked)?.value || '',
+                    device_brand: getSelectedBrand(),
                     device_model: modelInput?.value || '',
                     device_serial: serialInput?.value || '',
                     accessories: [...repairStepper.querySelectorAll('input[name="accessories[]"]:checked')].map((el) => el.value),
@@ -541,7 +544,7 @@ runWhenDomReady(() => {
         };
 
         const syncSummary = () => {
-            const brand = brandRadios.find((r) => r.checked)?.value || '';
+            const brand = getSelectedBrand();
             const model = (modelInput?.value || '').trim();
             const serial = (serialInput?.value || '').trim();
             const accessories = [...repairStepper.querySelectorAll('input[name="accessories[]"]:checked')]
@@ -616,10 +619,10 @@ runWhenDomReady(() => {
         const validateStep = (step) => {
             clearAllErrors();
             if (step === 1) {
-                const brand = brandRadios.find((r) => r.checked);
+                const brand = getSelectedBrand();
                 if (!brand) {
                     setFieldError('device_brand', 'لطفاً برند دستگاه را انتخاب کنید.');
-                    brandRadios[0]?.focus();
+                    (brandSelect || brandRadios[0])?.focus();
                     return false;
                 }
                 const model = (modelInput?.value || '').trim();
@@ -708,6 +711,7 @@ runWhenDomReady(() => {
         });
 
         // Clear inline field errors as the user interacts
+        brandSelect?.addEventListener('change', () => setFieldError('device_brand', ''));
         brandRadios.forEach((r) => r.addEventListener('change', () => setFieldError('device_brand', '')));
         handoverRadios.forEach((r) => r.addEventListener('change', () => setFieldError('handover_method', '')));
         Object.entries(fieldInputMap).forEach(([key, input]) => {
@@ -1165,14 +1169,18 @@ runWhenDomReady(() => {
         });
 
         // Restore draft if no server-rendered old values exist
-        const hasServerValues = Boolean(brandRadios.some((r) => r.checked) || (modelInput?.value || '').trim() || (issueInput?.value || '').trim());
+        const hasServerValues = Boolean(getSelectedBrand() || (modelInput?.value || '').trim() || (issueInput?.value || '').trim());
         if (!hasServerValues) {
             try {
                 const saved = JSON.parse(window.sessionStorage?.getItem(draftKey) || 'null');
                 if (saved && typeof saved === 'object') {
                     if (saved.device_brand) {
-                        const br = brandRadios.find((r) => r.value === saved.device_brand);
-                        if (br) br.checked = true;
+                        if (brandSelect instanceof HTMLSelectElement && [...brandSelect.options].some((o) => o.value === saved.device_brand)) {
+                            brandSelect.value = saved.device_brand;
+                        } else {
+                            const br = brandRadios.find((r) => r.value === saved.device_brand);
+                            if (br) br.checked = true;
+                        }
                     }
                     if (saved.device_model && modelInput) modelInput.value = saved.device_model;
                     if (saved.device_serial && serialInput) serialInput.value = saved.device_serial;
@@ -1950,14 +1958,12 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             }
         }
         const paymentInput = form.querySelector('input[name="payment_method"]:checked');
-        const payment = paymentInput ? paymentInput.value : 'request';
+        const payment = paymentInput ? paymentInput.value : 'zibal';
         if (confirmPayment) {
-            confirmPayment.textContent = paymentInput?.dataset.paymentLabel || (payment === 'zibal' ? 'پرداخت آنلاین با درگاه زیبال' : 'ثبت درخواست سفارش');
+            confirmPayment.textContent = paymentInput?.dataset.paymentLabel || 'پرداخت آنلاین با درگاه زیبال';
         }
         if (submitBtn instanceof HTMLButtonElement) {
-            submitBtn.textContent = payment === 'zibal'
-                ? (submitBtn.dataset.labelZibal || 'پرداخت آنلاین با زیبال')
-                : (submitBtn.dataset.labelRequest || 'ثبت درخواست سفارش');
+            submitBtn.textContent = submitBtn.dataset.labelZibal || 'پرداخت آنلاین با زیبال';
         }
     };
 
@@ -2104,11 +2110,9 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         panels.forEach((panel) => {
             panel.classList.toggle('is-active', Number(panel.dataset.checkoutStep) === target);
         });
-        const step1Done = isStep1QuietlyValid();
-        const step2Done = isStep2QuietlyReady();
         indicators.forEach((ind) => {
             const num = Number(ind.dataset.stepIndicator);
-            const done = num < target || (num === 1 && step1Done && target !== 1) || (num === 2 && step1Done && step2Done && target !== 2);
+            const done = num < target;
             ind.classList.toggle('is-active', num === target);
             ind.classList.toggle('is-done', done);
             if (num === target) ind.setAttribute('aria-current', 'step');
@@ -3238,6 +3242,11 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             const serial = chip.dataset.deviceSerial || '';
             document.querySelectorAll('[data-prefill-device]').forEach((c) => c.classList.toggle('is-selected', c === chip));
             if (brand) {
+                const selectEl = document.querySelector('select[name="device_brand"]');
+                if (selectEl instanceof HTMLSelectElement) {
+                    selectEl.value = brand;
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                }
                 const radio = document.querySelector(`input[name="device_brand"][value="${CSS.escape(brand)}"]`);
                 if (radio instanceof HTMLInputElement) {
                     radio.checked = true;

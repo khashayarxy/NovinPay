@@ -235,7 +235,8 @@ class Phase9DashboardReviewsOtpSupportUxTest extends TestCase
 
         $this->get(route('repair', ['device' => $paxDevice->public_id]))
             ->assertOk()
-            ->assertSee('انتخاب سریع از دستگاه‌های شما')
+            ->assertDontSee('انتخاب سریع از دستگاه‌های شما')
+            ->assertSee('<option value="PAX" selected>', false)
             ->assertSee('value="S910"', false)
             ->assertSee('value="PAXSN998877"', false);
 

@@ -28,8 +28,6 @@
                 <h2 id="{{ $kind }}-heading">{{ $heading }}</h2>
                 @if ($feedback[$kind]->total())
                     <p class="product-feedback-count">{{ \App\Support\FaNumber::digits($feedback[$kind]->total()) }} {{ $kind === 'review' ? 'دیدگاه منتشرشده' : 'پرسش منتشرشده' }}</p>
-                @else
-                    <p class="product-feedback-count">تجربهٔ واقعی خریداران و کاربران محصول</p>
                 @endif
             </div>
             @unless ($feedbackAccount)
@@ -246,10 +244,10 @@
             @empty
                 @unless ($hasUnpublishedOwnReview)
                     <div class="review-empty">
-                        <x-storefront.icon name="review" />
-                        <div>
+                        <span class="review-empty__icon" aria-hidden="true"><x-storefront.icon name="review" /></span>
+                        <div class="review-empty__copy">
                             <p class="product-feedback-empty">{{ $kind === 'review' ? 'هنوز دیدگاهی برای این محصول ثبت نشده است.' : 'هنوز پرسشی برای این محصول ثبت نشده است.' }}</p>
-                            <small>اولین نفری باشید که تجربهٔ استفاده از این محصول را ثبت می‌کند.</small>
+                            <small>تجربهٔ واقعی استفاده از این دستگاه را با دیگر خریداران به اشتراک بگذارید.</small>
                         </div>
                     </div>
                 @endunless

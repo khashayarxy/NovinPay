@@ -113,43 +113,18 @@
 
                 {{-- Step 1: Device Details --}}
                 <div class="repair-step" data-step="1" @if($initialStep !== 1) hidden @endif>
-                    <div class="repair-step__head">
-                        <h2>مشخصات دستگاه</h2>
-                    </div>
-                    @if($savedCustomerDevices->isNotEmpty())
-                        <div class="repair-saved-devices" data-saved-devices-picker aria-label="دستگاه‌های ثبت‌شده قبلی شما">
-                            <span class="repair-saved-devices__label">انتخاب سریع از دستگاه‌های شما:</span>
-                            <div class="repair-saved-devices__chips">
-                                @foreach($savedCustomerDevices as $dev)
-                                    <button
-                                        type="button"
-                                        class="repair-saved-device-chip"
-                                        data-prefill-device
-                                        data-device-brand="{{ $dev->device_brand }}"
-                                        data-device-model="{{ $dev->device_model }}"
-                                        data-device-serial="{{ $dev->device_serial ?? '' }}"
-                                    >
-                                        <bdi dir="ltr" class="np-latin-code">{{ \App\Support\RepairIdentity::deviceLabel($dev->device_brand, $dev->device_model) }}</bdi>
-                                        @if(! empty($dev->device_serial))
-                                            <small dir="ltr" class="np-latin-code">({{ $dev->device_serial }})</small>
-                                        @endif
-                                    </button>
+                    <div class="public-field">
+                        <div class="np-float-field np-float-field--select" data-float-field>
+                            <select id="device_brand" name="device_brand" class="input" required aria-invalid="{{ $errors->has('device_brand') ? 'true' : 'false' }}" aria-describedby="device_brand-feedback">
+                                <option value="">انتخاب برند دستگاه…</option>
+                                @foreach ($brands as $brand)
+                                    <option value="{{ $brand->value }}" @selected($selectedBrand === $brand->value)>{{ $brand->value }}</option>
                                 @endforeach
-                            </div>
-                        </div>
-                    @endif
-                    <fieldset class="repair-choice-fieldset">
-                        <legend class="label">برند دستگاه <span class="required-mark">*</span></legend>
-                        <div class="repair-brand-grid" role="radiogroup" aria-label="برند دستگاه">
-                            @foreach ($brands as $brand)
-                                <label @class(['repair-choice-card repair-choice-card--brand', 'repair-choice-card--brand-full' => $brand->value === 'سایر'])>
-                                    <input type="radio" name="device_brand" value="{{ $brand->value }}" @checked($selectedBrand === $brand->value) required>
-                                    <span class="repair-choice-card__title" @if($brand->value !== 'سایر') dir="ltr" @endif>{{ $brand->value }}</span>
-                                </label>
-                            @endforeach
+                            </select>
+                            <label class="label" for="device_brand">برند دستگاه <span class="required-mark" aria-hidden="true">*</span></label>
                         </div>
                         <p class="public-field-error" data-field-error="device_brand" id="device_brand-feedback" role="alert" @unless($errors->has('device_brand')) hidden @endunless>@error('device_brand'){{ $message }}@enderror</p>
-                    </fieldset>
+                    </div>
                     <div class="public-form__grid repair-paired-fields">
                         <x-repair-field name="device_model" label="مدل دستگاه">
                             <input id="device_model" name="device_model" value="{{ $selectedModel }}" class="input np-latin-mixed" dir="rtl" placeholder="مثلاً ME31" required maxlength="100" aria-invalid="{{ $errors->has('device_model') ? 'true' : 'false' }}" aria-describedby="device_model-feedback">
@@ -308,7 +283,15 @@
                                 <nav class="repair-inperson-routing__links" aria-label="مسیریابی مراجعه حضوری">
                                     @foreach (['نشان' => ['neshan.svg', 16, 16], 'بلد' => ['balad.svg', 16, 16], 'Google Maps' => ['google-maps-2026.png', 13, 17]] as $mapLabel => [$iconFile, $iconW, $iconH])
                                         <a href="{{ config('business.maps')[$mapLabel] }}" target="_blank" rel="noopener noreferrer">
-                                            <img src="{{ asset('brand/maps/'.$iconFile) }}" width="{{ $iconW }}" height="{{ $iconH }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+                                            @if ($iconFile === 'google-maps-2026.png' && is_file(public_path('brand/maps/google-maps-2026-28.webp')))
+                                                <picture class="inline-flex items-center">
+                                                    <source type="image/webp" srcset="{{ asset('brand/maps/google-maps-2026-28.webp') }} 28w, {{ asset('brand/maps/google-maps-2026-56.webp') }} 56w" sizes="14px">
+                                                    <source type="image/avif" srcset="{{ asset('brand/maps/google-maps-2026-28.avif') }} 28w, {{ asset('brand/maps/google-maps-2026-56.avif') }} 56w" sizes="14px">
+                                                    <img src="{{ asset('brand/maps/'.$iconFile) }}" width="{{ $iconW }}" height="{{ $iconH }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+                                                </picture>
+                                            @else
+                                                <img src="{{ asset('brand/maps/'.$iconFile) }}" width="{{ $iconW }}" height="{{ $iconH }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+                                            @endif
                                             <span>{{ $mapLabel === 'Google Maps' ? 'گوگل مپ' : $mapLabel }}</span>
                                         </a>
                                     @endforeach

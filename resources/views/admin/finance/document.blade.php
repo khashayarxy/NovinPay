@@ -2,7 +2,62 @@
 @section('title','سند مالی و تسویه')
 @section('content')
 @include('admin.finance.heading',['heading'=>($document->sales_order_id?'تسویهٔ سفارش':'مالی تعمیر').' · سند '.\App\Support\FaNumber::digits($document->id)])
-@if($sourceCustomerChanged)<div class="admin-notice" role="status">اتصال مشتری در منبع عملیاتی تغییر کرده است؛ این سند و دریافت‌ها همچنان متعلق به هویت تاریخی زمان صدور هستند و منتقل نشده‌اند.</div>@endif
-<section class="repair-status-banner"><div><h2>{{ \App\Support\FinanceInput::STATES[$document->settlement()] }}</h2><p>تسویهٔ ثبت‌شده در دفتر</p></div><div><p>مطالبهٔ باقی‌مانده</p><strong><bdi>{{ \App\Support\FinanceMoney::persianToman($document->charged_minor-$document->paid_minor) }}</bdi> تومان</strong></div></section>
-<div class="repair-layout mt-4"><div class="repair-main-stack"><section class="admin-panel"><h2>جزئیات سند</h2><p class="crm-code">{{ $document->public_id }}</p><dl class="finance-definition"><dt>مطالبهٔ فعلی</dt><dd><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman($document->charged_minor) }}</bdi> تومان</dd><dt>خالص دریافت تخصیص‌یافته</dt><dd><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman($document->paid_minor) }}</bdi> تومان</dd><dt>مبلغ اولیهٔ منبع</dt><dd><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman($document->source_amount_minor) }}</bdi> تومان</dd><dt>نسخهٔ منبع / دفتر</dt><dd>{{ \App\Support\FaNumber::digits($document->source_version) }} / {{ \App\Support\FaNumber::digits($document->version) }}</dd></dl><p class="{{ $valid?'admin-hint':'finance-alert' }}">{{ $valid?'دفتر و ماندهٔ این سند تطبیق دارد.':'مغایرت تشخیص داده شد؛ عملیات متوقف است.' }}</p>@if($customer)<a class="admin-text-link" href="{{ route('admin.finance.customers.show',$customer) }}">ماندهٔ پروفایل تاریخی مشتری ←</a>@endif</section><section class="admin-panel"><h2>تاریخچهٔ تخصیص و اصلاح</h2>@include('admin.finance.transactions')</section></div><aside class="repair-action-stack" aria-label="عملیات مالی سند"><section class="admin-panel"><h2>عملیات سند</h2><p class="admin-hint">پرداخت اضافه پذیرفته نمی‌شود. هر دریافت فقط به همین سند تخصیص دارد. ثبت‌ها قابل حذف نیستند.</p>@if($valid) @foreach(['receipt'=>['finance.receive','ثبت دریافت دستی'],'expense'=>['finance.expenses','ثبت هزینهٔ مرتبط'],'credit'=>['finance.correct','کاهش مستدل مطالبه'],'debit'=>['finance.correct','افزایش مستدل مطالبه']] as $action=>[$permission,$label]) @if($financeAllows($permission) && $financeAllows('finance.details'))<a class="btn btn-secondary mt-4" href="{{ route('admin.finance.'.$action.'.create',['document'=>$document->public_id]) }}">{{ $label }}</a>@endif @endforeach @endif</section></aside></div>
+@if($sourceCustomerChanged)
+    <div class="admin-notice admin-notice--warning" role="status">اتصال مشتری در منبع عملیاتی تغییر کرده است؛ این سند همچنان متعلق به هویت تاریخی زمان صدور است.</div>
+@endif
+<section class="repair-status-banner">
+    <div>
+        <span class="admin-eyebrow">وضعیت تسویه</span>
+        <h2>{{ \App\Support\FinanceInput::STATES[$document->settlement()] }}</h2>
+        <p>{{ $valid ? 'دفتر و ماندهٔ این سند تطبیق دارد.' : 'مغایرت تشخیص داده شد؛ عملیات متوقف است.' }}</p>
+    </div>
+    <div>
+        <p>مطالبهٔ باقی‌مانده</p>
+        <strong><bdi>{{ \App\Support\FinanceMoney::persianToman($document->charged_minor-$document->paid_minor) }}</bdi> تومان</strong>
+    </div>
+</section>
+<div class="repair-layout mt-4">
+    <div class="repair-main-stack">
+        <section class="admin-panel">
+            <div class="admin-panel-heading">
+                <h2>جزئیات سند</h2>
+                <div class="admin-id-row mt-0">
+                    <span class="admin-id-chip" title="{{ $document->public_id }}">#{{ strtoupper(substr((string) $document->public_id, 0, 8)) }}</span>
+                    <button type="button" class="admin-copy-mini" data-copy-code="{{ $document->public_id }}"><span data-copy-code-label>کپی شناسه</span></button>
+                </div>
+            </div>
+            <dl class="finance-definition">
+                <dt>مطالبهٔ فعلی</dt><dd><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman($document->charged_minor) }}</bdi> تومان</dd>
+                <dt>خالص دریافت تخصیص‌یافته</dt><dd><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman($document->paid_minor) }}</bdi> تومان</dd>
+                <dt>مبلغ اولیهٔ منبع</dt><dd><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman($document->source_amount_minor) }}</bdi> تومان</dd>
+                <dt>نسخهٔ منبع / دفتر</dt><dd>{{ \App\Support\FaNumber::digits($document->source_version) }} / {{ \App\Support\FaNumber::digits($document->version) }}</dd>
+            </dl>
+            @if(!$valid)<p class="finance-alert">مغایرت تشخیص داده شد؛ عملیات متوقف است.</p>@endif
+            @if($customer)
+                <div class="mt-3 pt-3 border-t border-slate-100">
+                    <a class="admin-text-link" href="{{ route('admin.finance.customers.show',$customer) }}">ماندهٔ پروفایل تاریخی مشتری ←</a>
+                </div>
+            @endif
+        </section>
+        <section class="admin-panel admin-collection">
+            <div class="admin-collection-tools"><h2>تاریخچهٔ تخصیص و اصلاح</h2></div>
+            @include('admin.finance.transactions')
+        </section>
+    </div>
+    <aside class="repair-action-stack" aria-label="عملیات مالی سند">
+        <section class="admin-panel">
+            <h2>عملیات سند</h2>
+            <p class="admin-hint">ثبت‌ها غیرقابل حذف هستند و صرفاً به همین سند تخصیص می‌یابند.</p>
+            @if($valid)
+                <div class="grid gap-2 mt-3">
+                    @foreach(['receipt'=>['finance.receive','ثبت دریافت دستی'],'expense'=>['finance.expenses','ثبت هزینهٔ مرتبط'],'credit'=>['finance.correct','کاهش مستدل مطالبه'],'debit'=>['finance.correct','افزایش مستدل مطالبه']] as $action=>[$permission,$label])
+                        @if($financeAllows($permission) && $financeAllows('finance.details'))
+                            <a class="btn btn-secondary justify-start" href="{{ route('admin.finance.'.$action.'.create',['document'=>$document->public_id]) }}">{{ $label }}</a>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+        </section>
+    </aside>
+</div>
 @endsection

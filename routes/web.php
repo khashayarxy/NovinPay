@@ -241,6 +241,7 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/repair/confirmation', [RepairRequestController::class, 'confirmation'])->name('repair.confirmation');
     Route::get('/repair/track', [RepairRequestController::class, 'tracking'])->name('repair.track');
     Route::post('/repair/track', [RepairRequestController::class, 'track'])->middleware('throttle:repair-track')->name('repair.track.store');
+    Route::patch('/repair/track/handover', [RepairRequestController::class, 'updateTrackedHandover'])->middleware('throttle:repair-track')->name('repair.track.handover');
 });
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
 Route::middleware(PrivateRepairResponse::class)->group(function (): void {

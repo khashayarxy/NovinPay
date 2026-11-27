@@ -138,7 +138,10 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->assertSee('پرداخت آنلاین با درگاه زیبال')
             ->assertSee('name="payment_method" value="zibal"', false)
             ->assertSee('images/zibal-trust-light.svg')
-            ->assertSee('پرداخت آنلاین با زیبال');
+            ->assertSee('پرداخت آنلاین با زیبال')
+            ->assertDontSee('ثبت درخواست سفارش')
+            ->assertDontSee('کارت‌به‌کارت')
+            ->assertDontSee('کلیه کارت‌های عضو شتاب');
 
         $appJs = (string) file_get_contents(resource_path('js/app.js'));
         $this->assertStringNotContainsString('tile.openstreetmap.org', $appJs);
@@ -202,11 +205,11 @@ class MultiStepCheckoutZibalTest extends TestCase
         $this->assertArrayHasKey('تهران', $decodedLocations);
         $this->assertContains('شهریار', $decodedLocations['تهران']);
 
-        // When Zibal is disabled, online option is hidden and request mode is default.
+        // When Zibal is disabled, online option is hidden and offline request mode is never offered.
         config(['payments.zibal.enabled' => false]);
         $disabled = $this->get('https://novinpaypos.test/cart/checkout')->assertOk();
         $disabled->assertDontSee('name="payment_method" value="zibal"', false)
-            ->assertSee('ثبت درخواست سفارش')
+            ->assertDontSee('ثبت درخواست سفارش')
             ->assertSee('پرداخت آنلاین فعلاً در دسترس نیست');
     }
 

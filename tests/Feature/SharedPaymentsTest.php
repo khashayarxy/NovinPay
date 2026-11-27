@@ -835,17 +835,21 @@ class SharedPaymentsTest extends TestCase
         $this->get('/cart')->assertOk()->assertSee($product->name);
         $payload = $this->cartFields() + ['operation_key' => $key, 'method' => 'pickup'];
         $this->get(route('cart.review'))->assertOk()->assertSee('روش تحویل')->assertSee('پرداخت آنلاین فعلاً در دسترس نیست');
+        $this->from(route('cart.checkout'))->post('/cart/checkout', $payload)
+            ->assertRedirect(route('cart.checkout'))
+            ->assertSessionHasErrors('payment_method');
+        $this->gateway();
         $product->update(['price' => 10001]);
         $this->postJson('/cart/checkout', $payload)->assertConflict();
         $product->update(['price' => 10000]);
         $this->postJson('/cart/checkout', array_replace($payload, ['method' => 'tipax', 'address' => (string) Str::uuid()]))->assertNotFound();
         $this->assertDatabaseCount('cart_purchase_snapshots', 0);
-        $this->post('/cart/checkout', $payload)->assertRedirect(route('account.index', ['section' => 'orders']));
+        $this->post('/cart/checkout', $payload)->assertStatus(303);
         $order = SalesOrder::query()->where('checkout_key', $key)->sole();
         $this->assertFalse(app(ProductPurchaseVerification::class)->verified($this->account, $product));
         $this->assertSame([$product->slug => 2], $this->get('/cart')->viewData('quantity'));
         $count = SalesOrder::count();
-        $this->post('/cart/checkout', $payload)->assertRedirect(route('account.index', ['section' => 'orders']));
+        $this->post('/cart/checkout', $payload)->assertStatus(303);
         $this->assertSame($count, SalesOrder::count());
         $this->post('/cart/checkout', array_replace($payload, ['method' => 'tipax', 'address' => (string) Str::uuid()]))->assertConflict();
         $this->assertSame($count, SalesOrder::count());
@@ -856,19 +860,18 @@ class SharedPaymentsTest extends TestCase
         $commerce->execute($this->owner, 'order.reserve', ['operation_key' => (string) Str::uuid(), 'version' => $order->version, 'reason' => 'Synthetic reservation'], $order);
         $commerce->execute($this->owner, 'order.confirm', ['operation_key' => (string) Str::uuid(), 'version' => $order->fresh()->version, 'reason' => 'Synthetic confirmation'], $order);
         $this->assertSame(2, $item->fresh()->reserved);
-        $entry = app(FinancialOperations::class)->execute($this->owner, 'issue', ['operation_key' => (string) Str::uuid(), 'password' => 'password', 'reason' => 'Synthetic internet sale', 'source_type' => 'order', 'source' => $order->public_id, 'source_version' => $order->fresh()->version]);
-        $this->assertSame(2000000, FinancialDocument::findOrFail(FinancialEntry::findOrFail($entry)->financial_document_id)->charged_minor);
+        $document = FinancialDocument::query()->where('sales_order_id', $order->id)->sole();
+        $this->assertSame(2000000, $document->charged_minor);
         try {
             $commerce->execute($this->owner, 'order.fulfill', ['operation_key' => (string) Str::uuid(), 'version' => $order->fresh()->version, 'reason' => 'Must not ship unpaid', 'fulfillment_info' => 'Synthetic handover'], $order);
             $this->fail('Unpaid handover accepted');
         } catch (HttpException $exception) {
             $this->assertSame(409, $exception->getStatusCode());
         }
-        $document = FinancialDocument::findOrFail(FinancialEntry::findOrFail($entry)->financial_document_id);
         $delivery = app(DeliveryManagement::class);
         $plan = DeliveryPlan::query()->where('financial_document_id', $document->id)->sole();
-        $this->assertSame('pickup', $plan->requested_method);
-        $plan = $delivery->confirm($this->owner, 'password', $plan->public_id, $plan->version, (string) Str::uuid());
+        $this->assertSame('pickup', $plan->method);
+        $this->assertNull($plan->requested_method);
         $this->assertSame([$product->slug => 2], $this->get('/cart')->viewData('quantity'));
         app(PaymentReview::class)->inStore($this->owner, 'password', $document->public_id, 1000000, (string) Str::uuid());
         $this->assertSame([$product->slug => 2], $this->get('/cart')->viewData('quantity'));
@@ -901,7 +904,7 @@ class SharedPaymentsTest extends TestCase
             ->assertSee('https://schema.org/OutOfStock', false)->assertDontSee('خرید محصول');
         $this->get('/account/orders/'.$order->public_id)->assertOk()->assertSee('تحویل ثبت شد');
         $this->assertSame($document->fresh()->charged_minor, $document->fresh()->paid_minor);
-        Http::assertNothingSent();
+        Http::assertSentCount(1);
         $this->expectException(HttpException::class);
         $delivery->request($this->account, $document->public_id, 'pickup', null, $plan->fresh()->version);
     }
@@ -1002,6 +1005,7 @@ class SharedPaymentsTest extends TestCase
 
     public function test_empty_checkout_replay_still_requires_the_exact_active_account_and_session(): void
     {
+        $this->gateway();
         $order = SalesOrder::findOrFail($this->document->sales_order_id);
         $order->checkout_key = (string) Str::uuid();
         $order->checkout_digest = str_repeat('a', 64);

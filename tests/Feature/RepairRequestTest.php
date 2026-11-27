@@ -258,7 +258,7 @@ class RepairRequestTest extends TestCase
             ->assertSee('دریافت فیزیکی تأیید نشده است')
             ->assertSee($displayedCode)
             ->assertSee('تغییر نحوهٔ تحویل')
-            ->assertSee(route('account.repairs.request', $repair->tracking_reference))
+            ->assertSee(route('repair.track.handover'))
             ->assertSee('پیگیری کد دیگر');
         foreach ([$repair->customer_name, $repair->contact_phone, $repair->issue, $repair->phone_digest] as $sensitive) {
             $response->assertDontSee($sensitive);

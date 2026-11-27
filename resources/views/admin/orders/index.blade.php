@@ -2,8 +2,14 @@
 @section('title', 'لیست سفارش‌ها')
 @section('content')
 <header class="admin-page-heading">
-    <div><h1>لیست سفارش‌ها</h1></div>
-    @can('orders.create')<a class="btn btn-primary" href="{{ route('admin.orders.create') }}">سفارش جدید</a>@endcan
+    <div>
+        <h1>لیست سفارش‌ها</h1>
+        <p>پیگیری سفارش‌های فروش، رزرو موجودی و مدارک فعال‌سازی.</p>
+    </div>
+    <div class="admin-actions">
+        @can('orders.fulfill')<a class="btn btn-secondary" href="{{ route('admin.deliveries.index') }}">مدیریت ارسال</a>@endcan
+        @can('orders.create')<a class="btn btn-primary" href="{{ route('admin.orders.create') }}">+ سفارش جدید</a>@endcan
+    </div>
 </header>
 <x-admin.errors/>
 @php
@@ -17,15 +23,15 @@
                 <div>
                     <label class="label" for="order-status">مرحلهٔ سفارش</label>
                     <select class="input" name="status" id="order-status">
-                        <option value="">همه</option>
+                        <option value="">همه مراحل</option>
                         @foreach(\App\Models\SalesOrder::STATUSES as $value => $label)
                             <option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
-                <button class="btn btn-secondary">اعمال فیلتر</button>
+                <button class="btn btn-secondary" type="submit">اعمال فیلتر</button>
                 @if($activeFilters > 0)
-                    <a class="admin-text-link" href="{{ route('admin.orders.index') }}">پاک‌کردن</a>
+                    <a class="btn btn-secondary btn-sm" href="{{ route('admin.orders.index') }}">پاک‌کردن</a>
                 @endif
             </form>
         </x-admin.filter-drawer>
@@ -52,12 +58,20 @@
                 $shortCode = strtoupper(substr((string) $order->public_id, 0, 8));
                 $firstLine = $order->lines->first();
                 $extraLines = max(0, $order->lines->count() - 1);
+                $statusTone = match($order->status) {
+                    'fulfilled', 'confirmed' => 'success',
+                    'reserved' => 'info',
+                    'cancelled' => 'danger',
+                    default => 'warning',
+                };
             @endphp
             <tr>
                 <td data-label="سفارش">
                     <div>
-                        <strong>سفارش #{{ \App\Support\FaNumber::digits($order->id) }}</strong>
-                        <span class="admin-table-meta np-latin" dir="ltr">{{ $shortCode }}</span>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <strong>سفارش #{{ \App\Support\FaNumber::digits($order->id) }}</strong>
+                            <span class="admin-id-chip np-latin" dir="ltr">{{ $shortCode }}</span>
+                        </div>
                         @if($firstLine)
                             <small class="admin-table-meta">
                                 {{ \App\Support\LatinText::html($firstLine->description) }} × {{ \App\Support\FaNumber::digits($firstLine->quantity) }}@if($extraLines > 0) و {{ \App\Support\FaNumber::digits($extraLines) }} قلم دیگر@endif
@@ -75,10 +89,10 @@
                         </div>
                     </td>
                 @endif
-                <td data-label="مرحله"><span class="repair-stage">{{ \App\Models\SalesOrder::STATUSES[$order->status] }}</span></td>
+                <td data-label="مرحله"><x-admin.status :tone="$statusTone">{{ \App\Models\SalesOrder::STATUSES[$order->status] }}</x-admin.status></td>
                 <td data-label="مبلغ سفارش (تومان)"><strong>{{ \App\Support\FinanceMoney::persianOrderToman($order->total) }}</strong></td>
                 <td data-label="تاریخ ثبت"><bdi dir="ltr"><x-finance-time :value="$order->created_at" :with-time="false" /></bdi></td>
-                <td data-label="جزئیات"><a class="admin-text-link" href="{{ route('admin.orders.show', $order) }}">مشاهدهٔ سفارش ←</a></td>
+                <td data-label="جزئیات"><a class="btn btn-secondary btn-sm" href="{{ route('admin.orders.show', $order) }}">مشاهدهٔ سفارش</a></td>
             </tr>
         @endforeach
         </tbody>
