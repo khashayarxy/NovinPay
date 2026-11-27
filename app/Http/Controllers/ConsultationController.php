@@ -41,7 +41,13 @@ class ConsultationController extends Controller
             return $this->duplicate($request);
         }
         $request->session()->forget('consultation_token');
-        app(UnifiedNotifier::class)->consultationSubmitted($consultation);
+        $consultationId = $consultation->id;
+        dispatch(static function () use ($consultationId): void {
+            $freshConsultation = Consultation::query()->find($consultationId);
+            if ($freshConsultation) {
+                app(UnifiedNotifier::class)->consultationSubmitted($freshConsultation);
+            }
+        })->afterResponse();
 
         return redirect()->route('consultation.confirmation')->with('consultation_received', true);
     }

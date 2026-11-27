@@ -515,6 +515,17 @@ class CustomerAccountController extends Controller
                         ];
                     }
                 }
+                if (in_array((string) $rc->activation_docs_status, ['pending_submission', 'needs_revision'], true)) {
+                    $urgentActions[] = [
+                        'type' => 'repair_activation_documents',
+                        'public_id' => $rc->public_id,
+                        'code' => (string) $rc->tracking_reference,
+                        'device' => RepairIdentity::deviceLabel($rc->device_brand, $rc->device_model),
+                        'needs_revision' => $rc->activation_docs_status === 'needs_revision',
+                        'reason' => $rc->activation_docs_revision_reason,
+                        'cta_url' => route('account.repairs.show', $rc->public_id).'#activation-documents',
+                    ];
+                }
             }
         }
 

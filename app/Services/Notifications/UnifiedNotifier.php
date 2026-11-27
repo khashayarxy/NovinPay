@@ -15,6 +15,7 @@ use App\Models\ProductFeedback;
 use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
+use App\Services\ActivationDocumentsService;
 use App\Services\IpPanel;
 use App\Services\Observability\ObservabilityEvents;
 use App\Services\Observability\TelegramTopicNotifier;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 final class UnifiedNotifier
 {
@@ -61,14 +63,8 @@ final class UnifiedNotifier
 
             $this->sendAdminSms(
                 patternKey: 'admin_order_placed',
-                params: ['code' => $code, 'name' => $customerName, 'total' => $totalToman],
+                params: ['code' => $code, 'amount' => $totalToman, 'name' => $customerName],
                 dedupeIdentity: 'order_placed:'.$order->public_id,
-                fallbackEvent: 'order_confirmed',
-                fallbackParams: [
-                    'order_code' => $code,
-                    'name' => mb_strimwidth('مدیر ('.$customerName.')', 0, 50, '…'),
-                    'product' => mb_strimwidth($productsSummary.' - '.$totalToman, 0, 95, '…'),
-                ],
             );
             $this->sendAdminEmail('سفارش جدید #'.$code, 'ثبت سفارش خرید جدید', 'یک سفارش جدید در فروشگاه ثبت شد.', $adminFields, 'مشاهده سفارش در پنل', $adminUrl, 'سفارش جدید', 'info');
 
@@ -188,6 +184,19 @@ final class UnifiedNotifier
         }, 'repair_stage_pattern');
     }
 
+    public function repairActivationDocsRequested(RepairCase $case, string $phone, string $code): void
+    {
+        $this->safe(function () use ($phone, $code): void {
+            $normalized = $this->normalizePhone($phone);
+            if ($normalized === null) {
+                return;
+            }
+            $this->sendIpPanelOptionalPattern($normalized, 'documents_request', [
+                'code' => $code,
+            ]);
+        }, 'repair_activation_docs_requested');
+    }
+
     public function repairRequestSubmitted(RepairRequest $repair, ?string $customerEmail = null): void
     {
         $this->repairCreatedPattern($repair);
@@ -218,7 +227,7 @@ final class UnifiedNotifier
 
             $this->sendAdminSms(
                 patternKey: 'admin_repair_submitted',
-                params: ['code' => (string) $repair->tracking_reference, 'device' => $device],
+                params: ['code' => (string) $repair->tracking_reference, 'device' => $device, 'name' => $customerName],
                 dedupeIdentity: 'repair_submitted:'.$repair->tracking_reference,
             );
             $this->sendAdminEmail('درخواست تعمیر جدید #'.$ref, 'ثبت درخواست تعمیر آنلاین', 'یک درخواست تعمیر جدید توسط مشتری ثبت شد.', $adminFields, 'مشاهده درخواست در پنل', $adminUrl, 'درخواست تعمیر جدید', 'info');
@@ -333,7 +342,15 @@ final class UnifiedNotifier
             ];
             $botText = $this->formatBotMessage('💬 درخواست مشاوره جدید ثبت شد', $adminFields, $adminUrl);
 
-            $this->sendAdminSms('admin_consultation_submitted', ['name' => $customerName, 'topic' => $topic], 'consult:'.$consultation->public_id);
+            $this->sendAdminSms(
+                'admin_consultation_submitted',
+                [
+                    'name' => $customerName,
+                    'phone' => $customerPhone ? FaNumber::digits($customerPhone) : 'ثبت‌نشده',
+                    'topic' => $topic,
+                ],
+                'consult:'.$consultation->public_id,
+            );
             $this->sendAdminEmail('درخواست مشاوره جدید از '.$customerName, 'ثبت درخواست مشاوره', 'یک درخواست مشاوره جدید در وب‌سایت ثبت شد.', $adminFields, 'مشاهده درخواست در پنل', $adminUrl, 'درخواست مشاوره', 'info');
             $this->bale->send($botText, 'consult:'.$consultation->public_id, 300, $adminUrl);
 
@@ -416,7 +433,7 @@ final class UnifiedNotifier
             $phone = $this->resolveOrderCustomerPhone($order);
             if ($phone !== null) {
                 $this->sendIpPanelOptionalPattern($phone, 'documents_approved', [
-                    'order_code' => $code,
+                    'code' => $code,
                 ]);
             }
 
@@ -444,8 +461,8 @@ final class UnifiedNotifier
             $phone = $this->resolveOrderCustomerPhone($order);
             if ($phone !== null) {
                 $this->sendIpPanelOptionalPattern($phone, 'documents_revision', [
-                    'order_code' => $code,
-                    'reason' => mb_strimwidth($cleanReason, 0, 120, '…'),
+                    'code' => $code,
+                    'reason' => $cleanReason !== '' ? Str::limit($cleanReason, 120) : 'نقص یا ناخوانا بودن مدارک',
                 ]);
             }
 
@@ -709,15 +726,17 @@ final class UnifiedNotifier
                 : 'admin_order_placed';
             $this->sendAdminSms(
                 patternKey: $paidPatternKey,
-                params: ['code' => $code, 'name' => $customerName, 'total' => $amountToman],
+                params: ['code' => $code, 'amount' => $amountToman, 'name' => $customerName],
                 dedupeIdentity: 'order_paid:'.$order->public_id,
-                fallbackEvent: 'order_confirmed',
-                fallbackParams: [
-                    'order_code' => $code,
-                    'name' => mb_strimwidth('پرداخت تأییدشد - '.$customerName, 0, 50, '…'),
-                    'product' => mb_strimwidth($itemSummary.' ('.$amountToman.')', 0, 95, '…'),
-                ],
             );
+            if ($order->status !== 'cancelled' && app(ActivationDocumentsService::class)->orderRequiresPosActivation($order)) {
+                $customerPhoneForDocs = $this->resolveOrderCustomerPhone($order);
+                if ($customerPhoneForDocs !== null) {
+                    $this->sendIpPanelOptionalPattern($customerPhoneForDocs, 'documents_request', [
+                        'code' => $code,
+                    ]);
+                }
+            }
             $this->sendAdminEmail(
                 '✅ پرداخت سفارش #'.$code.' تأیید شد',
                 'پرداخت آنلاین سفارش با موفقیت تسویه شد',
@@ -870,9 +889,9 @@ final class UnifiedNotifier
         return (string) ($transaction->reference ?? '');
     }
 
-    public function supportChatMessage(string $conversationId, string $messagePreview, ?string $senderName = null): void
+    public function supportChatMessage(string $conversationId, string $messagePreview, ?string $senderName = null, ?string $senderPhone = null): void
     {
-        $this->safe(function () use ($conversationId, $messagePreview, $senderName): void {
+        $this->safe(function () use ($conversationId, $messagePreview, $senderName, $senderPhone): void {
             $id = trim($conversationId);
             if ($id === '') {
                 return;
@@ -909,7 +928,12 @@ final class UnifiedNotifier
                     'created_at' => now()->utc(),
                 ]);
                 if ($inserted === 1) {
-                    $this->sendAdminSms('admin_chat_first_message', ['name' => $name]);
+                    $normalizedPhone = $this->normalizePhone($senderPhone);
+                    $this->sendAdminSms('admin_chat_first_message', [
+                        'name' => $name,
+                        'phone' => $normalizedPhone ? FaNumber::digits($normalizedPhone) : 'ثبت‌نشده',
+                        'message' => Str::limit(trim($messagePreview) !== '' ? trim($messagePreview) : '[پیوست تصویری]', 45),
+                    ]);
                 }
             }
         }, 'support_chat_message');
@@ -943,7 +967,7 @@ final class UnifiedNotifier
             return true;
         }
 
-        if ($fallbackEvent !== null && (bool) config('notifications.sms.admin_shared_pattern_fallback', true)) {
+        if ($fallbackEvent !== null && (bool) config('notifications.sms.admin_shared_pattern_fallback', false)) {
             return $this->patternSms->resolvePattern($fallbackEvent) !== '';
         }
 
@@ -974,7 +998,7 @@ final class UnifiedNotifier
         $explicitPattern = trim((string) config('notifications.sms.patterns.'.$patternKey, ''));
         $activePattern = $explicitPattern;
         $activeParams = $params;
-        if ($activePattern === '' && $fallbackEvent !== null && (bool) config('notifications.sms.admin_shared_pattern_fallback', true)) {
+        if ($activePattern === '' && $fallbackEvent !== null && (bool) config('notifications.sms.admin_shared_pattern_fallback', false)) {
             $activePattern = $this->patternSms->resolvePattern($fallbackEvent);
             $activeParams = $fallbackParams !== [] ? $fallbackParams : $params;
         }

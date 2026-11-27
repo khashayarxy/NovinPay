@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Enums\AdminAction;
+use App\Enums\ProductCategory;
 use App\Models\FinancialDocument;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentTransaction;
+use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\User;
 use App\Services\Notifications\BaleNotifier;
@@ -13,6 +15,7 @@ use App\Services\Notifications\UnifiedNotifier;
 use App\Services\Observability\TelegramTopicNotifier;
 use App\Support\AdminHistory;
 use App\Support\FaNumber;
+use App\Support\PaymentTestProduct;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -63,11 +66,53 @@ final class ActivationDocumentsService
     }
 
     /**
-     * Order is eligible only when settled through the online payment gateway (never card-to-card / manual).
+     * Only orders containing at least one genuine POS terminal (excluding accessories, consumables, and test products) require activation documents.
+     */
+    public function orderRequiresPosActivation(SalesOrder $order): bool
+    {
+        $order->loadMissing('lines.inventoryItem.product');
+        if ($order->lines->isEmpty()) {
+            return false;
+        }
+
+        $hasLinkedProduct = false;
+        foreach ($order->lines as $line) {
+            $product = $line->inventoryItem?->product;
+            if ($product) {
+                $hasLinkedProduct = true;
+                if ($product->category === ProductCategory::PosTerminal && ! PaymentTestProduct::isTestProduct($product)) {
+                    return true;
+                }
+            }
+        }
+
+        if ($hasLinkedProduct) {
+            return false;
+        }
+
+        foreach ($order->lines as $line) {
+            $desc = mb_strtolower(trim((string) $line->description));
+            if ($desc === '' || preg_match('/رول|کاغذ|تست|آزمایشی|شارژر|باتری|کیف|کابل|پایه|لوازم/u', $desc) === 1) {
+                continue;
+            }
+            if (preg_match('/کارتخوان|پوز|\bpos\b/iu', $desc) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Order is eligible only when it requires POS activation and is settled through the online payment gateway.
      */
     public function isEligibleForDocuments(SalesOrder $order, ?FinancialDocument $document = null): bool
     {
         if ($order->status === 'cancelled') {
+            return false;
+        }
+
+        if (! $this->orderRequiresPosActivation($order)) {
             return false;
         }
 
@@ -109,7 +154,7 @@ final class ActivationDocumentsService
      * @param  list<UploadedFile>  $extraFiles
      * @return array{telegram_delivered: bool}
      */
-    public function submitCustomerDocuments(SalesOrder $order, array $slotFiles, array $extraFiles = []): array
+    public function submitCustomerDocuments(SalesOrder $order, array $slotFiles, array $extraFiles = [], ?string $postalCode = null): array
     {
         $password = (string) config('novinpay.docs_zip_password', '');
         if (strlen(trim($password)) < 8) {
@@ -156,7 +201,7 @@ final class ActivationDocumentsService
                     continue;
                 }
                 $ext = $this->safeExtension($extra);
-                $entryName = sprintf('06-takmili-%d.%s', $extraIndex, $ext);
+                $entryName = sprintf('07-takmili-%d.%s', $extraIndex, $ext);
                 $destPath = $batchDir.'/'.$entryName;
                 if (! copy($extra->getRealPath(), $destPath)) {
                     throw new RuntimeException('Failed staging extra activation document file.');
@@ -179,9 +224,12 @@ final class ActivationDocumentsService
                 'نام مشتری: '.$customerName,
                 'شماره تماس: '.$customerPhone,
                 'مدل دستگاه / اقلام: '.$deviceSummary,
-                'تعداد فایل‌های پیوست: '.count($stagedEntries),
-                'زمان ثبت (تهران): '.now('Asia/Tehran')->format('Y-m-d H:i:s'),
             ];
+            if ($postalCode !== null && trim($postalCode) !== '') {
+                $infoLines[] = 'کد پستی ۱۰ رقمی: '.trim($postalCode);
+            }
+            $infoLines[] = 'تعداد فایل‌های پیوست: '.count($stagedEntries);
+            $infoLines[] = 'زمان ثبت (تهران): '.now('Asia/Tehran')->format('Y-m-d H:i:s');
             $infoPath = $batchDir.'/info.txt';
             file_put_contents($infoPath, implode("\n", $infoLines)."\n");
             @chmod($infoPath, 0600);
@@ -468,6 +516,181 @@ final class ActivationDocumentsService
         }
 
         @chmod($zipPath, 0600);
+    }
+
+    public function requestRepairDocuments(RepairCase $case, User $actor): void
+    {
+        $case->forceFill([
+            'activation_docs_status' => 'pending_submission',
+            'activation_docs_requested_at' => now(),
+            'activation_docs_revision_reason' => null,
+        ])->save();
+
+        AdminHistory::record(AdminAction::RepairTransition, 'repair_case', $case->id);
+
+        $caseId = $case->id;
+        dispatch(static function () use ($caseId): void {
+            $fresh = RepairCase::query()->find($caseId);
+            if (! $fresh) {
+                return;
+            }
+            $phone = trim((string) ($fresh->contact_phone ?? ''));
+            if ($phone === '') {
+                return;
+            }
+            $code = (string) ($fresh->tracking_reference ?: $fresh->case_number);
+            $notifier = app(UnifiedNotifier::class);
+            $notifier->repairActivationDocsRequested($fresh, $phone, $code);
+        })->afterResponse();
+    }
+
+    /**
+     * @param  array<string, UploadedFile>  $slotFiles
+     * @param  list<UploadedFile>  $extraFiles
+     * @return array{telegram_delivered: bool}
+     */
+    public function submitRepairDocuments(RepairCase $case, array $slotFiles, array $extraFiles = [], ?string $postalCode = null): array
+    {
+        $password = (string) config('novinpay.docs_zip_password', '');
+        if (strlen(trim($password)) < 8) {
+            Log::error('Activation document submission blocked because DOCS_ZIP_PASSWORD is missing or shorter than 8 characters');
+            throw ValidationException::withMessages([
+                'documents' => 'سامانه دریافت رمزنگاری‌شده مدارک موقتاً آماده نیست. لطفاً با پشتیبانی تماس بگیرید.',
+            ]);
+        }
+
+        $shortCode = (string) ($case->tracking_reference ?: strtoupper(substr((string) $case->public_id, 0, 8)));
+        $customerName = trim((string) ($case->customer_name ?? 'مشتری'));
+        $customerPhone = trim((string) ($case->contact_phone ?? '—'));
+        $deviceSummary = trim(($case->device_brand?->value ?? '').' '.($case->device_model ?? '')) ?: 'کارتخوان تعمیری';
+
+        $basePrivateDir = storage_path('app/private/activation-docs/repair-'.$case->public_id);
+        $batchDir = $basePrivateDir.'/batch-'.Str::uuid();
+        File::ensureDirectoryExists($batchDir, 0700, true);
+        @chmod($basePrivateDir, 0700);
+        @chmod($batchDir, 0700);
+
+        $slots = $this->configuredSlots();
+        $stagedEntries = [];
+
+        try {
+            foreach ($slots as $slotKey => $slotMeta) {
+                $uploaded = $slotFiles[$slotKey] ?? null;
+                if (! $uploaded instanceof UploadedFile) {
+                    continue;
+                }
+                $ext = $this->safeExtension($uploaded);
+                $entryName = $slotMeta['zip_prefix'].'.'.$ext;
+                $destPath = $batchDir.'/'.$entryName;
+                if (! copy($uploaded->getRealPath(), $destPath)) {
+                    throw new RuntimeException('Failed staging repair activation document file.');
+                }
+                @chmod($destPath, 0600);
+                $stagedEntries[$entryName] = $destPath;
+            }
+
+            $extraIndex = 1;
+            foreach ($extraFiles as $extra) {
+                if (! $extra instanceof UploadedFile) {
+                    continue;
+                }
+                $ext = $this->safeExtension($extra);
+                $entryName = sprintf('07-takmili-%d.%s', $extraIndex, $ext);
+                $destPath = $batchDir.'/'.$entryName;
+                if (! copy($extra->getRealPath(), $destPath)) {
+                    throw new RuntimeException('Failed staging extra repair activation document file.');
+                }
+                @chmod($destPath, 0600);
+                $stagedEntries[$entryName] = $destPath;
+                $extraIndex++;
+            }
+
+            if ($stagedEntries === []) {
+                throw ValidationException::withMessages([
+                    'documents' => 'هیچ فایل معتبری برای ارسال مدارک انتخاب نشده است.',
+                ]);
+            }
+
+            $infoLines = [
+                'نوین‌پی — پرونده مدارک فعال‌سازی تعمیر دستگاه',
+                '==================================================',
+                'کد پیگیری تعمیر: #'.$shortCode,
+                'نام مشتری: '.$customerName,
+                'شماره تماس: '.$customerPhone,
+                'مدل دستگاه: '.$deviceSummary,
+            ];
+            if ($postalCode !== null && trim($postalCode) !== '') {
+                $infoLines[] = 'کد پستی ۱۰ رقمی: '.trim($postalCode);
+            }
+            $infoLines[] = 'تعداد فایل‌های پیوست: '.count($stagedEntries);
+            $infoLines[] = 'زمان ثبت (تهران): '.now('Asia/Tehran')->format('Y-m-d H:i:s');
+            $infoPath = $batchDir.'/info.txt';
+            file_put_contents($infoPath, implode("\n", $infoLines)."\n");
+            @chmod($infoPath, 0600);
+            $stagedEntries['info.txt'] = $infoPath;
+
+            $zipFileName = 'repair-docs-'.strtolower(preg_replace('/[^a-zA-Z0-9\-]/', '', $shortCode) ?: 'case').'-'.now('UTC')->format('YmdHis').'.zip';
+            $zipPath = $basePrivateDir.'/'.$zipFileName;
+            $this->buildAes256Zip($zipPath, $stagedEntries, $password);
+
+            File::deleteDirectory($batchDir);
+
+            $adminUrl = route('admin.repair-cases.show', $case);
+            $caption = implode("\n", [
+                '🗂️ مدارک فعال‌سازی پرونده تعمیر (AES-256)',
+                '• کد پیگیری: #'.$shortCode,
+                '• نام مشتری: '.$customerName,
+                '• شماره تماس: '.FaNumber::digits($customerPhone),
+                '• مدل دستگاه: '.$deviceSummary,
+                '• زمان ارسال: '.FaNumber::digits(now('Asia/Tehran')->format('Y/m/d H:i')),
+            ]);
+
+            $result = $this->topics->sendDocumentWithResult(
+                topic: 'documents',
+                filePath: $zipPath,
+                caption: $caption,
+                downloadName: "novinpay-repair-docs-{$shortCode}.zip",
+                inlineKeyboard: [[['text' => 'مشاهده پرونده تعمیر در پنل مدیریت', 'url' => $adminUrl]]],
+            );
+
+            if ($result['ok'] && $result['message_id'] !== null) {
+                @unlink($zipPath);
+                File::deleteDirectory($basePrivateDir);
+
+                $case->forceFill([
+                    'activation_docs_status' => 'pending_review',
+                    'activation_docs_revision_reason' => null,
+                    'activation_docs_submitted_at' => now(),
+                    'activation_docs_telegram_chat_id' => $result['chat_id'],
+                    'activation_docs_telegram_message_id' => $result['message_id'],
+                ])->save();
+
+                return ['telegram_delivered' => true];
+            }
+
+            $case->forceFill([
+                'activation_docs_status' => 'pending_review',
+                'activation_docs_revision_reason' => null,
+                'activation_docs_submitted_at' => now(),
+            ])->save();
+
+            return ['telegram_delivered' => false];
+        } catch (ValidationException $e) {
+            File::deleteDirectory($batchDir);
+            if (is_dir($basePrivateDir) && count(File::allFiles($basePrivateDir)) === 0) {
+                File::deleteDirectory($basePrivateDir);
+            }
+            throw $e;
+        } catch (Throwable $e) {
+            File::deleteDirectory($batchDir);
+            Log::error('Repair activation documents packaging failed', [
+                'repair' => $shortCode,
+                'exception' => $e::class,
+            ]);
+            throw ValidationException::withMessages([
+                'documents' => 'خطایی در رمزنگاری و ثبت مدارک رخ داد. لطفاً دوباره تلاش کنید.',
+            ]);
+        }
     }
 
     private function safeExtension(UploadedFile $file): string

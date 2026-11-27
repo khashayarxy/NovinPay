@@ -30,7 +30,7 @@ final class IpPanel
 
     private function client(): PendingRequest
     {
-        return Http::withoutRedirecting()->connectTimeout(4)->timeout(10)->acceptJson()
+        return Http::withoutRedirecting()->connectTimeout(3)->timeout(5)->acceptJson()
             ->withHeaders(['Authorization' => config('customer.ippanel.api_key')]);
     }
 

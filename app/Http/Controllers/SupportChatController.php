@@ -191,8 +191,12 @@ class SupportChatController extends Controller
             && empty($payload['duplicate'])) {
             $conversationId = (string) ($payload['conversation_id'] ?? $request->input('user_id', ''));
             $messageText = (string) $request->input('message', '');
-            $senderName = auth('customer')->user()?->name;
-            app(UnifiedNotifier::class)->supportChatMessage($conversationId, $messageText, is_string($senderName) ? $senderName : null);
+            $customerUser = auth('customer')->user();
+            $resolvedSender = is_string($customerUser?->name) ? $customerUser->name : null;
+            $resolvedPhone = is_string($customerUser?->phone) ? $customerUser->phone : null;
+            dispatch(static function () use ($conversationId, $messageText, $resolvedSender, $resolvedPhone): void {
+                app(UnifiedNotifier::class)->supportChatMessage($conversationId, $messageText, $resolvedSender, $resolvedPhone);
+            })->afterResponse();
         }
 
         return $response;

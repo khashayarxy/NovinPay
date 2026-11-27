@@ -54,6 +54,9 @@
                                     @if($urgent['type'] === 'repair_payment')
                                         <strong>هزینه تعمیر دستگاه آماده پرداخت است</strong>
                                         <p>پرونده <bdi dir="ltr">{{ \App\Support\FaNumber::digits($urgent['code']) }}</bdi> ({{ $urgent['device'] }}) · مبلغ قابل پرداخت: <strong>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($urgent['amount_minor'])) }} تومان</strong></p>
+                                    @elseif($urgent['type'] === 'repair_activation_documents')
+                                        <strong>{{ $urgent['needs_revision'] ? 'نیاز به اصلاح مدارک فعال‌سازی تعمیر' : 'تکمیل مدارک فعال‌سازی دستگاه تعمیری' }}</strong>
+                                        <p>پرونده تعمیر <bdi dir="ltr">{{ \App\Support\FaNumber::digits($urgent['code']) }}</bdi> ({{ $urgent['device'] }}){{ $urgent['needs_revision'] && ! empty($urgent['reason']) ? ' — '.$urgent['reason'] : ' — برای اتصال مجدد و فعال‌سازی دستگاه، مدارک را بارگذاری کنید.' }}</p>
                                     @else
                                         <strong>{{ $urgent['needs_revision'] ? 'نیاز به اصلاح مدارک فعال‌سازی سفارش' : 'ارسال مدارک فعال‌سازی دستگاه کارتخوان' }}</strong>
                                         <p>سفارش <bdi dir="ltr">{{ \App\Support\FaNumber::digits($urgent['code']) }}</bdi>{{ $urgent['needs_revision'] && ! empty($urgent['reason']) ? ' — '.$urgent['reason'] : ' — جهت ثبت پرونده مالیاتی و شاپرکی، مدارک را بارگذاری کنید.' }}</p>

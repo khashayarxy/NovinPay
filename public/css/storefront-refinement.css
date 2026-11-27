@@ -772,11 +772,11 @@ form.commerce-notice { display: grid; justify-items: start; gap: 7px; }
 .commerce-cart-item__total { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; justify-content: space-between;
     grid-column: 1 / -1; padding-block-start: 8px; border-block-start: 1px solid #edf2f8; color: #465e76; font-size: .825rem; }
 .store-cart-commands { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block-start: 4px; }
-.commerce-stepper { display: inline-flex; flex: 0 0 auto; align-items: center; border: 1px solid #dce7f0; border-radius: 9px; background: #f5f9fd; }
-.commerce-stepper button { display: grid; place-items: center; inline-size: 44px; block-size: 44px; color: #075da6; border-radius: 8px; cursor: pointer; }
-.commerce-stepper button:hover:enabled, .commerce-stepper button:active:enabled { background: #e2effa; }
-.commerce-stepper button svg { inline-size: 16px; block-size: 16px; }
-.commerce-stepper__value { min-inline-size: 25px; text-align: center; color: #122940; font-weight: 700; }
+.commerce-stepper { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; block-size: 42px; padding: 3px; border: 1.5px solid #cbd5e1; border-radius: 12px; background: #ffffff; box-shadow: 0 1px 2px rgb(15 23 42 / 5%); box-sizing: border-box; }
+.commerce-stepper button { display: inline-flex; align-items: center; justify-content: center; inline-size: 34px; block-size: 34px; flex-shrink: 0; color: #075da6; background: #f8fafc; border-radius: 9px; cursor: pointer; line-height: 1; transition: background-color .15s ease, color .15s ease; }
+.commerce-stepper button:hover:enabled, .commerce-stepper button:active:enabled { background: #e0f2fe; color: #0369a1; }
+.commerce-stepper button svg { display: block; inline-size: 16px; block-size: 16px; }
+.commerce-stepper__value { display: inline-flex; align-items: center; justify-content: center; min-inline-size: 32px; block-size: 34px; line-height: 1; text-align: center; color: #0f172a; font-weight: 700; font-variant-numeric: tabular-nums; }
 .commerce-sources { max-inline-size: 100%; }
 .commerce-sources summary { min-block-size: 44px; align-content: center; color: #174c80; cursor: pointer; text-underline-offset: 3px; }
 .commerce-sources summary:hover { text-decoration: underline; }

@@ -22,7 +22,7 @@ class RepairCase extends Model
 
     protected function casts(): array
     {
-        return ['simple_workflow' => 'boolean', 'repair_price_toman' => 'integer', 'repair_notes' => 'encrypted', 'customer_name' => 'encrypted', 'contact_phone' => 'encrypted', 'device_model' => 'encrypted', 'device_serial' => 'encrypted', 'issue' => 'encrypted', 'physical_condition' => 'encrypted', 'accessories' => 'encrypted', 'device_brand' => RepairBrand::class, 'status' => RepairStage::class, 'received_at' => 'datetime', 'version' => 'integer', 'assigned_to' => 'integer'];
+        return ['simple_workflow' => 'boolean', 'repair_price_toman' => 'integer', 'repair_notes' => 'encrypted', 'customer_name' => 'encrypted', 'contact_phone' => 'encrypted', 'device_model' => 'encrypted', 'device_serial' => 'encrypted', 'issue' => 'encrypted', 'physical_condition' => 'encrypted', 'accessories' => 'encrypted', 'device_brand' => RepairBrand::class, 'status' => RepairStage::class, 'received_at' => 'datetime', 'activation_docs_requested_at' => 'datetime', 'activation_docs_submitted_at' => 'datetime', 'version' => 'integer', 'assigned_to' => 'integer'];
     }
 
     public function getRouteKeyName(): string

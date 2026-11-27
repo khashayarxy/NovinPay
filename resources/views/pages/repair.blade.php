@@ -115,7 +115,7 @@
                 <div class="repair-step" data-step="1" @if($initialStep !== 1) hidden @endif>
                     <div class="public-field">
                         <div class="np-float-field np-float-field--select" data-float-field>
-                            <select id="device_brand" name="device_brand" class="input" required aria-invalid="{{ $errors->has('device_brand') ? 'true' : 'false' }}" aria-describedby="device_brand-feedback">
+                            <select id="device_brand" name="device_brand" class="input" data-custom-select required aria-invalid="{{ $errors->has('device_brand') ? 'true' : 'false' }}" aria-describedby="device_brand-feedback">
                                 <option value="" disabled @selected(empty($selectedBrand)) hidden></option>
                                 @foreach ($brands as $brand)
                                     <option value="{{ $brand->value }}" @selected($selectedBrand === $brand->value)>{{ $brand->value }}</option>
@@ -176,6 +176,30 @@
                     <x-repair-field name="issue" label="شرح مشکل دستگاه">
                         <textarea id="issue" name="issue" class="input" rows="4" placeholder="نشانهٔ خرابی، پیام خطای نمایشگر و زمان بروز مشکل را بنویسید (حداقل ۱۰ کاراکتر)" required minlength="10" maxlength="2000" aria-invalid="{{ $errors->has('issue') ? 'true' : 'false' }}" aria-describedby="issue-feedback">{{ $selectedIssue }}</textarea>
                     </x-repair-field>
+                    <div class="public-form__grid repair-paired-fields">
+                        <div class="public-field">
+                            <div class="np-float-field np-float-field--select" data-float-field>
+                                <select id="activation_status" name="activation_status" class="input" data-custom-select aria-invalid="{{ $errors->has('activation_status') ? 'true' : 'false' }}">
+                                    <option value="" disabled @selected(empty(old('activation_status'))) hidden></option>
+                                    @foreach (\App\Models\RepairRequest::ACTIVATION_STATUSES as $statusKey => $statusLabel)
+                                        <option value="{{ $statusKey }}" @selected(old('activation_status') === $statusKey)>{{ $statusLabel }}</option>
+                                    @endforeach
+                                </select>
+                                <label class="label" for="activation_status">وضعیت اتصال و فعال‌سازی دستگاه</label>
+                            </div>
+                        </div>
+                        <div class="public-field">
+                            <div class="np-float-field np-float-field--select" data-float-field>
+                                <select id="tax_file_status" name="tax_file_status" class="input" data-custom-select aria-invalid="{{ $errors->has('tax_file_status') ? 'true' : 'false' }}">
+                                    <option value="" disabled @selected(empty(old('tax_file_status'))) hidden></option>
+                                    @foreach (\App\Models\RepairRequest::TAX_FILE_STATUSES as $taxKey => $taxLabel)
+                                        <option value="{{ $taxKey }}" @selected(old('tax_file_status') === $taxKey)>{{ $taxLabel }}</option>
+                                    @endforeach
+                                </select>
+                                <label class="label" for="tax_file_status">وضعیت پرونده مالیاتی</label>
+                            </div>
+                        </div>
+                    </div>
                     <div class="repair-step-actions">
                         <button type="button" class="np-button np-button--primary" data-step-next>مرحلهٔ بعد <x-home.icon name="chevron-left" /></button>
                         <button type="button" class="np-button np-button--outline" data-step-prev>مرحلهٔ قبل</button>

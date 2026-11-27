@@ -98,7 +98,7 @@ class SimpleRepairTest extends TestCase
         $this->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => '٬', 'repair_notes' => 'یادداشت آزمایشی'])->assertSessionHasNoErrors();
         $this->assertSame(0, $case->refresh()->repair_price_toman);
         $this->assertMatchesRegularExpression('/name="repair_cost"[^>]*value="۰"/u', $this->get($show)->assertOk()->getContent());
-        $this->get($summary)->assertOk()->assertSee('۰ تومان');
+        $this->get($summary)->assertOk()->assertSee('۰')->assertDontSee('هزینه هنوز ثبت نشده است');
         $this->get($finance)->assertOk()->assertViewHas('amount', 0);
         $this->actingAs($account, 'customer')->get($tracking)->assertOk()->assertSee('۰ تومان')->assertDontSee('هزینه هنوز ثبت نشده است');
         $this->actingAs($admin, 'web')->post($url, ['version' => $case->version, 'status' => 'ready', 'repair_cost' => '۱٬۲۵۰٬۰۰۰'])->assertSessionHasNoErrors();

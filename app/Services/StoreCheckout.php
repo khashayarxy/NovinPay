@@ -117,7 +117,15 @@ class StoreCheckout
         }, 3);
 
         if ($created) {
-            app(UnifiedNotifier::class)->orderPlaced($order);
+            $orderId = $order->id;
+            DB::afterCommit(static function () use ($orderId): void {
+                dispatch(static function () use ($orderId): void {
+                    $freshOrder = SalesOrder::query()->find($orderId);
+                    if ($freshOrder) {
+                        app(UnifiedNotifier::class)->orderPlaced($freshOrder);
+                    }
+                })->afterResponse();
+            });
         }
 
         return $order;

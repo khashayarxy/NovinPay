@@ -26,6 +26,18 @@ class RepairRequest extends Model
         'doorstep_pickup' => 'به پیک شما تحویل میدم',
     ];
 
+    public const ACTIVATION_STATUSES = [
+        'connected' => 'سامانه وصل است / نیازی به فعالسازی نیست',
+        'disconnected' => 'قطع است / نیاز به فعالسازی دارد',
+        'unsure' => 'مطمئن نیستم',
+    ];
+
+    public const TAX_FILE_STATUSES = [
+        'active' => 'پرونده مالیاتی دارم و فعال است',
+        'needs_setup' => 'نیاز به ثبت یا ویرایش پرونده مالیاتی دارم',
+        'unsure' => 'مطمئن نیستم',
+    ];
+
     public function photoPath(): string
     {
         return 'repair-requests/'.$this->id.'/'.$this->submission_digest.'.image';
@@ -116,6 +128,8 @@ class RepairRequest extends Model
         $pickupLng = null;
         $responsivePhone = null;
         $pickupNotes = null;
+        $activationStatus = null;
+        $taxFileStatus = null;
 
         foreach ($lines as $line) {
             $trimmed = trim($line);
@@ -146,6 +160,10 @@ class RepairRequest extends Model
                 $responsivePhone = trim(mb_substr($trimmed, mb_strlen('شماره تماس پاسخگو:')));
             } elseif (str_starts_with($trimmed, 'توضیحات برای پیک:')) {
                 $pickupNotes = trim(mb_substr($trimmed, mb_strlen('توضیحات برای پیک:')));
+            } elseif (str_starts_with($trimmed, 'وضعیت اتصال و فعالسازی:')) {
+                $activationStatus = trim(mb_substr($trimmed, mb_strlen('وضعیت اتصال و فعالسازی:')));
+            } elseif (str_starts_with($trimmed, 'وضعیت پرونده مالیاتی:')) {
+                $taxFileStatus = trim(mb_substr($trimmed, mb_strlen('وضعیت پرونده مالیاتی:')));
             } else {
                 $problemLines[] = $trimmed;
             }
@@ -171,6 +189,8 @@ class RepairRequest extends Model
             'pickup_lng' => $pickupLng,
             'responsive_phone' => $responsivePhone !== '' ? $responsivePhone : null,
             'pickup_notes' => $pickupNotes !== '' ? $pickupNotes : null,
+            'activation_status' => $activationStatus !== '' ? $activationStatus : null,
+            'tax_file_status' => $taxFileStatus !== '' ? $taxFileStatus : null,
         ];
     }
 
@@ -190,6 +210,12 @@ class RepairRequest extends Model
         }
         if ($parsed['accessories'] !== null) {
             $meta[] = 'لوازم همراه: '.$parsed['accessories'];
+        }
+        if ($parsed['activation_status'] !== null) {
+            $meta[] = 'وضعیت اتصال و فعالسازی: '.$parsed['activation_status'];
+        }
+        if ($parsed['tax_file_status'] !== null) {
+            $meta[] = 'وضعیت پرونده مالیاتی: '.$parsed['tax_file_status'];
         }
         if ($parsed['location'] !== null) {
             $meta[] = 'استان و شهر: '.$parsed['location'];

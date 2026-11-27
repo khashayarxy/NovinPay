@@ -183,6 +183,14 @@
                 @endif
             </div>
         </div>
+        @if($case && $repair->activation_docs_status !== null)
+            <x-orders.activation-documents
+                :slots="app(\App\Services\ActivationDocumentsService::class)->configuredSlots()"
+                :submit-action="route('account.repairs.documents.store', $repair->public_id)"
+                :documents-status="$repair->activation_docs_status"
+                :revision-reason="$repair->activation_docs_revision_reason"
+            />
+        @endif
     </div>
 </div>
 @endsection

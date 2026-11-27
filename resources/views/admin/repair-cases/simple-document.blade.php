@@ -16,8 +16,10 @@
         default => 'مشخص نشده',
     };
     $isSettled = $invoice && $invoice->charged_minor > 0 && $invoice->charged_minor === $invoice->paid_minor;
-    $remainingMinor = $invoice ? max(0, $invoice->charged_minor - $invoice->paid_minor) : null;
-    $storePhone = config('business.phone') ?: (config('business.phones.0') ?? '');
+    $issuedOrSettledAt = $latestPayment?->created_at ?? $invoice?->created_at ?? now();
+    $priceCellText = $case->repair_price_toman !== null
+        ? \App\Support\FaNumber::digits(str_replace(',', '٬', number_format($case->repair_price_toman)))
+        : 'هزینه هنوز ثبت نشده است';
 @endphp
 
 @if($isThermalReceipt)
@@ -26,7 +28,7 @@
     <style>@media print { @page { size: A5 portrait; margin: 10mm; } }</style>
 @endif
 
-<div class="repair-print-controls admin-actions">
+<div @class(['repair-print-controls', 'admin-actions', 'repair-print-controls--thermal' => $isThermalReceipt, 'repair-print-controls--invoice' => !$isThermalReceipt])>
     <a class="admin-back-link mb-0" href="{{ route('admin.repair-cases.show', $case) }}">← بازگشت به پرونده تعمیر</a>
     <button class="btn btn-primary" type="button" data-print-document>چاپ {{ $isThermalReceipt ? 'رسید حرارتی (۸۰mm)' : 'صورتحساب' }}</button>
 </div>
@@ -34,9 +36,8 @@
 @if($isThermalReceipt)
     <article class="repair-receipt-80mm" aria-label="{{ $docTitle }}">
         <header class="repair-receipt-80mm__head">
-            <strong class="repair-receipt-80mm__store">{{ config('business.name') }}</strong>
+            <img src="{{ asset('brand/lockups/logo-wordmark-black-on-white.svg') }}" alt="{{ config('business.name') }}" class="repair-print-logo-mono repair-print-logo-mono--thermal">
             <span class="repair-receipt-80mm__sub">مرکز تخصصی فروش و تعمیرات کارتخوان</span>
-            @if($storePhone)<span class="repair-receipt-80mm__phone" dir="ltr">{{ \App\Support\FaNumber::digits($storePhone) }}</span>@endif
             <h1 class="repair-receipt-80mm__title">{{ $docTitle }}</h1>
         </header>
 
@@ -87,35 +88,41 @@
             @endif
         @endif
 
-        <footer class="repair-receipt-80mm__foot">
-            <p>پیگیری آنلاین وضعیت تعمیر:</p>
-            <p dir="ltr" class="repair-receipt-80mm__url">novinpaypos.com/repair/track</p>
-            <p class="repair-receipt-80mm__note">ارائهٔ این رسید یا کد پیگیری هنگام تحویل الزامی است.</p>
-        </footer>
+        @if($document === 'intake')
+            <footer class="repair-receipt-80mm__foot">
+                @if(!empty($qrSvg))
+                    <div class="repair-receipt-80mm__qr" data-repair-qr>
+                        {!! $qrSvg !!}
+                        <span class="repair-receipt-80mm__qr-caption">اسکن برای پیگیری آنلاین تعمیر</span>
+                    </div>
+                @endif
+                <p class="repair-receipt-80mm__note">برای تحویل دستگاه، ارائهٔ این رسید یا کد پیگیری کافی است.</p>
+            </footer>
+        @else
+            <footer class="repair-receipt-80mm__foot">
+                <div class="repair-receipt-80mm__signature">
+                    <span>امضای تحویل‌گیرنده</span>
+                </div>
+            </footer>
+        @endif
     </article>
 @else
-    <article class="repair-formal-invoice" aria-label="صورتحساب تعمیر">
+    <article class="repair-formal-invoice repair-formal-invoice--mono" aria-label="صورتحساب تعمیر">
         <header class="repair-formal-invoice__head">
             <div class="repair-formal-invoice__brand">
-                <x-brand-logo />
+                <img src="{{ asset('brand/lockups/logo-wordmark-black-on-white.svg') }}" alt="{{ config('business.name') }}" class="repair-print-logo-mono repair-print-logo-mono--invoice">
                 <div>
                     <h1>صورتحساب خدمات تعمیر</h1>
                     <p>{{ config('business.name') }} · فروش و تعمیرات تخصصی کارتخوان</p>
-                    @if($storePhone)<p class="repair-formal-invoice__phone" dir="ltr">{{ \App\Support\FaNumber::digits($storePhone) }}</p>@endif
                 </div>
             </div>
             <div class="repair-formal-invoice__meta">
                 <div><span>کد پیگیری:</span> <strong dir="ltr"><bdi>{{ $trackingFa }}</bdi></strong></div>
                 <div><span>تاریخ پذیرش:</span> <strong><x-finance-time :value="$case->received_at" :with-time="false" /></strong></div>
+                <div><span>تاریخ صدور / تسویه:</span> <strong><x-finance-time :value="$issuedOrSettledAt" :with-time="false" /></strong></div>
                 <div>
                     <span>وضعیت تسویه:</span>
-                    @if($isSettled)
-                        <span class="repair-formal-invoice__badge repair-formal-invoice__badge--paid">تسویه‌شده</span>
-                    @elseif($invoice)
-                        <span class="repair-formal-invoice__badge repair-formal-invoice__badge--unpaid">در انتظار تسویه</span>
-                    @else
-                        <span class="repair-formal-invoice__badge">{{ $case->status->label() }}</span>
-                    @endif
+                    <span class="repair-formal-invoice__badge">{{ $isSettled ? 'تسویه‌شده' : ($invoice ? 'در انتظار تسویه' : $case->status->label()) }}</span>
                 </div>
             </div>
         </header>
@@ -154,43 +161,35 @@
                             <span class="repair-formal-invoice__desc">{{ $case->repair_notes }}</span>
                         @endif
                     </td>
-                    <td class="repair-formal-invoice__amount">{{ \App\Support\AdminRepairMoney::display($case->repair_price_toman) }}</td>
+                    <td class="repair-formal-invoice__amount">{{ $priceCellText }}</td>
                 </tr>
             </tbody>
             <tfoot>
                 @if($invoice)
                     <tr>
                         <th>مبلغ کل فاکتور</th>
-                        <td class="repair-formal-invoice__amount">{{ \App\Support\FinanceMoney::persianToman($invoice->charged_minor) }} تومان</td>
-                    </tr>
-                    <tr>
-                        <th>مبلغ پرداخت‌شده</th>
-                        <td class="repair-formal-invoice__amount">{{ \App\Support\FinanceMoney::persianToman($invoice->paid_minor) }} تومان</td>
+                        <td class="repair-formal-invoice__amount">{{ \App\Support\FinanceMoney::persianToman($invoice->charged_minor) }}</td>
                     </tr>
                     <tr class="repair-formal-invoice__total-row">
-                        <th>مانده قابل پرداخت</th>
-                        <td class="repair-formal-invoice__amount">{{ \App\Support\FinanceMoney::persianToman($remainingMinor) }} تومان</td>
+                        <th>مبلغ پرداخت‌شده</th>
+                        <td class="repair-formal-invoice__amount">{{ \App\Support\FinanceMoney::persianToman($invoice->paid_minor) }}</td>
                     </tr>
                 @else
                     <tr class="repair-formal-invoice__total-row">
-                        <th>جمع کل قابل پرداخت</th>
-                        <td class="repair-formal-invoice__amount">{{ \App\Support\AdminRepairMoney::display($case->repair_price_toman) }}</td>
+                        <th>جمع کل</th>
+                        <td class="repair-formal-invoice__amount">{{ $priceCellText }}</td>
                     </tr>
                 @endif
             </tfoot>
         </table>
 
         @if($case->settlement_method)
-            <p class="repair-formal-invoice__settlement-note">روش پرداخت ثبت‌شده: <strong>{{ $case->settlement_method === 'online' ? 'پرداخت آنلاین' : 'پرداخت حضوری' }}</strong></p>
+            <p class="repair-formal-invoice__settlement-note">روش پرداخت: <strong>{{ $case->settlement_method === 'online' ? 'اینترنتی' : 'حضوری' }}</strong></p>
         @endif
 
         <footer class="repair-formal-invoice__signatures">
-            <div>
-                <span>مهر و امضای فروشگاه ({{ config('business.name') }})</span>
-            </div>
-            <div>
-                <span>امضای مشتری / تحویل‌گیرنده</span>
-            </div>
+            <div><span>مهر و امضای فروشگاه ({{ config('business.name') }})</span></div>
+            <div><span>امضای مشتری / تحویل‌گیرنده</span></div>
         </footer>
     </article>
 @endif

@@ -27,14 +27,13 @@
             <h1>پرونده تعمیر <bdi dir="ltr" class="repair-code-chip" title="{{ $rawRef }}">{{ $displayRef }}</bdi></h1>
             <x-admin.status :tone="in_array($status, ['ready', 'delivered'], true) ? 'success' : ($status === 'repairing' ? 'info' : 'neutral')">{{ $case->status->label() }}</x-admin.status>
         </div>
-        <p class="repair-case-header__sub">
-            <span>پذیرش: <x-finance-time :value="$case->received_at" /></span>
-            @if($customer && $case->onlineRequest)
-                @can('viewCustomerData', $case->onlineRequest)
-                    <span>· <a class="admin-text-link" href="{{ route('admin.repairs.show', $case->onlineRequest) }}">درخواست آنلاین <bdi dir="ltr">{{ \App\Support\FaNumber::digits($case->onlineRequest->tracking_reference) }}</bdi></a></span>
-                @endcan
-            @endif
-        </p>
+        @if($customer && $case->onlineRequest)
+            @can('viewCustomerData', $case->onlineRequest)
+                <p class="repair-case-header__sub">
+                    <a class="admin-text-link" href="{{ route('admin.repairs.show', $case->onlineRequest) }}">درخواست آنلاین <bdi dir="ltr">{{ \App\Support\FaNumber::digits($case->onlineRequest->tracking_reference) }}</bdi></a>
+                </p>
+            @endcan
+        @endif
     </div>
     @if($canPrintDocs || $canViewFinance)
         <div class="admin-actions">
@@ -66,7 +65,9 @@
     @foreach (['received' => 'پذیرش‌شده', 'repairing' => 'در حال تعمیر', 'ready' => 'آماده تحویل', 'delivered' => 'تحویل‌شده'] as $stepKey => $stepLabel)
         @php
             $stepRank = $simpleOrder[$stepKey];
-            $stepState = $currentRank > $stepRank ? 'done' : ($currentRank === $stepRank ? 'active' : 'upcoming');
+            $stepState = ($currentRank > $stepRank || ($status === 'delivered' && $stepRank === 4))
+                ? 'done'
+                : ($currentRank === $stepRank ? 'active' : 'upcoming');
         @endphp
         <li @class(['admin-step-strip__item', 'is-done' => $stepState === 'done', 'is-active' => $stepState === 'active']) @if($stepState === 'done') data-step-done="1" @elseif($stepState === 'active') aria-current="step" @endif>
             <span class="admin-step-strip__dot" aria-hidden="true">
@@ -81,16 +82,31 @@
     @endforeach
 </ol>
 @if($customer)
+@php
+    $onlineParsed = $case->onlineRequest ? $case->onlineRequest->parsedIssue() : null;
+    $activationDocStatus = $case->activation_docs_status;
+    $activationDocLabel = $activationDocStatus ? (\App\Models\SalesOrder::DOCUMENT_STATUSES[$activationDocStatus] ?? 'در انتظار ارسال') : null;
+@endphp
 <section class="admin-panel repair-hero-card mb-4" aria-labelledby="repair-device-context">
     <div class="admin-panel-heading">
         <h2 id="repair-device-context">اطلاعات پذیرش</h2>
-        @can('customers.view')
-            @if($case->customer_id)
-                <a class="admin-text-link" href="{{ route('admin.customers.show', $case->customer) }}">پرونده مشتری ←</a>
-            @else
-                @can('customers.link')<a class="admin-text-link" href="{{ route('admin.customers.index') }}">اتصال به پرونده مشتری ←</a>@endcan
+        <div class="flex flex-wrap items-center gap-3">
+            @if($activationDocStatus !== null)
+                <x-admin.status :tone="$activationDocStatus === 'approved' ? 'success' : ($activationDocStatus === 'pending_review' ? 'info' : 'warning')">مدارک فعال‌سازی: {{ $activationDocLabel }}</x-admin.status>
+            @elseif(auth()->user()->can('repairs.transition'))
+                <form method="post" action="{{ route('admin.repair-cases.request-activation-docs', $case) }}" class="inline">
+                    @csrf
+                    <button type="submit" class="btn btn-secondary btn-sm">درخواست ارسال مدارک فعال‌سازی</button>
+                </form>
             @endif
-        @endcan
+            @can('customers.view')
+                @if($case->customer_id)
+                    <a class="admin-text-link" href="{{ route('admin.customers.show', $case->customer) }}">پرونده مشتری ←</a>
+                @else
+                    @can('customers.link')<a class="admin-text-link" href="{{ route('admin.customers.index') }}">اتصال به پرونده مشتری ←</a>@endcan
+                @endif
+            @endcan
+        </div>
     </div>
     <dl class="repair-hero-meta">
         <div>
@@ -100,6 +116,10 @@
         <div>
             <dt>شماره موبایل</dt>
             <dd><a class="repair-phone-chip" href="tel:{{ $case->contact_phone }}" dir="ltr"><bdi>{{ \App\Support\FaNumber::digits($case->contact_phone) }}</bdi></a></dd>
+        </div>
+        <div>
+            <dt>زمان پذیرش</dt>
+            <dd><x-finance-time :value="$case->received_at" /></dd>
         </div>
         <div>
             <dt>برند و مدل دستگاه</dt>
@@ -117,13 +137,37 @@
             <dd>{{ $case->accessories }}</dd>
         </div>
         @endif
+        @if(!empty($onlineParsed['location']))
+        <div>
+            <dt>استان و شهر</dt>
+            <dd>{{ $onlineParsed['location'] }}</dd>
+        </div>
+        @endif
+        @if(!empty($onlineParsed['handover_label']))
+        <div>
+            <dt>نحوه تحویل اولیه</dt>
+            <dd>{{ $onlineParsed['handover_label'] }}</dd>
+        </div>
+        @endif
+        @if(!empty($onlineParsed['activation_status']))
+        <div>
+            <dt>وضعیت فعال‌سازی</dt>
+            <dd>{{ $onlineParsed['activation_status'] }}</dd>
+        </div>
+        @endif
+        @if(!empty($onlineParsed['tax_file_status']))
+        <div>
+            <dt>پرونده مالیاتی</dt>
+            <dd>{{ $onlineParsed['tax_file_status'] }}</dd>
+        </div>
+        @endif
     </dl>
     <dl class="repair-callout-grid">
-        <div class="repair-fact--full repair-callout">
+        <div class="repair-callout">
             <dt>شرح مشکل دستگاه</dt>
             <dd class="whitespace-pre-line">{{ $case->issue }}</dd>
         </div>
-        <div class="repair-fact--full repair-callout">
+        <div class="repair-callout">
             <dt>وضعیت ظاهری</dt>
             <dd class="whitespace-pre-line">{{ $case->physical_condition }}</dd>
         </div>
@@ -183,10 +227,16 @@
         <section class="admin-panel" aria-labelledby="repair-finance">
             <div class="admin-panel-heading">
                 <h2 id="repair-finance">هزینه و تسویه</h2>
-                @can('finance.view')
-                    <a class="admin-text-link" href="{{ route('admin.finance.sources.show', ['type' => 'repair', 'reference' => $case->public_id]) }}">سند مالی ←</a>
-                @endcan
             </div>
+            @php
+                $paymentAt = $latestPayment?->created_at;
+                $paymentRef = $latestPayment?->paymentAttempt?->track_id ?: ($latestPayment?->reference ?? null);
+                $paymentMethodLabel = match (true) {
+                    $case->settlement_method === 'online' || ($latestPayment && $latestPayment->payment_attempt_id !== null) => 'اینترنتی (درگاه زیبال)',
+                    $case->settlement_method === 'in_person' || $latestPayment !== null => 'حضوری در فروشگاه',
+                    default => null,
+                };
+            @endphp
             <dl class="admin-kv-list">
                 <div><dt>هزینه تعمیر</dt><dd><strong>{{ \App\Support\AdminRepairMoney::display($price) }}</strong></dd></div>
                 @if($price === null && $case->currentEstimate)<div><dt>برآورد قبلی</dt><dd>{{ \App\Support\AdminRepairMoney::display($case->currentEstimate->total()) }}</dd></div>@endif
@@ -203,10 +253,15 @@
                             @endif
                         </dd>
                     </div>
-                    @if($repairDocument)
-                        <div><dt>مانده قابل پرداخت</dt><dd><strong>{{ \App\Support\FinanceMoney::persianToman($repairDocument->charged_minor - $repairDocument->paid_minor) }} تومان</strong></dd></div>
+                    @if($paymentAt)
+                        <div><dt>زمان پرداخت</dt><dd><x-finance-time :value="$paymentAt" /></dd></div>
                     @endif
-                    @if($case->settlement_method)<div><dt>روش ثبت‌شده</dt><dd>{{ $case->settlement_method === 'online' ? 'اینترنتی' : 'حضوری' }}</dd></div>@endif
+                    @if($paymentMethodLabel)
+                        <div><dt>روش پرداخت</dt><dd>{{ $paymentMethodLabel }}</dd></div>
+                    @endif
+                    @if($paymentRef)
+                        <div><dt>کد رهگیری پرداخت</dt><dd><bdi dir="ltr">{{ $paymentRef }}</bdi></dd></div>
+                    @endif
                 @endcan
             </dl>
             @if($canIssueInvoice && $price !== null && $price > 0 && !$repairDocument && in_array($status, ['ready', 'delivered'], true))
@@ -282,13 +337,29 @@
             </div>
             <dl class="admin-kv-list">
                 <div>
+                    <dt>وضعیت تحویل</dt>
+                    <dd>{{ $case->delivery ? 'تحویل‌شده' : 'در انتظار تحویل' }}</dd>
+                </div>
+                <div>
                     <dt>روش تحویل</dt>
                     <dd>{{ $shipping ? 'ارسال' : ($case->delivery_method === 'in_person' ? 'حضوری' : 'مشخص نشده') }}@if($shipping && isset($carriers[$case->delivery_carrier])) · {{ $carriers[$case->delivery_carrier] }}@endif</dd>
                 </div>
                 @if($case->delivery)
                     <div><dt>زمان تحویل</dt><dd><x-finance-time :value="$case->delivery->delivered_at" /></dd></div>
+                    @if($case->delivery->recipient_name)
+                        <div><dt>تحویل‌گیرنده</dt><dd>{{ $case->delivery->recipient_name }}</dd></div>
+                    @endif
                     @if($case->delivery->confirmation_reference)
-                        <div><dt>کد پیگیری / مرجع</dt><dd><bdi dir="ltr">{{ $case->delivery->confirmation_reference }}</bdi></dd></div>
+                        <div><dt>کد پیگیری / مرجع تحویل</dt><dd><bdi dir="ltr">{{ $case->delivery->confirmation_reference }}</bdi></dd></div>
+                    @endif
+                @endif
+                @if(!empty($deliveryPlan?->address_snapshot))
+                    @php
+                        $snap = is_array($deliveryPlan->address_snapshot) ? $deliveryPlan->address_snapshot : [];
+                        $shipAddr = trim(implode('، ', array_filter([$snap['province'] ?? null, $snap['city'] ?? null, $snap['address'] ?? null])));
+                    @endphp
+                    @if($shipAddr !== '')
+                        <div><dt>نشانی ارسال</dt><dd>{{ $shipAddr }}</dd></div>
                     @endif
                 @endif
             </dl>

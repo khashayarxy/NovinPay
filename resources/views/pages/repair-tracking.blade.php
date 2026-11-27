@@ -44,6 +44,18 @@
                                 <dt>نحوه تحویل</dt>
                                 <dd data-track-current-delivery>{{ $trackSummary['delivery'] }}</dd>
                             </div>
+                            @if (!empty($trackSummary['cost']))
+                                <div>
+                                    <dt>هزینه تعمیر</dt>
+                                    <dd>{{ $trackSummary['cost'] }}</dd>
+                                </div>
+                            @endif
+                            @if (!empty($trackSummary['settlement']))
+                                <div>
+                                    <dt>وضعیت تسویه</dt>
+                                    <dd>{{ $trackSummary['settlement'] }}</dd>
+                                </div>
+                            @endif
                         </dl>
                     @endif
 

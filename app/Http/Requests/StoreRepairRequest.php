@@ -44,6 +44,8 @@ class StoreRepairRequest extends PrivateRepairFormRequest
             // Accept the older form while a customer may still have it open.
             'additional_description' => ['nullable', 'string', 'max:1000'],
             'device_serial' => ['nullable', 'string', 'max:100'],
+            'activation_status' => ['nullable', 'string', Rule::in(array_keys(RepairRequest::ACTIVATION_STATUSES))],
+            'tax_file_status' => ['nullable', 'string', Rule::in(array_keys(RepairRequest::TAX_FILE_STATUSES))],
             'accessories' => ['sometimes', 'array', 'max:3'],
             'accessories.*' => ['required', 'string', 'distinct', Rule::in(array_keys(RepairRequest::ACCESSORIES))],
             'device_photo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:8192'],

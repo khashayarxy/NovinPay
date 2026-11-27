@@ -67,7 +67,8 @@ function support_private_dir(string $path, bool $owned=true): string {
     $payment=realpath(PAYMENT_DATA_DIR);
     if ($payment!==false && str_starts_with(strtolower(str_replace('\\','/',$real)).'/',strtolower(str_replace('\\','/',$payment)).'/')) support_failure(503,'private_storage_unavailable');
     // CHAT_DATA_DIR can be the parent of payment storage: never chmod that parent.
-    if (($owned && !@chmod($real,0700)) || !is_readable($real) || !is_writable($real)) support_failure(503,'private_storage_unavailable');
+    $needsChmod = $owned && ((@fileperms($real) & 0777) !== 0700);
+    if (($needsChmod && !@chmod($real,0700)) || !is_readable($real) || !is_writable($real)) support_failure(503,'private_storage_unavailable');
     return $real;
 }
 function support_runtime_dir(): string {
@@ -111,10 +112,23 @@ function support_native_session(string $role, bool $initialize): array {
     session_name($name);
     if (is_string($cookie)) session_id($cookie);
     session_save_path($dir);
-    if (!@session_start(['use_strict_mode'=>1,'use_only_cookies'=>1,'use_cookies'=>1,'cookie_httponly'=>1,
+    $sessionOpts=['use_strict_mode'=>1,'use_only_cookies'=>1,'use_cookies'=>1,'cookie_httponly'=>1,
         'cookie_secure'=>$https,'cookie_samesite'=>'Strict','cookie_path'=>'/','cookie_domain'=>'',
-        'cookie_lifetime'=>$role==='customer'?7*86400:0,'gc_maxlifetime'=>$role==='customer'?30*86400:8*3600,'cache_limiter'=>'nocache'])) support_failure(503,'session_unavailable');
+        'cookie_lifetime'=>$role==='customer'?7*86400:0,'gc_maxlifetime'=>$role==='customer'?30*86400:8*3600,'cache_limiter'=>'nocache'];
     $now=time();$idle=$role==='customer'?7*86400:1800;$absolute=$role==='customer'?30*86400:8*3600;
+    // Fast non-locking read for existing polling sessions: avoid holding PHP session file lock on GET polls.
+    if (!$initialize && is_string($cookie)) {
+        if (!@session_start($sessionOpts + ['read_and_close'=>true])) support_failure(503,'session_unavailable');
+        $fastValid=isset($_SESSION['role'],$_SESSION['issued_at'],$_SESSION['last_seen'],$_SESSION['csrf_token'],$_SESSION['auth_epoch'])
+            && $_SESSION['role']===$role && is_int($_SESSION['issued_at']) && is_int($_SESSION['last_seen'])
+            && $now-($role==='operator'?($_SESSION['interactive_at']??$_SESSION['last_seen']):$_SESSION['last_seen'])<=$idle && $now-$_SESSION['issued_at']<=$absolute
+            && ($role!=='customer' || (is_string($_SESSION['owner_id']??null) && preg_match('/^[a-f0-9]{64}$/D',$_SESSION['owner_id'])))
+            && ($role!=='customer' || $now-$_SESSION['last_seen']<300);
+        if ($fastValid) {
+            return $contexts[$role]=$_SESSION;
+        }
+    }
+    if (!@session_start($sessionOpts)) support_failure(503,'session_unavailable');
     $valid=isset($_SESSION['role'],$_SESSION['issued_at'],$_SESSION['last_seen'],$_SESSION['csrf_token'])
         && $_SESSION['role']===$role && is_int($_SESSION['issued_at']) && is_int($_SESSION['last_seen'])
         && $now-($role==='operator'?($_SESSION['interactive_at']??$_SESSION['last_seen']):$_SESSION['last_seen'])<=$idle && $now-$_SESSION['issued_at']<=$absolute;

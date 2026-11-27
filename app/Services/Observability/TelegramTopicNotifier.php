@@ -111,8 +111,8 @@ final class TelegramTopicNotifier
 
         try {
             $response = Http::withoutRedirecting()
-                ->connectTimeout(3)
-                ->timeout(6)
+                ->connectTimeout(2)
+                ->timeout(4)
                 ->acceptJson()
                 ->post($base.'/bot'.$token.'/sendMessage', $payload);
 
@@ -129,8 +129,8 @@ final class TelegramTopicNotifier
                     'invalid_thread_id' => $threadId,
                 ]);
                 $retry = Http::withoutRedirecting()
-                    ->connectTimeout(3)
-                    ->timeout(6)
+                    ->connectTimeout(2)
+                    ->timeout(4)
                     ->acceptJson()
                     ->post($base.'/bot'.$token.'/sendMessage', $payload);
                 if ($retry->successful() && $retry->json('ok') === true) {

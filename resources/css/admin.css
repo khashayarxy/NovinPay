@@ -1164,9 +1164,14 @@ a.admin-stat-card:hover {
 .repair-phone-chip:hover, .repair-phone-link:hover { background: #dbeafe; }
 .repair-callout-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-    gap: 0.65rem;
-    margin-top: 0.65rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+@media (max-width: 767px) {
+    .repair-callout-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 .repair-callout-grid > div {
     padding: 0.7rem 0.85rem;
@@ -1379,6 +1384,64 @@ a.admin-stat-card:hover {
 }
 
 /* 80mm Thermal POS Receipt & Formal Printable Invoice */
+.repair-print-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0 auto 1rem;
+}
+.repair-print-controls--thermal {
+    width: 80mm;
+    max-width: 100%;
+}
+.repair-print-controls--invoice {
+    width: 100%;
+    max-width: 210mm;
+}
+.repair-print-logo-mono {
+    display: block;
+    filter: grayscale(100%) contrast(220%);
+}
+.repair-print-logo-mono--thermal {
+    height: 26px;
+    width: auto;
+    margin: 0 auto 4px;
+}
+.repair-print-logo-mono--invoice {
+    height: 34px;
+    width: auto;
+}
+.repair-receipt-80mm__qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin: 6px 0 8px;
+}
+.repair-receipt-80mm__qr svg {
+    display: block;
+    width: 112px;
+    height: 112px;
+    border: 1px solid #000000;
+    padding: 3px;
+    background: #ffffff;
+}
+.repair-receipt-80mm__qr-caption {
+    font-size: 10px;
+    font-weight: 700;
+    color: #000000;
+}
+.repair-receipt-80mm__signature {
+    margin-top: 24px;
+    padding-top: 6px;
+    border-top: 1px dashed #000000;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #000000;
+}
 .repair-receipt-80mm {
     width: 80mm;
     max-width: 100%;
@@ -1585,6 +1648,54 @@ a.admin-stat-card:hover {
     text-align: center;
     font-size: 0.78rem;
     color: #475569;
+}
+
+/* Ink-saving pure black & white monochrome invoice */
+.repair-formal-invoice--mono {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1.5px solid #000000 !important;
+    box-shadow: none !important;
+}
+.repair-formal-invoice--mono .repair-formal-invoice__head {
+    border-bottom: 2px solid #000000;
+}
+.repair-formal-invoice--mono .repair-formal-invoice__brand p,
+.repair-formal-invoice--mono .repair-formal-invoice__parties h2,
+.repair-formal-invoice--mono .repair-formal-invoice__parties dt,
+.repair-formal-invoice--mono .repair-formal-invoice__desc,
+.repair-formal-invoice--mono .repair-formal-invoice__settlement-note,
+.repair-formal-invoice--mono .repair-formal-invoice__signatures > div {
+    color: #000000;
+}
+.repair-formal-invoice--mono .repair-formal-invoice__badge {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #000000;
+}
+.repair-formal-invoice--mono .repair-formal-invoice__parties section {
+    background: #ffffff;
+    border: 1px solid #000000;
+}
+.repair-formal-invoice--mono .repair-formal-invoice__table th,
+.repair-formal-invoice--mono .repair-formal-invoice__table td {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #000000;
+}
+.repair-formal-invoice--mono .repair-formal-invoice__table thead th {
+    background: #ffffff;
+    color: #000000;
+    border-bottom: 2px solid #000000;
+}
+.repair-formal-invoice--mono .repair-formal-invoice__total-row th,
+.repair-formal-invoice--mono .repair-formal-invoice__total-row td {
+    background: #ffffff;
+    color: #000000;
+    border-top: 2px solid #000000;
+}
+.repair-formal-invoice--mono .repair-formal-invoice__signatures > div {
+    border-top: 1px dashed #000000;
 }
 
 /* Finance Document 3-Metric Strip & Clean Amount Cells */
