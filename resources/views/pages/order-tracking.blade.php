@@ -16,7 +16,7 @@
                         default => in_array($current['state'], ['cancelled', 'complete'], true) ? 'برای پیگیری بیشتر، جزئیات سفارش را در حساب کاربری ببینید.' : 'آخرین وضعیت سفارش در همین صفحه نمایش داده می‌شود.',
                     } }}</p>
                 </div>
-                <x-account.timeline :steps="$timeline" />
+                <x-account.timeline :steps="$timeline" orientation="horizontal" />
                 @if(! empty($docsEligible) && isset($trackedOrder))
                     <x-orders.activation-documents
                         :order="$trackedOrder"

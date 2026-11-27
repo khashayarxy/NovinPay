@@ -60,6 +60,10 @@ class SupportChatTest extends TestCase
 
     protected function setUp(): void
     {
+        // CI sets LOG_CHANNEL=stderr; isolated PHPUnit subprocesses fail if slow-query/request notices write to stderr.
+        putenv('LOG_CHANNEL=null');
+        $_ENV['LOG_CHANNEL'] = 'null';
+        $_SERVER['LOG_CHANNEL'] = 'null';
         parent::setUp();
         $this->private = sys_get_temp_dir().'/novinpay-chat-test-'.bin2hex(random_bytes(12));
         config(['support_chat.enabled' => true, 'support_chat.directory' => $this->private]);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\RepairRequestStatus;
 use App\Enums\RepairStage;
+use App\Mail\UnifiedNotificationMail;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
 use App\Models\CustomerAddress;
@@ -16,6 +17,7 @@ use App\Models\RepairCase;
 use App\Models\RepairRequest;
 use App\Models\SalesOrder;
 use App\Services\ActivationDocumentsService;
+use App\Services\CustomerDeviceRegistry;
 use App\Services\CustomerEmailLogin;
 use App\Services\CustomerLogin;
 use App\Services\GoogleAuthService;
@@ -37,6 +39,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -424,7 +428,7 @@ class CustomerAccountController extends Controller
         return redirect()->route('account.login');
     }
 
-    public function index(Request $request)
+    public function index(Request $request, ActivationDocumentsService $activationDocs, CustomerDeviceRegistry $deviceRegistry)
     {
         $account = Auth::guard('customer')->user();
         $section = $request->query('section');
@@ -451,15 +455,98 @@ class CustomerAccountController extends Controller
             ->pluck('id')
             ->filter()
             ->values();
-        $repairPayableMap = $repairIds->isNotEmpty()
+        $repairDocs = $repairIds->isNotEmpty()
             ? FinancialDocument::query()
                 ->whereIn('repair_case_id', $repairIds)
                 ->get(['repair_case_id', 'charged_minor', 'paid_minor'])
-                ->mapWithKeys(fn (FinancialDocument $doc) => [
-                    (int) $doc->repair_case_id => max(0, (int) ($doc->charged_minor - $doc->paid_minor)),
-                ])
+            : collect();
+        $repairPayableMap = $repairDocs
+            ->mapWithKeys(fn (FinancialDocument $doc) => [
+                (int) $doc->repair_case_id => max(0, (int) ($doc->charged_minor - $doc->paid_minor)),
+            ])
+            ->all();
+        $settledRepairIds = $repairDocs
+            ->filter(fn (FinancialDocument $doc) => (int) $doc->charged_minor > 0 && (int) $doc->paid_minor >= (int) $doc->charged_minor)
+            ->pluck('repair_case_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $orderList = in_array($section, ['overview', 'orders'], true) ? $this->listing((clone $orders)->with('lines'), $section, 'orders_page') : [];
+        $orderIds = collect($orderList instanceof Paginator ? $orderList->items() : $orderList)
+            ->pluck('id')
+            ->filter()
+            ->values();
+        $settledOrderIds = $orderIds->isNotEmpty()
+            ? FinancialDocument::query()
+                ->whereIn('sales_order_id', $orderIds)
+                ->where('charged_minor', '>', 0)
+                ->whereColumn('paid_minor', '>=', 'charged_minor')
+                ->pluck('sales_order_id')
+                ->map(fn ($id) => (int) $id)
                 ->all()
             : [];
+
+        // Urgent actions banner (pending repair fee or incomplete activation documents)
+        $urgentActions = [];
+        $unpaidRepairCases = (clone $repairs)
+            ->whereNotIn('status', [RepairStage::Returned->value])
+            ->latest('id')
+            ->limit(5)
+            ->get();
+        if ($unpaidRepairCases->isNotEmpty()) {
+            $unpaidDocs = FinancialDocument::query()
+                ->whereIn('repair_case_id', $unpaidRepairCases->pluck('id'))
+                ->whereRaw('charged_minor > paid_minor')
+                ->get()
+                ->keyBy('repair_case_id');
+            foreach ($unpaidRepairCases as $rc) {
+                $uDoc = $unpaidDocs->get($rc->id);
+                if ($uDoc) {
+                    $balance = max(0, (int) ($uDoc->charged_minor - $uDoc->paid_minor));
+                    if ($balance > 0) {
+                        $urgentActions[] = [
+                            'type' => 'repair_payment',
+                            'public_id' => $rc->public_id,
+                            'code' => (string) $rc->tracking_reference,
+                            'device' => RepairIdentity::deviceLabel($rc->device_brand, $rc->device_model),
+                            'amount_minor' => $balance,
+                            'pay_url' => route('account.repairs.pay', $rc->public_id),
+                            'detail_url' => route('account.repairs.show', $rc->public_id),
+                        ];
+                    }
+                }
+            }
+        }
+
+        $recentPaidOrders = (clone $orders)
+            ->whereNotIn('status', ['cancelled'])
+            ->latest('id')
+            ->limit(6)
+            ->get();
+        if ($recentPaidOrders->isNotEmpty()) {
+            $oDocs = FinancialDocument::query()
+                ->whereIn('sales_order_id', $recentPaidOrders->pluck('id'))
+                ->get()
+                ->keyBy('sales_order_id');
+            foreach ($recentPaidOrders as $so) {
+                $oDoc = $oDocs->get($so->id);
+                $docStatus = (string) ($so->documents_status ?: 'pending_submission');
+                if ($activationDocs->isEligibleForDocuments($so, $oDoc) && in_array($docStatus, ['pending_submission', 'needs_revision'], true)) {
+                    $urgentActions[] = [
+                        'type' => 'activation_documents',
+                        'public_id' => $so->public_id,
+                        'code' => strtoupper(substr((string) $so->public_id, 0, 8)),
+                        'needs_revision' => $docStatus === 'needs_revision',
+                        'reason' => $so->documents_revision_reason,
+                        'cta_url' => route('account.orders.show', $so->public_id).'#activation-documents',
+                    ];
+                }
+            }
+        }
+
+        $savedDevices = in_array($section, ['overview', 'repairs', 'profile'], true)
+            ? $deviceRegistry->forAccount($account, 8)
+            : collect();
 
         return view('account.index', [
             'account' => $account,
@@ -472,8 +559,12 @@ class CustomerAccountController extends Controller
             ] : [],
             'repairs' => $repairList,
             'repairPayableMap' => $repairPayableMap,
+            'settledRepairIds' => $settledRepairIds,
             'requests' => in_array($section, ['overview', 'repairs'], true) ? $this->listing($requests->whereDoesntHave('physicalCase'), $section, 'requests_page') : [],
-            'orders' => in_array($section, ['overview', 'orders'], true) ? $this->listing((clone $orders)->with('lines'), $section, 'orders_page') : [],
+            'orders' => $orderList,
+            'settledOrderIds' => $settledOrderIds,
+            'urgentActions' => $urgentActions,
+            'savedDevices' => $savedDevices,
             'reviews' => $section === 'reviews'
                 ? ProductFeedback::query()->where('customer_account_id', $account->id)->with('product:id,slug,name')->latest('id')->paginate(10, ['*'], 'reviews_page')->appends(['section' => 'reviews'])
                 : [],
@@ -701,13 +792,115 @@ class CustomerAccountController extends Controller
         return [$document, $plan, $paidAtDisplay];
     }
 
-    public function profile(Request $request)
+    public function orderReceipt(string $record)
     {
-        $data = $this->validatePrivate($request, ['name' => ['required', 'string', 'min:2', 'max:100']], 'profile');
-        DB::transaction(function () use ($data, $request): void {
+        $account = Auth::guard('customer')->user();
+        $query = SalesOrder::query()->where($this->owned($account))->with(['lines', 'customer']);
+        if (preg_match('/\A[a-fA-F0-9]{8}\z/D', $record)) {
+            $matches = $query->where('public_id', 'like', strtolower($record).'-%')->limit(2)->get();
+            abort_unless($matches->count() === 1, 404);
+            $order = $matches->first();
+        } else {
+            $order = $query->where('public_id', $record)->firstOrFail();
+        }
+        [$document, $plan, $paidAtDisplay] = $this->settlement($account, 'sales_order_id', $order->id, allowOwnedSource: true);
+        abort_unless($document && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor, 404);
+        $transactions = PaymentTransaction::query()->where('financial_document_id', $document->id)->orderBy('id')->get();
+
+        return view('account.receipt-print', [
+            'kind' => 'order',
+            'account' => $account,
+            'order' => $order,
+            'repair' => null,
+            'document' => $document,
+            'plan' => $plan,
+            'paidAtDisplay' => $paidAtDisplay,
+            'transactions' => $transactions,
+            'receiptNumber' => 'NP-ORD-'.strtoupper(substr((string) $order->public_id, 0, 8)),
+            'backUrl' => route('account.orders.show', $order->public_id),
+        ]);
+    }
+
+    public function repairReceipt(string $record)
+    {
+        $account = Auth::guard('customer')->user();
+        $repair = RepairCase::query()->where($this->owned($account))->where('public_id', $record)
+            ->with(['currentEstimate'])->firstOrFail();
+        [$document, $plan, $paidAtDisplay] = $this->settlement($account, 'repair_case_id', $repair->id, allowOwnedSource: true);
+        abort_unless($document && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor, 404);
+        $transactions = PaymentTransaction::query()->where('financial_document_id', $document->id)->orderBy('id')->get();
+
+        return view('account.receipt-print', [
+            'kind' => 'repair',
+            'account' => $account,
+            'order' => null,
+            'repair' => $repair,
+            'document' => $document,
+            'plan' => $plan,
+            'paidAtDisplay' => $paidAtDisplay,
+            'transactions' => $transactions,
+            'receiptNumber' => 'NP-REP-'.$repair->tracking_reference,
+            'backUrl' => route('account.repairs.show', $repair->public_id),
+        ]);
+    }
+
+    public function profile(Request $request, CustomerEmailLogin $emailLogin)
+    {
+        $rawEmail = $request->has('email') ? trim((string) $request->input('email', '')) : null;
+        if ($rawEmail === '') {
+            $request->merge(['email' => null]);
+        }
+        $data = $this->validatePrivate($request, [
+            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'email' => ['nullable', 'string', 'email', 'max:254'],
+            'email_notifications_enabled' => ['nullable', 'boolean'],
+        ], 'profile');
+
+        DB::transaction(function () use ($data, $request, $emailLogin): void {
             $account = CustomerAccount::query()->lockForUpdate()->findOrFail(Auth::guard('customer')->id());
             abort_unless($account->is_active && $account->session_version === $request->session()->get('customer_session_version'), 403);
             $account->name = $data['name'];
+
+            if ($request->exists('email')) {
+                $nextEmail = isset($data['email']) && is_string($data['email']) && trim($data['email']) !== ''
+                    ? $emailLogin->normalizeEmail($data['email'])
+                    : null;
+                $currentEmail = is_string($account->email) && $account->email !== ''
+                    ? $emailLogin->normalizeEmail($account->email)
+                    : null;
+
+                if ($nextEmail !== $currentEmail) {
+                    if ($nextEmail === null) {
+                        if (! $account->phone && ! $account->google_id_digest) {
+                            throw ValidationException::withMessages([
+                                'email' => 'حذف نشانی ایمیل بدون ثبت شماره موبایل امکان‌پذیر نیست.',
+                            ]);
+                        }
+                        $account->email = null;
+                        $account->email_digest = null;
+                        $account->email_verified_at = null;
+                    } else {
+                        $digest = $emailLogin->digest($nextEmail);
+                        $taken = CustomerAccount::query()
+                            ->where('email_digest', $digest)
+                            ->whereKeyNot($account->id)
+                            ->exists();
+                        if ($taken) {
+                            throw ValidationException::withMessages([
+                                'email' => 'این نشانی ایمیل قبلاً در حساب دیگری ثبت شده است.',
+                            ]);
+                        }
+                        $account->email = $nextEmail;
+                        $account->email_digest = $digest;
+                        $account->email_verified_at = null;
+                    }
+                }
+            }
+
+            if ($request->boolean('email_notifications_present') || $request->has('email_notifications_enabled')) {
+                $account->email_notifications_enabled = $request->boolean('email_notifications_enabled');
+            }
+
             if (is_string($account->phone) && $account->phone !== '') {
                 $phoneDigest = RepairIdentity::digest('customer-phone', $account->phone);
                 if ($account->verified_at && ! $account->customer_id && ! Customer::query()->where('phone_digest', $phoneDigest)->exists()) {
@@ -723,6 +916,72 @@ class CustomerAccountController extends Controller
         }, 3);
 
         return redirect()->route('account.index', ['section' => 'profile'])->with('success', 'اطلاعات شما ذخیره شد.');
+    }
+
+    public function sendProfileEmailVerification(Request $request): RedirectResponse
+    {
+        $account = CustomerAccount::query()->findOrFail(Auth::guard('customer')->id());
+        abort_unless($account->is_active && $account->session_version === $request->session()->get('customer_session_version'), 403);
+
+        $email = is_string($account->email) ? trim($account->email) : '';
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return redirect()->route('account.index', ['section' => 'profile'])
+                ->withErrors(['email' => 'ابتدا نشانی ایمیل معتبر خود را ذخیره کنید.']);
+        }
+        if ($account->email_verified_at !== null) {
+            return redirect()->route('account.index', ['section' => 'profile'])
+                ->with('success', 'نشانی ایمیل شما قبلاً تأیید شده است.');
+        }
+
+        $verifyUrl = URL::temporarySignedRoute(
+            'account.profile.email.verify',
+            now()->addHours(24),
+            [
+                'id' => $account->public_id,
+                'hash' => sha1(strtolower($email)),
+            ]
+        );
+
+        Mail::to($email)->send(new UnifiedNotificationMail(
+            mailSubject: 'تأیید نشانی ایمیل حساب کاربری نوین‌پی',
+            heading: 'تأیید نشانی ایمیل شما در نوین‌پی',
+            intro: 'برای تأیید نشانی ایمیل جهت دریافت اطلاع‌رسانی سفارش‌ها و تعمیرات، روی دکمهٔ زیر بزنید.',
+            fields: [
+                'نشانی ایمیل' => $email,
+                'مهلت لینک' => '۲۴ ساعت',
+            ],
+            actionLabel: 'تأیید نشانی ایمیل',
+            actionUrl: $verifyUrl,
+            statusBadge: 'تأیید ایمیل',
+            statusTone: 'info',
+        ));
+
+        return redirect()->route('account.index', ['section' => 'profile'])
+            ->with('success', 'لینک تأیید به نشانی ایمیل شما ارسال شد.');
+    }
+
+    public function verifyProfileEmail(Request $request, string $id, string $hash): RedirectResponse
+    {
+        $account = CustomerAccount::query()
+            ->where('public_id', $id)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $email = is_string($account->email) ? strtolower(trim($account->email)) : '';
+        abort_unless($email !== '' && hash_equals(sha1($email), $hash), 403);
+
+        if ($account->email_verified_at === null) {
+            $account->email_verified_at = now();
+            $account->save();
+        }
+
+        if (Auth::guard('customer')->check()) {
+            return redirect()->route('account.index', ['section' => 'profile'])
+                ->with('success', 'نشانی ایمیل شما با موفقیت تأیید شد.');
+        }
+
+        return redirect()->route('account.login')
+            ->with('success', 'نشانی ایمیل شما با موفقیت تأیید شد.');
     }
 
     public function address(Request $request, ?string $addressId = null)

@@ -266,7 +266,10 @@
         var expiryText = document.getElementById('code-expiry');
         var tickExpiry = function () {
             otpExpired = Date.now() >= deadline;
-            if (otpExpired && expiryText) expiryText.textContent = 'مهلت این کد تمام شد. کد تازه درخواست کنید.';
+            if (otpExpired && expiryText) {
+                expiryText.hidden = false;
+                expiryText.textContent = 'مهلت این کد تمام شد. ارسال مجدد را بزنید.';
+            }
             button.disabled = otpExpired || verifyLocked || !!request;
             if (!otpExpired) expiryTimer = window.setTimeout(tickExpiry, 1000);
         };

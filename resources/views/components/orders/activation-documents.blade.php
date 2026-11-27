@@ -84,14 +84,19 @@
                         @if ($slot['hint'] !== '')
                             <p class="mb-2 text-xs leading-5 text-slate-500">{{ $slot['hint'] }}</p>
                         @endif
-                        <input
-                            class="input bg-white text-xs file:ml-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-700 hover:file:bg-brand-100"
-                            type="file"
-                            id="doc-slot-{{ $slotKey }}"
-                            name="slots[{{ $slotKey }}]"
-                            accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
-                            @if ($slot['required']) required @endif
-                        >
+                        <div class="np-file-picker" data-np-file-picker>
+                            <input
+                                class="sr-only"
+                                type="file"
+                                id="doc-slot-{{ $slotKey }}"
+                                name="slots[{{ $slotKey }}]"
+                                data-np-file-input
+                                accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                                @if ($slot['required']) required @endif
+                            >
+                            <label for="doc-slot-{{ $slotKey }}" class="np-file-picker__btn">انتخاب تصویر یا PDF</label>
+                            <span class="np-file-picker__name" data-np-file-name data-empty-label="فایلی انتخاب نشده است">فایلی انتخاب نشده است</span>
+                        </div>
                     </div>
                 @endforeach
             </div>
@@ -100,14 +105,19 @@
                 <div class="rounded-xl border border-dashed border-slate-300 bg-white p-3.5">
                     <label class="label" for="doc-extra-files">فایل‌های تکمیلی (اختیاری — حداکثر {{ \App\Support\FaNumber::digits((string) $maxExtra) }} فایل)</label>
                     <p class="mb-2 text-xs text-slate-500">جواز کسب، اجاره‌نامه تکمیلی، صفحه توضیحات شناسنامه یا سایر مستندات (JPG، PNG، WebP یا PDF — حداکثر {{ $maxMb }} مگابایت برای هر فایل)</p>
-                    <input
-                        class="input text-xs file:ml-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
-                        type="file"
-                        id="doc-extra-files"
-                        name="extra_files[]"
-                        multiple
-                        accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
-                    >
+                    <div class="np-file-picker" data-np-file-picker>
+                        <input
+                            class="sr-only"
+                            type="file"
+                            id="doc-extra-files"
+                            name="extra_files[]"
+                            data-np-file-input
+                            multiple
+                            accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                        >
+                        <label for="doc-extra-files" class="np-file-picker__btn">انتخاب فایل‌های تکمیلی</label>
+                        <span class="np-file-picker__name" data-np-file-name data-empty-label="فایلی انتخاب نشده است">فایلی انتخاب نشده است</span>
+                    </div>
                 </div>
             @endif
 

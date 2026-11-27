@@ -468,15 +468,40 @@ final class UnifiedNotifier
         }, 'order_documents_revision');
     }
 
+    private function accountAllowsEmailNotifications(?CustomerAccount $account): bool
+    {
+        if (! $account || ! $account->is_active) {
+            return false;
+        }
+
+        return ($account->email_notifications_enabled ?? true) !== false;
+    }
+
+    private function explicitEmailAllowed(string $cleanEmail): bool
+    {
+        $digest = hash_hmac('sha256', 'customer-email:'.strtolower($cleanEmail), (string) config('app.key'));
+        $matching = CustomerAccount::query()->where('email_digest', $digest)->first();
+        if ($matching && ($matching->email_notifications_enabled ?? true) === false) {
+            return false;
+        }
+
+        return true;
+    }
+
     private function resolveOrderCustomerEmail(SalesOrder $order, ?string $explicitEmail = null): ?string
     {
         if (is_string($explicitEmail) && filter_var(trim($explicitEmail), FILTER_VALIDATE_EMAIL)) {
-            return trim($explicitEmail);
+            $clean = trim($explicitEmail);
+
+            return $this->explicitEmailAllowed($clean) ? $clean : null;
         }
 
         if ($order->customer_account_id) {
             $account = CustomerAccount::query()->find($order->customer_account_id);
-            if ($account?->is_active && is_string($account->email) && filter_var(trim($account->email), FILTER_VALIDATE_EMAIL)) {
+            if ($account && ! $this->accountAllowsEmailNotifications($account)) {
+                return null;
+            }
+            if ($this->accountAllowsEmailNotifications($account) && is_string($account->email) && filter_var(trim($account->email), FILTER_VALIDATE_EMAIL)) {
                 return trim($account->email);
             }
         }
@@ -488,7 +513,10 @@ final class UnifiedNotifier
                 ->whereNotNull('email')
                 ->latest('id')
                 ->first();
-            if ($byCustomer && is_string($byCustomer->email) && filter_var(trim($byCustomer->email), FILTER_VALIDATE_EMAIL)) {
+            if ($byCustomer && ! $this->accountAllowsEmailNotifications($byCustomer)) {
+                return null;
+            }
+            if ($byCustomer && $this->accountAllowsEmailNotifications($byCustomer) && is_string($byCustomer->email) && filter_var(trim($byCustomer->email), FILTER_VALIDATE_EMAIL)) {
                 return trim($byCustomer->email);
             }
         }
@@ -501,12 +529,17 @@ final class UnifiedNotifier
     private function resolveRepairCustomerEmail(RepairRequest|RepairCase $repair, ?string $explicitEmail = null): ?string
     {
         if (is_string($explicitEmail) && filter_var(trim($explicitEmail), FILTER_VALIDATE_EMAIL)) {
-            return trim($explicitEmail);
+            $clean = trim($explicitEmail);
+
+            return $this->explicitEmailAllowed($clean) ? $clean : null;
         }
 
         if ($repair->customer_account_id) {
             $account = CustomerAccount::query()->find($repair->customer_account_id);
-            if ($account?->is_active && is_string($account->email) && filter_var(trim($account->email), FILTER_VALIDATE_EMAIL)) {
+            if ($account && ! $this->accountAllowsEmailNotifications($account)) {
+                return null;
+            }
+            if ($this->accountAllowsEmailNotifications($account) && is_string($account->email) && filter_var(trim($account->email), FILTER_VALIDATE_EMAIL)) {
                 return trim($account->email);
             }
         }
@@ -515,7 +548,10 @@ final class UnifiedNotifier
             $onlineReqAccountId = $repair->onlineRequest()->value('customer_account_id');
             if ($onlineReqAccountId) {
                 $reqAccount = CustomerAccount::query()->find($onlineReqAccountId);
-                if ($reqAccount?->is_active && is_string($reqAccount->email) && filter_var(trim($reqAccount->email), FILTER_VALIDATE_EMAIL)) {
+                if ($reqAccount && ! $this->accountAllowsEmailNotifications($reqAccount)) {
+                    return null;
+                }
+                if ($this->accountAllowsEmailNotifications($reqAccount) && is_string($reqAccount->email) && filter_var(trim($reqAccount->email), FILTER_VALIDATE_EMAIL)) {
                     return trim($reqAccount->email);
                 }
             }
@@ -526,7 +562,10 @@ final class UnifiedNotifier
                     ->whereNotNull('email')
                     ->latest('id')
                     ->first();
-                if ($byCustomer && is_string($byCustomer->email) && filter_var(trim($byCustomer->email), FILTER_VALIDATE_EMAIL)) {
+                if ($byCustomer && ! $this->accountAllowsEmailNotifications($byCustomer)) {
+                    return null;
+                }
+                if ($byCustomer && $this->accountAllowsEmailNotifications($byCustomer) && is_string($byCustomer->email) && filter_var(trim($byCustomer->email), FILTER_VALIDATE_EMAIL)) {
                     return trim($byCustomer->email);
                 }
             }
@@ -538,14 +577,16 @@ final class UnifiedNotifier
     private function resolvePhoneCustomerEmail(?string $phone, ?string $explicitEmail = null): ?string
     {
         if (is_string($explicitEmail) && filter_var(trim($explicitEmail), FILTER_VALIDATE_EMAIL)) {
-            return trim($explicitEmail);
+            $clean = trim($explicitEmail);
+
+            return $this->explicitEmailAllowed($clean) ? $clean : null;
         }
 
         $authUser = auth('customer')->user();
         if ($authUser instanceof CustomerAccount && $authUser->is_active && is_string($authUser->email) && filter_var(trim($authUser->email), FILTER_VALIDATE_EMAIL)) {
             $authPhone = $this->normalizePhone($authUser->phone);
             if ($phone === null || $authPhone === null || $authPhone === $phone) {
-                return trim($authUser->email);
+                return $this->accountAllowsEmailNotifications($authUser) ? trim($authUser->email) : null;
             }
         }
 
@@ -561,7 +602,10 @@ final class UnifiedNotifier
                 ->whereNotNull('email')
                 ->latest('id')
                 ->first();
-            if ($account && is_string($account->email) && filter_var(trim($account->email), FILTER_VALIDATE_EMAIL)) {
+            if ($account && ! $this->accountAllowsEmailNotifications($account)) {
+                return null;
+            }
+            if ($account && $this->accountAllowsEmailNotifications($account) && is_string($account->email) && filter_var(trim($account->email), FILTER_VALIDATE_EMAIL)) {
                 return trim($account->email);
             }
         }

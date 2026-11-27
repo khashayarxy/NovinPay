@@ -3134,4 +3134,191 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
 
     initFloatingFields();
     window.setTimeout(() => initFloatingFields(), 180);
+
+    // Phase 9: Scroll active mobile account tab into horizontal view smoothly
+    const accountTabs = document.querySelector('[data-account-tabs]');
+    if (accountTabs instanceof HTMLElement && window.innerWidth <= 720) {
+        const activeTab = accountTabs.querySelector('[aria-current="page"]');
+        if (activeTab instanceof HTMLElement) {
+            const targetLeft = activeTab.offsetLeft - (accountTabs.clientWidth - activeTab.clientWidth) / 2;
+            accountTabs.scrollTo({ left: targetLeft, behavior: 'instant' });
+        }
+    }
+
+    // Phase 9: One-click copy for order & repair tracking codes
+    document.querySelectorAll('[data-copy-code]').forEach((btn) => {
+        if (!(btn instanceof HTMLElement) || btn.dataset.copyBound === '1') return;
+        btn.dataset.copyBound = '1';
+        btn.addEventListener('click', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const code = btn.dataset.copyCode || '';
+            if (!code) return;
+            const labelEl = btn.querySelector('[data-copy-code-label]');
+            const originalLabel = labelEl ? labelEl.textContent : '';
+            try {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(code);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = code;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    ta.remove();
+                }
+                btn.classList.add('is-copied');
+                if (labelEl) labelEl.textContent = 'کپی شد';
+                const live = document.getElementById('account-copy-status');
+                if (live) live.textContent = `کد ${code} کپی شد.`;
+                window.setTimeout(() => {
+                    btn.classList.remove('is-copied');
+                    if (labelEl && originalLabel) labelEl.textContent = originalLabel;
+                }, 1800);
+            } catch {
+                // Ignore clipboard permission rejection silently.
+            }
+        });
+    });
+
+    // Phase 9: Mutually-exclusive Addresses accordion (only one edit/create form open at a time)
+    const addressContainer = document.querySelector('[data-addresses-accordion]');
+    if (addressContainer instanceof HTMLElement) {
+        const toggles = Array.from(addressContainer.querySelectorAll('[data-address-accordion-toggle]'));
+        const panels = Array.from(addressContainer.querySelectorAll('[data-address-accordion-panel]'));
+        toggles.forEach((toggleBtn) => {
+            toggleBtn.addEventListener('click', () => {
+                const targetId = toggleBtn.getAttribute('data-address-accordion-toggle');
+                const targetPanel = targetId ? document.getElementById(targetId) : null;
+                if (!(targetPanel instanceof HTMLElement)) return;
+                const willOpen = targetPanel.hidden;
+                panels.forEach((p) => { p.hidden = true; });
+                toggles.forEach((t) => t.setAttribute('aria-expanded', 'false'));
+                if (willOpen) {
+                    targetPanel.hidden = false;
+                    toggleBtn.setAttribute('aria-expanded', 'true');
+                    initFloatingFields(targetPanel);
+                }
+            });
+        });
+    }
+
+    // Phase 9: Persian custom file picker label updates
+    document.querySelectorAll('[data-np-file-input]').forEach((input) => {
+        if (!(input instanceof HTMLInputElement) || input.dataset.pickerBound === '1') return;
+        input.dataset.pickerBound = '1';
+        const wrapper = input.closest('[data-np-file-picker]');
+        const nameSpan = wrapper?.querySelector('[data-np-file-name]');
+        if (!(nameSpan instanceof HTMLElement)) return;
+        const emptyLabel = nameSpan.dataset.emptyLabel || 'فایلی انتخاب نشده است';
+        const toFa = (n) => String(n).replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
+        input.addEventListener('change', () => {
+            const files = input.files ? Array.from(input.files) : [];
+            if (files.length === 0) {
+                nameSpan.textContent = emptyLabel;
+                nameSpan.classList.remove('has-file');
+            } else if (files.length === 1) {
+                nameSpan.textContent = files[0].name;
+                nameSpan.classList.add('has-file');
+            } else {
+                nameSpan.textContent = `${toFa(files.length)} فایل انتخاب شد`;
+                nameSpan.classList.add('has-file');
+            }
+        });
+    });
+
+    // Phase 9: Quick pre-fill from customer's saved devices on /repair
+    document.querySelectorAll('[data-prefill-device]').forEach((chip) => {
+        if (!(chip instanceof HTMLElement)) return;
+        chip.addEventListener('click', () => {
+            const brand = chip.dataset.deviceBrand || '';
+            const model = chip.dataset.deviceModel || '';
+            const serial = chip.dataset.deviceSerial || '';
+            document.querySelectorAll('[data-prefill-device]').forEach((c) => c.classList.toggle('is-selected', c === chip));
+            if (brand) {
+                const radio = document.querySelector(`input[name="device_brand"][value="${CSS.escape(brand)}"]`);
+                if (radio instanceof HTMLInputElement) {
+                    radio.checked = true;
+                    radio.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+            const modelInput = document.getElementById('device_model');
+            if (modelInput instanceof HTMLInputElement && model) {
+                modelInput.value = model;
+                modelInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            const serialInput = document.getElementById('device_serial');
+            if (serialInput instanceof HTMLInputElement) {
+                serialInput.value = serial;
+                serialInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            initFloatingFields();
+        });
+    });
+
+    // Phase 9: Product review clean edit toggle & instant helpful vote
+    document.querySelectorAll('[data-toggle-review-edit]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-toggle-review-edit');
+            const formEl = targetId ? document.getElementById(targetId) : null;
+            if (!(formEl instanceof HTMLElement)) return;
+            const nextHidden = !formEl.hidden;
+            formEl.hidden = nextHidden;
+            btn.setAttribute('aria-expanded', String(!nextHidden));
+            if (!nextHidden) {
+                initFloatingFields(formEl);
+                formEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                const ta = formEl.querySelector('textarea');
+                if (ta instanceof HTMLTextAreaElement && window.matchMedia?.('(pointer: fine)').matches) {
+                    ta.focus({ preventScroll: true });
+                }
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-cancel-review-edit]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-cancel-review-edit');
+            const formEl = targetId ? document.getElementById(targetId) : null;
+            if (!(formEl instanceof HTMLElement)) return;
+            formEl.hidden = true;
+            document.querySelectorAll(`[data-toggle-review-edit="${targetId}"]`).forEach((t) => t.setAttribute('aria-expanded', 'false'));
+        });
+    });
+
+    document.querySelectorAll('[data-helpful-form]').forEach((form) => {
+        if (!(form instanceof HTMLFormElement) || !window.fetch) return;
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const btn = form.querySelector('[data-helpful-btn]');
+            const countEl = form.querySelector('[data-helpful-count]');
+            if (!(btn instanceof HTMLButtonElement) || btn.disabled) return;
+            btn.disabled = true;
+            try {
+                const res = await window.fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) throw new Error('helpful_failed');
+                const data = await res.json();
+                if (data && data.ok) {
+                    btn.classList.toggle('is-voted', Boolean(data.voted));
+                    btn.setAttribute('aria-pressed', String(Boolean(data.voted)));
+                    if (countEl instanceof HTMLElement) {
+                        const cnt = Number(data.helpful_count || 0);
+                        countEl.hidden = cnt <= 0;
+                        countEl.textContent = data.helpful_count_fa || String(cnt);
+                    }
+                }
+            } catch {
+                form.submit();
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    });
 });

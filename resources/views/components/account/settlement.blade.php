@@ -1,10 +1,15 @@
-@props(['document', 'plan', 'paidAtDisplay' => null, 'repair' => null, 'paymentTransactions' => null, 'zibalAvailable' => null])
+@props(['document', 'plan', 'paidAtDisplay' => null, 'repair' => null, 'paymentTransactions' => null, 'zibalAvailable' => null, 'receiptUrl' => null])
 @php
     $zibalReady = $zibalAvailable ?? app(\App\Services\ZibalGateway::class)->available();
     $txList = $paymentTransactions ?? collect();
 @endphp
 <section class="np-account-card">
-    <h2>پرداخت و ارسال</h2>
+    <div class="np-account-card__heading">
+        <h2>پرداخت و ارسال</h2>
+        @if(! empty($receiptUrl))
+            <a class="np-receipt-chip" href="{{ $receiptUrl }}">مشاهده و چاپ رسید</a>
+        @endif
+    </div>
     @if($document)
         @php
             $settlementState = $document->settlement();

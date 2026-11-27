@@ -601,14 +601,14 @@
     .np-footer__links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .np-footer__links a { min-height: 40px; padding-inline: 8px; border: 1px solid #d9e6f3; border-radius: 9px; background: #fff; justify-content: center; font-size: 12.5px; text-align: center; }
     .np-footer__phone { min-height: 44px; }
-    body.public-site .np-footer { padding-block-end: calc(64px + env(safe-area-inset-bottom, 0px)); }
+    body.public-site .np-footer { padding-block-end: calc(88px + env(safe-area-inset-bottom, 0px)); }
     .np-footer__bottom { padding-inline: 64px; }
 }
 @media (max-width: 520px) {
     .np-footer__grid { grid-template-columns: 1fr; }
     .np-footer__phones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
     .np-footer__phone { width: 100%; justify-content: center; padding-inline: 10px; font-size: 14px; }
-    .np-footer__bottom { padding-inline: 12px; text-align: center; }
+    .np-footer__bottom { padding-inline: 58px 16px; text-align: center; }
 }
 @media (max-width: 360px) {
     .np-footer__brand { gap: 8px; }

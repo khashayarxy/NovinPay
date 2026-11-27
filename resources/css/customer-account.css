@@ -209,14 +209,36 @@
 .np-auth__logo { display: flex; align-items: center; justify-content: center; min-height: 44px; max-width: 9rem; margin: 0 auto 1.65rem; }
 .np-auth h1 { font-size: 1.28rem; font-weight: 700; color: #0f172a; letter-spacing: 0; line-height: 1.45; text-align: start; margin: 0 0 1.25rem; overflow-wrap: anywhere; }
 .np-auth h1:has(+ .np-auth__subtitle) { margin-bottom: .35rem; }
-.np-auth__subtitle { text-align: start; color: #64748b; font-size: .84rem; font-weight: 400; line-height: 1.75; margin: 0 0 1.2rem !important; }
+.np-auth__subtitle { text-align: start; color: #64748b; font-size: .85rem; font-weight: 400; line-height: 1.8; margin: 0 0 1.15rem !important; }
+.np-auth__subtitle--inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .25rem .5rem;
+}
+.np-auth__inline-value {
+    font-weight: 700;
+    color: var(--account-ink);
+    font-variant-numeric: tabular-nums;
+}
+.np-auth__inline-form { display: inline; margin: 0; }
 .np-auth .np-account-form label { text-align: start; font-size: .82rem; font-weight: 500; color: #475569; }
 .np-account h1 { font-size: clamp(1.55rem, 4vw, 2.15rem); font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 .np-auth p, .np-account-card p { margin-block: .55rem; }
-.np-auth__destination { display: flex; gap: .75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-block: 0 1rem; padding: .55rem .85rem; border-radius: .8rem; background: #f4f8fd; border: 1px solid #dde8f5; }
-.np-auth__destination bdi { font-variant-numeric: tabular-nums; font-weight: 700; font-size: .92rem; color: var(--account-ink); }
-.np-auth__edit { background: transparent; border: 0; padding: .2rem .4rem; color: var(--account-blue); font-size: .82rem; font-weight: 500; cursor: pointer; }
-.np-auth__edit:hover { text-decoration: underline; text-underline-offset: 3px; }
+.np-auth__edit { background: transparent; border: 0; padding: .1rem .25rem; color: var(--account-blue); font-size: .82rem; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.np-auth__edit:hover { color: #05469e; }
+.np-account-otp-error {
+    margin: .35rem 0 .25rem !important;
+    padding: .5rem .75rem;
+    border-radius: .65rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    font-size: .81rem;
+    font-weight: 500;
+    line-height: 1.65;
+    text-align: start;
+}
 .np-auth__label-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .np-auth__forgot { font-size: .78rem; font-weight: 500; color: var(--account-blue); text-decoration: none; }
 .np-auth__forgot:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -525,9 +547,23 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
 @media (max-width: 1023px) {
     .np-account-order-columns { display: grid; gap: 1rem; }
 }
-.np-account-facts { display: grid; gap: .6rem; margin-top: .65rem; }
-.np-account-facts dt { font-size: .84rem; font-weight: 400; color: var(--account-muted); }
-.np-account-facts dd { overflow-wrap: anywhere; font-weight: 500; }
+.np-account-facts { display: grid; gap: 0; margin-top: .45rem; }
+.np-account-facts > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .35rem 1.25rem;
+    padding: .62rem 0;
+    border-bottom: 1px solid #edf2f7;
+}
+.np-account-facts > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.np-account-facts dt { font-size: .84rem; font-weight: 400; color: var(--account-muted); flex: 0 0 auto; }
+.np-account-facts dd { margin: 0; font-size: .88rem; overflow-wrap: anywhere; font-weight: 500; color: #102a43; text-align: end; flex: 1 1 12rem; }
+@media (max-width: 560px) {
+    .np-account-facts > div { flex-direction: column; align-items: flex-start; gap: .2rem; }
+    .np-account-facts dd { text-align: start; flex: none; }
+}
 .np-account-total { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: .35rem; margin-top: .65rem; padding-top: .75rem; border-top: 1px solid #e2e8f0; font-size: .92rem; color: #486581; }
 .np-account-total strong { font-size: 1.02rem; font-weight: 700; color: #0b2239; font-variant-numeric: tabular-nums; }
 .np-timeline { margin-top: .85rem; }
@@ -708,27 +744,423 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
     .np-account-primary { transition: none; }
 }
 
+/* Phase 9: Keep horizontal steppers horizontal on mobile too (aligned with repair confirmation) */
+.np-stepper-wrap { width: 100%; }
+.np-timeline__num { font-size: .78rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.np-timeline--horizontal {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+    align-items: start;
+    gap: .25rem;
+    padding: .65rem .45rem .4rem;
+    border-radius: .85rem;
+    background: #f8fbff;
+    border: 1px solid #dce8f5;
+    overflow-x: auto;
+}
+.np-timeline--horizontal li {
+    flex: 1 1 0;
+    min-width: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: .4rem;
+    min-height: 0;
+    padding: 0 .2rem;
+}
+.np-timeline--horizontal li:not(:last-child)::before {
+    inset-inline-start: calc(50% + 1.05rem);
+    inset-inline-end: calc(-50% + 1.05rem);
+    inset-block: .82rem auto;
+    width: auto;
+    height: 2px;
+}
+.np-timeline--horizontal .np-timeline__mark {
+    width: 1.75rem;
+    height: 1.75rem;
+    position: relative;
+    z-index: 1;
+}
+.np-timeline--horizontal li[data-stage=current] .np-timeline__mark {
+    color: #fff;
+    background: var(--account-blue);
+    border: 3px solid #c3ddfc;
+}
+.np-stepper-timestamp {
+    margin: .55rem 0 0 !important;
+    font-size: .78rem;
+    color: var(--account-muted);
+    text-align: center;
+}
 @media (max-width: 600px) {
     .np-timeline--horizontal {
-        display: grid;
-        overflow: visible;
-        gap: 0;
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        gap: .15rem;
+        padding: .6rem .35rem .45rem;
     }
     .np-timeline--horizontal li {
-        display: grid;
-        grid-template-columns: 1.6rem minmax(0, 1fr);
-        text-align: start;
-        align-items: start;
-        gap: .65rem;
-        min-height: 3.45rem;
-        padding: 0 0 .85rem;
+        flex: 1 0 74px;
+        padding: 0 .15rem;
     }
-    .np-timeline--horizontal li:not(:last-child)::before {
-        inset-inline-start: .76rem;
-        inset-inline-end: auto;
-        inset-block: 1.5rem 0;
-        width: 2px;
-        height: auto;
+    .np-timeline--horizontal li strong {
+        font-size: .74rem;
+        line-height: 1.4;
     }
-    .np-timeline--horizontal li > div { display: block; }
+}
+
+/* Phase 9: Urgent Action Banner, My Devices, Copy & Receipt Chips, Addresses, Switch, Persian File Picker, and Print Receipt */
+.np-urgent-banner {
+    display: grid;
+    gap: .65rem;
+}
+.np-urgent-banner__item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem 1rem;
+    padding: .9rem 1.1rem;
+    border-radius: .9rem;
+    border: 1px solid #cfe2f7;
+    background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+    box-shadow: 0 2px 8px rgba(15, 41, 66, 0.04);
+}
+.np-urgent-banner__item--payment {
+    border-color: #fcd34d;
+    background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+}
+.np-urgent-banner__body {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    flex: 1 1 16rem;
+    min-width: 0;
+}
+.np-urgent-banner__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: .65rem;
+    background: #e0effe;
+    color: var(--account-blue);
+    flex: none;
+}
+.np-urgent-banner__item--payment .np-urgent-banner__icon {
+    background: #fef3c7;
+    color: #b45309;
+}
+.np-urgent-banner__text { min-width: 0; }
+.np-urgent-banner__text strong { display: block; font-size: .92rem; color: #0f2942; line-height: 1.45; }
+.np-urgent-banner__text p { margin: .15rem 0 0 !important; font-size: .82rem; color: #475569; line-height: 1.65; }
+.np-urgent-banner__actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .6rem; flex: 0 0 auto; }
+.np-urgent-banner__cta { min-height: 38px; padding-inline: .95rem; font-size: .83rem; }
+
+.np-account-card__sub { margin: .15rem 0 0 !important; font-size: .8rem; color: var(--account-muted); }
+.np-devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .75rem; margin-top: .65rem; }
+.np-device-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: .65rem;
+    padding: .85rem .95rem;
+    border: 1px solid #e2ebf5;
+    border-radius: .8rem;
+    background: #fbfdff;
+}
+.np-device-item__info { display: grid; gap: .18rem; }
+.np-device-item__title { font-size: .92rem; font-weight: 700; color: #0f2942; }
+.np-device-item__meta { font-size: .78rem; color: var(--account-muted); }
+.np-device-item__actions { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
+.np-device-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: .25rem .72rem;
+    border-radius: .55rem;
+    border: 1px solid #d2e0ee;
+    background: #fff;
+    color: #1e3a5f;
+    font-size: .79rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.np-device-action:hover { background: #f1f7fe; border-color: #9dc2eb; color: var(--account-blue); }
+.np-device-action--primary { background: #edf5ff; border-color: #b7d4f7; color: var(--account-blue); }
+.np-device-action--danger { color: #b91c1c; border-color: #fecaca; background: #fffafa; }
+.np-device-action--danger:hover { background: #fef2f2; border-color: #f87171; color: #991b1b; }
+
+.np-account-row-group { border-bottom: 1px solid #edf2f7; padding: .15rem 0; }
+.np-account-row-group:last-of-type { border-bottom: 0; }
+.np-account-row-group .np-account-row { border-bottom: 0; padding-bottom: .45rem; }
+.np-account-row-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .45rem;
+    padding-bottom: .55rem;
+}
+.np-copy-chip, .np-receipt-chip, .np-banner-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .32rem;
+    min-height: 30px;
+    padding: .18rem .6rem;
+    border-radius: .5rem;
+    border: 1px solid #d7e3f0;
+    background: #f8fafc;
+    color: #334e68;
+    font-size: .75rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.np-copy-chip:hover, .np-receipt-chip:hover { background: #edf5ff; border-color: #a8ccf2; color: var(--account-blue); }
+.np-copy-chip.is-copied, .np-banner-copy-btn.is-copied { background: #ecfdf5; border-color: #6ee7b7; color: #047857; }
+.np-banner-code-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.np-banner-copy-btn {
+    min-height: 26px;
+    padding: .1rem .5rem;
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+}
+.np-banner-copy-btn:hover { background: rgba(255, 255, 255, 0.24); }
+.np-detail-topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; }
+.np-detail-receipt-btn { min-height: 36px; font-size: .82rem; padding-inline: .85rem; }
+
+.np-account-review__reply {
+    margin: .55rem 0 0;
+    padding: .65rem .85rem;
+    border-radius: .65rem;
+    background: #f4f8fd;
+    border: 1px solid #dbe8f6;
+    border-inline-start: 3px solid var(--account-blue);
+}
+.np-account-review__reply-head { display: flex; align-items: center; gap: .45rem; margin-bottom: .25rem; }
+.np-account-review__reply-logo { width: 20px; height: 20px; object-fit: contain; flex: none; }
+.np-account-review__reply p { margin: 0 !important; font-size: .83rem; color: #334e68; }
+.np-account-review__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .5rem;
+    margin-top: .65rem;
+}
+
+.np-notify-pref-box {
+    margin-top: .35rem;
+    padding: .85rem 1rem;
+    border-radius: .8rem;
+    border: 1px solid #dbe7f3;
+    background: #f8fbff;
+}
+.np-notify-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0 !important;
+    cursor: pointer;
+}
+.np-notify-switch__copy { display: grid; gap: .15rem; min-width: 0; }
+.np-notify-switch__copy strong { font-size: .88rem; color: #0f2942; font-weight: 600; }
+.np-notify-switch__copy small { font-size: .78rem; color: var(--account-muted); line-height: 1.6; }
+.np-switch-input {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 0 0 44px;
+    width: 44px !important;
+    min-height: 25px !important;
+    height: 25px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #cbd5e1 !important;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease;
+}
+.np-switch-input::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+    transition: transform 150ms ease;
+}
+.np-switch-input:checked { background: var(--account-blue) !important; border-color: var(--account-blue) !important; }
+.np-switch-input:checked::before { transform: translateX(19px); }
+
+.np-address-list { display: grid; gap: .7rem; margin-top: .5rem; }
+.np-address-card {
+    padding: .9rem 1rem;
+    border: 1px solid #e2ebf5;
+    border-radius: .85rem;
+    background: #fcfdff;
+}
+.np-address-card__summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem 1rem;
+}
+.np-address-card__info { display: grid; gap: .25rem; min-width: 0; flex: 1 1 16rem; }
+.np-address-card__top { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .65rem; }
+.np-address-card__recipient { font-size: .92rem; color: #0f2942; }
+.np-address-card__location { font-size: .8rem; color: var(--account-blue); background: #edf5ff; padding: .08rem .5rem; border-radius: 999px; font-weight: 600; }
+.np-address-card__text { margin: 0 !important; font-size: .85rem; color: #334e68; line-height: 1.7; }
+.np-address-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; font-size: .78rem; color: var(--account-muted); }
+.np-address-card__actions { display: inline-flex; align-items: center; gap: .45rem; flex: 0 0 auto; }
+
+.np-file-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .6rem;
+    min-height: 44px;
+    padding: .35rem .55rem;
+    border: 1px solid #cbd9e8;
+    border-radius: .7rem;
+    background: #ffffff;
+}
+.np-file-picker__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: .3rem .85rem;
+    border-radius: .5rem;
+    background: #edf5ff;
+    border: 1px solid #b8d5f7;
+    color: var(--account-blue);
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 0 !important;
+    white-space: nowrap;
+}
+.np-file-picker__btn:hover { background: #dceeff; }
+.np-file-picker__name {
+    font-size: .8rem;
+    color: #64748b;
+    min-width: 0;
+    flex: 1 1 10rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.np-file-picker__name.has-file { color: #0f2942; font-weight: 600; }
+
+.repair-saved-devices {
+    margin: 0 0 1rem;
+    padding: .75rem .9rem;
+    border-radius: .8rem;
+    background: #f4f9ff;
+    border: 1px solid #d5e6f8;
+    display: grid;
+    gap: .45rem;
+}
+.repair-saved-devices__label { font-size: .8rem; font-weight: 600; color: #1e3a5f; }
+.repair-saved-devices__chips { display: flex; flex-wrap: wrap; gap: .45rem; }
+.repair-saved-device-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    min-height: 34px;
+    padding: .25rem .75rem;
+    border-radius: 999px;
+    border: 1px solid #b7d4f7;
+    background: #fff;
+    color: #0f2942;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease;
+}
+.repair-saved-device-chip:hover, .repair-saved-device-chip.is-selected {
+    background: #e3f0ff;
+    border-color: var(--account-blue);
+    color: var(--account-blue);
+}
+
+/* Merchant Receipt Print View */
+.np-receipt-page { padding-block: 1.5rem 3.5rem; max-width: 54rem; }
+.np-receipt-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }
+.np-receipt-toolbar [data-print-receipt] { display: inline-flex; align-items: center; gap: .45rem; }
+.np-receipt-sheet {
+    padding: clamp(1.25rem, 3.5vw, 2.25rem);
+    border: 1px solid #d8e3ef;
+    border-radius: 1rem;
+    background: #ffffff;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.05);
+    color: #0f172a;
+}
+.np-receipt-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.15rem;
+    border-bottom: 2px solid #0f2942;
+}
+.np-receipt-subtitle { margin: .35rem 0 0 !important; font-size: .8rem; color: #475569; }
+.np-receipt-meta { text-align: end; }
+.np-receipt-meta h1 { font-size: 1.1rem; margin: .25rem 0; color: #0f2942; }
+.np-receipt-meta p { margin: .15rem 0 !important; font-size: .82rem; color: #334155; }
+.np-receipt-badge { display: inline-block; padding: .15rem .6rem; border-radius: 999px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; font-size: .75rem; font-weight: 700; }
+.np-receipt-parties {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1rem;
+    margin-block: 1.15rem;
+}
+.np-receipt-party { padding: .85rem 1rem; border: 1px solid #e2e8f0; border-radius: .75rem; background: #f8fafc; }
+.np-receipt-party h2 { font-size: .82rem; color: #64748b; margin: 0 0 .35rem; font-weight: 600; }
+.np-receipt-party p { margin: .2rem 0 !important; font-size: .85rem; color: #1e293b; }
+.np-receipt-items { overflow-x: auto; margin-block: 1rem; }
+.np-receipt-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.np-receipt-table th, .np-receipt-table td { padding: .65rem .75rem; border-bottom: 1px solid #e2e8f0; text-align: start; }
+.np-receipt-table th { background: #f1f5f9; color: #334155; font-weight: 700; font-size: .8rem; white-space: nowrap; }
+.np-receipt-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr);
+    gap: 1rem;
+    align-items: start;
+    margin-top: 1.1rem;
+}
+@media (max-width: 640px) {
+    .np-receipt-meta { text-align: start; }
+    .np-receipt-summary { grid-template-columns: 1fr; }
+}
+.np-receipt-tx h2 { font-size: .86rem; margin: 0 0 .4rem; color: #334155; }
+.np-receipt-tx ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; font-size: .82rem; color: #475569; }
+.np-receipt-tx li { display: flex; flex-wrap: wrap; gap: .35rem .75rem; }
+.np-receipt-totals { margin: 0; padding: .85rem 1rem; border-radius: .75rem; background: #f8fbff; border: 1px solid #dbe7f3; display: grid; gap: .45rem; }
+.np-receipt-totals > div { display: flex; justify-content: space-between; gap: .75rem; font-size: .85rem; }
+.np-receipt-totals dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.np-receipt-totals__final { padding-top: .45rem; border-top: 1px solid #cbd9ea; font-size: .95rem !important; color: #0f2942; }
+.np-receipt-foot { margin-top: 1.25rem; padding-top: .85rem; border-top: 1px dashed #cbd5e1; font-size: .78rem; color: #64748b; text-align: center; }
+
+@media print {
+    header.np-header, footer.np-footer, .global-store-nav, [data-support-launcher], [data-support-frame], .no-print {
+        display: none !important;
+    }
+    body { background: #fff !important; padding: 0 !important; }
+    .np-receipt-page { padding: 0 !important; max-width: 100% !important; }
+    .np-receipt-sheet { border: 0 !important; box-shadow: none !important; padding: 0 !important; }
 }

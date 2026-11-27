@@ -109,19 +109,25 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
     Route::post('email/password-login', [$threePath, 'emailPasswordLogin'])->block(20, 15)->middleware('throttle:customer-password')->name('email.password.login');
     Route::get('google/redirect', [$threePath, 'googleRedirect'])->middleware('throttle:30,1')->name('google.redirect');
     Route::get('google/callback', [$threePath, 'googleCallback'])->middleware('throttle:30,1')->name('google.callback');
+    Route::get('profile/email-verify/{id}/{hash}', [$controller, 'verifyProfileEmail'])
+        ->whereUuid('id')->where('hash', '[a-f0-9]{40}')
+        ->middleware(['signed', 'throttle:20,1'])->name('profile.email.verify');
     Route::middleware(EnsureCustomerSession::class)->group(function () use ($controller): void {
         Route::get('/', [$controller, 'index'])->name('index');
         Route::get('/repairs/requests/{record}', [$controller, 'repairRequest'])->where('record', '[A-Za-z0-9-]{1,35}')->name('repairs.request');
         Route::patch('/repairs/requests/{record}/handover', [$controller, 'updateRepairHandover'])->where('record', '[A-Za-z0-9-]{1,35}')->middleware('throttle:20,1')->name('repairs.request.handover');
         Route::get('/repairs/{record}', [$controller, 'repair'])->whereUuid('record')->name('repairs.show');
+        Route::get('/repairs/{record}/receipt', [$controller, 'repairReceipt'])->whereUuid('record')->name('repairs.receipt');
         Route::post('/repairs/{record}/pay', [PaymentController::class, 'startRepair'])->whereUuid('record')->middleware('throttle:10,1,cart-checkout:')->name('repairs.pay');
         Route::get('/orders/{record}', [$controller, 'order'])->whereUuid('record')->name('orders.show');
+        Route::get('/orders/{record}/receipt', [$controller, 'orderReceipt'])->where('record', '[A-Za-z0-9-]{8,36}')->name('orders.receipt');
         Route::post('/orders/{record}/documents', [OrderActivationDocumentsController::class, 'storeForAccount'])
             ->where('record', '[A-Za-z0-9-]{8,36}')->middleware('throttle:10,1')->name('orders.documents.store');
         Route::post('password', [$controller, 'password'])->middleware('throttle:10,1')->name('password.update');
         Route::post('password-skip', [$controller, 'skipPassword'])->name('password.skip');
         Route::post('logout', [$controller, 'logout'])->block(20, 15)->name('logout');
         Route::post('profile', [$controller, 'profile'])->middleware('throttle:20,1')->name('profile');
+        Route::post('profile/email-verify', [$controller, 'sendProfileEmailVerification'])->middleware('throttle:10,1')->name('profile.email.send');
         Route::post('addresses', [$controller, 'address'])->middleware('throttle:10,1')->name('address');
         Route::post('addresses/{addressId}', [$controller, 'address'])->middleware('throttle:10,1')->name('address.update');
         Route::post('addresses/{addressId}/remove', [$controller, 'removeAddress'])->middleware('throttle:10,1')->name('address.remove');
@@ -198,6 +204,9 @@ Route::get('/product-media/{filename}', ProductMediaController::class)
     ->name('products.media');
 Route::get('/product-comparison', [ProductController::class, 'compare'])->name('products.compare');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+Route::post('/products/{product}/feedback/{feedback}/helpful', [ProductFeedbackController::class, 'toggleHelpful'])
+    ->middleware([PrivateRepairResponse::class, 'throttle:60,1'])
+    ->name('products.feedback.helpful');
 Route::middleware([PrivateRepairResponse::class, EnsureCustomerSession::class, 'throttle:product-feedback'])->group(function (): void {
     Route::post('/products/{product}/feedback', [ProductFeedbackController::class, 'store'])->name('products.feedback.store');
     Route::post('/products/{product}/feedback/{feedback}/report', [ProductFeedbackController::class, 'report'])->name('products.feedback.report');

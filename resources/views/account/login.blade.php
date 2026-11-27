@@ -13,7 +13,8 @@
     $recovery = $channel === 'phone' && $phone && request()->query('method') === 'recovery';
     $inEmailOtp = !$forgotMode && !$passwordMode && $channel === 'email' && (bool) $loginEmail;
     $inPhoneOtp = !$forgotMode && !$passwordMode && $channel === 'phone' && (bool) $phone;
-    $inStepOne = !$forgotMode && !$passwordMode && !$inEmailOtp && !$inPhoneOtp;
+    $inOtpScreen = $inPhoneOtp || $inEmailOtp;
+    $inStepOne = !$forgotMode && !$passwordMode && !$inOtpScreen;
     $wait = fn (string $action, int $also = 0) => max(0, max($retryUntil[$action] ?? 0, $also) - now()->timestamp);
     $heading = match (true) {
         $forgotMode => 'فراموشی رمز عبور',
@@ -23,13 +24,23 @@
         $inPhoneOtp => 'تأیید شماره موبایل',
         default => 'ورود یا ثبت‌نام',
     };
-    $subtitle = match (true) {
-        $forgotMode => 'برای انتخاب رمز عبور جدید، شماره موبایل یا ایمیل خود را وارد کنید.',
-        $recovery => 'کد شش‌رقمی ارسال‌شده را برای انتخاب رمز جدید وارد کنید.',
-        $inEmailOtp => 'کد شش‌رقمی ارسال‌شده به نشانی ایمیل زیر را وارد کنید.',
-        $inPhoneOtp => 'کد شش‌رقمی ارسال‌شده به شماره موبایل زیر را وارد کنید.',
-        default => null,
-    };
+    $firstError = $errors->first();
+    $throttleMessage = null;
+    if (! $errors->any() && $channel === 'phone') {
+        foreach ($passwordMode ? ['password'] : ($phone ? ['otp', 'verify'] : ['otp']) as $action) {
+            if (isset($retryReason[$action]) && $wait($action) > 0) {
+                $throttleMessage = \App\Support\CustomerAuthThrottle::message($retryReason[$action], $wait($action));
+                break;
+            }
+        }
+    }
+    $inlineError = $firstError ?: $throttleMessage;
+    $flashSuccess = session('success');
+    $showFlashNotice = is_string($flashSuccess)
+        && $flashSuccess !== ''
+        && ! $passwordMode
+        && ! $forgotMode
+        && ! ($inOtpScreen && in_array($flashSuccess, ['کد تأیید را وارد کنید.', 'کد تأیید به ایمیل ارسال شد.'], true));
 @endphp
 <div class="np-auth-shell" data-auth-shell>
     <div class="np-auth-backdrop" aria-hidden="true"></div>
@@ -40,38 +51,35 @@
                     <a href="{{ route('home') }}" class="np-auth__logo" aria-label="صفحه اصلی نوین‌پی"><x-home.wordmark /></a>
                     <div class="np-account-enter">
                         <h1 id="auth-title">{{ $heading }}</h1>
-                        @if($subtitle)<p class="np-auth__subtitle">{{ $subtitle }}</p>@endif
 
                         @if($inPhoneOtp)
-                            <div class="np-auth__destination">
-                                <bdi dir="ltr">{{ \App\Support\FaNumber::digits(substr($phone, 0, 4).' ••• '.substr($phone, -4)) }}</bdi>
-                                <form method="post" action="{{ route('account.restart') }}">
+                            <div class="np-auth__subtitle np-auth__subtitle--inline" data-otp-inline-target>
+                                <span>{{ $recovery ? 'کد ۶ رقمی بازیابی ارسال‌شده به' : 'کد ۶ رقمی ارسال‌شده به' }} <bdi class="np-auth__inline-value" dir="ltr">{{ \App\Support\FaNumber::digits(substr($phone, 0, 4).' ••• '.substr($phone, -4)) }}</bdi> را وارد کنید.</span>
+                                <form method="post" action="{{ route('account.restart') }}" class="np-auth__inline-form">
                                     @csrf
                                     <input type="hidden" name="flow" value="{{ $flow }}">
-                                    <button class="np-auth__edit" type="submit">ویرایش</button>
+                                    <button class="np-auth__edit" type="submit">تغییر شماره</button>
                                 </form>
                             </div>
                         @elseif($inEmailOtp)
-                            <div class="np-auth__destination">
-                                <bdi dir="ltr">{{ $loginEmail }}</bdi>
-                                <form method="post" action="{{ route('account.email.restart') }}">
+                            <div class="np-auth__subtitle np-auth__subtitle--inline" data-otp-inline-target>
+                                <span>کد ۶ رقمی ارسال‌شده به <bdi class="np-auth__inline-value" dir="ltr">{{ $loginEmail }}</bdi> را وارد کنید.</span>
+                                <form method="post" action="{{ route('account.email.restart') }}" class="np-auth__inline-form">
                                     @csrf
-                                    <button class="np-auth__edit" type="submit">ویرایش</button>
+                                    <button class="np-auth__edit" type="submit">تغییر ایمیل</button>
                                 </form>
                             </div>
+                        @elseif($forgotMode)
+                            <p class="np-auth__subtitle">برای انتخاب رمز عبور جدید، شماره موبایل یا ایمیل خود را وارد کنید.</p>
                         @endif
 
-                        <x-admin.errors />
-                        @unless($errors->any())
-                            @if($channel === 'phone')
-                                @foreach($passwordMode ? ['password'] : ($phone ? ['otp', 'verify'] : ['otp']) as $action)
-                                    @if(isset($retryReason[$action]) && $wait($action) > 0)
-                                        <p class="np-account-otp-error" role="status">{{ \App\Support\CustomerAuthThrottle::message($retryReason[$action], $wait($action)) }}</p>
-                                    @endif
-                                @endforeach
-                            @endif
-                        @endunless
-                        @if(session('success') && !$passwordMode && !$forgotMode)<p class="np-account-notice" role="status">{{ session('success') }}</p>@endif
+                        @if(! $inOtpScreen && $inlineError)
+                            <p id="error-summary" class="np-account-otp-error" role="alert">{{ $inlineError }}</p>
+                        @endif
+
+                        @if($showFlashNotice)
+                            <p class="np-account-notice" role="status">{{ $flashSuccess }}</p>
+                        @endif
 
                         @if($inStepOne)
                             <form class="np-account-form" method="post" action="{{ route('account.start') }}" data-account-submit data-account-send data-login-state="{{ route('account.login.state') }}">
@@ -146,19 +154,23 @@
                                     @csrf
                                     <input type="hidden" name="challenge" value="{{ $emailChallengeId }}">
                                     <label for="account-email-code" class="sr-only">کد تأیید شش‌رقمی</label>
-                                    <div class="np-otp-boxes is-enhanced" data-otp-boxes dir="ltr" @if($errors->has('code')) data-otp-error @endif>
-                                        <input id="account-email-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" data-digits-only="6" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" required>
+                                    <div class="np-otp-boxes is-enhanced" data-otp-boxes dir="ltr" @if($inlineError) data-otp-error @endif>
+                                        <input id="account-email-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" data-digits-only="6" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" aria-describedby="account-otp-error" @if($inlineError) aria-invalid="true" @endif required>
                                         <div class="np-otp-boxes__grid" data-otp-grid>
                                             @for($slot = 0; $slot < 6; $slot++)
                                                 <input type="text" inputmode="numeric" maxlength="6" class="np-otp-box" aria-label="رقم {{ \App\Support\FaNumber::digits($slot + 1) }}" autocomplete="{{ $slot === 0 ? 'one-time-code' : 'off' }}">
                                             @endfor
                                         </div>
                                     </div>
-                                    <small class="np-auth__hint">کد ارسال‌شده به ایمیل تا ۵ دقیقه معتبر است.</small>
+                                    <p id="account-otp-error" class="np-account-otp-error" role="alert" @unless($inlineError) hidden @endunless>{{ $inlineError }}</p>
                                     <button type="submit" class="np-account-primary">ورود به پنل کاربری</button>
                                 </form>
                             @else
-                                <p class="np-auth__hint">کد قبلی منقضی شده است. کد جدید درخواست کنید.</p>
+                                @if($inlineError)
+                                    <p id="account-otp-error" class="np-account-otp-error" role="alert">{{ $inlineError }}</p>
+                                @else
+                                    <p class="np-auth__hint">مهلت کد قبلی پایان یافته است. ارسال مجدد را بزنید.</p>
+                                @endif
                             @endif
                             <div class="np-auth__footer-links">
                                 <form method="post" action="{{ route('account.email.otp') }}">
@@ -166,12 +178,6 @@
                                     <button type="submit" class="np-account-link" data-account-wait="{{ max(0, $emailResendAt - now()->timestamp) }}">{{ $emailChallenge ? 'ارسال مجدد کد' : 'درخواست کد تأیید' }}</button>
                                 </form>
                                 <a class="np-account-link" href="{{ route('account.login', ['channel' => 'email', 'method' => 'password']) }}">ورود با رمز عبور</a>
-                            </div>
-                            <div class="np-auth__back-row">
-                                <form method="post" action="{{ route('account.email.restart') }}">
-                                    @csrf
-                                    <button type="submit" class="np-auth__back-link">بازگشت به صفحه ورود | ثبت‌نام</button>
-                                </form>
                             </div>
 
                         @else
@@ -182,28 +188,36 @@
                                     <input type="hidden" name="challenge" value="{{ $challengeId }}">
                                     @if($recovery)<input type="hidden" name="recover" value="1">@endif
                                     <label for="account-code" class="sr-only">کد تأیید شش‌رقمی</label>
-                                    <div class="np-otp-boxes is-enhanced" data-otp-boxes dir="ltr" @if($errors->has('code')) data-otp-error @endif>
-                                        <input id="account-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" data-digits-only="6" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" aria-describedby="code-expiry account-otp-error" @if($errors->has('code')) aria-invalid="true" @endif required>
+                                    <div class="np-otp-boxes is-enhanced" data-otp-boxes dir="ltr" @if($inlineError) data-otp-error @endif>
+                                        <input id="account-code" class="np-otp-boxes__hidden" name="code" dir="ltr" inputmode="numeric" data-digits-only="6" enterkeyhint="go" autocomplete="one-time-code" minlength="6" maxlength="6" tabindex="-1" aria-describedby="code-expiry account-otp-error" @if($inlineError) aria-invalid="true" @endif required>
                                         <div class="np-otp-boxes__grid" data-otp-grid>
                                             @for($slot = 0; $slot < 6; $slot++)
                                                 <input type="text" inputmode="numeric" maxlength="6" class="np-otp-box" aria-label="رقم {{ \App\Support\FaNumber::digits($slot + 1) }}" autocomplete="{{ $slot === 0 ? 'one-time-code' : 'off' }}">
                                             @endfor
                                         </div>
                                     </div>
-                                    <small id="code-expiry" class="np-auth__hint">کد تا دو دقیقه معتبر است.</small>
+                                    <small id="code-expiry" class="np-auth__hint" hidden></small>
                                     @if (app()->isLocal() && ! empty($localDevOtp))
                                         <p class="np-auth__hint" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;margin-block:8px;" data-local-dev-otp>
                                             کد تأیید لوکال (فقط محیط توسعه): <strong class="np-latin" dir="ltr">{{ $localDevOtp }}</strong>
                                         </p>
                                     @endif
-                                    <p id="account-otp-error" class="np-account-otp-error" role="alert" hidden></p>
+                                    <p id="account-otp-error" class="np-account-otp-error" role="alert" @unless($inlineError) hidden @endunless>{{ $inlineError }}</p>
                                     <button type="submit" class="np-account-primary" data-verify-wait="{{ $wait('verify') }}">{{ $recovery ? 'تأیید و انتخاب رمز' : 'ورود به پنل کاربری' }}</button>
                                     <small class="sr-only" role="status" data-otp-pending hidden>در حال بررسی کد…</small>
                                 </form>
                             @elseif($challengeEnded)
-                                <p class="np-auth__hint">کد قبلی دیگر معتبر نیست. کد جدید درخواست کنید.</p>
+                                @if($inlineError)
+                                    <p id="account-otp-error" class="np-account-otp-error" role="alert">{{ $inlineError }}</p>
+                                @else
+                                    <p class="np-auth__hint">مهلت کد قبلی پایان یافته است. ارسال مجدد را بزنید.</p>
+                                @endif
                             @else
-                                <p class="np-auth__hint">درخواست کد تأیید بدهید یا با رمز عبور وارد شوید.</p>
+                                @if($inlineError)
+                                    <p id="account-otp-error" class="np-account-otp-error" role="alert">{{ $inlineError }}</p>
+                                @else
+                                    <p class="np-auth__hint">درخواست کد تأیید بدهید یا با رمز عبور وارد شوید.</p>
+                                @endif
                             @endif
                             <div class="np-auth__footer-links">
                                 <form method="post" action="{{ route('account.otp') }}" data-account-send data-login-state="{{ route('account.login.state') }}">
@@ -215,13 +229,6 @@
                                     <button type="submit" class="np-account-link" data-account-wait="{{ $wait('otp', $resendAt) }}">{{ $challenge ? 'ارسال مجدد کد' : 'درخواست کد تأیید' }}</button>
                                 </form>
                                 <a class="np-account-link" href="{{ route('account.login', ['flow' => $flow, 'method' => 'password']) }}">ورود با رمز عبور</a>
-                            </div>
-                            <div class="np-auth__back-row">
-                                <form method="post" action="{{ route('account.restart') }}">
-                                    @csrf
-                                    <input type="hidden" name="flow" value="{{ $flow }}">
-                                    <button type="submit" class="np-auth__back-link">بازگشت به صفحه ورود | ثبت‌نام</button>
-                                </form>
                             </div>
                         @endif
                     </div>

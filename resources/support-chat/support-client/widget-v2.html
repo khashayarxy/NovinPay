@@ -27,8 +27,13 @@
     <div class="error-msg" id="errorMsg" role="alert" aria-live="assertive" tabindex="-1" style="display:none"></div>
     <section class="support-conversation" id="supportChatPane" role="tabpanel" aria-labelledby="supportTabChat" data-support-transcript>
         <section id="supportInit" class="support-init-status" role="status" aria-live="polite">
+            <div class="support-skeleton" aria-hidden="true">
+                <div class="support-skeleton__bubble support-skeleton__bubble--in"></div>
+                <div class="support-skeleton__bubble support-skeleton__bubble--out"></div>
+                <div class="support-skeleton__bubble support-skeleton__bubble--in support-skeleton__bubble--short"></div>
+            </div>
             <span class="support-init-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-            <span data-init-text>در حال آماده‌سازی گفتگو...</span>
+            <span data-init-text>در حال بارگذاری گفتگو…</span>
             <button type="button" data-init-retry hidden>تلاش مجدد</button>
             <small data-init-reference></small>
         </section>

@@ -24,10 +24,10 @@ final class RepairIdentity
         return hash_hmac('sha256', $purpose.':'.$value, config('app.key'));
     }
 
-    public static function deviceLabel(?RepairBrand $brand, ?string $model): string
+    public static function deviceLabel(RepairBrand|string|null $brand, ?string $model): string
     {
         $cleanModel = trim((string) $model);
-        $brandName = $brand?->value ?? '';
+        $brandName = $brand instanceof RepairBrand ? $brand->value : trim((string) $brand);
 
         if ($brandName !== '' && $brandName !== 'سایر') {
             if ($cleanModel === '') {
