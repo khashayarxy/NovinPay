@@ -10,7 +10,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('customer_accounts') && ! Schema::hasColumn('customer_accounts', 'email_notifications_enabled')) {
             Schema::table('customer_accounts', function (Blueprint $table): void {
-                $table->boolean('email_notifications_enabled')->default(true)->after('email_verified_at');
+                $table->boolean('email_notifications_enabled')->default(true)->after('verified_at');
             });
         }
 
