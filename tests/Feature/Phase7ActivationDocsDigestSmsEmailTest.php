@@ -363,7 +363,7 @@ class Phase7ActivationDocsDigestSmsEmailTest extends TestCase
 
         Http::assertSent(fn (HttpRequest $r) => $r->url() === 'https://edge.ippanel.com/v1/api/send'
             && ($r['code'] ?? null) === 'patDocRev01'
-            && ($r['params']['order_code'] ?? null) === $shortCode
+            && ($r['params']['code'] ?? null) === $shortCode
             && str_contains((string) ($r['params']['reason'] ?? ''), 'تصویر کارت ملی تار است'));
 
         // Customer sees needs_revision reason + re-upload form
@@ -375,7 +375,7 @@ class Phase7ActivationDocsDigestSmsEmailTest extends TestCase
             ->assertSee('تصویر کارت ملی تار است')
             ->assertSee('ارسال مجدد مدارک اصلاح‌شده');
 
-        // 2. Admin marks approved -> triggers IPPanel documents_approved (order_code)
+        // 2. Admin marks approved -> triggers IPPanel documents_approved (code)
         auth('customer')->logout();
         $this->actingAs($this->admin, 'web')
             ->post(route('admin.orders.documents.approve', $order))
@@ -385,7 +385,7 @@ class Phase7ActivationDocsDigestSmsEmailTest extends TestCase
         $this->assertSame('approved', $order->documents_status);
         Http::assertSent(fn (HttpRequest $r) => $r->url() === 'https://edge.ippanel.com/v1/api/send'
             && ($r['code'] ?? null) === 'patDocApp02'
-            && ($r['params'] ?? null) === ['order_code' => $shortCode]);
+            && ($r['params'] ?? null) === ['code' => $shortCode]);
 
         // 3. Consultation form submission -> triggers IPPanel consultation_submitted (name)
         $consultationToken = bin2hex(random_bytes(32));

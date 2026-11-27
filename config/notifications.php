@@ -28,7 +28,7 @@ return [
         'enabled' => in_array($smsEnabledEnv, [null, ''], true)
             ? ($adminPhonesRaw !== '')
             : filter_var($smsEnabledEnv, FILTER_VALIDATE_BOOL),
-        'admin_shared_pattern_fallback' => filter_var(env('NOTIFICATIONS_ADMIN_SHARED_PATTERN_FALLBACK', true), FILTER_VALIDATE_BOOL),
+        'admin_shared_pattern_fallback' => filter_var(env('NOTIFICATIONS_ADMIN_SHARED_PATTERN_FALLBACK', false), FILTER_VALIDATE_BOOL),
         'patterns' => [
             'admin_order_placed' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_ADMIN_ORDER', env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_ORDER', ''))),
             'admin_order_paid' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_ADMIN_ORDER_PAID', env('NOTIFICATIONS_IPPANEL_PATTERN_ADMIN_ORDER_PAID', ''))),
@@ -40,6 +40,7 @@ return [
             'customer_repair_submitted' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_CUSTOMER_REPAIR_SUBMITTED', env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_REPAIR_SUBMITTED', ''))),
             'customer_repair_status' => trim((string) env('NOTIFICATIONS_SMS_PATTERN_CUSTOMER_REPAIR_STATUS', env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_REPAIR_STATUS', ''))),
             'customer_consultation_submitted' => trim((string) (env('IPPANEL_PATTERN_CONSULTATION_SUBMITTED') ?: env('NOTIFICATIONS_IPPANEL_PATTERN_CONSULTATION_SUBMITTED') ?: env('NOTIFICATIONS_SMS_PATTERN_CONSULTATION_SUBMITTED') ?: env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_CONSULTATION') ?: env('NOTIFICATIONS_SMS_PATTERN_CUSTOMER_CONSULTATION', ''))),
+            'documents_request' => trim((string) (env('IPPANEL_PATTERN_DOCUMENTS_REQUEST') ?: env('NOTIFICATIONS_IPPANEL_PATTERN_DOCUMENTS_REQUEST') ?: env('NOTIFICATIONS_SMS_PATTERN_DOCUMENTS_REQUEST', ''))),
             'documents_revision' => trim((string) (env('IPPANEL_PATTERN_DOCUMENTS_REVISION') ?: env('NOTIFICATIONS_IPPANEL_PATTERN_DOCUMENTS_REVISION') ?: env('NOTIFICATIONS_SMS_PATTERN_DOCUMENTS_REVISION', ''))),
             'documents_approved' => trim((string) (env('IPPANEL_PATTERN_DOCUMENTS_APPROVED') ?: env('NOTIFICATIONS_IPPANEL_PATTERN_DOCUMENTS_APPROVED') ?: env('NOTIFICATIONS_SMS_PATTERN_DOCUMENTS_APPROVED', ''))),
             'consultation_submitted' => trim((string) (env('IPPANEL_PATTERN_CONSULTATION_SUBMITTED') ?: env('NOTIFICATIONS_IPPANEL_PATTERN_CONSULTATION_SUBMITTED') ?: env('NOTIFICATIONS_SMS_PATTERN_CONSULTATION_SUBMITTED') ?: env('NOTIFICATIONS_IPPANEL_PATTERN_CUSTOMER_CONSULTATION') ?: env('NOTIFICATIONS_SMS_PATTERN_CUSTOMER_CONSULTATION', ''))),

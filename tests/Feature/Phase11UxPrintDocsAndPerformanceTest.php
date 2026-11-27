@@ -20,10 +20,12 @@ use App\Models\SalesOrder;
 use App\Models\SalesOrderLine;
 use App\Models\User;
 use App\Services\ActivationDocumentsService;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\FaNumber;
 use App\Support\QrCodeSvg;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -371,5 +373,90 @@ class Phase11UxPrintDocsAndPerformanceTest extends TestCase
         $svg = QrCodeSvg::svg($signedUrl, 128);
         $this->assertStringContainsString('<svg', $svg);
         $this->assertStringContainsString('fill="#000000"', $svg);
+    }
+
+    public function test_production_sms_patterns_strict_separation_chat_truncation_and_activation_triggers(): void
+    {
+        Config::set([
+            'customer.ippanel.enabled' => true,
+            'customer.ippanel.api_key' => 'test-ippanel-key',
+            'customer.ippanel.sender' => '+983000505',
+            'notifications.sms.enabled' => true,
+            'notifications.sms.admin_shared_pattern_fallback' => false,
+            'notifications.admin.phones' => ['09120001122'],
+            'notifications.sms.patterns.admin_order_paid' => 'esscve0hlccir9p',
+            'notifications.sms.patterns.admin_repair_submitted' => '7bbhfzdi2f2p925',
+            'notifications.sms.patterns.admin_consultation_submitted' => 'wkppjgd35a0gvb5',
+            'notifications.sms.patterns.admin_chat_first_message' => '3vx4ego0y60nb4e',
+            'notifications.sms.patterns.documents_request' => '3z5z77c05ao5d8t',
+            'notifications.sms.patterns.documents_approved' => 'cz1xc9w99zp6ufx',
+            'notifications.sms.patterns.documents_revision' => 'k8hfjxmfhn56a76',
+        ]);
+
+        $sent = [];
+        Http::fake(function (Request $request) use (&$sent) {
+            if (str_contains($request->url(), 'ippanel.com')) {
+                $sent[] = $request->data();
+
+                return Http::response(['meta' => ['status' => true], 'data' => ['message_outbox_ids' => [12345]]], 200);
+            }
+
+            return Http::response(['ok' => true], 200);
+        });
+
+        $notifier = app(UnifiedNotifier::class);
+
+        // 1. Support-chat first message: phone fallback + 45-char truncation; second message sends no SMS
+        $longMsg = 'سلام وقت بخیر، دستگاه کارتخوان من هنگام اتصال به شبکه وای فای خطای ارتباطی می‌دهد و نیاز به راهنمایی فوری دارم';
+        $notifier->supportChatMessage('user_11111111111111111111111111111111_1700000000', $longMsg, 'مهمان تست', null);
+        $notifier->supportChatMessage('user_11111111111111111111111111111111_1700000000', 'پیام دوم', 'مهمان تست', null);
+
+        $chatSms = array_values(array_filter($sent, fn ($p) => ($p['code'] ?? null) === '3vx4ego0y60nb4e'));
+        $this->assertCount(1, $chatSms);
+        $this->assertSame('مهمان تست', $chatSms[0]['params']['name']);
+        $this->assertSame('ثبت‌نشده', $chatSms[0]['params']['phone']);
+        $this->assertSame(Str::limit($longMsg, 45), $chatSms[0]['params']['message']);
+
+        // 2. Activation documents REQUEST (repair), APPROVED, and REVISION (with empty reason default)
+        $owner = $this->createOwner();
+        $account = $this->createCustomerAccount('09127778899', 'حسین احمدی');
+        $case = $this->createSimpleRepairCase($owner, $account, RepairStage::Repairing);
+        $notifier->repairActivationDocsRequested($case, $account->phone, (string) $case->tracking_reference);
+
+        $order = new SalesOrder;
+        $order->public_id = (string) Str::uuid();
+        $order->customer_id = $account->customer_id;
+        $order->customer_account_id = $account->id;
+        $order->checkout_key = (string) Str::uuid();
+        $order->checkout_digest = hash('sha256', 'docs-test');
+        $order->status = 'confirmed';
+        $order->currency = 'TOMAN';
+        $order->total = '4500000.00';
+        $order->version = 1;
+        $order->save();
+
+        $shortCode = strtoupper(substr($order->public_id, 0, 8));
+        $notifier->orderDocumentsApproved($order);
+        $notifier->orderDocumentsRevision($order, '   ');
+
+        $reqSms = array_values(array_filter($sent, fn ($p) => ($p['code'] ?? null) === '3z5z77c05ao5d8t'));
+        $this->assertCount(1, $reqSms);
+        $this->assertSame((string) $case->tracking_reference, $reqSms[0]['params']['code']);
+
+        $appSms = array_values(array_filter($sent, fn ($p) => ($p['code'] ?? null) === 'cz1xc9w99zp6ufx'));
+        $this->assertCount(1, $appSms);
+        $this->assertSame($shortCode, $appSms[0]['params']['code']);
+
+        $revSms = array_values(array_filter($sent, fn ($p) => ($p['code'] ?? null) === 'k8hfjxmfhn56a76'));
+        $this->assertCount(1, $revSms);
+        $this->assertSame($shortCode, $revSms[0]['params']['code']);
+        $this->assertSame('نقص یا ناخوانا بودن مدارک', $revSms[0]['params']['reason']);
+
+        // 3. Strict admin/customer separation: if admin_order_placed is empty and fallback=false, admin receives NO customer fallback SMS
+        Config::set('notifications.sms.patterns.admin_order_placed', '');
+        $beforeCount = count($sent);
+        $notifier->orderPlaced($order);
+        $adminOrderFallbackSent = array_filter(array_slice($sent, $beforeCount), fn ($p) => in_array('+989120001122', $p['recipients'] ?? [], true));
+        $this->assertCount(0, $adminOrderFallbackSent);
     }
 }
