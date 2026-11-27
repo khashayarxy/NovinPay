@@ -91,8 +91,8 @@ test('Chromium: Phase 8 RTL floating labels, mobile menu & nav renaming, Stage 4
                                 <div class="public-field">
                                     <div class="np-float-field" id="float-select" data-float-field>
                                         <select class="input" id="topic-select" name="topic">
-                                            <option value="">موضوع را انتخاب کنید</option>
-                                            <option value="purchase">مشاوره خرید</option>
+                                            <option value="" disabled hidden></option>
+                                            <option value="purchase" selected>مشاوره خرید</option>
                                         </select>
                                         <label id="label-select" for="topic-select">موضوع مشاوره</label>
                                     </div>

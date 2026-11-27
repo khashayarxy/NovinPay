@@ -151,9 +151,10 @@ ${cssBundle}
         </section>
 
         <section style="margin-top: 20px;">
-            <div class="np-float-field" data-float-field>
-                <select class="input" id="consultation-topic" name="topic">
-                    <option value="">انتخاب موضوع مشاوره…</option>
+            <div class="np-float-field" id="consultation-float-wrap" data-float-field>
+                <select class="input" id="consultation-topic" name="topic" required>
+                    <option value="" disabled selected hidden></option>
+                    <option value="buy">مشاوره خرید کارتخوان</option>
                 </select>
                 <label class="label" id="consultation-label" for="consultation-topic">موضوع مشاوره</label>
             </div>
@@ -237,11 +238,32 @@ ${cssBundle}
             svgCenterY <= badgeRect.bottom
         );
 
-        // Consultation floating select
+        // Consultation true floating select (centered when empty, floats on focus/selection, blank option hidden)
+        const topicWrap = document.getElementById('consultation-float-wrap');
         const topicEl = document.getElementById('consultation-topic');
+        const topicLbl = document.getElementById('consultation-label');
+        const blankOpt = topicEl.querySelector('option[value=""]');
         const topicRect = topicEl.getBoundingClientRect();
         const topicStyle = getComputedStyle(topicEl);
-        const topicLblRect = document.getElementById('consultation-label').getBoundingClientRect();
+        const initialLblRect = topicLbl.getBoundingClientRect();
+        const selectInitialFloated = topicWrap.classList.contains('is-floated');
+        const selectCenteredDelta = Math.abs((initialLblRect.top + initialLblRect.height / 2) - (topicRect.top + topicRect.height / 2));
+        const blankOptHiddenAndDisabled = Boolean(blankOpt?.disabled && blankOpt?.hidden && blankOpt.textContent === '');
+
+        topicEl.focus();
+        await new Promise(r => setTimeout(r, 30));
+        const selectFocusFloated = topicWrap.classList.contains('is-floated');
+        topicEl.blur();
+        await new Promise(r => setTimeout(r, 30));
+        const selectBlurReturned = !topicWrap.classList.contains('is-floated');
+
+        topicEl.value = 'buy';
+        topicLbl.style.transition = 'none';
+        topicEl.dispatchEvent(new Event('change', { bubbles: true }));
+        await new Promise(r => setTimeout(r, 30));
+        const floatedLblRect = topicLbl.getBoundingClientRect();
+        const selectSelectedFloated = topicWrap.classList.contains('is-floated');
+        const selectLabelDelta = Math.abs((floatedLblRect.top + floatedLblRect.height / 2) - topicRect.top);
 
         window.__mobileProbe = {
             winInnerWidth,
@@ -264,16 +286,50 @@ ${cssBundle}
             badgeCoversSvgCenter,
             selectHeight: topicRect.height,
             selectAppearance: topicStyle.appearance,
-            selectLabelDelta: Math.abs((topicLblRect.top + topicLblRect.height / 2) - topicRect.top),
+            selectInitialFloated,
+            selectCenteredDelta,
+            blankOptHiddenAndDisabled,
+            selectFocusFloated,
+            selectBlurReturned,
+            selectSelectedFloated,
+            selectLabelDelta,
         };
     });
     </script>
 </body>
 </html>`;
 
+    const desktopFooterHtml = `<!doctype html>
+<html lang="fa" dir="rtl">
+<head><meta charset="utf-8"><style>*,*::before,*::after{box-sizing:border-box}body{margin:0;font-family:Tahoma,sans-serif}${cssBundle}</style></head>
+<body class="public-site">
+    <footer class="np-footer">
+        <div class="np-container" style="max-width:1200px;margin:0 auto;padding:0 24px;">
+            <div class="np-footer__grid">
+                <div class="np-footer__brand">
+                    <div class="np-footer__identity"><strong>نوین‌پی</strong><p class="np-footer__tagline">فروش و تعمیر کارتخوان در شهریار</p></div>
+                </div>
+                <div class="np-footer__links-col">
+                    <h2>دسترسی سریع</h2>
+                    <nav class="np-footer__links" aria-label="دسترسی سریع">
+                        <a href="/products">فروشگاه</a>
+                        <a href="/repair">درخواست تعمیر</a>
+                        <a href="/repair/track">پیگیری تعمیر</a>
+                        <a href="/contact">تماس با ما</a>
+                    </nav>
+                </div>
+                <div class="np-footer__information">
+                    <h2>تماس با نوین‌پی</h2>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body></html>`;
+
     const hostHtml = `<!doctype html>
 <html lang="fa"><head><meta charset="utf-8"></head><body>
     <iframe id="mobile-360" src="/mobile-fixture" style="width:360px;height:800px;border:0;"></iframe>
+    <iframe id="desktop-footer" src="/desktop-footer" style="width:1280px;height:360px;border:0;"></iframe>
     <iframe id="chat-frame" src="/chat-widget" style="width:360px;height:500px;border:0;"></iframe>
     <script>
     window.addEventListener('load', async () => {
@@ -285,11 +341,23 @@ ${cssBundle}
         const skeletonDisplay = getComputedStyle(chatDoc.querySelector('.support-skeleton')).display;
         const dotsDisplay = getComputedStyle(chatDoc.querySelector('.support-init-dots')).display;
         const textDisplay = getComputedStyle(chatDoc.querySelector('[data-init-text]')).display;
+
+        const dfDoc = document.getElementById('desktop-footer').contentDocument;
+        const fLinks = [...dfDoc.querySelectorAll('.np-footer__links a')].map(el => el.getBoundingClientRect());
+        const footerGrid2x2 = fLinks.length === 4
+            && Math.abs(fLinks[0].top - fLinks[1].top) <= 1
+            && Math.abs(fLinks[2].top - fLinks[3].top) <= 1
+            && fLinks[2].top >= fLinks[0].bottom + 6
+            && Math.abs(fLinks[0].width - fLinks[1].width) <= 1
+            && Math.abs(fLinks[2].width - fLinks[3].width) <= 1
+            && Math.abs(fLinks[0].width - fLinks[2].width) <= 1;
+
         document.body.setAttribute('data-probe', JSON.stringify({
             ...mf.contentWindow.__mobileProbe,
             skeletonDisplay,
             dotsDisplay,
             textDisplay,
+            footerGrid2x2,
         }));
     });
     </script>
@@ -331,6 +399,11 @@ ${cssBundle}
                 }
                 res.writeHead(404);
                 res.end();
+                return;
+            }
+            if (reqPath === '/desktop-footer') {
+                res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'});
+                res.end(desktopFooterHtml);
                 return;
             }
             if (reqPath === '/mobile-fixture') {
@@ -393,11 +466,18 @@ ${cssBundle}
         assert.match(p.badgeShadow, /rgb\(255,\s*255,\s*255\)/, 'Bottom cart badge must have white ring box-shadow');
         assert.equal(p.badgeCoversSvgCenter, false, 'Bottom cart badge must perch on outer corner without overlapping cart SVG center');
 
-        // 5. Floating select clean height, no duplicate chevron, floated label
+        // 5. True floating-label select (empty rests centered, blank option hidden, floats on focus/selection) + 2x2 desktop footer symmetry
         assert.equal(p.dupChevronDisplay, 'none', 'Duplicate SVG chevron inside .commerce-select.np-float-field must be hidden');
         assert.equal(p.selectHeight, 54, 'Floating select must be 54px tall for uncrowded reading');
         assert.equal(p.selectAppearance, 'none', 'Floating select must suppress native OS arrow');
-        assert.ok(p.selectLabelDelta <= 5, `Select floating label must sit on top border, delta=${p.selectLabelDelta}`);
+        assert.equal(p.selectInitialFloated, false, 'Empty unselected <select> must NOT float label prematurely');
+        assert.ok(p.selectCenteredDelta <= 5, `Empty unselected <select> label must rest centered inside field, delta=${p.selectCenteredDelta}`);
+        assert.equal(p.blankOptHiddenAndDisabled, true, 'Empty <select> placeholder option must be empty, disabled, and hidden');
+        assert.equal(p.selectFocusFloated, true, 'Focusing empty <select> must float label to top border');
+        assert.equal(p.selectBlurReturned, true, 'Blurring unselected <select> must return label to resting center');
+        assert.equal(p.selectSelectedFloated, true, 'Selecting a non-empty option must keep label floated');
+        assert.ok(p.selectLabelDelta <= 5, `Selected <select> floating label must sit on top border, delta=${p.selectLabelDelta}`);
+        assert.equal(p.footerGrid2x2, true, 'Desktop footer quick-access buttons must form a symmetric 2x2 equal-width grid without 3+1 orphan wrap');
 
         // 6. Support chat single startup loading indicator
         assert.equal(p.skeletonDisplay, 'flex', 'Support skeleton must display during initializing state');

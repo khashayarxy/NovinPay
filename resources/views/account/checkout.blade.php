@@ -123,7 +123,7 @@
                                 <div class="checkout-field">
                                     <div class="commerce-select np-float-field" data-float-field>
                                         <select id="delivery-address" name="address" class="checkout-input @error('address') is-invalid @enderror">
-                                            <option value="">انتخاب نشانی</option>
+                                            <option value="" disabled @selected(empty($defaultAddressId)) hidden></option>
                                             @foreach ($addresses as $address)
                                                 <option value="{{ $address->public_id }}"
                                                         data-province="{{ $address->province }}"
@@ -172,7 +172,7 @@
                                 <div class="checkout-field">
                                     <div class="np-float-field" data-float-field>
                                         <select id="checkout-province" name="province" class="checkout-input @error('province') is-invalid @enderror" data-iran-province>
-                                            <option value="">انتخاب استان</option>
+                                            <option value="" disabled @selected(empty($selectedProvince)) hidden></option>
                                             @foreach (array_keys($iranLocations) as $provinceName)
                                                 <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
                                             @endforeach
@@ -184,7 +184,7 @@
                                 <div class="checkout-field">
                                     <div class="np-float-field" data-float-field>
                                         <select id="checkout-city" name="city" class="checkout-input @error('city') is-invalid @enderror" data-iran-city data-selected-city="{{ $selectedCity }}">
-                                            <option value="">{{ $selectedProvince !== '' ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}</option>
+                                            <option value="" disabled @selected(empty($selectedCity)) hidden></option>
                                             @foreach ($citiesForProvince as $cityName)
                                                 <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>
                                             @endforeach

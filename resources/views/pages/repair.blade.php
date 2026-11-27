@@ -116,7 +116,7 @@
                     <div class="public-field">
                         <div class="np-float-field np-float-field--select" data-float-field>
                             <select id="device_brand" name="device_brand" class="input" required aria-invalid="{{ $errors->has('device_brand') ? 'true' : 'false' }}" aria-describedby="device_brand-feedback">
-                                <option value="">انتخاب برند دستگاه…</option>
+                                <option value="" disabled @selected(empty($selectedBrand)) hidden></option>
                                 @foreach ($brands as $brand)
                                     <option value="{{ $brand->value }}" @selected($selectedBrand === $brand->value)>{{ $brand->value }}</option>
                                 @endforeach

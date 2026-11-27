@@ -2724,9 +2724,17 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     display: none;
 }
 
-.np-float-field:has(select option[value=""]:checked) select {
-    color: #64748b;
-    font-weight: 400;
+.np-float-field select option {
+    color: #0f172a;
+    background-color: #ffffff;
+}
+
+.np-float-field select option[hidden] {
+    display: none;
+}
+
+.np-float-field:has(select:not(.sr-only) option[value=""]:checked) select:not(:focus) {
+    color: transparent;
 }
 
 .np-float-field :is(input, textarea):not(:focus)::placeholder {
@@ -2769,14 +2777,18 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
         background 0.16s ease;
 }
 
+.np-float-field:has(select:not(.sr-only)):not(.is-floated) > label {
+    max-width: calc(100% - 48px);
+}
+
 .np-float-field:has(textarea) > label {
     top: 16px;
     transform: none;
 }
 
 .np-float-field.is-floated > label,
-.np-float-field:has(select) > label,
-.np-float-field:has(:is(input, textarea):focus) > label,
+.np-float-field:has(:is(input, textarea, select:not(.sr-only)):focus) > label,
+.np-float-field:has(select:not(.sr-only) option:checked:not([value=""])) > label,
 .np-float-field:has(:is(input, textarea):not(:placeholder-shown)) > label,
 .np-float-field:has(:is(input, textarea):-webkit-autofill) > label,
 .np-float-field:has(:is(input, textarea):autofill) > label {

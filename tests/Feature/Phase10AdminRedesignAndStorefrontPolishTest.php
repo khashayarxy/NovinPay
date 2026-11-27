@@ -261,7 +261,9 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
             ->get('/repair')
             ->assertOk()
             ->assertSee('<select id="device_brand" name="device_brand"', false)
+            ->assertSee('<option value="" disabled selected hidden></option>', false)
             ->assertSee('google-maps-2026-28.webp', false)
+            ->assertDontSee('انتخاب برند دستگاه…')
             ->assertDontSee('انتخاب سریع از دستگاه‌های شما')
             ->assertDontSee('<h2>مشخصات دستگاه</h2>', false)
             ->assertDontSee('repair-brand-grid', false);
@@ -356,7 +358,8 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
     {
         $this->get('/consultation')
             ->assertOk()
-            ->assertSee('انتخاب موضوع مشاوره…')
+            ->assertSee('<option value="" disabled selected hidden></option>', false)
+            ->assertDontSee('انتخاب موضوع مشاوره…')
             ->assertSee('موضوع مشاوره');
 
         $this->get('/products/'.$this->product->slug)

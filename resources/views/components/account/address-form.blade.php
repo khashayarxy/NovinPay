@@ -46,7 +46,7 @@
         <div class="np-account-form__field">
             <div class="np-float-field" data-float-field>
                 <select id="{{ $prefix }}-province" name="province" autocomplete="address-level1" data-iran-province @class(['is-invalid' => $isThisForm && $errors->has('province')]) @if($isThisForm && $errors->has('province')) aria-invalid="true" @endif required>
-                    <option value="">انتخاب استان</option>
+                    <option value="" disabled @selected(empty($selectedProvince)) hidden></option>
                     @foreach(array_keys($locations) as $provinceName)
                         <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
                     @endforeach
@@ -61,7 +61,7 @@
         <div class="np-account-form__field">
             <div class="np-float-field" data-float-field>
                 <select id="{{ $prefix }}-city" name="city" autocomplete="address-level2" data-iran-city data-initial-city="{{ $selectedCity }}" @class(['is-invalid' => $isThisForm && $errors->has('city')]) @if($isThisForm && $errors->has('city')) aria-invalid="true" @endif required>
-                    <option value="">{{ $selectedProvince !== '' ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}</option>
+                    <option value="" disabled @selected(empty($selectedCity)) hidden></option>
                     @foreach($citiesForProvince as $cityName)
                         <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>
                     @endforeach

@@ -27,7 +27,7 @@
                         <div class="public-field">
                             <div class="np-float-field" data-float-field>
                                 <select class="input" id="consultation-topic" name="topic" required>
-                                    <option value="">انتخاب موضوع مشاوره…</option>
+                                    <option value="" disabled @selected(empty(old('topic'))) hidden></option>
                                     @foreach (\App\Models\Consultation::TOPICS as $value => $label)
                                         <option value="{{ $value }}" @selected(old('topic') === $value)>{{ $label }}</option>
                                     @endforeach

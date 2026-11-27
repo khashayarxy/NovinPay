@@ -1424,7 +1424,11 @@ runWhenDomReady(() => {
                 citySelect.innerHTML = '';
                 const placeholder = document.createElement('option');
                 placeholder.value = '';
-                placeholder.textContent = province ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید';
+                placeholder.disabled = true;
+                placeholder.hidden = true;
+                if (!preserveCity) {
+                    placeholder.selected = true;
+                }
                 citySelect.append(placeholder);
                 cities.forEach((city) => {
                     const option = document.createElement('option');
@@ -1437,6 +1441,8 @@ runWhenDomReady(() => {
                     citySelect.value = preserveCity;
                     citySelect.dataset.selectedCity = preserveCity;
                 }
+                citySelect.closest('[data-float-field]')?.classList.toggle('is-floated', Boolean(citySelect.value) || document.activeElement === citySelect);
+                provinceSelect.closest('[data-float-field]')?.classList.toggle('is-floated', Boolean(provinceSelect.value) || document.activeElement === provinceSelect);
             };
             form._populateIranCities = populateCities;
             if (provinceSelect.value) {
@@ -2023,7 +2029,10 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                     const sel = form.querySelector('select[name="address"]');
                     if (sel instanceof HTMLSelectElement && !sel.value) {
                         const opt = sel.querySelector(`option[value="${data.address_id}"]`);
-                        if (opt) sel.value = data.address_id;
+                        if (opt) {
+                            sel.value = data.address_id;
+                            sel.closest('[data-float-field]')?.classList.add('is-floated');
+                        }
                     }
                 }
             }).catch(() => {});
@@ -3214,10 +3223,9 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
     // Phase 8: Keep Material floating-label wrappers synchronized on pre-filled, programmatic, and autofill updates
     const syncFloatField = (wrapper) => {
         if (!(wrapper instanceof HTMLElement)) return;
-        const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select');
+        const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select:not(.sr-only)');
         if (!control) return;
-        const isSelect = control instanceof HTMLSelectElement;
-        const hasValue = isSelect || String(control.value || '').length > 0 || document.activeElement === control;
+        const hasValue = String(control.value || '').length > 0 || document.activeElement === control;
         wrapper.classList.toggle('is-floated', hasValue);
     };
 
@@ -3226,7 +3234,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             syncFloatField(wrapper);
             if (wrapper.dataset.floatBound === '1') return;
             wrapper.dataset.floatBound = '1';
-            const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select');
+            const control = wrapper.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select:not(.sr-only)');
             if (!control) return;
             ['input', 'change', 'focus', 'blur'].forEach((evt) => {
                 control.addEventListener(evt, () => syncFloatField(wrapper));
