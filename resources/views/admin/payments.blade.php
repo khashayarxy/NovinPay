@@ -47,7 +47,7 @@
 
 <div class="admin-detail-grid mt-3">
     <section class="admin-panel">
-        <div class="admin-panel-heading"><h2>مطالبات مشتریان برای بازپرداخت</h2></div>
+        <div class="admin-panel-heading"><h2>بستانکاری مشتریان (بازپرداخت)</h2></div>
         @if($credits->isEmpty())
             <p class="admin-hint">طلب بازی برای بازپرداخت ثبت نشده است.</p>
         @else
@@ -134,44 +134,49 @@
 
 <div class="admin-detail-grid mt-4">
     @can('finance.receive')
-    <section class="admin-panel">
-        <div class="admin-panel-heading"><h2>ثبت دریافت در فروشگاه</h2></div>
-        <form class="admin-form" method="post" action="{{ route('admin.payments.store') }}">
-            @csrf
-            <input type="hidden" name="operation_key" value="{{ \Illuminate\Support\Str::uuid() }}">
-            <div class="admin-form-grid">
-                <x-operation-field name="document" label="شناسهٔ سند مالی (UUID)" :maxlength="36"/>
-                <x-operation-field name="amount" inputmode="decimal" label="مبلغ دریافت‌شده (تومان)"/>
-            </div>
-            <x-operation-field name="password" label="رمز عبور فعلی شما" type="password"/>
-            <label class="admin-checkbox"><input type="checkbox" name="funds_confirmed" value="1" required> وجه واقعاً دریافت شده است.</label>
-            <div><button class="btn btn-primary" type="submit">ثبت دریافت وجه</button></div>
-        </form>
-    </section>
+    <details class="admin-accordion" @if($errors->has('document') || $errors->has('funds_confirmed')) open @endif>
+        <summary>
+            <span>ثبت دریافت وجه در فروشگاه (با شناسه فاکتور)</span>
+            <svg class="admin-accordion__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+        </summary>
+        <div class="admin-accordion__body">
+            <form class="admin-form" method="post" action="{{ route('admin.payments.store') }}">
+                @csrf
+                <input type="hidden" name="operation_key" value="{{ \Illuminate\Support\Str::uuid() }}">
+                <div class="admin-form-grid">
+                    <x-operation-field name="document" label="شناسهٔ فاکتور (UUID)" :maxlength="36"/>
+                    <x-operation-field name="amount" inputmode="decimal" label="مبلغ دریافت‌شده (تومان)"/>
+                </div>
+                <x-operation-field name="password" label="رمز عبور فعلی شما" type="password"/>
+                <label class="admin-checkbox"><input type="checkbox" name="funds_confirmed" value="1" required> دریافت واقعی وجه را تأیید می‌کنم.</label>
+                <div><button class="btn btn-primary btn-sm" type="submit">ثبت دریافت وجه</button></div>
+            </form>
+        </div>
+    </details>
     @endcan
 
     @can('finance.correct')
-    <section class="admin-panel">
-        <div class="admin-panel-heading">
-            <h2>بازپرداخت طلب مشتری</h2>
-            <button type="button" class="btn btn-secondary btn-sm" data-toggle-panel="admin-refund-panel" aria-expanded="false" aria-controls="admin-refund-panel">فرم ثبت بازپرداخت</button>
-        </div>
-        <p class="admin-hint">ثبت تسویه برای بستانکاری‌هایی که قبلاً از طریق بانک به مشتری عودت داده شده‌اند.</p>
-        <div id="admin-refund-panel" class="mt-3" hidden>
+    <details class="admin-accordion" @if($errors->has('refund_confirmed') || $errors->has('reference')) open @endif>
+        <summary>
+            <span>ثبت بازپرداخت انجام‌شده به مشتری</span>
+            <svg class="admin-accordion__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+        </summary>
+        <div class="admin-accordion__body">
+            <p class="admin-hint mb-3">ثبت تسویه برای بستانکاری‌هایی که قبلاً از طریق بانک به مشتری عودت داده شده‌اند.</p>
             <form class="admin-form" method="post" action="{{ route('admin.payments.refund') }}">
                 @csrf
                 <input type="hidden" name="operation_key" value="{{ \Illuminate\Support\Str::uuid() }}">
                 <div class="admin-form-grid">
-                    <x-operation-field name="document" label="شناسهٔ سند مالی (UUID)" :maxlength="36"/>
+                    <x-operation-field name="document" label="شناسهٔ فاکتور (UUID)" :maxlength="36"/>
                     <x-operation-field name="amount" inputmode="decimal" label="مبلغ بازپرداخت (تومان)"/>
                 </div>
-                <x-operation-field name="reference" label="مرجع واقعی بازپرداخت" :maxlength="80"/>
+                <x-operation-field name="reference" label="شماره پیگیری بازپرداخت" :maxlength="80"/>
                 <x-operation-field name="password" label="رمز عبور فعلی شما" type="password"/>
-                <label class="admin-checkbox"><input type="checkbox" name="refund_confirmed" value="1" required> وجه قبلاً به مشتری بازپرداخت شده است؛ این فرم انتقال وجه انجام نمی‌دهد.</label>
-                <div><button class="btn btn-secondary" type="submit">ثبت بازپرداخت انجام‌شده</button></div>
+                <label class="admin-checkbox"><input type="checkbox" name="refund_confirmed" value="1" required> وجه قبلاً به مشتری عودت داده شده است.</label>
+                <div><button class="btn btn-secondary btn-sm" type="submit">ثبت بازپرداخت انجام‌شده</button></div>
             </form>
         </div>
-    </section>
+    </details>
     @endcan
 </div>
 @endsection

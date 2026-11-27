@@ -103,14 +103,11 @@
                     @if($plan->requested_method)
                         @if($plan->requested_method === 'post')
                             <div class="admin-info-card admin-info-card--warning">
-                                <h3>نیاز به هماهنگی هزینهٔ پست</h3>
-                                <p>استعلام خودکار هزینهٔ پست هنوز فعال نیست؛ بنابراین امکان تأیید سیستمی روش پستی در این مرحله وجود ندارد. با مشتری تماس بگیرید تا روش ارسال (تیپاکس، پیک یا تحویل حضوری) را از حساب کاربری خود تغییر دهد.</p>
+                                <h3>نیاز به تغییر روش ارسال توسط مشتری</h3>
+                                <p>محاسبهٔ خودکار هزینهٔ پست فعال نیست؛ با مشتری هماهنگ کنید تا روش تحویل (تیپاکس، پیک یا حضوری) را انتخاب کند.</p>
                                 <div class="admin-actions mt-2">
                                     @if(!empty($ctx['customer_phone']))
                                         <a class="btn btn-primary btn-sm" href="tel:{{ \App\Support\FaNumber::normalizeDigits($ctx['customer_phone']) }}">تماس با مشتری</a>
-                                    @endif
-                                    @if(!empty($ctx['source_url']))
-                                        <a class="btn btn-secondary btn-sm" href="{{ $ctx['source_url'] }}">مشاهدهٔ جزئیات</a>
                                     @endif
                                 </div>
                             </div>
@@ -135,11 +132,11 @@
                                     <form class="admin-actions" method="post" action="{{ route('admin.deliveries.order-progress', $plan->public_id) }}">
                                         @csrf
                                         <input type="hidden" name="version" value="{{ $plan->version }}">
-                                        <button class="btn btn-secondary" type="submit" name="progress" value="preparing">
+                                        <button class="btn btn-secondary" type="submit" name="progress" value="preparing" @disabled(!empty($ctx['preparing_done']))>
                                             {{ !empty($ctx['preparing_done']) ? '✓ شروع آماده‌سازی ثبت شده' : 'ثبت شروع آماده‌سازی' }}
                                         </button>
                                         @if($plan->method === 'pickup')
-                                            <button class="btn btn-secondary" type="submit" name="progress" value="pickup_ready">
+                                            <button class="btn btn-secondary" type="submit" name="progress" value="pickup_ready" @disabled(!empty($ctx['pickup_ready_done']))>
                                                 {{ !empty($ctx['pickup_ready_done']) ? '✓ آمادگی تحویل ثبت شده' : 'ثبت آمادگی تحویل حضوری' }}
                                             </button>
                                         @endif

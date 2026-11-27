@@ -4,39 +4,49 @@
 @php
     $stage = $case->status->value;
     $shortCaseId = strtoupper(substr((string) $case->public_id, 0, 8));
+    $canPrintDocs = auth()->user()->can('operate', [$case, 'print']);
+    $canViewFinance = auth()->user()->can('finance.view');
 @endphp
+<a class="admin-back-link" href="{{ route('admin.repair-cases.index') }}">← پرونده‌های تعمیر</a>
 <header class="admin-page-heading">
     <div>
         <div class="repair-case-header__title-row">
             <h1>پروندهٔ تعمیر {{ ($case->device_brand?->value ?? '—') }}</h1>
             <x-admin.status :tone="in_array($stage, ['ready', 'delivered'], true) ? 'success' : ($stage === 'repairing' ? 'info' : 'neutral')">{{ $case->status->label() }}</x-admin.status>
         </div>
+        <p class="repair-case-header__sub">
+            <span>دریافت: <x-finance-time :value="$case->received_at" /> · {{ $case->receiver->name }}</span>
+            <span>· تکنسین: <strong>{{ $case->technician?->name ?? 'تخصیص نیافته' }}</strong></span>
+            <span>· {{ $case->repair_request_id ? 'مرتبط با درخواست آنلاین' : 'مستقیم در فروشگاه' }}</span>
+        </p>
         <div class="admin-id-row">
             <span class="admin-id-chip" title="{{ $case->public_id }}">#{{ $shortCaseId }}</span>
             <button type="button" class="admin-copy-mini" data-copy-code="{{ $case->public_id }}"><span data-copy-code-label>کپی شناسه</span></button>
         </div>
     </div>
-    <div class="admin-actions">
-        @can('finance.view')
-            <a class="btn btn-secondary btn-sm" href="{{ route('admin.finance.sources.show',['type'=>'repair','reference'=>$case->public_id]) }}">سند مالی و هزینه تعمیر</a>
-        @endcan
-        <a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.index') }}">بازگشت به فهرست</a>
-    </div>
+    @if($canPrintDocs || $canViewFinance)
+        <div class="admin-actions">
+            <details class="admin-more-menu">
+                <summary>
+                    <span>چاپ و اسناد</span>
+                    <svg class="admin-more-menu__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+                </summary>
+                <div class="admin-more-menu__panel">
+                    @if($canPrintDocs)
+                        <a href="{{ route('admin.repair-cases.document', [$case, 'intake']) }}">رسید پذیرش</a>
+                        <a href="{{ route('admin.repair-cases.document', [$case, 'summary']) }}">خلاصهٔ تعمیر</a>
+                        @if($delivery)<a href="{{ route('admin.repair-cases.document', [$case, 'delivery']) }}">سند تحویل</a>@endif
+                    @endif
+                    @if($canViewFinance)
+                        <a href="{{ route('admin.finance.sources.show',['type'=>'repair','reference'=>$case->public_id]) }}">سند مالی و هزینه تعمیر</a>
+                    @endif
+                </div>
+            </details>
+        </div>
+    @endif
 </header>
 <x-admin.errors />
 <x-customer-association :record="$case" :subtle="true"/>
-
-<div class="repair-status-banner mt-3">
-    <div>
-        <span class="admin-eyebrow">مرحلهٔ فعلی</span>
-        <h2>{{ $case->status->label() }}</h2>
-        <p>دریافت: <x-finance-time :value="$case->received_at" /> · {{ $case->receiver->name }}</p>
-    </div>
-    <div>
-        <p>تکنسین: <strong>{{ $case->technician?->name ?? 'تخصیص نیافته' }}</strong></p>
-        <p>نوع پذیرش: {{ $case->repair_request_id ? 'مرتبط با درخواست آنلاین' : 'مستقیم در فروشگاه' }}</p>
-    </div>
-</div>
 
 @include('admin.repair-cases.workflow')
 
@@ -92,33 +102,9 @@
     </div>
 
     <aside class="repair-action-stack" aria-label="عملیات مجاز پرونده" id="repair-actions">
-        @can('operate', [$case, 'print'])
-            <section class="admin-panel">
-                <h2>اسناد قابل چاپ</h2>
-                <div class="repair-document-links">
-                    @foreach(['intake'=>'رسید پذیرش', 'summary'=>'خلاصهٔ تعمیر', 'delivery'=>'سند تحویل'] as $key=>$label)
-                        @if($key !== 'delivery' || $delivery)
-                            <a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.document', [$case, $key]) }}">{{ $label }}</a>
-                        @endif
-                    @endforeach
-                </div>
-            </section>
-        @endcan
-
         @include('admin.repair-cases._payment-link-card')
 
         @if(!$case->status->closed())
-            @can('operate', [$case, 'assign'])
-                <x-repair-operation :case="$case" action="assign" title="تخصیص تکنسین">
-                    <label class="label" for="assign-tech">تکنسین فعال و مجاز</label>
-                    <select class="input" name="technician_id" id="assign-tech" required>
-                        <option value="">انتخاب تکنسین</option>
-                        @foreach($technicians as $tech)<option value="{{ $tech->id }}">{{ $tech->name }}</option>@endforeach
-                    </select>
-                    <button class="btn btn-secondary" type="submit">ثبت تخصیص</button>
-                </x-repair-operation>
-            @endcan
-
             @include('admin.repair-cases.diagnose')
 
             @php($nextStage = ['approved'=>'repairing','repaired'=>'ready'][$stage] ?? null)
@@ -150,18 +136,18 @@
                                 <option value="{{ $key }}">{{ $label }}</option>
                             @endforeach
                         </select>
-                        <x-operation-field name="evidence" label="مرجع یا شرح شاهد تأیید / رد" kind="textarea" :maxlength="1000"/>
-                        <label class="admin-checkbox"><input type="checkbox" name="staff_recorded_confirmation" value="1" required> تصمیم واقعی مشتری را با مرجع ثبت می‌کنم.</label>
-                        <button class="btn btn-primary" type="submit">ثبت تصمیم با مسئولیت کارمند</button>
+                        <x-operation-field name="evidence" label="توضیح یا مرجع تأیید / رد" kind="textarea" :maxlength="1000"/>
+                        <label class="admin-checkbox"><input type="checkbox" name="staff_recorded_confirmation" value="1" required> تصمیم واقعی مشتری را ثبت می‌کنم.</label>
+                        <button class="btn btn-primary" type="submit">ثبت تصمیم مشتری</button>
                     </x-repair-operation>
                 @endcan
             @endif
 
             @if($stage === 'repairing')
                 @can('operate', [$case, 'work'])
-                    <x-repair-operation :case="$case" action="work" title="ثبت کار واقعی تعمیر">
+                    <x-repair-operation :case="$case" action="work" title="ثبت کار تعمیر">
                         <x-operation-field name="work_performed" label="کار انجام‌شده (قابل درج در خلاصهٔ مشتری)" kind="textarea"/>
-                        <x-operation-field name="parts_replaced" label="قطعات تعویضی توصیفی؛ اگر ندارد بنویسید ندارد" kind="textarea"/>
+                        <x-operation-field name="parts_replaced" label="قطعات تعویضی (اگر ندارد بنویسید ندارد)" kind="textarea"/>
                         <x-operation-field name="internal_notes" label="یادداشت داخلی کار" kind="textarea" :required="false"/>
                         <label class="label" for="work-complete">نتیجهٔ این ثبت</label>
                         <select class="input" id="work-complete" name="complete">
@@ -177,7 +163,7 @@
 
             @if(in_array($stage,['ready','return_pending']))
                 @can('operate', [$case, 'delivery'])
-                    <x-repair-operation :case="$case" action="delivery" title="ثبت تحویل واقعی دستگاه">
+                    <x-repair-operation :case="$case" action="delivery" title="ثبت تحویل دستگاه">
                         <p class="admin-muted">{{ $stage === 'ready' ? 'تحویل پس از تعمیر و کنترل‌های پایان' : 'بازگرداندن بدون تعمیر موفق' }}</p>
                         <x-operation-field name="recipient_name" label="نام شخص تحویل‌گیرنده" :maxlength="100"/>
                         <x-operation-field name="delivered_at" label="تاریخ و ساعت تحویل (تهران)" type="datetime-local" :value="\App\Support\RepairTime::input()"/>
@@ -189,7 +175,7 @@
                             <option value="message">پیام تحویل‌گیرنده</option>
                             <option value="document">سند قابل ارجاع</option>
                         </select>
-                        <x-operation-field name="confirmation_reference" label="مرجع مدرک تحویل؛ با انتخاب روش الزامی است" kind="textarea" :required="false" :maxlength="1000"/>
+                        <x-operation-field name="confirmation_reference" label="مرجع مدرک تحویل (در صورت انتخاب روش)" kind="textarea" :required="false" :maxlength="1000"/>
                         @if($stage === 'ready' && $estimates->first())
                             <label class="admin-checkbox"><input type="checkbox" name="amounts_confirmed" value="1" required> مبلغ نهایی برابر آخرین برآورد تأییدشده ({{ \App\Support\FaNumber::digits(number_format($estimates->first()->total())) }} تومان) بررسی شد.</label>
                         @endif
@@ -221,7 +207,7 @@
 
             @if(in_array($stage,['inspected','waiting_approval','approved']))
                 @can('operate', [$case, 'estimate'])
-                    <x-repair-operation :case="$case" action="estimate" title="نسخهٔ تازهٔ برآورد">
+                    <x-repair-operation :case="$case" action="estimate" title="ثبت برآورد هزینه">
                         <x-operation-field name="customer_summary" label="شرح پیشنهادی قابل ارائه به مشتری" kind="textarea"/>
                         <div class="admin-form-grid">
                             <x-operation-field name="service_cost" label="خدمات (تومان)" type="number"/>
@@ -232,13 +218,42 @@
                 @endcan
             @endif
 
+            @can('operate', [$case, 'assign'])
+                <details class="admin-accordion">
+                    <summary>
+                        <span>تخصیص یا تغییر تکنسین</span>
+                        <svg class="admin-accordion__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+                    </summary>
+                    <div class="admin-accordion__body">
+                        <form method="post" action="{{ route('admin.repair-cases.assign', $case) }}" class="admin-form repair-operation">
+                            @csrf<input type="hidden" name="version" value="{{ $case->version }}">
+                            <label class="label" for="assign-tech">تکنسین فعال و مجاز</label>
+                            <select class="input" name="technician_id" id="assign-tech" required>
+                                <option value="">انتخاب تکنسین</option>
+                                @foreach($technicians as $tech)<option value="{{ $tech->id }}" @selected($case->technician_id === $tech->id)>{{ $tech->name }}</option>@endforeach
+                            </select>
+                            <button class="btn btn-secondary" type="submit">ثبت تخصیص</button>
+                        </form>
+                    </div>
+                </details>
+            @endcan
+
             @if(in_array($stage,['received','waiting_inspection','inspecting','inspected','waiting_approval','approved','repairing']))
                 @can('operate', [$case, 'manage'])
-                    <x-repair-operation :case="$case" action="transition" title="لغو ادامهٔ تعمیر">
-                        <input type="hidden" name="status" value="return_pending">
-                        <p class="admin-hint">خروج دستگاه فقط با ثبت تحویلِ بازگرداندن انجام می‌شود.</p>
-                        <button class="btn btn-secondary" type="submit">انتظار بازگرداندن بدون تعمیر</button>
-                    </x-repair-operation>
+                    <details class="admin-accordion">
+                        <summary>
+                            <span>لغو ادامهٔ تعمیر و بازگرداندن دستگاه</span>
+                            <svg class="admin-accordion__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+                        </summary>
+                        <div class="admin-accordion__body">
+                            <form method="post" action="{{ route('admin.repair-cases.transition', $case) }}" class="admin-form repair-operation">
+                                @csrf<input type="hidden" name="version" value="{{ $case->version }}">
+                                <input type="hidden" name="status" value="return_pending">
+                                <p class="admin-hint">خروج دستگاه فقط با ثبت تحویلِ بازگرداندن انجام می‌شود.</p>
+                                <button class="btn btn-secondary" type="submit">انتظار بازگرداندن بدون تعمیر</button>
+                            </form>
+                        </div>
+                    </details>
                 @endcan
             @endif
         @endif

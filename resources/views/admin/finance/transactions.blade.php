@@ -1,12 +1,12 @@
 <div tabindex="0" role="region" aria-label="تاریخچهٔ مالی؛ جدول در نمایشگر بزرگ و کارت در موبایل" class="admin-table-wrap finance-table-wrap">
     <table class="admin-table commerce-table finance-table" role="table">
         <caption class="sr-only">رویدادهای مالی؛ تمام مبالغ به تومان با دو رقم اعشار؛ زمان ثبت به وقت تهران</caption>
-        <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">رویداد و دسته</th><th scope="col" role="columnheader">تغییر مطالبه</th><th scope="col" role="columnheader">دریافت</th><th scope="col" role="columnheader">هزینه</th><th scope="col" role="columnheader">ثبت‌کننده و زمان</th><th scope="col" role="columnheader">مدرک</th></tr></thead>
+        <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">رویداد و دسته</th><th scope="col" role="columnheader">تغییر فاکتور</th><th scope="col" role="columnheader">دریافت</th><th scope="col" role="columnheader">هزینه</th><th scope="col" role="columnheader">ثبت‌کننده و زمان</th><th scope="col" role="columnheader">مدرک</th></tr></thead>
         <tbody role="rowgroup">
         @forelse($entries as $entry)
             <tr role="row">
                 <td role="cell"><span class="finance-cell-label" aria-hidden="true">رویداد و دسته</span><div class="finance-cell-value"><strong>{{ \App\Support\FinanceInput::KINDS[$entry->kind] }}</strong><small>{{ \App\Support\FinanceInput::CATEGORIES[$entry->category] }}</small></div></td>
-                @foreach(['charge_delta'=>'تغییر مطالبه','receipt_delta'=>'دریافت','expense_delta'=>'هزینه'] as $field=>$label)
+                @foreach(['charge_delta'=>'تغییر فاکتور','receipt_delta'=>'دریافت','expense_delta'=>'هزینه'] as $field=>$label)
                     <td role="cell"><span class="finance-cell-label" aria-hidden="true">{{ $label }} (تومان)</span><div class="finance-cell-value"><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman($entry->$field) }}</bdi></div></td>
                 @endforeach
                 <td role="cell"><span class="finance-cell-label" aria-hidden="true">ثبت‌کننده و زمان</span><div class="finance-cell-value">{{ $entry->actor?->name ?? ('همکار '.\App\Support\FaNumber::digits($entry->actor_id)) }}<small><x-finance-time :value="$entry->created_at"/></small></div></td>

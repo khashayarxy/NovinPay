@@ -63,6 +63,9 @@ test('Phase 10 static stylesheet contracts: admin enterprise design system and s
     assert.match(adminCss, /\.admin-id-chip\b/);
     assert.match(adminCss, /\.admin-step-strip\b/);
     assert.match(adminCss, /\.admin-site\s+select\.input\b/);
+    assert.match(adminCss, /dialog\.admin-calendar\[open\]/);
+    assert.match(adminCss, /\.admin-calendar-days\b/);
+    assert.match(adminCss, /\.admin-autofill-trap\b/);
     assert.match(customerV2Css, /\[data-support-stable-shell\]\[data-init-state=initializing\]:not\(\[data-connection-state\]\)\s*:is\(\.support-init-dots,\[data-init-text\]\)\{display:none\}/);
 });
 
@@ -400,6 +403,180 @@ ${cssBundle}
         assert.equal(p.skeletonDisplay, 'flex', 'Support skeleton must display during initializing state');
         assert.equal(p.dotsDisplay, 'none', 'Duplicate support-init-dots must be hidden during initializing state');
         assert.equal(p.textDisplay, 'none', 'Duplicate [data-init-text] must be hidden during initializing state');
+    } finally {
+        if (server) await new Promise(r => server.close(() => r()));
+        try { rmSync(directory, {recursive: true, force: true}); } catch {}
+    }
+});
+
+test('Phase 10 Admin Chromium UX: anchored 7-column Jalali datepicker popover, intake brand select, tabs, and Persian file picker', async t => {
+    const executable = findChrome();
+    if (!executable) {
+        t.skip('Chromium/Edge executable not available');
+        return;
+    }
+
+    const stripImports = s => s
+        .replace(/@import\s+['"][^'"]+['"];?/g, '')
+        .replace(/@source\s+['"][^'"]+['"];?/g, '')
+        .replace(/@theme\s+static\s*\{[\s\S]*?\}/g, '')
+        .replace(/@apply\s+[^;]+;/g, '');
+
+    const adminCssBundle = [
+        stripImports(readFileSync(path.join(rootDir, 'resources/css/customer-account.css'), 'utf8')),
+        stripImports(readFileSync(path.join(rootDir, 'resources/css/app.css'), 'utf8')),
+        stripImports(readFileSync(path.join(rootDir, 'resources/css/admin.css'), 'utf8')),
+    ].join('\n');
+
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'np-admin-ux-'));
+    let server;
+
+    const adminHtml = `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: Tahoma, sans-serif; }
+${adminCssBundle}
+</style>
+</head>
+<body class="admin-site">
+    <main style="padding: 24px;">
+        <div style="max-width: 280px;">
+            <label class="label" for="finance-from">از تاریخ</label>
+            <input class="input" type="date" id="finance-from" name="from" value="2026-11-27">
+        </div>
+
+        <form id="intake-form" style="margin-top: 20px;">
+            <select id="intake-brand-select" class="input" data-intake-brand-select>
+                <option value="">انتخاب برند دستگاه…</option>
+                <option value="PAX" selected>PAX</option>
+                <option value="Newland">Newland</option>
+            </select>
+            <input class="input" name="device_model" value="PAX S910">
+        </form>
+
+        <section id="tabs-section" style="margin-top: 20px;">
+            <div class="admin-tab-bar" data-admin-tabs>
+                <button type="button" class="admin-tab-btn" data-admin-tab="orders" aria-selected="true">سفارش‌ها</button>
+                <button type="button" class="admin-tab-btn" data-admin-tab="cases" id="cases-tab-btn" aria-selected="false">تعمیرات</button>
+            </div>
+            <div data-admin-tab-panel="orders" id="orders-panel">پنل سفارش</div>
+            <div data-admin-tab-panel="cases" id="cases-panel" hidden>پنل تعمیرات</div>
+        </section>
+
+        <div class="np-file-picker" data-np-file-picker style="margin-top: 20px;">
+            <input id="prod-img" name="image" type="file" class="sr-only" data-np-file-input>
+            <label for="prod-img" class="np-file-picker__btn">انتخاب تصویر اصلی</label>
+            <span class="np-file-picker__name" data-np-file-name data-empty-label="فایلی انتخاب نشده است">فایلی انتخاب نشده است</span>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initAdminCalendar } from '/resources/js/admin-calendar.js';
+        initAdminCalendar(document.body);
+    </script>
+    <script type="module" src="/resources/js/app.js"></script>
+    <script>
+    window.addEventListener('load', async () => {
+        await new Promise(r => setTimeout(r, 200));
+
+        const calDialog = document.querySelector('dialog.admin-calendar');
+        const closedDisplay = getComputedStyle(calDialog).display;
+
+        document.querySelector('.admin-date-input button[aria-haspopup="dialog"]').click();
+        await new Promise(r => setTimeout(r, 60));
+
+        const openDisplay = getComputedStyle(calDialog).display;
+        const calBg = getComputedStyle(calDialog).backgroundColor;
+        const calRect = calDialog.getBoundingClientRect();
+        const daysGridCols = getComputedStyle(calDialog.querySelector('.admin-calendar-days')).gridTemplateColumns.trim().split(/\\s+/).length;
+
+        const brandSelect = document.getElementById('intake-brand-select');
+        brandSelect.value = 'Newland';
+        brandSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        const updatedModel = document.querySelector('input[name="device_model"]').value;
+
+        document.getElementById('cases-tab-btn').click();
+        const ordersHidden = document.getElementById('orders-panel').hidden;
+        const casesHidden = document.getElementById('cases-panel').hidden;
+
+        const pickerBtnHeight = document.querySelector('.np-file-picker__btn').getBoundingClientRect().height;
+
+        document.body.setAttribute('data-admin-probe', JSON.stringify({
+            closedDisplay,
+            openDisplay,
+            calBg,
+            calLeft: calRect.left,
+            calTop: calRect.top,
+            calRight: calRect.right,
+            calWidth: calRect.width,
+            winWidth: window.innerWidth,
+            daysGridCols,
+            updatedModel,
+            ordersHidden,
+            casesHidden,
+            pickerBtnHeight,
+        }));
+    });
+    </script>
+</body></html>`;
+
+    try {
+        server = http.createServer((req, res) => {
+            const reqPath = (req.url || '/').split('?')[0];
+            if (reqPath.startsWith('/resources/js/')) {
+                const baseName = path.posix.basename(reqPath);
+                const jsFile = baseName.endsWith('.js') ? baseName : `${baseName}.js`;
+                const fullPath = path.join(rootDir, 'resources/js', jsFile);
+                if (existsSync(fullPath)) {
+                    const jsBody = readFileSync(fullPath, 'utf8')
+                        .replace(/(from\s+['"]\.\/[^'".]+)(['"])/g, '$1.js$2');
+                    res.writeHead(200, {'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store'});
+                    res.end(jsBody);
+                    return;
+                }
+                res.writeHead(404);
+                res.end();
+                return;
+            }
+            res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'});
+            res.end(adminHtml);
+        });
+
+        await new Promise((resolve, reject) => {
+            server.once('error', reject);
+            server.listen(0, '127.0.0.1', resolve);
+        });
+        const origin = `http://127.0.0.1:${server.address().port}`;
+
+        const res = await runChrome(executable, [
+            '--headless=new',
+            '--disable-gpu',
+            '--no-sandbox',
+            `--user-data-dir=${path.join(directory, 'p-admin')}`,
+            '--window-size=1280,900',
+            '--virtual-time-budget=3000',
+            '--dump-dom',
+            origin + '/',
+        ]);
+        assert.equal(res.status, 0, `Chromium failed: ${res.stderr}`);
+        const match = res.stdout.match(/data-admin-probe="([^"]+)"/);
+        assert.ok(match, 'Admin probe missing from DOM');
+        const p = JSON.parse(match[1].replace(/&quot;/g, '"'));
+
+        assert.equal(p.closedDisplay, 'none', 'Closed Jalali calendar dialog must be hidden');
+        assert.equal(p.openDisplay, 'grid', 'Open Jalali calendar dialog must display as grid popover');
+        assert.equal(p.calBg, 'rgb(255, 255, 255)', 'Calendar popover must have solid white card surface');
+        assert.equal(p.daysGridCols, 7, 'Jalali calendar days must render as a 7-column grid');
+        assert.ok(p.calLeft >= 12 && p.calRight <= p.winWidth - 12 && p.calTop >= 12, `Calendar popover must stay clamped inside viewport: left=${p.calLeft}, right=${p.calRight}, top=${p.calTop}`);
+        assert.ok(p.calWidth >= 280 && p.calWidth <= 320, `Calendar popover width must be compact (~308px), got ${p.calWidth}`);
+        assert.equal(p.updatedModel, 'Newland S910', 'Intake brand dropdown must swap brand prefix cleanly on device_model');
+        assert.equal(p.ordersHidden, true, 'Inactive tab panel must hide');
+        assert.equal(p.casesHidden, false, 'Selected tab panel must show');
+        assert.ok(p.pickerBtnHeight >= 34, `Persian file picker button must render cleanly in admin, height=${p.pickerBtnHeight}`);
     } finally {
         if (server) await new Promise(r => server.close(() => r()));
         try { rmSync(directory, {recursive: true, force: true}); } catch {}

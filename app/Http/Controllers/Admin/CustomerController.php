@@ -78,7 +78,7 @@ class CustomerController extends Controller
     public function edit(Customer $customer)
     {
         CrmAccess::require(auth()->user(), CrmAccess::permissions('customer.save'));
-        abort_if($customer->merged_into_id, 409, 'پروفایل تطبیق‌یافته فقط خواندنی است.');
+        abort_if($customer->merged_into_id, 409, 'پروفایل ادغام‌شده فقط خواندنی است.');
 
         return view('admin.customers.form', compact('customer'));
     }

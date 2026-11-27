@@ -99,7 +99,7 @@
                     </td>
                     <td data-label="وضعیت">
                         <x-admin.status :tone="$customer->merged_into_id ? 'info' : ($customer->is_active ? 'success' : 'warning')">
-                            {{ $customer->merged_into_id ? 'تطبیق‌یافته' : ($customer->is_active ? 'فعال' : 'بایگانی‌شده') }}
+                            {{ $customer->merged_into_id ? 'ادغام‌شده' : ($customer->is_active ? 'فعال' : 'بایگانی‌شده') }}
                         </x-admin.status>
                     </td>
                     <td data-label="پروفایل"><a class="btn btn-secondary btn-sm" href="{{ route('admin.customers.show', $customer) }}">مشاهدهٔ پروفایل</a></td>

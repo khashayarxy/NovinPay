@@ -15,7 +15,12 @@
     $displayRef = preg_match('/\A[0-9]+\z/', $rawRef)
         ? \App\Support\FaNumber::digits($rawRef)
         : (strlen($rawRef) > 12 ? substr($rawRef, 0, 10).'…' : $rawRef);
+    $canPrintDocs = auth()->user()->can('operate', [$case, 'print']);
+    $canViewFinance = auth()->user()->can('finance.view');
+    $adminAcc = \App\Support\AdminAccess::account(auth()->user());
+    $canIssueInvoice = $adminAcc && ($adminAcc->hasFullAccess() || in_array('finance.charge', $adminAcc->permissions ?? [], true));
 @endphp
+<a class="admin-back-link" href="{{ route('admin.repair-cases.index') }}">← پرونده‌های تعمیر</a>
 <header class="admin-page-heading repair-case-header">
     <div class="repair-case-header__meta">
         <div class="repair-case-header__title-row">
@@ -31,17 +36,26 @@
             @endif
         </p>
     </div>
-    <div class="admin-actions">
-        @can('operate', [$case, 'print'])
-            <a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.document', [$case, 'intake']) }}">رسید پذیرش</a>
-            <a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.document', [$case, 'summary']) }}">صورتحساب تعمیر</a>
-            @if($case->delivery)<a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.document', [$case, 'delivery']) }}">رسید تحویل</a>@endif
-        @endcan
-        @can('finance.view')
-            <a class="btn btn-secondary btn-sm" href="{{ route('admin.finance.sources.show', ['type' => 'repair', 'reference' => $case->public_id]) }}">سند مالی</a>
-        @endcan
-        <a class="btn btn-secondary btn-sm" href="{{ route('admin.repair-cases.index') }}">پرونده‌های تعمیر</a>
-    </div>
+    @if($canPrintDocs || $canViewFinance)
+        <div class="admin-actions">
+            <details class="admin-more-menu">
+                <summary>
+                    <span>چاپ و اسناد</span>
+                    <svg class="admin-more-menu__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+                </summary>
+                <div class="admin-more-menu__panel">
+                    @if($canPrintDocs)
+                        <a href="{{ route('admin.repair-cases.document', [$case, 'intake']) }}">رسید پذیرش</a>
+                        <a href="{{ route('admin.repair-cases.document', [$case, 'summary']) }}">صورتحساب تعمیر</a>
+                        @if($case->delivery)<a href="{{ route('admin.repair-cases.document', [$case, 'delivery']) }}">رسید تحویل</a>@endif
+                    @endif
+                    @if($canViewFinance)
+                        <a href="{{ route('admin.finance.sources.show', ['type' => 'repair', 'reference' => $case->public_id]) }}">پرونده مالی کامل</a>
+                    @endif
+                </div>
+            </details>
+        </div>
+    @endif
 </header>
 <x-admin.errors />
 @php
@@ -173,13 +187,57 @@
                             @elseif($repairDocument)
                                 <x-admin.status tone="warning">در انتظار تسویه</x-admin.status>
                             @else
-                                <x-admin.status tone="neutral">سند مالی صادر نشده</x-admin.status>
+                                <x-admin.status tone="neutral">فاکتور صادر نشده</x-admin.status>
                             @endif
                         </dd>
                     </div>
                     @if($case->settlement_method)<div><dt>روش ثبت‌شده</dt><dd>{{ $case->settlement_method === 'online' ? 'اینترنتی' : 'حضوری' }}</dd></div>@endif
                 @endcan
             </dl>
+            @if($canIssueInvoice && $price !== null && $price > 0 && !$repairDocument && in_array($status, ['ready', 'delivered'], true))
+                <details class="admin-accordion mt-3">
+                    <summary>
+                        <span>صدور فاکتور تعمیر ({{ \App\Support\AdminRepairMoney::display($price) }})</span>
+                        <svg class="admin-accordion__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+                    </summary>
+                    <div class="admin-accordion__body">
+                        <form method="post" action="{{ route('admin.finance.issue.store') }}" class="admin-form">
+                            @csrf
+                            <input type="hidden" name="operation_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                            <input type="hidden" name="source_type" value="repair">
+                            <input type="hidden" name="source" value="{{ $case->public_id }}">
+                            <input type="hidden" name="source_version" value="{{ $case->version }}">
+                            <x-operation-field name="reason" label="توضیح صدور فاکتور" kind="textarea" :maxlength="1500" value="صدور فاکتور تعمیر دستگاه" />
+                            <x-operation-field name="password" label="رمز عبور فعلی شما" type="password" />
+                            <button class="btn btn-primary btn-sm" type="submit">صدور فاکتور</button>
+                        </form>
+                    </div>
+                </details>
+            @endif
+            @can('finance.receive')
+                @if($repairDocument && $repairDocument->charged_minor > $repairDocument->paid_minor)
+                    @php
+                        $remainingTomanInput = str_replace(',', '', \App\Support\FinanceMoney::toman($repairDocument->charged_minor - $repairDocument->paid_minor));
+                    @endphp
+                    <details class="admin-accordion mt-3">
+                        <summary>
+                            <span>ثبت دریافت وجه در فروشگاه</span>
+                            <svg class="admin-accordion__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+                        </summary>
+                        <div class="admin-accordion__body">
+                            <form method="post" action="{{ route('admin.payments.store') }}" class="admin-form">
+                                @csrf
+                                <input type="hidden" name="operation_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                                <input type="hidden" name="document" value="{{ $repairDocument->public_id }}">
+                                <x-operation-field name="amount" inputmode="decimal" label="مبلغ دریافتی (تومان)" :value="$remainingTomanInput" />
+                                <x-operation-field name="password" label="رمز عبور فعلی شما" type="password" />
+                                <label class="admin-checkbox"><input type="checkbox" name="funds_confirmed" value="1" required> دریافت واقعی وجه در فروشگاه را تأیید می‌کنم.</label>
+                                <button class="btn btn-primary btn-sm" type="submit">ثبت دریافت وجه</button>
+                            </form>
+                        </div>
+                    </details>
+                @endif
+            @endcan
             @can('finance.view')
             @can('repairs.transition')
             @if($settled && !$case->status->closed())

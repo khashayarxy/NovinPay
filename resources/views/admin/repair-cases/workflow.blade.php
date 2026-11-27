@@ -11,7 +11,7 @@
         <a class="admin-text-link" href="{{ route('admin.finance.sources.show',['type'=>'repair','reference'=>$case->public_id]) }}">سند مالی و ثبت تسویه ←</a>
     </div>
     @if($repairDocument)
-        <p>مطالبه: {{ \App\Support\FinanceMoney::persianToman($repairDocument->charged_minor) }} تومان · دریافت ثبت‌شده: {{ \App\Support\FinanceMoney::persianToman($repairDocument->paid_minor) }} تومان · مانده: <strong>{{ \App\Support\FinanceMoney::persianToman($repairDocument->charged_minor - $repairDocument->paid_minor) }} تومان</strong></p>
+        <p>مبلغ فاکتور: {{ \App\Support\FinanceMoney::persianToman($repairDocument->charged_minor) }} تومان · دریافت‌شده: {{ \App\Support\FinanceMoney::persianToman($repairDocument->paid_minor) }} تومان · مانده: <strong>{{ \App\Support\FinanceMoney::persianToman($repairDocument->charged_minor - $repairDocument->paid_minor) }} تومان</strong></p>
     @elseif($repairBillable !== null)
         <p>مبلغ نهایی قابل صدور: <strong>{{ \App\Support\FaNumber::digits(number_format($repairBillable)) }} تومان</strong></p>
     @else

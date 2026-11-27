@@ -1,6 +1,34 @@
 @extends('layouts.admin')
 @section('title', 'عملیات ثبت نشد')
 @section('content')
-@if(request()->is('admin/orders*','admin/inventory*'))<div class="admin-actions mb-4">@can('orders.view')<a class="btn btn-secondary" href="{{ route('admin.orders.index') }}">سفارش‌ها</a>@endcan @can('inventory.view')<a class="btn btn-secondary" href="{{ route('admin.inventory.index') }}">موجودی کالا</a>@endcan</div>@endif
-<header class="admin-page-heading"><h1>عملیات ثبت نشد</h1></header><section class="admin-panel admin-form-surface" role="alert"><p>{{ $message }}</p><p class="admin-hint">رکورد را دوباره از فهرست باز کنید. اطلاعات شخصی فرم بازپخش نمی‌شود؛ نسخهٔ جدید را پیش از ثبت بررسی کنید.</p><div class="admin-actions">@can('customers.view')<a class="btn btn-primary" href="{{ route('admin.customers.index') }}">فهرست مشتریان</a>@endcan @can('consultations.view')<a class="btn btn-secondary" href="{{ route('admin.consultations.index') }}">صندوق مشاوره</a>@endcan</div></section>
+@php
+    $returnRoute = match (true) {
+        request()->is('admin/deliveries*') => [route('admin.deliveries.index'), 'بازگشت به ارسال و تحویل'],
+        request()->is('admin/orders*') => [route('admin.orders.index'), 'بازگشت به فهرست سفارش‌ها'],
+        request()->is('admin/inventory*') => [route('admin.inventory.index'), 'بازگشت به موجودی انبار'],
+        request()->is('admin/payments*') => [route('admin.payments.index'), 'بازگشت به پرداختی‌ها'],
+        request()->is('admin/finance*') => [route('admin.finance.index'), 'بازگشت به امور مالی'],
+        request()->is('admin/consultations*') => [route('admin.consultations.index'), 'بازگشت به مشاوره‌ها'],
+        request()->is('admin/customers*') => [route('admin.customers.index'), 'بازگشت به مشتریان'],
+        request()->is('admin/products*') => [route('admin.products.index'), 'بازگشت به محصولات'],
+        default => [route('admin.dashboard'), 'بازگشت به داشبورد'],
+    };
+@endphp
+<div class="admin-form-surface">
+    <header class="admin-page-heading">
+        <div>
+            <span class="admin-eyebrow">عدم امکان ثبت عملیات</span>
+            <h1>عملیات انجام نشد</h1>
+        </div>
+    </header>
+    <section class="admin-panel space-y-3" role="alert">
+        <div class="admin-info-card admin-info-card--warning">
+            <p class="font-semibold">{{ $message }}</p>
+        </div>
+        <p class="admin-hint">وضعیت پرونده را تازه کنید و پس از بررسی اطلاعات فعلی دوباره اقدام نمایید.</p>
+        <div class="admin-actions pt-1">
+            <a class="btn btn-primary" href="{{ $returnRoute[0] }}">{{ $returnRoute[1] }}</a>
+        </div>
+    </section>
+</div>
 @endsection

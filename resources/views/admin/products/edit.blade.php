@@ -4,15 +4,13 @@
 
 @section('content')
     <div class="admin-form-surface">
+        <a href="{{ route('admin.products.index') }}" class="admin-back-link">← فهرست محصولات</a>
         <header class="admin-page-heading">
             <div>
                 <h1>ویرایش محصول</h1>
                 <p class="mt-1 text-sm text-slate-600">{{ $product->name }}</p>
             </div>
-            <div class="flex flex-wrap gap-2">
-                <a href="{{ route('admin.products.feedback.index', $product) }}" class="btn btn-secondary">دیدگاه‌ها و پرسش‌ها</a>
-                <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">فهرست محصولات</a>
-            </div>
+            <a href="{{ route('admin.products.feedback.index', $product) }}" class="btn btn-secondary btn-sm">دیدگاه‌ها و پرسش‌ها</a>
         </header>
 
         @include('admin.products._form', [

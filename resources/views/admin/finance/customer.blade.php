@@ -11,10 +11,10 @@
         </div>
     </div>
     @if(!$customer->is_active || $customer->merged_into_id)
-        <p class="finance-alert">پروفایل بایگانی یا تطبیق یافته است؛ سابقهٔ مالی همچنان مستقل باقی می‌ماند.</p>
+        <p class="finance-alert">پروفایل بایگانی یا ادغام شده است؛ سابقهٔ مالی همچنان مستقل باقی می‌ماند.</p>
     @endif
     <dl class="admin-finance-summary">
-        @foreach(['charged'=>'مطالبه','paid'=>'خالص دریافت','outstanding'=>'مانده'] as $key=>$label)
+        @foreach(['charged'=>'مجموع فاکتورها','paid'=>'خالص دریافت','outstanding'=>'مانده'] as $key=>$label)
             <div><dt>{{ $label }}</dt><dd><bdi dir="ltr">{{ \App\Support\FinanceMoney::persianToman((string)$totals->$key) }}</bdi> <small class="admin-muted">تومان</small></dd></div>
         @endforeach
     </dl>

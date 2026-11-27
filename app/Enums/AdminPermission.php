@@ -103,10 +103,10 @@ enum AdminPermission: string
             self::OrdersCustomerData => 'مشاهدهٔ مشتری و اطلاعات خصوصی تحویل سفارش',
             self::FinanceView => 'مشاهدهٔ خلاصه و گزارش مالی',
             self::FinanceDetails => 'مشاهدهٔ مدارک و توضیحات خصوصی مالی',
-            self::FinanceCharge => 'صدور صریح سند مطالبه از منبع تکمیل‌شده',
-            self::FinanceReceive => 'ثبت دستی دریافت تخصیص‌یافته',
-            self::FinanceExpenses => 'ثبت هزینهٔ واقعی با مدرک',
-            self::FinanceCorrect => 'اصلاح مانده و برگشت جبرانی با رمز عبور',
+            self::FinanceCharge => 'صدور فاکتور از سفارش یا تعمیر تکمیل‌شده',
+            self::FinanceReceive => 'ثبت دستی دریافت وجه',
+            self::FinanceExpenses => 'ثبت هزینه با مدرک',
+            self::FinanceCorrect => 'اصلاح مبلغ فاکتور و لغو ثبت مالی با رمز عبور',
             self::FinanceBalances => 'مشاهدهٔ ماندهٔ پروفایل تاریخی مشتری',
         };
     }

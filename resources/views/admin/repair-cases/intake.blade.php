@@ -2,12 +2,12 @@
 @section('title', 'پذیرش جدید')
 @section('content')
 <div class="admin-form-surface">
+    <a class="admin-back-link" href="{{ route('admin.repair-cases.index') }}">← پرونده‌های تعمیر</a>
     <header class="admin-page-heading">
         <div>
             <span class="admin-eyebrow">پذیرش حضوری یا مرسوله</span>
             <h1>پذیرش جدید تعمیر</h1>
         </div>
-        <a class="btn btn-secondary" href="{{ route('admin.repair-cases.index') }}">پرونده‌های تعمیر</a>
     </header>
     <x-admin.errors />
     <form method="post" action="{{ route('admin.repair-cases.store') }}" class="admin-panel admin-form">
@@ -30,12 +30,13 @@
             <fieldset class="admin-form">
                 <legend>اطلاعات دستگاه</legend>
                 <div>
-                    <span class="label">انتخاب سریع برند</span>
-                    <div class="admin-brand-pills" role="group" aria-label="انتخاب سریع برند دستگاه">
+                    <label class="label" for="intake-brand-select">برند دستگاه</label>
+                    <select id="intake-brand-select" class="input" data-intake-brand-select>
+                        <option value="">انتخاب برند دستگاه…</option>
                         @foreach(\App\Enums\RepairBrand::cases() as $brand)
-                            <button type="button" class="admin-brand-pill" data-brand-pill="{{ $brand->value }}" aria-pressed="false">{{ $brand->value }}</button>
+                            <option value="{{ $brand->value }}" @selected($source?->device_brand === $brand)>{{ $brand->value }}</option>
                         @endforeach
-                    </div>
+                    </select>
                 </div>
                 <x-operation-field name="device_model" label="مدل دستگاه" :value="$source ? \App\Support\RepairIdentity::deviceLabel($source->device_brand, $source->device_model) : ''" :mark-required="true" :maxlength="100"/>
                 <x-operation-field name="device_serial" label="شماره سریال (اختیاری)" :required="false" :maxlength="120"/>

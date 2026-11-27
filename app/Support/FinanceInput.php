@@ -7,13 +7,13 @@ use Illuminate\Validation\Rule;
 
 final class FinanceInput
 {
-    public const METHODS = ['cash' => 'نقد با سند داخلی', 'transfer' => 'انتقال بانکی؛ ثبت دستی', 'terminal' => 'کارتخوان؛ ثبت دستی'];
+    public const METHODS = ['cash' => 'نقدی', 'transfer' => 'انتقال بانکی', 'terminal' => 'کارتخوان فروشگاه'];
 
-    public const CATEGORIES = ['sales' => 'فروش', 'repair' => 'تعمیر', 'adjustment' => 'اصلاح مستدل', 'parts' => 'قطعات', 'labor' => 'دستمزد تعمیر', 'supplies' => 'ملزومات', 'operating' => 'هزینهٔ جاری', 'other' => 'سایر هزینه‌ها'];
+    public const CATEGORIES = ['sales' => 'فروش', 'repair' => 'تعمیر', 'adjustment' => 'اصلاح مبلغ', 'parts' => 'قطعات', 'labor' => 'دستمزد تعمیر', 'supplies' => 'ملزومات', 'operating' => 'هزینهٔ جاری', 'other' => 'سایر هزینه‌ها'];
 
-    public const KINDS = ['charge' => 'صدور سند', 'receipt' => 'دریافت دستی', 'expense' => 'هزینه', 'credit' => 'کاهش مطالبه', 'debit' => 'افزایش مطالبه', 'reversal' => 'برگشت اصلاحی'];
+    public const KINDS = ['charge' => 'صدور فاکتور', 'receipt' => 'دریافت دستی', 'expense' => 'هزینه', 'credit' => 'کاهش مبلغ', 'debit' => 'افزایش مبلغ', 'reversal' => 'لغو و اصلاح ثبت'];
 
-    public const STATES = ['unpaid' => 'بدون دریافت', 'partial' => 'دریافت جزئی', 'settled' => 'تسویهٔ ثبت‌شده', 'cleared' => 'مطالبهٔ صفرشده'];
+    public const STATES = ['unpaid' => 'پرداخت‌نشده', 'partial' => 'پرداخت جزئی', 'settled' => 'تسویه‌شده', 'cleared' => 'بدهی صفرشده'];
 
     public static function methodLabel(?string $method): string
     {

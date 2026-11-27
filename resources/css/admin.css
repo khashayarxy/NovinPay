@@ -1471,7 +1471,9 @@ a.admin-stat-card:hover {
     .admin-sidebar,
     .admin-topbar,
     .repair-print-controls,
-    .admin-notice {
+    .admin-notice,
+    .admin-more-menu,
+    .admin-back-link {
         display: none !important;
     }
     .admin-shell { display: block !important; }
@@ -1479,3 +1481,405 @@ a.admin-stat-card:hover {
     .admin-body, .admin-site { background: #fff !important; }
     .repair-document { border: 0 !important; box-shadow: none !important; padding: 0 !important; max-width: none !important; }
 }
+
+/* ==========================================================================
+   Phase 10 Deep UX Polish: Jalali Datepicker Popover, Autofill Trap,
+   More-Actions Dropdown, Progressive Accordions & Admin Tabs
+   ========================================================================== */
+
+.admin-autofill-trap {
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.admin-date-input {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+}
+
+.admin-date-input > input.input {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+}
+
+.admin-date-input > button.btn {
+    flex: 0 0 auto;
+    min-height: 40px;
+    height: 40px;
+    padding-inline: 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+dialog.admin-calendar:not([open]) {
+    display: none !important;
+}
+
+dialog.admin-calendar[open] {
+    position: fixed;
+    inset: auto;
+    top: var(--cal-top, 50%);
+    left: var(--cal-left, 50%);
+    transform: none;
+    margin: 0;
+    width: min(308px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    padding: 14px;
+    border: 1px solid #cbd9e8;
+    border-radius: 16px;
+    background: #ffffff;
+    color: var(--admin-ink, #0f172a);
+    box-shadow: 0 20px 48px rgb(15 23 42 / 20%), 0 2px 8px rgb(15 23 42 / 6%);
+    direction: rtl;
+    z-index: 90;
+    display: grid;
+    gap: 10px;
+}
+
+dialog.admin-calendar::backdrop {
+    background: rgb(15 23 42 / 14%);
+}
+
+dialog.admin-calendar > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+dialog.admin-calendar > header strong {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f2942;
+}
+
+dialog.admin-calendar > header button {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid #dbe5f0;
+    border-radius: 9px;
+    background: #f8fafc;
+    color: #1e3a5f;
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+dialog.admin-calendar > header button:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #075da6;
+}
+
+.admin-calendar-week,
+.admin-calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+    text-align: center;
+}
+
+.admin-calendar-week > span {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #64748b;
+    padding-block: 2px;
+}
+
+.admin-calendar-days > button {
+    display: inline-grid;
+    place-items: center;
+    height: 34px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: #1e293b;
+    font-size: 0.84rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.admin-calendar-days > button:hover {
+    background: #eff6ff;
+    color: #075da6;
+}
+
+.admin-calendar-days > button[aria-pressed="true"] {
+    background: #075da6;
+    border-color: #075da6;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+dialog.admin-calendar > footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eef2f7;
+}
+
+dialog.admin-calendar > footer button {
+    min-height: 32px;
+    padding: 4px 12px;
+    border-radius: 8px;
+    border: 1px solid #dbe5f0;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+dialog.admin-calendar > footer button[data-clear] {
+    border-color: transparent;
+    background: transparent;
+    color: #dc2626;
+}
+
+dialog.admin-calendar > footer button:hover {
+    background: #eef4fb;
+}
+
+/* Subtle Breadcrumb Back Link */
+.admin-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+    text-decoration: none;
+    transition: color 140ms ease;
+}
+
+.admin-back-link:hover {
+    color: #075da6;
+}
+
+/* Compact Secondary Actions Dropdown («عملیات بیشتر» / «چاپ و اسناد») */
+.admin-more-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.admin-more-menu > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 13px;
+    border: 1px solid #cbd9e8;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #1e3a5f;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.admin-more-menu > summary::-webkit-details-marker,
+.admin-more-menu > summary::marker {
+    display: none;
+    content: '';
+}
+
+.admin-more-menu > summary:hover,
+.admin-more-menu[open] > summary {
+    background: #f1f7fe;
+    border-color: #93c5fd;
+    color: #075da6;
+}
+
+.admin-more-menu__chevron {
+    width: 15px;
+    height: 15px;
+    flex: none;
+    transition: transform 150ms ease;
+}
+
+.admin-more-menu[open] .admin-more-menu__chevron {
+    transform: rotate(180deg);
+}
+
+.admin-more-menu__panel {
+    position: absolute;
+    inset-inline-end: 0;
+    top: calc(100% + 6px);
+    z-index: 45;
+    min-width: 200px;
+    padding: 6px;
+    border: 1px solid #cbd9e8;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 14px 32px rgb(15 23 42 / 14%);
+    display: grid;
+    gap: 2px;
+}
+
+.admin-more-menu__panel a,
+.admin-more-menu__panel button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #1e293b;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: right;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.admin-more-menu__panel a:hover,
+.admin-more-menu__panel button:hover {
+    background: #eff6ff;
+    color: #075da6;
+}
+
+/* Progressive Disclosure Accordion Card */
+.admin-accordion {
+    border: 1px solid #dce6f1;
+    border-radius: 14px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.admin-accordion > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 13px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #102a43;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    background: #fbfdff;
+    transition: background-color 140ms ease, color 140ms ease;
+}
+
+.admin-accordion > summary::-webkit-details-marker,
+.admin-accordion > summary::marker {
+    display: none;
+    content: '';
+}
+
+.admin-accordion > summary:hover {
+    background: #f2f8ff;
+    color: #075da6;
+}
+
+.admin-accordion[open] > summary {
+    border-bottom: 1px solid #e7eff7;
+    background: #f5f9ff;
+    color: #075da6;
+}
+
+.admin-accordion__chevron {
+    width: 17px;
+    height: 17px;
+    flex: none;
+    color: #64748b;
+    transition: transform 160ms ease, color 160ms ease;
+}
+
+.admin-accordion[open] > summary .admin-accordion__chevron {
+    transform: rotate(180deg);
+    color: #075da6;
+}
+
+.admin-accordion__body {
+    padding: 16px;
+}
+
+/* Clean Client-Side Tabs for Dense Profile/History Views */
+.admin-tab-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #e7eff7;
+}
+
+.admin-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 4px 12px;
+    border: 1px solid #dbe5f0;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.admin-tab-btn:hover {
+    background: #eff6ff;
+    color: #075da6;
+}
+
+.admin-tab-btn[aria-selected="true"] {
+    background: #075da6;
+    border-color: #075da6;
+    color: #ffffff;
+}
+
+.admin-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgb(15 23 42 / 8%);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-tab-btn[aria-selected="true"] .admin-tab-badge {
+    background: rgb(255 255 255 / 22%);
+    color: #ffffff;
+}
+

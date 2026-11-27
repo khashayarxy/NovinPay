@@ -105,8 +105,8 @@ return Application::configure(basePath: dirname(__DIR__))
         });
         $exceptions->render(function (Throwable $exception, Request $request) {
             if (! SafeDatabaseErrors::query($exception)) {
-                if ($exception instanceof HttpException && $request->is('admin/repairs*', 'admin/customers*', 'admin/consultations*', 'admin/inventory*', 'admin/orders*', 'admin/finance*', 'admin/articles*', 'admin/article-categories*') && in_array($exception->getStatusCode(), [409, 422], true)) {
-                    $message = $exception->getMessage() ?: 'اطلاعات عملیات را بررسی و پرونده را دوباره باز کنید.';
+                if ($exception instanceof HttpException && $request->is('admin/*') && ! $request->is('admin/login*') && in_array($exception->getStatusCode(), [409, 422, 503], true)) {
+                    $message = $exception->getMessage() ?: 'امکان ثبت این عملیات در وضعیت فعلی وجود ندارد. لطفاً صفحه را تازه کرده و دوباره بررسی کنید.';
 
                     $view = $request->is('admin/repairs*') ? 'admin.repair-cases.error' : 'admin.crm-error';
 

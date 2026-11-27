@@ -2,12 +2,12 @@
 @section('title', $customer ? 'ویرایش مشتری' : 'ثبت مشتری')
 @section('content')
 <div class="admin-form-surface">
+    <a class="admin-back-link" href="{{ route('admin.customers.index') }}">← دفتر مشتریان</a>
     <header class="admin-page-heading">
         <div>
             <span class="admin-eyebrow">دفتر مشتریان</span>
-            <h1>{{ $customer ? 'ویرایش اطلاعات جاری مشتری' : 'ثبت مشتری جدید' }}</h1>
+            <h1>{{ $customer ? 'ویرایش اطلاعات مشتری' : 'ثبت مشتری جدید' }}</h1>
         </div>
-        <a class="btn btn-secondary" href="{{ route('admin.customers.index') }}">بازگشت به مشتریان</a>
     </header>
     <x-admin.errors/>
     <section class="admin-panel">
@@ -19,7 +19,7 @@
             @endif
             <div class="admin-form-grid">
                 <x-operation-field retain name="name" label="نام و نام خانوادگی" :value="$customer?->name ?? ''" :maxlength="100"/>
-                <x-operation-field retain name="contact_phone" label="شماره موبایل ایرانی" type="tel" :value="$customer?->contact_phone ?? ''" :maxlength="40"/>
+                <x-operation-field retain name="contact_phone" label="شماره موبایل" type="tel" :value="$customer?->contact_phone ?? ''" :maxlength="40"/>
             </div>
             <div>
                 <label for="profile-active" class="label">وضعیت پروفایل</label>
@@ -28,9 +28,9 @@
                     <option value="0" @selected($customer && !$customer->is_active)>بایگانی‌شده</option>
                 </select>
             </div>
-            <x-operation-field retain name="reason" label="دلیل ثبت یا تغییر؛ یادداشت خصوصی" kind="textarea" :maxlength="1000"/>
-            <label class="admin-checkbox"><input type="checkbox" name="identity_reviewed" value="1" required> هویت را مستقل از شمارهٔ تأییدنشده بررسی کرده‌ام.</label>
-            <label class="admin-checkbox"><input type="checkbox" name="duplicate_reviewed" value="1"> در صورت وجود شمارهٔ مشترک، پروفایل‌های قبلی را بررسی کرده‌ام و این شخص هویت مستقلی دارد.</label>
+            <x-operation-field retain name="reason" label="توضیح کوتاه ثبت یا ویرایش" kind="textarea" :maxlength="1000"/>
+            <label class="admin-checkbox"><input type="checkbox" name="identity_reviewed" value="1" required> هویت مشتری بررسی شد.</label>
+            <label class="admin-checkbox"><input type="checkbox" name="duplicate_reviewed" value="1"> در صورت وجود شماره تماس مشابه، پروفایل‌های قبلی بررسی شد.</label>
             <div class="admin-form-footer">
                 <button class="btn btn-primary" type="submit">ذخیرهٔ مشتری</button>
             </div>

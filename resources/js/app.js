@@ -2798,7 +2798,105 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 }
             }
         }
+
+        const openMenus = document.querySelectorAll('details.admin-more-menu[open]');
+        if (openMenus.length > 0) {
+            openMenus.forEach((menu) => {
+                if (event.target instanceof Node && !menu.contains(event.target)) {
+                    menu.open = false;
+                }
+            });
+        }
+
+        const tabBtn = event.target instanceof Element ? event.target.closest('[data-admin-tab]') : null;
+        if (tabBtn instanceof HTMLButtonElement) {
+            const tabGroup = tabBtn.closest('[data-admin-tabs]');
+            const container = tabGroup?.parentElement;
+            const targetKey = tabBtn.getAttribute('data-admin-tab');
+            if (tabGroup && container && targetKey) {
+                tabGroup.querySelectorAll('[data-admin-tab]').forEach((btn) => {
+                    btn.setAttribute('aria-selected', String(btn === tabBtn));
+                });
+                container.querySelectorAll('[data-admin-tab-panel]').forEach((panel) => {
+                    if (panel instanceof HTMLElement) {
+                        panel.hidden = panel.getAttribute('data-admin-tab-panel') !== targetKey;
+                    }
+                });
+            }
+            return;
+        }
+
+        const mergeBtn = event.target instanceof Element ? event.target.closest('[data-prefill-merge]') : null;
+        if (mergeBtn instanceof HTMLButtonElement) {
+            const destId = mergeBtn.getAttribute('data-merge-id') || '';
+            const destVersion = mergeBtn.getAttribute('data-merge-version') || '';
+            const accordion = document.getElementById('customer-merge-accordion');
+            if (accordion instanceof HTMLDetailsElement) {
+                accordion.open = true;
+                const destInput = accordion.querySelector('input[name="destination"]');
+                const verInput = accordion.querySelector('input[name="destination_version"]');
+                if (destInput instanceof HTMLInputElement) destInput.value = destId;
+                if (verInput instanceof HTMLInputElement) verInput.value = destVersion;
+                accordion.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
     });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('details.admin-more-menu[open]').forEach((menu) => {
+                menu.open = false;
+            });
+        }
+    });
+
+    document.querySelectorAll('select[data-intake-brand-select]').forEach((selectEl) => {
+        if (!(selectEl instanceof HTMLSelectElement)) return;
+        selectEl.addEventListener('change', () => {
+            const brand = selectEl.value || '';
+            const form = selectEl.closest('form');
+            const modelInput = form?.querySelector('input[name="device_model"]');
+            if (!(modelInput instanceof HTMLInputElement)) return;
+            const knownBrands = ['PAX', 'Newland', 'NewPOS', 'SZZT', 'MoreFun', 'TOPWISE'];
+            let current = modelInput.value.trim();
+            for (const b of knownBrands) {
+                if (current.toLowerCase().startsWith(b.toLowerCase())) {
+                    current = current.slice(b.length).trim();
+                    break;
+                }
+            }
+            if (brand && brand !== 'سایر') {
+                modelInput.value = current ? `${brand} ${current}` : `${brand} `;
+            } else {
+                modelInput.value = current;
+            }
+            modelInput.focus();
+        });
+    });
+
+    if (document.body.classList.contains('admin-site')) {
+        document.addEventListener('keydown', (event) => {
+            if (event.target instanceof HTMLInputElement) {
+                event.target.dataset.userEdited = '1';
+            }
+        }, true);
+        document.addEventListener('paste', (event) => {
+            if (event.target instanceof HTMLInputElement) {
+                event.target.dataset.userEdited = '1';
+            }
+        }, true);
+        const scrubFalseAdminAutofill = () => {
+            document.querySelectorAll('form input:not([type="email"]):not([type="password"]):not([type="hidden"])').forEach((input) => {
+                if (!(input instanceof HTMLInputElement)) return;
+                if (input.name === 'email' || input.dataset.userEdited === '1') return;
+                if (input.defaultValue === '' && input.value.includes('@') && input.form?.querySelector('input[type="password"]')) {
+                    input.value = '';
+                }
+            });
+        };
+        window.setTimeout(scrubFalseAdminAutofill, 120);
+        window.setTimeout(scrubFalseAdminAutofill, 450);
+    }
 
     document.querySelectorAll('[data-repair-handover-form]').forEach((form) => {
         const pickupBox = form.querySelector('[data-handover-pickup-fields]');

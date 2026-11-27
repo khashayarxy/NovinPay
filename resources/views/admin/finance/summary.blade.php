@@ -4,7 +4,7 @@
         <span class="admin-muted">سفارش‌ها: {{ \App\Support\FaNumber::digits($summary['settled_orders']) }} تسویه‌شده · {{ \App\Support\FaNumber::digits($summary['unsettled_orders']) }} دارای مانده</span>
     </div>
     <dl class="admin-finance-summary">
-        @foreach(['charges'=>'خالص مطالبات دوره','receipts'=>'خالص دریافت دستی','expenses'=>'خالص هزینه‌ها','gross_sales_documents'=>'ناخالص اسناد فروش','outstanding'=>'ماندهٔ فعلی'] as $key=>$label)
+        @foreach(['charges'=>'خالص فاکتورهای دوره','receipts'=>'خالص دریافت دستی','expenses'=>'خالص هزینه‌ها','gross_sales_documents'=>'ناخالص اسناد فروش','outstanding'=>'ماندهٔ فعلی'] as $key=>$label)
             <div><dt>{{ $label }}</dt><dd><bdi>{{ \App\Support\FinanceMoney::persianToman($summary[$key]) }}</bdi></dd></div>
         @endforeach
     </dl>

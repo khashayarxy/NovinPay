@@ -10,6 +10,8 @@ use App\Enums\RepairStage;
 use App\Enums\StockStatus;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
+use App\Models\DeliveryPlan;
+use App\Models\FinancialDocument;
 use App\Models\InventoryItem;
 use App\Models\Product;
 use App\Models\RepairCase;
@@ -365,5 +367,143 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertSee('(max-width: 380px) 195px, (max-width: 850px) 215px, 300px', false);
+    }
+
+    public function test_admin_deep_ux_simplification_microcopy_autofill_trap_file_picker_and_409_error_state(): void
+    {
+        $this->admin->refresh();
+        $adminSession = ['admin_session_version' => 1];
+
+        // 1. Intake uses clean brand <select> (without name attribute) instead of 6-button pill grid
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get('/admin/repairs/intake')
+            ->assertOk()
+            ->assertSee('data-intake-brand-select', false)
+            ->assertDontSee('admin-brand-pills', false);
+
+        // 2. Ready repair case offers compact print menu + inline invoice & in-person settlement without page-hopping
+        $readyCase = RepairCase::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'tracking_reference' => '88990011',
+            'tracking_digest' => RepairIdentity::digest('tracking', '88990011'),
+            'intake_digest' => bin2hex(random_bytes(32)),
+            'customer_id' => $this->customer->id,
+            'customer_account_id' => $this->account->id,
+            'received_by' => $this->admin->id,
+            'received_at' => now(),
+            'status' => RepairStage::Ready,
+            'repair_price_toman' => 420000,
+            'customer_name' => 'رضا نادری',
+            'contact_phone' => '09124445566',
+            'phone_digest' => RepairIdentity::digest('phone', '09124445566'),
+            'device_brand' => RepairBrand::Pax,
+            'device_model' => 'S910',
+            'issue' => 'تعویض باتری',
+            'physical_condition' => 'سالم',
+            'accessories' => 'آداپتور',
+            'simple_workflow' => true,
+            'version' => 1,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get('/admin/repairs/'.$readyCase->public_id)
+            ->assertOk()
+            ->assertSee('چاپ و اسناد')
+            ->assertSee('صدور فاکتور تعمیر')
+            ->assertSee(route('admin.finance.issue.store'), false);
+
+        // 3. Customer forms & profile use plain Persian microcopy, tabs, accordions, and autofill traps
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get('/admin/customers/create')
+            ->assertOk()
+            ->assertSee('شماره موبایل')
+            ->assertDontSee('شماره موبایل ایرانی');
+
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get('/admin/customers/'.$this->customer->public_id)
+            ->assertOk()
+            ->assertSee('data-admin-tabs', false)
+            ->assertSee('مدیریت سوابق متصل')
+            ->assertSee('ادغام پروفایل تکراری')
+            ->assertSee('admin-autofill-trap', false)
+            ->assertSee('autocomplete="new-password"', false)
+            ->assertDontSee('اتصال یا جداسازی سابقه')
+            ->assertDontSee('تطبیق پروفایل تکراری');
+
+        // 4. Finance & Payments use natural Persian business language
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get('/admin/finance')
+            ->assertOk()
+            ->assertSee('+ صدور فاکتور')
+            ->assertSee('ثبت دریافت / هزینه')
+            ->assertDontSee('صدور سند مطالبه');
+
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get('/admin/finance/new/receipt')
+            ->assertOk()
+            ->assertSee('شماره پیگیری یا قبض (بدون درج شماره کارت)')
+            ->assertDontSee('شناسهٔ یکتای مدرک با پیشوند');
+
+        // 5. Product create/edit uses Persian .np-file-picker and progressive accordions (zero English raw file input)
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get('/admin/products/create')
+            ->assertOk()
+            ->assertSee('data-np-file-picker', false)
+            ->assertSee('انتخاب تصویر')
+            ->assertSee('فایلی انتخاب نشده است')
+            ->assertDontSee('class="input" type="file"', false);
+
+        // 6. Delivery progress 409 renders styled Persian admin error card instead of English Symfony error
+        $order = SalesOrder::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'customer_id' => $this->customer->id,
+            'customer_account_id' => $this->account->id,
+            'checkout_key' => (string) Str::uuid(),
+            'checkout_digest' => bin2hex(random_bytes(32)),
+            'status' => 'confirmed',
+            'currency' => 'TOMAN',
+            'total' => '4800000.00',
+            'version' => 1,
+        ]);
+
+        $doc = FinancialDocument::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'sales_order_id' => $order->id,
+            'customer_id' => $this->customer->id,
+            'created_by' => $this->admin->id,
+            'source_version' => 1,
+            'source_amount_minor' => 480000000,
+            'charged_minor' => 480000000,
+            'paid_minor' => 0,
+            'version' => 1,
+            'created_at' => now(),
+        ]);
+
+        $plan = DeliveryPlan::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'financial_document_id' => $doc->id,
+            'customer_account_id' => $this->account->id,
+            'method' => 'tipax',
+            'shipping_minor' => 0,
+            'version' => 1,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->post(route('admin.deliveries.order-progress', $plan->public_id), [
+                'version' => $plan->version,
+                'progress' => 'pickup_ready',
+            ])
+            ->assertConflict()
+            ->assertSee('عملیات انجام نشد')
+            ->assertSee('بازگشت به ارسال و تحویل')
+            ->assertDontSee('Oops! An Error Occurred');
     }
 }

@@ -28,7 +28,11 @@
             <p class="admin-hint">ابتدا در صفحهٔ ورود مشتری درخواست کد بدهید. کد پیامک نمی‌شود و تا دو دقیقه معتبر است.</p>
             <form class="admin-form" method="post" action="{{ route('admin.test-customers.code', $row['key']) }}">
                 @csrf
-                <label class="label">رمز عبور فعلی مدیریت<input class="input" type="password" name="current_password" autocomplete="current-password" required></label>
+                <div class="admin-autofill-trap" aria-hidden="true">
+                    <input type="text" tabindex="-1" autocomplete="username">
+                    <input type="password" tabindex="-1" autocomplete="current-password">
+                </div>
+                <label class="label">رمز عبور فعلی مدیریت<input class="input" type="password" name="current_password" autocomplete="new-password" required></label>
                 <button class="btn btn-primary">نمایش کد آزمایشی فعال</button>
             </form>
             </section>
@@ -40,7 +44,11 @@
                 <form class="admin-form" method="post" action="{{ route('admin.test-customers.reset', $account->public_id) }}" data-confirm="حساب آزمایشی بازنشانی شود؟ {{ $description }} حذف و نشست‌ها، رمز عبور و کدهای ورود لغو می‌شوند.">
                     @csrf
                     <input type="hidden" name="scope" value="{{ $scope['pin'] }}">
-                    <label class="label">رمز عبور فعلی مدیریت<input class="input" type="password" name="current_password" autocomplete="current-password" required></label>
+                    <div class="admin-autofill-trap" aria-hidden="true">
+                        <input type="text" tabindex="-1" autocomplete="username">
+                        <input type="password" tabindex="-1" autocomplete="current-password">
+                    </div>
+                    <label class="label">رمز عبور فعلی مدیریت<input class="input" type="password" name="current_password" autocomplete="new-password" required></label>
                     <label><input type="checkbox" name="confirm" value="1" required> حذف {{ $description }} و بازنشانی حساب را تأیید می‌کنم.</label>
                     <button class="btn btn-secondary">بازنشانی حساب تست</button>
                 </form>

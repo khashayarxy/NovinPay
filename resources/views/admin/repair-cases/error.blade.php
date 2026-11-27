@@ -1,5 +1,21 @@
 @extends('layouts.admin')
 @section('title', 'عملیات ثبت نشد')
 @section('content')
-<header class="admin-page-heading"><h1>عملیات ثبت نشد</h1></header><section class="admin-panel admin-form-surface" role="alert"><p>{{ $message }}</p><p class="admin-hint mt-4">برای جلوگیری از ثبت تکراری یا بازنویسی اطلاعات تازه، پرونده را از فهرست دوباره باز کنید. ورودی‌های شخصی در این صفحه بازپخش نمی‌شوند.</p><a class="btn btn-primary mt-6" href="{{ route('admin.repair-cases.index') }}">بازگشت به پرونده‌ها</a></section>
+<div class="admin-form-surface">
+    <header class="admin-page-heading">
+        <div>
+            <span class="admin-eyebrow">عدم امکان ثبت عملیات</span>
+            <h1>عملیات انجام نشد</h1>
+        </div>
+    </header>
+    <section class="admin-panel space-y-3" role="alert">
+        <div class="admin-info-card admin-info-card--warning">
+            <p class="font-semibold">{{ $message }}</p>
+        </div>
+        <p class="admin-hint">پرونده را دوباره باز کنید تا آخرین وضعیت آن بارگذاری شود.</p>
+        <div class="admin-actions pt-1">
+            <a class="btn btn-primary" href="{{ route('admin.repair-cases.index') }}">بازگشت به پرونده‌های تعمیر</a>
+        </div>
+    </section>
+</div>
 @endsection

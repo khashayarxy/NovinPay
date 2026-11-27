@@ -10,40 +10,32 @@
         default => 'warning',
     };
 @endphp
+<a class="admin-back-link" href="{{ route('admin.orders.index') }}">← فهرست سفارش‌ها</a>
 <header class="admin-page-heading">
     <div>
         <div class="repair-case-header__title-row">
             <h1>سفارش #{{ \App\Support\FaNumber::digits($order->id) }}</h1>
             <x-admin.status :tone="$orderTone">{{ \App\Models\SalesOrder::STATUSES[$order->status] }}</x-admin.status>
         </div>
-        <div class="admin-id-row">
+        <p class="repair-case-header__sub">
+            <span>مبلغ کل: <strong>{{ \App\Support\FinanceMoney::persianOrderToman($order->total) }} تومان</strong></span>
+            <span>· کد پیگیری: <bdi class="np-latin" dir="ltr">{{ $shortOrderCode }}</bdi></span>
+            <button type="button" class="admin-copy-mini" data-copy-code="{{ $shortOrderCode }}"><span data-copy-code-label>کپی کد</span></button>
+        </p>
+        <div class="admin-id-row sr-only">
             <span class="admin-id-chip np-latin" dir="ltr" title="{{ $order->public_id }}">{{ $shortOrderCode }}</span>
-            <button type="button" class="admin-copy-mini" data-copy-code="{{ $shortOrderCode }}"><span data-copy-code-label>کپی کد سفارش</span></button>
         </div>
     </div>
     <div class="admin-actions">
-        @can('finance.view')
-            <a class="btn btn-secondary btn-sm" href="{{ route('admin.finance.sources.show',['type'=>'order','reference'=>$order->public_id]) }}">سند مالی و تسویهٔ سفارش</a>
-        @endcan
         @if($order->status==='draft')
-            @can('orders.create')<a class="btn btn-secondary btn-sm" href="{{ route('admin.orders.edit',$order) }}">ویرایش پیش‌نویس</a>@endcan
+            @can('orders.create')<a class="btn btn-primary btn-sm" href="{{ route('admin.orders.edit',$order) }}">ویرایش پیش‌نویس</a>@endcan
         @endif
-        <a class="btn btn-secondary btn-sm" href="{{ route('admin.orders.index') }}">فهرست سفارش‌ها</a>
+        @can('finance.view')
+            <a class="btn btn-secondary btn-sm" href="{{ route('admin.finance.sources.show',['type'=>'order','reference'=>$order->public_id]) }}">سند مالی و تسویه</a>
+        @endcan
     </div>
 </header>
 <x-admin.errors/>
-
-<section class="repair-status-banner">
-    <div>
-        <span class="admin-eyebrow">مرحلهٔ فعلی</span>
-        <h2>{{ \App\Models\SalesOrder::STATUSES[$order->status] }}</h2>
-        <p>پیش‌نویس ← رزرو ← تأیید ← تحویل کامل</p>
-    </div>
-    <div>
-        <strong>{{ \App\Support\FinanceMoney::persianOrderToman($order->total) }} تومان</strong>
-        <p>مبلغ کل سفارش (تسویه در سند مالی بررسی می‌شود)</p>
-    </div>
-</section>
 
 <div class="repair-layout mt-4">
     <div class="repair-main-stack">
@@ -129,7 +121,7 @@
                         @if($docStatus !== 'approved')
                             <form method="post" action="{{ route('admin.orders.documents.approve', $order) }}">
                                 @csrf
-                                <button class="btn btn-primary btn-sm" type="submit">تأیید مدارک (تأیید شده)</button>
+                                <button class="btn btn-primary btn-sm" type="submit">تأیید مدارک</button>
                             </form>
                         @endif
                         @if($hasUnpurgedDocs)
@@ -139,14 +131,22 @@
                             </form>
                         @endif
                     </div>
-                    <form class="mt-3 pt-3 border-t border-slate-200 flex flex-wrap items-end gap-2" method="post" action="{{ route('admin.orders.documents.revision', $order) }}">
-                        @csrf
-                        <div class="flex-1 min-w-[14rem]">
-                            <label class="label" for="docs-revision-reason">ثبت نیاز به اصلاح مدارک (علت کوتاه برای مشتری)</label>
-                            <input class="input" type="text" id="docs-revision-reason" name="reason" maxlength="250" value="{{ old('reason', $order->documents_revision_reason) }}" placeholder="مثلاً تصویر کارت ملی ناخوانا است" required>
+                    <details class="admin-accordion mt-3" @if($docStatus === 'needs_revision' || $errors->has('reason')) open @endif>
+                        <summary>
+                            <span>ثبت نیاز به اصلاح مدارک</span>
+                            <svg class="admin-accordion__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+                        </summary>
+                        <div class="admin-accordion__body">
+                            <form class="flex flex-wrap items-end gap-2" method="post" action="{{ route('admin.orders.documents.revision', $order) }}">
+                                @csrf
+                                <div class="flex-1 min-w-[14rem]">
+                                    <label class="label" for="docs-revision-reason">علت کوتاه برای مشتری</label>
+                                    <input class="input" type="text" id="docs-revision-reason" name="reason" maxlength="250" value="{{ old('reason', $order->documents_revision_reason) }}" placeholder="مثلاً تصویر کارت ملی ناخوانا است" required>
+                                </div>
+                                <button class="btn btn-secondary" type="submit">اعلام نیاز به اصلاح</button>
+                            </form>
                         </div>
-                        <button class="btn btn-secondary" type="submit">اعلام نیاز به اصلاح</button>
-                    </form>
+                    </details>
                 @endcan
             </section>
         @endif
@@ -194,7 +194,7 @@
     </div>
 
     <aside class="repair-action-stack" aria-label="عملیات سفارش">
-        @foreach(['reserve'=>['رزرو همهٔ اقلام','orders.reserve',['draft']], 'confirm'=>['تأیید توافق فروش','orders.confirm',['reserved']], 'fulfill'=>['ثبت تحویل کامل','orders.fulfill',['confirmed']], 'release'=>['آزادسازی برای بازبینی','orders.reserve',['reserved','confirmed']], 'cancel'=>['لغو سفارش','orders.reserve',['draft','reserved','confirmed']]] as $action=>[$label,$permission,$statuses])
+        @foreach(['reserve'=>['رزرو اقلام سفارش','orders.reserve',['draft']], 'confirm'=>['تأیید سفارش','orders.confirm',['reserved']], 'fulfill'=>['ثبت تحویل کامل سفارش','orders.fulfill',['confirmed']]] as $action=>[$label,$permission,$statuses])
             @if(in_array($order->status,$statuses,true))
                 @can($permission)
                     @if($action!=='fulfill'||$contact)
@@ -202,7 +202,7 @@
                             <div class="admin-panel-heading"><h2>{{ $label }}</h2></div>
                             <x-commerce-operation :action="route('admin.orders.'.$action,$order)" :version="$order->version" :title="$label">
                                 @if($action==='fulfill')
-                                    <x-operation-field name="fulfillment_info" label="اطلاعات گیرنده، شیوه و مدرک تحویل؛ خصوصی" kind="textarea" :maxlength="2000"/>
+                                    <x-operation-field name="fulfillment_info" label="مشخصات گیرنده، روش ارسال و کد پیگیری" kind="textarea" :maxlength="2000"/>
                                 @endif
                             </x-commerce-operation>
                         </section>
@@ -210,6 +210,30 @@
                 @endcan
             @endif
         @endforeach
+
+        @if(in_array($order->status,['draft','reserved','confirmed'],true))
+            @can('orders.reserve')
+                <details class="admin-accordion">
+                    <summary>
+                        <span>لغو یا آزادسازی رزرو سفارش</span>
+                        <svg class="admin-accordion__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+                    </summary>
+                    <div class="admin-accordion__body space-y-4">
+                        @if(in_array($order->status,['reserved','confirmed'],true))
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-800 mb-2">آزادسازی رزرو برای ویرایش</h3>
+                                <x-commerce-operation :action="route('admin.orders.release',$order)" :version="$order->version" title="آزادسازی رزرو" />
+                            </div>
+                        @endif
+                        <div @if(in_array($order->status,['reserved','confirmed'],true)) class="pt-3 border-t border-slate-200" @endif>
+                            <h3 class="text-sm font-bold text-rose-700 mb-2">لغو کامل سفارش</h3>
+                            <x-commerce-operation :action="route('admin.orders.cancel',$order)" :version="$order->version" title="لغو سفارش" />
+                        </div>
+                    </div>
+                </details>
+            @endcan
+        @endif
+
         @if(in_array($order->status,['fulfilled','cancelled'],true))
             <section class="admin-panel">
                 <div class="flex items-center gap-2.5">
