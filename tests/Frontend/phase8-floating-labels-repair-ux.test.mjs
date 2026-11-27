@@ -28,37 +28,20 @@ const runChrome = (executable, args, timeoutMs = 25000) => new Promise((resolve,
 
 const readRepo = rel => readFileSync(new URL('../../' + rel, import.meta.url), 'utf8');
 
-const loadStorefrontBundle = () => {
-    const manifestPath = new URL('../../public/build/manifest.json', import.meta.url);
-    let compiledCss = '';
-    let compiledJs = '';
-    if (existsSync(manifestPath)) {
-        const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-        const cssFile = manifest['resources/css/app.css']?.file;
-        const jsFile = manifest['resources/js/app.js']?.file;
-        if (cssFile && existsSync(new URL('../../public/build/' + cssFile, import.meta.url))) {
-            compiledCss = readRepo('public/build/' + cssFile);
-        }
-        if (jsFile && existsSync(new URL('../../public/build/' + jsFile, import.meta.url))) {
-            compiledJs = readRepo('public/build/' + jsFile);
-        }
-    }
-    if (!compiledCss) {
-        compiledCss = [
-            readRepo('resources/css/home.css'),
-            readRepo('resources/css/public.css'),
-            readRepo('resources/css/customer-account.css'),
-            readRepo('resources/css/app.css').replace(/^@(?:import|source)\b[^\r\n]*;/gm, ''),
-        ].join('\n');
-    }
-    const css = [
-        compiledCss,
+const loadStorefrontCss = () => {
+    const rawAppCss = readRepo('resources/css/app.css')
+        .replace(/^@(?:import|source)\b[^\r\n]*;/gm, '')
+        .replace(/@theme\s*\{[\s\S]*?\}/g, '');
+
+    return [
+        readRepo('resources/css/home.css'),
+        readRepo('resources/css/public.css'),
+        readRepo('resources/css/customer-account.css'),
+        rawAppCss,
         readRepo('public/css/store-navigation.css'),
         readRepo('public/css/storefront-refinement.css'),
         readRepo('resources/support-chat/support-client/launcher.css'),
     ].join('\n').replace(/@font-face\s*\{[^}]*\}/g, '');
-
-    return {css, compiledJs};
 };
 
 test('Chromium: Phase 8 RTL floating labels, mobile menu & nav renaming, Stage 4 stacked review, non-focusing checkbox toggle, and recovery/footer geometry', async t => {
@@ -77,8 +60,7 @@ test('Chromium: Phase 8 RTL floating labels, mobile menu & nav renaming, Stage 4
     const directory = mkdtempSync(path.join(tmpdir(), 'novinpay-phase8-ux-'));
     let server = null;
     try {
-        const {css, compiledJs} = loadStorefrontBundle();
-        assert.ok(compiledJs.length > 0, 'Compiled resources/js/app.js bundle must exist (run npm run build first)');
+        const css = loadStorefrontCss();
 
         const fixtureHtml = `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
         <style>${css}</style>
@@ -195,7 +177,7 @@ test('Chromium: Phase 8 RTL floating labels, mobile menu & nav renaming, Stage 4
             </nav>
             <button type="button" id="chat-launcher" data-support-launcher aria-label="پشتیبانی"><svg viewBox="0 0 24 24"></svg></button>
 
-            <script type="module">${compiledJs}</script>
+            <script type="module" src="/resources/js/app.js"></script>
             <script>
             window.addEventListener('load', async () => {
                 await new Promise(r => setTimeout(r, 220));
@@ -270,6 +252,22 @@ test('Chromium: Phase 8 RTL floating labels, mobile menu & nav renaming, Stage 4
         </body></html>`;
 
         server = http.createServer((req, res) => {
+            const reqPath = (req.url || '/').split('?')[0];
+            if (reqPath.startsWith('/resources/js/')) {
+                const baseName = path.posix.basename(reqPath);
+                const jsFile = baseName.endsWith('.js') ? baseName : `${baseName}.js`;
+                const fullUrl = new URL('../../resources/js/' + jsFile, import.meta.url);
+                if (existsSync(fullUrl)) {
+                    const jsBody = readFileSync(fullUrl, 'utf8')
+                        .replace(/(from\s+['"]\.\/[^'".]+)(['"])/g, '$1.js$2');
+                    res.writeHead(200, {'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store'});
+                    res.end(jsBody);
+                    return;
+                }
+                res.writeHead(404);
+                res.end();
+                return;
+            }
             res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'});
             res.end(fixtureHtml);
         });
