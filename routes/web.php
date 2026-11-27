@@ -116,7 +116,7 @@ Route::middleware(PrivateRepairResponse::class)->prefix('account')->name('accoun
         Route::get('/repairs/{record}', [$controller, 'repair'])->whereUuid('record')->name('repairs.show');
         Route::get('/orders/{record}', [$controller, 'order'])->whereUuid('record')->name('orders.show');
         Route::post('/orders/{record}/documents', [OrderActivationDocumentsController::class, 'storeForAccount'])
-            ->whereUuid('record')->middleware('throttle:10,1')->name('orders.documents.store');
+            ->where('record', '[A-Za-z0-9-]{8,36}')->middleware('throttle:10,1')->name('orders.documents.store');
         Route::post('password', [$controller, 'password'])->middleware('throttle:10,1')->name('password.update');
         Route::post('password-skip', [$controller, 'skipPassword'])->name('password.skip');
         Route::post('logout', [$controller, 'logout'])->block(20, 15)->name('logout');

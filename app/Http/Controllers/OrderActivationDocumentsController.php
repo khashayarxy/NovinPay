@@ -17,15 +17,21 @@ final class OrderActivationDocumentsController extends Controller
     {
         /** @var CustomerAccount $account */
         $account = Auth::guard('customer')->user();
-        $order = SalesOrder::query()
+        $query = SalesOrder::query()
             ->where(function ($q) use ($account): void {
                 $q->where('customer_account_id', $account->id);
                 if ($account->customer_id) {
                     $q->orWhere('customer_id', $account->customer_id);
                 }
-            })
-            ->where('public_id', $record)
-            ->firstOrFail();
+            });
+
+        if (preg_match('/\A[A-Za-z0-9]{8}\z/', $record) === 1) {
+            $matches = $query->where('public_id', 'like', strtolower($record).'-%')->limit(2)->get();
+            abort_unless($matches->count() === 1, 404);
+            $order = $matches->first();
+        } else {
+            $order = $query->where('public_id', $record)->firstOrFail();
+        }
 
         return $this->processUpload(
             request: $request,

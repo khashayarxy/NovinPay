@@ -311,7 +311,10 @@ final class UnifiedNotifier
             }
 
             if ($customerPhone !== null) {
-                $this->sendIpPanelOptionalPattern($customerPhone, 'consultation_submitted', [
+                $consultationPatternKey = trim((string) config('notifications.sms.patterns.consultation_submitted', '')) !== ''
+                    ? 'consultation_submitted'
+                    : 'customer_consultation_submitted';
+                $this->sendIpPanelOptionalPattern($customerPhone, $consultationPatternKey, [
                     'name' => $customerName,
                 ]);
             }
