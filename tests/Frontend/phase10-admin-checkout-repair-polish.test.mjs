@@ -63,6 +63,10 @@ test('Phase 10 static stylesheet contracts: admin enterprise design system and s
     assert.match(adminCss, /\.admin-id-chip\b/);
     assert.match(adminCss, /\.admin-step-strip\b/);
     assert.match(adminCss, /\.admin-site\s+select\.input\b/);
+    assert.match(adminCss, /\.admin-step-strip--4\b/);
+    assert.match(adminCss, /\.repair-receipt-80mm\b/);
+    assert.match(adminCss, /\.repair-formal-invoice\b/);
+    assert.match(adminCss, /\.finance-doc-metrics\b/);
     assert.match(adminCss, /dialog\.admin-calendar\[open\]/);
     assert.match(adminCss, /\.admin-calendar-days\b/);
     assert.match(adminCss, /\.admin-autofill-trap\b/);
@@ -577,12 +581,12 @@ ${adminCssBundle}
         </div>
 
         <form id="intake-form" style="margin-top: 20px;">
-            <select id="intake-brand-select" class="input" data-intake-brand-select>
+            <select id="intake-brand-select" name="device_brand" class="input" data-intake-brand-select>
                 <option value="">انتخاب برند دستگاه…</option>
                 <option value="PAX" selected>PAX</option>
                 <option value="Newland">Newland</option>
             </select>
-            <input class="input" name="device_model" value="PAX S910">
+            <input class="input" name="device_model" value="9220">
         </form>
 
         <section id="tabs-section" style="margin-top: 20px;">
@@ -738,7 +742,7 @@ ${adminCssBundle}
         assert.equal(p.daysGridCols, 7, 'Jalali calendar days must render as a 7-column grid');
         assert.ok(p.calLeft >= 12 && p.calRight <= p.winWidth - 12 && p.calTop >= 12, `Calendar popover must stay clamped inside viewport: left=${p.calLeft}, right=${p.calRight}, top=${p.calTop}`);
         assert.ok(p.calWidth >= 280 && p.calWidth <= 320, `Calendar popover width must be compact (~308px), got ${p.calWidth}`);
-        assert.equal(p.updatedModel, 'Newland S910', 'Intake brand dropdown must swap brand prefix cleanly on device_model');
+        assert.equal(p.updatedModel, '9220', 'Changing intake brand dropdown must NOT auto-insert brand prefix into device_model');
         assert.equal(p.ordersHidden, true, 'Inactive tab panel must hide');
         assert.equal(p.casesHidden, false, 'Selected tab panel must show');
         assert.ok(p.pickerBtnHeight >= 34, `Persian file picker button must render cleanly in admin, height=${p.pickerBtnHeight}`);

@@ -1216,31 +1216,440 @@ a.admin-stat-card:hover {
 .admin-step-strip {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.45rem;
+    gap: 0.5rem;
     list-style: none;
-    padding: 0.75rem 0.9rem;
+    padding: 0.65rem 0.75rem;
     margin: 0 0 1rem;
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-lg);
+    background: #ffffff;
+    box-shadow: var(--admin-shadow);
 }
-.admin-step-strip li {
-    padding: 0.48rem 0.6rem;
-    border-radius: 9px;
+.admin-step-strip--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.admin-step-strip li,
+.admin-step-strip__item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 10px;
     border: 1px solid var(--admin-border);
     background: var(--admin-surface-subtle);
-    font-size: 0.77rem;
+    font-size: 0.79rem;
     font-weight: 600;
     color: var(--admin-muted);
     text-align: center;
 }
-.admin-step-strip li[data-step-done="1"] {
+.admin-step-strip__dot {
+    display: inline-grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.admin-step-strip li[data-step-done="1"],
+.admin-step-strip__item.is-done {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+    color: #065f46;
+}
+.admin-step-strip__item.is-done .admin-step-strip__dot {
+    background: #10b981;
+    color: #ffffff;
+}
+.admin-step-strip li[aria-current="step"],
+.admin-step-strip__item.is-active {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #0b5cab;
+    font-weight: 700;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}
+.admin-step-strip__item.is-active .admin-step-strip__dot {
+    background: #0b5cab;
+    color: #ffffff;
+}
+
+/* Dense Key-Value List & Compact Timeline */
+.admin-kv-list {
+    display: grid;
+    margin: 0.55rem 0 0;
+}
+.admin-kv-list > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem 0.75rem;
+    padding: 0.48rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.83rem;
+}
+.admin-kv-list > div:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+.admin-kv-list dt {
+    color: var(--admin-muted);
+    font-weight: 500;
+}
+.admin-kv-list dd {
+    margin: 0;
+    color: var(--admin-ink);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.repair-compact-timeline {
+    list-style: none;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    display: grid;
+}
+.repair-compact-timeline__item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1rem minmax(0, 1fr);
+    gap: 0.65rem;
+    padding: 0.52rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.repair-compact-timeline__item:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+.repair-compact-timeline__item::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0.44rem;
+    top: 1.15rem;
+    bottom: -0.55rem;
+    width: 1.5px;
+    background: #e2e8f0;
+}
+.repair-compact-timeline__item:last-child::before {
+    display: none;
+}
+.repair-compact-timeline__dot {
+    position: relative;
+    z-index: 1;
+    width: 0.52rem;
+    height: 0.52rem;
+    margin-top: 0.34rem;
+    margin-inline-start: 0.2rem;
+    border-radius: 999px;
+    background: var(--admin-brand);
+    box-shadow: 0 0 0 3px var(--admin-brand-soft);
+}
+.repair-compact-timeline__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.65rem;
+    font-size: 0.82rem;
+}
+.repair-compact-timeline__transition {
+    padding: 0.08rem 0.48rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+.repair-compact-timeline__meta {
+    margin-inline-start: auto;
+    color: var(--admin-muted);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+.repair-compact-timeline__notes {
+    margin-top: 0.22rem;
+    font-size: 0.79rem;
+    color: var(--admin-ink-soft);
+    display: grid;
+    gap: 0.14rem;
+}
+
+/* 80mm Thermal POS Receipt & Formal Printable Invoice */
+.repair-receipt-80mm {
+    width: 80mm;
+    max-width: 100%;
+    margin-inline: auto;
+    padding: 14px 12px;
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+    font-size: 12px;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+}
+.repair-receipt-80mm__head {
+    text-align: center;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #111827;
+}
+.repair-receipt-80mm__store {
+    display: block;
+    font-size: 15px;
+    font-weight: 800;
+}
+.repair-receipt-80mm__sub,
+.repair-receipt-80mm__phone {
+    display: block;
+    font-size: 11px;
+    color: #1f2937;
+    margin-top: 2px;
+}
+.repair-receipt-80mm__title {
+    margin: 8px 0 0;
+    padding: 3px 8px;
+    border: 1px solid #111827;
+    border-radius: 4px;
+    font-size: 12.5px;
+    font-weight: 800;
+    display: inline-block;
+}
+.repair-receipt-80mm__tracking {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 8px 0;
+    padding: 6px 8px;
+    border: 1.5px solid #111827;
+    border-radius: 5px;
+    font-size: 12px;
+}
+.repair-receipt-80mm__tracking strong {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+.repair-receipt-80mm__kv {
+    margin: 0;
+    padding: 6px 0;
+    border-top: 1px dashed #374151;
+    display: grid;
+    gap: 4px;
+}
+.repair-receipt-80mm__kv > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+}
+.repair-receipt-80mm__kv dt { color: #374151; flex-shrink: 0; }
+.repair-receipt-80mm__kv dd { margin: 0; font-weight: 700; text-align: left; }
+.repair-receipt-80mm__section {
+    padding: 6px 0;
+    border-top: 1px dashed #374151;
+    display: grid;
+    gap: 4px;
+    font-size: 11.5px;
+}
+.repair-receipt-80mm__section p { margin: 0; }
+.repair-receipt-80mm__foot {
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px dashed #111827;
+    text-align: center;
+    font-size: 10.5px;
+    color: #1f2937;
+}
+.repair-receipt-80mm__foot p { margin: 2px 0; }
+.repair-receipt-80mm__url { font-weight: 700; font-size: 11px; }
+.repair-receipt-80mm__note { margin-top: 5px !important; }
+
+.repair-formal-invoice {
+    max-width: 210mm;
+    margin-inline: auto;
+    padding: 1.75rem 2rem;
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #dbe4ef;
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+    font-variant-numeric: tabular-nums;
+}
+.repair-formal-invoice__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #0f172a;
+}
+.repair-formal-invoice__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.repair-formal-invoice__brand h1 { font-size: 1.2rem; font-weight: 800; margin: 0; }
+.repair-formal-invoice__brand p { margin: 0.15rem 0 0; font-size: 0.8rem; color: #475569; }
+.repair-formal-invoice__meta {
+    display: grid;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    text-align: left;
+}
+.repair-formal-invoice__badge {
+    display: inline-block;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+.repair-formal-invoice__badge--paid { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.repair-formal-invoice__badge--unpaid { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.repair-formal-invoice__parties {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.repair-formal-invoice__parties section {
+    padding: 0.75rem 0.9rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+.repair-formal-invoice__parties h2 { font-size: 0.8rem; font-weight: 800; color: #334155; margin: 0 0 0.45rem; }
+.repair-formal-invoice__parties dl { display: grid; gap: 0.3rem; margin: 0; font-size: 0.82rem; }
+.repair-formal-invoice__parties dl > div { display: flex; justify-content: space-between; gap: 0.5rem; }
+.repair-formal-invoice__parties dt { color: #64748b; }
+.repair-formal-invoice__parties dd { margin: 0; font-weight: 700; }
+.repair-formal-invoice__table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.1rem;
+    font-size: 0.84rem;
+}
+.repair-formal-invoice__table th,
+.repair-formal-invoice__table td {
+    padding: 0.65rem 0.85rem;
+    border: 1px solid #cbd5e1;
+    text-align: right;
+}
+.repair-formal-invoice__table thead th {
+    background: #f1f5f9;
+    font-weight: 800;
+    color: #1e293b;
+}
+.repair-formal-invoice__desc {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+    color: #475569;
+    white-space: pre-line;
+}
+.repair-formal-invoice__amount {
+    text-align: left !important;
+    white-space: nowrap;
+    font-weight: 700;
+}
+.repair-formal-invoice__total-row th,
+.repair-formal-invoice__total-row td {
+    background: #eff6ff;
+    color: #0b5cab;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+.repair-formal-invoice__settlement-note {
+    margin: 0.75rem 0 0;
+    font-size: 0.8rem;
+    color: #475569;
+}
+.repair-formal-invoice__signatures {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+    padding-top: 1rem;
+}
+.repair-formal-invoice__signatures > div {
+    min-height: 4.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #94a3b8;
+    text-align: center;
+    font-size: 0.78rem;
+    color: #475569;
+}
+
+/* Finance Document 3-Metric Strip & Clean Amount Cells */
+.finance-doc-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+.finance-doc-metric {
+    padding: 0.95rem 1.1rem;
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-lg);
+    background: #ffffff;
+    box-shadow: var(--admin-shadow);
+    display: grid;
+    gap: 0.3rem;
+}
+.finance-doc-metric__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.finance-doc-metric__label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--admin-muted);
+}
+.finance-doc-metric__value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--admin-ink);
+    font-variant-numeric: tabular-nums;
+}
+.finance-doc-metric__value small {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--admin-muted);
+}
+.finance-doc-metric--settled {
     background: #ecfdf5;
     border-color: #a7f3d0;
-    color: #047857;
 }
-.admin-step-strip li[aria-current="step"] {
-    background: var(--admin-brand-soft);
-    border-color: #93c5fd;
-    color: var(--admin-brand);
-    font-weight: 700;
+.finance-doc-metric--settled .finance-doc-metric__value { color: #047857; }
+.finance-doc-metric--due {
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+.finance-doc-metric--due .finance-doc-metric__value { color: #b45309; }
+.finance-amount-cell { font-variant-numeric: tabular-nums; }
+.finance-amount-cell--paid { color: #047857; }
+.finance-amount-cell--due { color: #b91c1c; }
+.admin-info-card--success {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+    font-weight: 600;
+}
+@media (max-width: 720px) {
+    .finance-doc-metrics,
+    .repair-formal-invoice__parties,
+    .repair-formal-invoice__signatures {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .repair-formal-invoice { padding: 1.15rem; }
 }
 
 .admin-brand-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.25rem; }
@@ -1638,7 +2047,9 @@ a.admin-stat-card:hover {
     .admin-shell { display: block !important; }
     .admin-content { padding: 0 !important; width: 100% !important; max-width: none !important; }
     .admin-body, .admin-site { background: #fff !important; }
-    .repair-document { border: 0 !important; box-shadow: none !important; padding: 0 !important; max-width: none !important; }
+    .repair-document,
+    .repair-formal-invoice { border: 0 !important; box-shadow: none !important; padding: 0 !important; max-width: none !important; border-radius: 0 !important; }
+    .repair-receipt-80mm { width: 76mm !important; max-width: 76mm !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; margin: 0 auto !important; }
 }
 
 /* ==========================================================================

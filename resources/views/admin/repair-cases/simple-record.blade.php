@@ -62,14 +62,20 @@
     $simpleOrder = ['received' => 1, 'repairing' => 2, 'ready' => 3, 'delivered' => 4];
     $currentRank = $simpleOrder[$status] ?? 0;
 @endphp
-<ol class="admin-step-strip mb-4" aria-label="مراحل پرونده تعمیر">
+<ol class="admin-step-strip admin-step-strip--4 mb-4" aria-label="مراحل پرونده تعمیر">
     @foreach (['received' => 'پذیرش‌شده', 'repairing' => 'در حال تعمیر', 'ready' => 'آماده تحویل', 'delivered' => 'تحویل‌شده'] as $stepKey => $stepLabel)
         @php
             $stepRank = $simpleOrder[$stepKey];
             $stepState = $currentRank > $stepRank ? 'done' : ($currentRank === $stepRank ? 'active' : 'upcoming');
         @endphp
-        <li @class(['admin-step-strip__item', 'is-done' => $stepState === 'done', 'is-active' => $stepState === 'active'])>
-            <span class="admin-step-strip__dot">{{ \App\Support\FaNumber::digits($stepRank) }}</span>
+        <li @class(['admin-step-strip__item', 'is-done' => $stepState === 'done', 'is-active' => $stepState === 'active']) @if($stepState === 'done') data-step-done="1" @elseif($stepState === 'active') aria-current="step" @endif>
+            <span class="admin-step-strip__dot" aria-hidden="true">
+                @if($stepState === 'done')
+                    ✓
+                @else
+                    {{ \App\Support\FaNumber::digits($stepRank) }}
+                @endif
+            </span>
             <span>{{ $stepLabel }}</span>
         </li>
     @endforeach
@@ -181,13 +187,13 @@
                     <a class="admin-text-link" href="{{ route('admin.finance.sources.show', ['type' => 'repair', 'reference' => $case->public_id]) }}">سند مالی ←</a>
                 @endcan
             </div>
-            <dl class="admin-record-facts">
+            <dl class="admin-kv-list">
                 <div><dt>هزینه تعمیر</dt><dd><strong>{{ \App\Support\AdminRepairMoney::display($price) }}</strong></dd></div>
                 @if($price === null && $case->currentEstimate)<div><dt>برآورد قبلی</dt><dd>{{ \App\Support\AdminRepairMoney::display($case->currentEstimate->total()) }}</dd></div>@endif
                 @can('finance.view')
-                    <div class="repair-fact--full">
+                    <div>
                         <dt>وضعیت تسویه</dt>
-                        <dd class="repair-settlement-state">
+                        <dd>
                             @if($settled)
                                 <x-admin.status tone="success">تسویه شد</x-admin.status>
                             @elseif($repairDocument)
@@ -197,6 +203,9 @@
                             @endif
                         </dd>
                     </div>
+                    @if($repairDocument)
+                        <div><dt>مانده قابل پرداخت</dt><dd><strong>{{ \App\Support\FinanceMoney::persianToman($repairDocument->charged_minor - $repairDocument->paid_minor) }} تومان</strong></dd></div>
+                    @endif
                     @if($case->settlement_method)<div><dt>روش ثبت‌شده</dt><dd>{{ $case->settlement_method === 'online' ? 'اینترنتی' : 'حضوری' }}</dd></div>@endif
                 @endcan
             </dl>
@@ -267,14 +276,22 @@
         @endif
 
         <section class="admin-panel" aria-labelledby="repair-handover">
-            <div class="admin-panel-heading"><h2 id="repair-handover">تحویل دستگاه</h2></div>
-            <p>{{ $shipping ? 'ارسال' : ($case->delivery_method === 'in_person' ? 'حضوری' : 'روش تحویل مشخص نشده است.') }}
-                @if($shipping && isset($carriers[$case->delivery_carrier])) · {{ $carriers[$case->delivery_carrier] }} @endif
-            </p>
-            @if($case->delivery)
-                <p class="admin-muted mt-1"><x-finance-time :value="$case->delivery->delivered_at" /></p>
-                @if($case->delivery->confirmation_reference)<p class="mt-1">مرجع تحویل: <bdi dir="ltr">{{ $case->delivery->confirmation_reference }}</bdi></p>@endif
-            @endif
+            <div class="admin-panel-heading">
+                <h2 id="repair-handover">تحویل دستگاه</h2>
+                <x-admin.status :tone="$case->delivery ? 'success' : 'neutral'">{{ $case->delivery ? 'تحویل‌شده' : 'در انتظار تحویل' }}</x-admin.status>
+            </div>
+            <dl class="admin-kv-list">
+                <div>
+                    <dt>روش تحویل</dt>
+                    <dd>{{ $shipping ? 'ارسال' : ($case->delivery_method === 'in_person' ? 'حضوری' : 'مشخص نشده') }}@if($shipping && isset($carriers[$case->delivery_carrier])) · {{ $carriers[$case->delivery_carrier] }}@endif</dd>
+                </div>
+                @if($case->delivery)
+                    <div><dt>زمان تحویل</dt><dd><x-finance-time :value="$case->delivery->delivered_at" /></dd></div>
+                    @if($case->delivery->confirmation_reference)
+                        <div><dt>کد پیگیری / مرجع</dt><dd><bdi dir="ltr">{{ $case->delivery->confirmation_reference }}</bdi></dd></div>
+                    @endif
+                @endif
+            </dl>
             @can('repairs.deliver')
             @if(in_array($status, ['ready', 'return_pending'], true))
                 @if($shipping && !$case->delivery_carrier)
@@ -304,36 +321,45 @@
     <div class="admin-panel-heading">
         <h2>سوابق پرونده <span class="admin-muted">({{ \App\Support\FaNumber::digits($events->total()) }} مورد)</span></h2>
     </div>
-    <ol class="repair-history">
+    <ol class="repair-compact-timeline">
     @forelse($events as $event)
         @php
             $from = \App\Enums\RepairStage::tryFrom((string) $event->from_status);
             $to = \App\Enums\RepairStage::tryFrom((string) $event->to_status);
             $change = $event->subject_type === 'repair_revision' ? $revisions->get($event->subject_id)?->payload : null;
         @endphp
-        <li>
-            <p><strong>{{ \App\Enums\AdminAction::tryFrom($event->action)?->label() ?? 'به‌روزرسانی پرونده' }}</strong>
-                · <x-finance-time :value="$event->created_at" />
-                @if($event->actor) · {{ $event->actor->name }} @endif
-            </p>
-            @if($to && $from !== $to)<p>{{ $from ? $from->label().' ← ' : '' }}{{ $to->label() }}</p>@endif
-            @if($change)
-                @if(($change['before']['repair_notes'] ?? null) !== ($change['after']['repair_notes'] ?? null) && !empty($change['after']['repair_notes']))
-                    <p class="whitespace-pre-line">{{ $change['after']['repair_notes'] }}</p>
+        <li class="repair-compact-timeline__item">
+            <span class="repair-compact-timeline__dot" aria-hidden="true"></span>
+            <div class="repair-compact-timeline__body">
+                <div class="repair-compact-timeline__head">
+                    <strong>{{ \App\Enums\AdminAction::tryFrom($event->action)?->label() ?? 'به‌روزرسانی پرونده' }}</strong>
+                    @if($to && $from !== $to)
+                        <span class="repair-compact-timeline__transition">{{ $from ? $from->label().' ← ' : '' }}{{ $to->label() }}</span>
+                    @endif
+                    <span class="repair-compact-timeline__meta">
+                        <x-finance-time :value="$event->created_at" />@if($event->actor) · {{ $event->actor->name }}@endif
+                    </span>
+                </div>
+                @if($change)
+                    <div class="repair-compact-timeline__notes">
+                        @if(($change['before']['repair_notes'] ?? null) !== ($change['after']['repair_notes'] ?? null) && !empty($change['after']['repair_notes']))
+                            <p class="whitespace-pre-line">{{ $change['after']['repair_notes'] }}</p>
+                        @endif
+                        @if($showMoney && ($change['before']['repair_price_toman'] ?? null) !== ($change['after']['repair_price_toman'] ?? null))
+                            <p>هزینه تعمیر: {{ \App\Support\AdminRepairMoney::display($change['before']['repair_price_toman'] ?? null) }} ← {{ \App\Support\AdminRepairMoney::display($change['after']['repair_price_toman'] ?? null) }}</p>
+                        @endif
+                        @if(($change['before']['delivery_method'] ?? null) !== ($change['after']['delivery_method'] ?? null) || ($change['before']['delivery_carrier'] ?? null) !== ($change['after']['delivery_carrier'] ?? null))
+                            <p>روش تحویل: @if(($change['after']['delivery_method'] ?? null) === 'shipping') ارسال{{ isset($carriers[$change['after']['delivery_carrier'] ?? '']) ? ' با '.$carriers[$change['after']['delivery_carrier']] : '' }}@elseif(($change['after']['delivery_method'] ?? null) === 'in_person') حضوری@else مشخص نشده@endif</p>
+                        @endif
+                        @if($showMoney && ($change['before']['settlement_method'] ?? null) !== ($change['after']['settlement_method'] ?? null))
+                            <p>روش پرداخت ثبت‌شده به‌روز شد.</p>
+                        @endif
+                    </div>
                 @endif
-                @if($showMoney && ($change['before']['repair_price_toman'] ?? null) !== ($change['after']['repair_price_toman'] ?? null))
-                    <p>هزینه تعمیر: {{ \App\Support\AdminRepairMoney::display($change['before']['repair_price_toman'] ?? null) }} ← {{ \App\Support\AdminRepairMoney::display($change['after']['repair_price_toman'] ?? null) }}</p>
-                @endif
-                @if(($change['before']['delivery_method'] ?? null) !== ($change['after']['delivery_method'] ?? null) || ($change['before']['delivery_carrier'] ?? null) !== ($change['after']['delivery_carrier'] ?? null))
-                    <p>روش تحویل به‌روز شد.@if(($change['after']['delivery_method'] ?? null) === 'shipping') ارسال{{ isset($carriers[$change['after']['delivery_carrier'] ?? '']) ? ' با '.$carriers[$change['after']['delivery_carrier']] : '' }}@elseif(($change['after']['delivery_method'] ?? null) === 'in_person') حضوری@endif</p>
-                @endif
-                @if($showMoney && ($change['before']['settlement_method'] ?? null) !== ($change['after']['settlement_method'] ?? null))
-                    <p>روش پرداخت ثبت‌شده به‌روز شد.</p>
-                @endif
-            @endif
+            </div>
         </li>
     @empty
-        <li>هنوز سابقه‌ای برای این پرونده ثبت نشده است.</li>
+        <li class="admin-muted">هنوز سابقه‌ای برای این پرونده ثبت نشده است.</li>
     @endforelse
     </ol>
     {{ $events->links() }}

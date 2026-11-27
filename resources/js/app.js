@@ -2863,30 +2863,6 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
         }
     });
 
-    document.querySelectorAll('select[data-intake-brand-select]').forEach((selectEl) => {
-        if (!(selectEl instanceof HTMLSelectElement)) return;
-        selectEl.addEventListener('change', () => {
-            const brand = selectEl.value || '';
-            const form = selectEl.closest('form');
-            const modelInput = form?.querySelector('input[name="device_model"]');
-            if (!(modelInput instanceof HTMLInputElement)) return;
-            const knownBrands = ['PAX', 'Newland', 'NewPOS', 'SZZT', 'MoreFun', 'TOPWISE'];
-            let current = modelInput.value.trim();
-            for (const b of knownBrands) {
-                if (current.toLowerCase().startsWith(b.toLowerCase())) {
-                    current = current.slice(b.length).trim();
-                    break;
-                }
-            }
-            if (brand && brand !== 'سایر') {
-                modelInput.value = current ? `${brand} ${current}` : `${brand} `;
-            } else {
-                modelInput.value = current;
-            }
-            modelInput.focus();
-        });
-    });
-
     if (document.body.classList.contains('admin-site')) {
         document.addEventListener('keydown', (event) => {
             if (event.target instanceof HTMLInputElement) {

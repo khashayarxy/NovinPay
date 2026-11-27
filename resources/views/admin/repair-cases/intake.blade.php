@@ -101,12 +101,15 @@
             <div class="admin-intake-row admin-intake-row--4">
                 <div>
                     <label class="label" for="intake-brand-select">برند دستگاه</label>
-                    <select id="intake-brand-select" class="input" data-intake-brand-select @disabled($lockBrand)>
+                    <select id="intake-brand-select" name="device_brand" class="input" data-intake-brand-select @disabled($lockBrand)>
                         <option value="">انتخاب برند دستگاه…</option>
                         @foreach(\App\Enums\RepairBrand::cases() as $brand)
                             <option value="{{ $brand->value }}" @selected($source?->device_brand === $brand)>{{ $brand->value }}</option>
                         @endforeach
                     </select>
+                    @if($lockBrand && $source?->device_brand)
+                        <input type="hidden" name="device_brand" value="{{ $source->device_brand->value }}">
+                    @endif
                 </div>
                 <x-operation-field name="device_model" label="مدل دستگاه" :value="$cleanModel" :mark-required="true" :readonly="$lockModel" :maxlength="100"/>
                 <x-operation-field name="device_serial" label="شماره سریال (اختیاری)" :required="false" :value="$prefillSerial" :readonly="$lockSerial" :maxlength="120"/>

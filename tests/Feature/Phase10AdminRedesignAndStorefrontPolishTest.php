@@ -12,6 +12,7 @@ use App\Models\Customer;
 use App\Models\CustomerAccount;
 use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
+use App\Models\FinancialEntry;
 use App\Models\InventoryItem;
 use App\Models\Product;
 use App\Models\RepairCase;
@@ -22,6 +23,7 @@ use App\Models\User;
 use App\Services\ShoppingCart;
 use App\Support\RepairIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -498,9 +500,29 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
             ->withSession($adminSession)
             ->get('/admin/repairs/'.$readyCase->public_id)
             ->assertOk()
+            ->assertSee('admin-step-strip--4', false)
+            ->assertSee('admin-kv-list', false)
+            ->assertSee('repair-compact-timeline', false)
             ->assertSee('چاپ و اسناد')
             ->assertSee('صدور فاکتور تعمیر')
             ->assertSee(route('admin.finance.issue.store'), false);
+
+        // 2b. Repair print documents: 80mm thermal receipt for intake, formal A5/A4 invoice for summary
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get(route('admin.repair-cases.document', [$readyCase, 'intake']))
+            ->assertOk()
+            ->assertSee('repair-receipt-80mm', false)
+            ->assertSee('size: 80mm auto', false)
+            ->assertSee('رسید پذیرش دستگاه');
+
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get(route('admin.repair-cases.document', [$readyCase, 'summary']))
+            ->assertOk()
+            ->assertSee('repair-formal-invoice', false)
+            ->assertSee('صورتحساب خدمات تعمیر')
+            ->assertSee('مهر و امضای فروشگاه');
 
         // 3. Customer forms & profile use plain Persian microcopy, tabs, accordions, and autofill traps
         $this->actingAs($this->admin)
@@ -593,5 +615,72 @@ class Phase10AdminRedesignAndStorefrontPolishTest extends TestCase
             ->assertSee('عملیات انجام نشد')
             ->assertSee('بازگشت به ارسال و تحویل')
             ->assertDontSee('Oops! An Error Occurred');
+
+        // 7. Finance document shows 3-metric strip, 4-column history, smart primary CTA when unpaid, and hides it when settled
+        $chargeOpId = DB::table('financial_operations')->insertGetId([
+            'operation_key' => (string) Str::uuid(),
+            'actor_id' => $this->admin->id,
+            'action' => 'issue',
+            'payload_digest' => bin2hex(random_bytes(32)),
+            'created_at' => now(),
+        ]);
+        FinancialEntry::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'financial_operation_id' => $chargeOpId,
+            'financial_document_id' => $doc->id,
+            'kind' => 'charge',
+            'category' => 'sales',
+            'charge_delta' => 480000000,
+            'receipt_delta' => 0,
+            'expense_delta' => 0,
+            'note' => 'صدور فاکتور فروش',
+            'actor_id' => $this->admin->id,
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get(route('admin.finance.documents.show', $doc))
+            ->assertOk()
+            ->assertSee('finance-doc-metrics', false)
+            ->assertSee('مبلغ کل فاکتور')
+            ->assertSee('پرداخت‌شده')
+            ->assertSee('مانده (بدهی)')
+            ->assertSee('شرح عملیات')
+            ->assertSee('ثبت دریافت وجه')
+            ->assertSee('جزئیات فنی فاکتور')
+            ->assertDontSee('دفتر و ماندهٔ این سند تطبیق دارد');
+
+        $receiptOpId = DB::table('financial_operations')->insertGetId([
+            'operation_key' => (string) Str::uuid(),
+            'actor_id' => $this->admin->id,
+            'action' => 'receipt',
+            'payload_digest' => bin2hex(random_bytes(32)),
+            'created_at' => now(),
+        ]);
+        FinancialEntry::forceCreate([
+            'public_id' => (string) Str::uuid(),
+            'financial_operation_id' => $receiptOpId,
+            'financial_document_id' => $doc->id,
+            'kind' => 'receipt',
+            'category' => 'sales',
+            'charge_delta' => 0,
+            'receipt_delta' => 480000000,
+            'expense_delta' => 0,
+            'method' => 'cash',
+            'reference' => 'CASH-P10-001',
+            'reference_digest' => bin2hex(random_bytes(32)),
+            'note' => 'دریافت وجه در فروشگاه',
+            'actor_id' => $this->admin->id,
+            'created_at' => now(),
+        ]);
+        $doc->forceFill(['paid_minor' => $doc->charged_minor])->save();
+
+        $this->actingAs($this->admin)
+            ->withSession($adminSession)
+            ->get(route('admin.finance.documents.show', $doc))
+            ->assertOk()
+            ->assertSee('این فاکتور به‌طور کامل تسویه شده است.')
+            ->assertDontSee('ثبت دریافت وجه');
     }
 }
