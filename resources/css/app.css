@@ -2476,6 +2476,15 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     color: #94a3b8;
 }
 
+.np-float-field:has(:is(input, textarea)[readonly], :is(input, textarea, select):disabled):is(
+    .is-floated,
+    :has(:is(input, textarea):focus, :is(input, textarea):not(:placeholder-shown)),
+    :has(select option:checked:not([value=""])),
+    :has(.np-cs.has-value)
+) > label {
+    background: linear-gradient(to bottom, #ffffff 50%, var(--np-float-bg, #f8fafc) 50%);
+}
+
 /* Custom modern storefront dropdown component (.np-cs) */
 .np-cs-native {
     position: absolute !important;
