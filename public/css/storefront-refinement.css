@@ -435,7 +435,7 @@ body.public-site .store-search-dialog .overlay-heading h2 {
     font-weight: 700;
     color: #122940;
 }
-body.public-site .store-search-dialog form {
+body.public-site .store-search-dialog form[action] {
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -459,6 +459,15 @@ body.public-site .store-search-dialog input {
 body.public-site .store-search-dialog .search-quick-suggestions {
     width: 100%;
 }
+body.public-site .store-search-dialog .store-search-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+}
+body.public-site .store-search-dialog .store-search-input-row input { min-width: 0; }
 body.public-site .store-search-dialog button.primary {
     width: 100%;
 }

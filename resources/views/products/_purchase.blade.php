@@ -23,10 +23,10 @@
              data-remove-scope="{{ $removeScope }}">
             <div class="purchase-stock-row">
                 <div @class(['stock', 'is-available' => $canAddToCart])>
-                    <strong>{{ $product->is_sample ? $product->stock_status->label() : $sale->stockLabel($product) }}</strong>
+                    <strong>@if ($canAddToCart && isset($inventory) && $inventory->available > 0)موجودی:@else{{ $product->is_sample ? $product->stock_status->label() : $sale->stockLabel($product) }}@endif</strong>
                     @if ($canAddToCart && isset($inventory) && $inventory->available > 0)
                         <span class="stock-availability-note">
-                            : {{ \App\Support\FaNumber::digits($inventory->available) }} عدد
+                            {{ \App\Support\FaNumber::digits($inventory->available) }} عدد
                         </span>
                     @endif
                 </div>

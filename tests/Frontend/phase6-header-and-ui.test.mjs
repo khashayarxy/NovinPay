@@ -62,9 +62,10 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
         const scrollLockJs = readFileSync(new URL('../../public/js/storefront-scroll-lock.js', import.meta.url), 'utf8');
         const premiumJs = readFileSync(new URL('../../public/js/storefront-premium.js', import.meta.url), 'utf8');
 
-        const buildHeaderFixture = () => `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>${css}</style></head>
-        <body class="public-site homepage">
+        const premiumCss = readFileSync(new URL('../../public/css/storefront-premium.css', import.meta.url), 'utf8');
+        const buildHeaderFixture = (premium = false) => `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>${css}\n${premium ? premiumCss : ''}</style></head>
+        <body class="public-site ${premium ? 'premium-storefront' : 'homepage'}">
             <header class="np-header" data-mobile-header>
                 <div class="np-container np-header__inner">
                     <a href="/" class="np-logo-link" aria-label="صفحهٔ اصلی نوین‌پی"><span class="np-wordmark" style="display:block;width:168px;height:34px;background:#098cf7;border-radius:6px"></span></a>
@@ -98,14 +99,22 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                     </div>
                 </div>
             </header>
-            <main id="main-content" style="min-height:600px"></main>
+            <main id="main-content" style="min-height:600px">
+                <aside class="purchase"><div class="purchase-stock-row">
+                    <div class="stock is-available"><strong>موجودی:</strong> <span class="stock-availability-note">۷ عدد</span></div>
+                    <div class="np-inline-stepper np-inline-stepper--purchase"><button type="button" class="np-inline-stepper__btn">+</button><span>۱</span><button type="button" class="np-inline-stepper__btn">×</button></div>
+                </div></aside>
+            </main>
             <nav class="global-store-nav" data-mobile-bottom-nav aria-label="راهبری فروشگاه"><a href="/">خانه</a></nav>
             <dialog id="search-dialog" class="search-dialog store-search-dialog" data-storefront-dialog aria-labelledby="search-title">
                 <div class="overlay-heading"><h2 id="search-title">جستجو در فروشگاه</h2><button type="button" data-storefront-close aria-label="بستن جستجو">×</button></div>
                 <form action="/products" method="get">
                     <label for="product-search">نام یا مدل دستگاه</label>
-                    <input id="product-search" name="q" type="search" placeholder="مثلاً ME31">
-                    <button type="submit" class="primary">جستجو</button>
+                    <div class="store-search-input-row">
+                        <input id="product-search" name="q" type="search" placeholder="مثلاً ME31">
+                        <button type="submit" class="primary">جستجو</button>
+                    </div>
+                    <div class="search-quick-suggestions"><span>جستجوی سریع</span><a href="/products?q=ME31">ME31</a></div>
                 </form>
             </dialog>
             <script>${scrollLockJs}</script>
@@ -152,6 +161,16 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                     navCenterY: Math.round(navRect.top + navRect.height / 2),
                     custCenterY: Math.round(custRect.top + custRect.height / 2),
                     dialogOpened,
+                    navWidth: navRect.width,
+                    navHeight: navRect.height,
+                    navBorder: getComputedStyle(nav).borderWidth,
+                    navPadding: getComputedStyle(nav).padding,
+                    navGap: getComputedStyle(nav).gap,
+                    navLineHeight: getComputedStyle(nav).lineHeight,
+                    searchRow: document.querySelector('.store-search-input-row').getBoundingClientRect().toJSON(),
+                    suggestions: document.querySelector('.search-quick-suggestions').getBoundingClientRect().toJSON(),
+                    stock: document.querySelector('.purchase-stock-row .stock').getBoundingClientRect().toJSON(),
+                    stepper: document.querySelector('.np-inline-stepper--purchase').getBoundingClientRect().toJSON(),
                 };
                 document.body.setAttribute('data-probe', JSON.stringify(payload));
             });
@@ -160,7 +179,7 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
 
         server = http.createServer((req, res) => {
             res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'});
-            res.end(buildHeaderFixture());
+            res.end(buildHeaderFixture(req.url === '/product'));
         });
         await new Promise((resolve, reject) => {
             server.once('error', reject);
@@ -168,16 +187,19 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
         });
         const origin = `http://127.0.0.1:${server.address().port}`;
 
-        for (const [w, h] of [[1280, 800], [1366, 768], [1440, 900], [1920, 1080], [390, 844]]) {
+        const homeMetrics = new Map();
+        const viewports = [[1280, 800], [1366, 768], [1440, 900], [1920, 1080], [390, 844]];
+        const scenarios = ['/', '/product'].flatMap(page => viewports.map(([w, h]) => [page, w, h]));
+        for (const [page, w, h] of scenarios) {
             const res = await runChrome(executable, [
                 '--headless=new',
                 '--disable-gpu',
                 '--no-sandbox',
-                `--user-data-dir=${path.join(directory, `p-${w}`)}`,
+                `--user-data-dir=${path.join(directory, `p-${page === '/' ? 'home' : 'product'}-${w}`)}`,
                 `--window-size=${w},${h}`,
                 '--virtual-time-budget=2500',
                 '--dump-dom',
-                origin + '/',
+                origin + page,
             ]);
             assert.equal(res.status, 0, `Chromium failed at ${w}x${h}: ${res.stderr}`);
             const match = res.stdout.match(/data-probe="([^"]+)"/);
@@ -189,7 +211,19 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
             assert.ok(probe.innerHeight <= 88, `Header must remain single-row (<=88px) at ${w}x${h}, got ${probe.innerHeight}px`);
             assert.equal(probe.dialogOpened, true, `Search modal must open cleanly when clicked at ${w}x${h}`);
 
+            assert.ok(probe.suggestions.top >= probe.searchRow.bottom, 'Quick search must sit below input and submit row');
+            assert.ok(probe.searchRow.width >= probe.suggestions.width - 1, 'Search row must fill dialog body');
+            if (page === '/product') {
+                assert.equal(probe.stock.height, 42, 'Stock pill must be exactly 42px');
+                assert.equal(probe.stepper.height, 42, 'Stepper must be exactly 42px');
+                assert.ok(Math.abs(probe.stock.top - probe.stepper.top) <= 0.5, 'Stock and stepper must share the same top edge');
+            }
             if (probe.isDesktop) {
+                const keys = ['navWidth', 'navHeight', 'navBorder', 'navPadding', 'navGap', 'navLineHeight'];
+                const metrics = Object.fromEntries(keys.map(key => [key, probe[key]]));
+                if (page === '/') homeMetrics.set(w, metrics);
+                else assert.deepEqual(metrics, homeMetrics.get(w), 'Product nav must match homepage dimensions and styles');
+                assert.equal(probe.navBorder, '0px');
                 assert.equal(probe.mobileSearchDisplay, 'none', `.store-mobile-search must be hidden at ${w}x${h}`);
                 assert.ok(Math.abs(probe.logoCenterY - probe.navCenterY) <= 6, `Logo and nav must share single row at ${w}x${h}`);
                 assert.ok(Math.abs(probe.logoCenterY - probe.custCenterY) <= 6, `Logo and customer tools must share single row (no wrapping) at ${w}x${h}`);
