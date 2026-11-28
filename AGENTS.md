@@ -14,6 +14,7 @@
 3. **No Unrequested "Bonus" Edits:** Do not make opportunistic cleanups, formatting sweeps, CSS overrides, or structural refactors outside the exact task scope.
 4. **Ask Before Expanding Scope:** If fixing a requested item appears to require altering a shared/global component (like header CSS or base layouts), stop and ask the user first instead of modifying it silently.
 5. **Check & Report Similar Occurrences:** Whenever you fix a bug or UI alignment flaw, scan the codebase for identical instances of the same issue. Respect Strict Scope-Lock—do NOT silently edit out-of-scope files, but explicitly list any matching occurrences in your report so the user can decide whether to fix them.
+6. **Reuse Approved UI Patterns:** When implementing or updating a UI block that has an already-approved equivalent elsewhere in the app (e.g., store address + routing/navigation buttons, badges, cards, dialogs), always reuse or extract that exact approved component/pattern instead of building a simplified or inconsistent duplicate.
 
 ## Execution ownership rule
 

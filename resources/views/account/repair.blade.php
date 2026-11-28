@@ -8,7 +8,7 @@
     $currentHandover = old('handover_method', $parsed['handover_key'] ?? 'self_ship');
     $isRepairSettled = $case && $document && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor;
 @endphp
-<div class="np-account np-account-detail np-container">
+<div @class(['np-account np-account-detail np-container', 'np-account-repair-tracking' => request()->routeIs('account.repairs.request')])>
     <div class="np-detail-topbar">
         <a class="np-account-link" href="{{ route('account.index', ['section' => 'repairs']) }}">بازگشت به تعمیرات</a>
         @if($isRepairSettled)
@@ -88,10 +88,7 @@
                             </dl>
                         @elseif ($currentHandover === 'in_person')
                             <p>لطفاً دستگاه را همراه با کد پیگیری به فروشگاه نوین‌پی تحویل دهید:</p>
-                            <dl class="np-account-facts">
-                                <div><dt>نشانی فروشگاه</dt><dd>{{ config('business.address') }}</dd></div>
-                                <div><dt>ساعات کاری</dt><dd><x-business-hours /></dd></div>
-                            </dl>
+                            <x-repair.store-delivery />
                         @else
                             <p>درخواست دریافت با پیک نوین‌پی ثبت شده است. همکاران ما برای هماهنگی زمان مراجعهٔ پیک با شما تماس می‌گیرند.</p>
                             @if (! empty($parsed['pickup_address']) || ! empty($parsed['pickup_notes']))

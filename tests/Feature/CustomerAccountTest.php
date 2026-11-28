@@ -652,7 +652,14 @@ class CustomerAccountTest extends TestCase
 
         $this->get(route('account.repairs.request', '55443322'))
             ->assertOk()
-            ->assertSee('خودم حضوری میارم');
+            ->assertSee('خودم حضوری میارم')
+            ->assertSee('np-account-repair-tracking', false)
+            ->assertSee('repair-handover-panel--office', false)
+            ->assertSee('مسیریابی مراجعه حضوری')
+            ->assertSee('neshan.svg', false)
+            ->assertSee('balad.svg', false)
+            ->assertSee('گوگل مپ')
+            ->assertSeeInOrder(['repair-handover-panel--office', 'data-open-handover-modal']);
 
         $owner = User::factory()->superAdmin()->create();
         $case = new RepairCase;

@@ -146,6 +146,16 @@ ${cssBundle}
         </form>
 
         <section id="track-section" style="margin-top: 20px;">
+            <div style="position:fixed;top:0;left:0;visibility:hidden;pointer-events:none">
+            <div class="np-account-repair-tracking">
+                <section class="np-account-card np-account-order-stepper"><ol class="np-timeline"><li><strong>ثبت درخواست</strong><span id="repair-step-note" class="np-timeline__status">در انتظار تحویل دستگاه</span></li></ol></section>
+                <section class="np-account-card"><div class="repair-handover-panel repair-handover-panel--office">
+                    <p id="repair-store-address" class="repair-office-address">نشانی فروشگاه</p>
+                    <p class="repair-office-hours">ساعات کاری فروشگاه</p>
+                </div></section>
+            </div>
+            <span id="other-step-note" class="np-timeline__status">مرحلهٔ فعلی</span>
+            </div>
             <div class="repair-track-btn-row">
                 <button type="button" id="btn-handover" class="np-button np-button--primary repair-track-action-btn" data-toggle-handover-editor aria-expanded="false" aria-controls="repair-track-handover-panel">تغییر نحوهٔ تحویل</button>
                 <button type="button" id="btn-another" class="np-button np-button--outline repair-track-action-btn">پیگیری کد دیگر</button>
@@ -270,6 +280,9 @@ ${cssBundle}
         const selectLabelDelta = Math.abs((floatedLblRect.top + floatedLblRect.height / 2) - topicRect.top);
 
         window.__mobileProbe = {
+            repairStepNoteDisplay: getComputedStyle(document.getElementById('repair-step-note')).display,
+            otherStepNoteDisplay: getComputedStyle(document.getElementById('other-step-note')).display,
+            repairAddressMargin: getComputedStyle(document.getElementById('repair-store-address')).margin,
             winInnerWidth,
             initialStep1Active,
             initialStep1Done,
@@ -464,6 +477,9 @@ ${cssBundle}
         assert.equal(p.btnRadii[1], '12px');
         assert.equal(p.btnRadii[2], '12px');
         assert.equal(p.handoverOpenedInline, true, 'Clicking "تغییر نحوهٔ تحویل" must reveal inline handover panel');
+        assert.equal(p.repairStepNoteDisplay, 'none', 'Account repair stepper must show titles without secondary notes');
+        assert.notEqual(p.otherStepNoteDisplay, 'none', 'Other timeline status labels must remain visible');
+        assert.equal(p.repairAddressMargin, '0px', 'Approved store address spacing must survive account card styles');
 
         // 4. Bottom floating bar cart badge outer corner + white ring
         assert.equal(p.badgeBg, 'rgb(180, 35, 45)', 'Cart badge must keep #b4232d red');
