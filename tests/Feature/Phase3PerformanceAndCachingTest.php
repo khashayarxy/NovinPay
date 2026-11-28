@@ -150,6 +150,30 @@ class Phase3PerformanceAndCachingTest extends TestCase
         }
     }
 
+    public function test_hot_gets_read_a_populated_device_cart_once_without_rendering_the_drawer(): void
+    {
+        $this->createPublicProduct('محصول تست', 'phase12-cart', 4_500_000, 5);
+        $this->withCookie(ShoppingCart::DEVICE_COOKIE, str_repeat('a', 64));
+        $cart = $this->get('/cart')->assertOk();
+        $this->post('/cart/products/phase12-cart', [
+            'quantity' => 1, 'cart_context' => $cart->viewData('proof'), 'cart_revision' => $cart->viewData('revision'),
+        ])->assertRedirect();
+
+        DB::enableQueryLog();
+        try {
+            foreach (['/', '/products/phase12-cart', '/repair/track/recovery'] as $path) {
+                DB::flushQueryLog();
+                $this->get($path)->assertOk()->assertSee('data-cart-preload', false)
+                    ->assertDontSee('data-ssr-cart', false)->assertHeader('Server-Timing');
+                $cartQueries = array_filter(array_column(DB::getQueryLog(), 'query'), fn ($sql) => str_contains($sql, 'shopping_carts'));
+                $this->assertCount(1, $cartQueries, $path);
+                $this->assertStringNotContainsString('order by', strtolower(reset($cartQueries)));
+            }
+        } finally {
+            DB::disableQueryLog();
+        }
+    }
+
     public function test_guest_page_cache_invalidates_immediately_on_product_price_visibility_or_inventory_updates(): void
     {
         [$product, $inventory] = $this->createPublicProductWithInventory('کارتخوان آنفو AF70', 'anfu-af70', 6_100_000, 4);

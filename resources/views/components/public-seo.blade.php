@@ -13,6 +13,7 @@
             $graph[] = ['@type' => 'Organization', '@id' => $origin.'/#organization', 'name' => config('business.name'), 'url' => $origin.'/', 'telephone' => config('business.phone'), 'address' => config('business.address')];
         }
         if (request()->routeIs('home')) {
+            $graph[] = ['@type' => 'WebSite', '@id' => $origin.'/#website', 'url' => $origin.'/', 'name' => config('business.name'), 'inLanguage' => 'fa-IR', 'publisher' => ['@id' => $origin.'/#organization']];
             $graph[] = ['@type' => 'Service', 'name' => 'تعمیرات تخصصی کارتخوان', 'serviceType' => 'تعمیر دستگاه کارتخوان', 'url' => $origin.'/', 'provider' => ['@id' => $origin.'/#organization']];
         }
         if (request()->routeIs('products.show') && $product) {

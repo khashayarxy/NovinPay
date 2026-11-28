@@ -441,7 +441,9 @@ class Phase5ChatReviewsNotificationsBackupsTest extends TestCase
 
             Http::assertSent(fn (HttpRequest $req) => str_starts_with($req->url(), 'https://api.telegram.org/')
                 && str_contains((string) ($req['text'] ?? ''), 'پیام جدید در چت پشتیبانی')
-                && str_contains((string) ($req['reply_markup']['inline_keyboard'][0][0]['url'] ?? ''), '/support?conversation='.rawurlencode($draftId)));
+                && ($req['reply_markup']['inline_keyboard'][0][0]['url'] ?? null) === route('support.panel').'#conversations?id='.$draftId);
+            $this->get(route('support.panel'))->assertOk()->assertSee('<base href="/support-chat/">', false);
+            $this->get('/support-chat/operator-api.php?action=inbox')->assertUnauthorized();
 
             // 4) Daily digest recovers from invalid thread ID 999999 via General fallback & respects --if-unsent
             $this->assertSame(0, Artisan::call('novinpay:telegram-daily-digest', ['--date' => '2026-11-26', '--if-unsent' => true]));

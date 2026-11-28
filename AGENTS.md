@@ -10,7 +10,7 @@
 ## Execution ownership rule
 
 - The agent (Antigravity) is strictly responsible for performing all file edits, host uploads/transfers, deployment file syncing, and database creation/migrations.
-- Never instruct the user to manually upload files/zips via File Manager, manually edit files, or manually create databases when any automated, CLI, API, cPanel UAPI (using the authenticated DPAPI token in `C:\Users\Khashayar\AppData\Local\NovinPay-SecureAccess\cpanel-token.dpapi`), or MCP method can be used.
+- Never instruct the user to manually upload files/zips via File Manager, manually edit files, or manually create databases when any automated, CLI, API, cPanel UAPI (using the cPanel access convention below), or MCP method can be used.
 - Only ask the user for explicit approval, cPanel Terminal execution when cPanel UAPI does not expose shell execution, or one-time credentials/access setup when direct execution is technically blocked.
 
 ## Git, parallel-work & UI safety rules
@@ -80,3 +80,9 @@ Trace behavior through `routes/`, `app/Http`, `app/Services`, `app/Policies`, `a
 ## Shared skills
 
 Use only relevant, currently exposed/readable shared Skills and needed references. No project-owned MCP registrations or Skills existed at the 2026-11-06 audit; do not duplicate global tools/configuration locally. Preserve shared tools used by other projects. Skill defaults do not expand authorization or override safety gates; report missing required capabilities or conflicts.
+
+## cPanel Access
+
+- For authorized cPanel API operations, load `CPANEL_URL`, `CPANEL_USER`, and `CPANEL_API_TOKEN` from the Git-ignored `.cpanel.env` in the repository root. `.cpanel.env.example` documents the expected keys for each checkout.
+- Keep credentials in local runtime configuration. Never print secret values in tool output, logs, reports, or PRs. Never commit `.cpanel.env` or include it in deployment packages.
+- Credential availability does not authorize production changes. Follow the existing release and rollback boundaries.

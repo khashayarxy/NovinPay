@@ -22,24 +22,25 @@
         <div class="admin-shell">
             <aside id="admin-sidebar" class="admin-sidebar" aria-label="منوی مدیریت">
                 <div class="admin-brand-row">
-                    <a class="admin-brand" href="{{ \App\Support\AdminAccess::landingUrl(auth()->user()) }}">
+                    <a class="admin-brand" href="{{ \App\Support\AdminAccess::landingUrl(auth()->user(), $adminAccount) }}">
                         <x-brand-logo />
                         <span><strong>{{ config('business.name') }}</strong><small>پنل مدیریت</small></span>
                     </a>
                     <a class="admin-brand-site" href="{{ route('home') }}" target="_blank" rel="nofollow noopener noreferrer" aria-label="مشاهده وب‌سایت" title="مشاهده وب‌سایت"><x-home.icon name="world" /></a>
                 </div>
-                <button type="button" class="admin-mobile-menu-btn admin-mobile-nav-toggle" data-admin-mobile-toggle aria-controls="admin-navigation-panel" aria-expanded="false">
-                    <svg class="admin-menu-icon admin-menu-icon--open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-                    <svg class="admin-menu-icon admin-menu-icon--close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-                    <span>فهرست مدیریت</span>
-                </button>
                 <div id="admin-navigation-panel" class="admin-navigation-panel" data-admin-navigation>
+                    <button type="button" class="admin-drawer-close" data-admin-drawer-close>بستن فهرست</button>
                     <x-admin.navigation :account="$adminAccount" />
                 </div>
             </aside>
+            <button type="button" class="admin-drawer-backdrop" aria-label="بستن فهرست" tabindex="-1" data-admin-drawer-close></button>
             <div class="admin-workspace">
                 <header class="admin-topbar">
                     <div class="admin-topbar-title admin-topbar-start">
+                        <button type="button" aria-label="فهرست مدیریت" class="admin-mobile-menu-btn admin-mobile-nav-toggle" data-admin-mobile-toggle aria-controls="admin-navigation-panel" aria-expanded="false">
+                            <svg class="admin-menu-icon admin-menu-icon--open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                            <svg class="admin-menu-icon admin-menu-icon--close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                        </button>
                         <button type="button" class="admin-sidebar-toggle" data-admin-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="true" aria-label="نمایش یا پنهان‌کردن منوی مدیریت" hidden>
                             <span class="admin-sidebar-glyph" aria-hidden="true"></span>
                         </button>
@@ -68,10 +69,6 @@
             </div>
         </div>
     @else
-        <header class="admin-login-header">
-            <a href="{{ route('home') }}" aria-label="وب‌سایت {{ config('business.name') }}"><x-brand-logo /></a>
-            <a class="admin-text-link" href="{{ route('home') }}">بازگشت به وب‌سایت</a>
-        </header>
         <main id="main-content" class="admin-login-main admin-auth-main" tabindex="-1">@yield('content')</main>
     @endif
 </body>

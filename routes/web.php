@@ -219,7 +219,7 @@ Route::middleware(PrivateRepairResponse::class)->group(function (): void {
     Route::get('/cart', [$cart, 'index'])->block(20, 15)->name('cart.index');
     Route::get('/cart/checkout', [$cart, 'review'])->middleware(EnsureCustomerSession::class)->block(20, 15)->name('cart.review');
     Route::get('/cart/checkout/reverse-geocode', [$cart, 'reverseGeocode'])->middleware([EnsureCustomerSession::class, 'throttle:60,1'])->name('cart.checkout.reverse-geocode');
-    Route::post('/cart/checkout/draft', [$cart, 'saveDraft'])->middleware([EnsureCustomerSession::class, 'throttle:60,1'])->name('cart.checkout.draft');
+    Route::post('/cart/checkout/draft', [$cart, 'saveDraft'])->middleware([EnsureCustomerSession::class, 'throttle:60,1'])->block(20, 15)->name('cart.checkout.draft');
     Route::post('/cart/products/{product}', [$cart, 'add'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.add');
     Route::post('/cart/products/{product}/quantity', [$cart, 'update'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.update');
     Route::post('/cart/remove/{slug}', [$cart, 'remove'])->middleware('throttle:30,1,cart-mutation:')->block(20, 15)->name('cart.remove');

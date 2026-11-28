@@ -507,8 +507,8 @@ test('Phase 10 Admin Chromium UX: anchored 7-column Jalali datepicker popover, i
         .replace(/@apply\s+[^;]+;/g, '');
 
     const adminCssBundle = [
-        stripImports(readFileSync(path.join(rootDir, 'resources/css/customer-account.css'), 'utf8')),
-        stripImports(readFileSync(path.join(rootDir, 'resources/css/app.css'), 'utf8')),
+        stripImports(readFileSync(path.join(rootDir, 'resources/css/shared.css'), 'utf8')),
+        stripImports(readFileSync(path.join(rootDir, 'resources/css/simple-repair.css'), 'utf8')),
         stripImports(readFileSync(path.join(rootDir, 'resources/css/admin.css'), 'utf8')),
     ].join('\n');
 

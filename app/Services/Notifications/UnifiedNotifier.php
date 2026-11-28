@@ -901,8 +901,8 @@ final class UnifiedNotifier
             $preview = mb_strimwidth(trim($messagePreview) !== '' ? trim($messagePreview) : '[پیوست تصویری]', 0, 180, '…');
             $name = trim((string) $senderName) !== '' ? trim((string) $senderName) : 'کاربر وب‌سایت';
             $deepLinkUrl = preg_match('/\Auser_[a-f0-9]{32}_[0-9]{1,20}\z/D', $id) === 1
-                ? url('/support?conversation='.rawurlencode($id)).'#conversations?id='.rawurlencode($id)
-                : url('/support');
+                ? route('support.panel').'#conversations?id='.rawurlencode($id)
+                : route('support.panel');
 
             $fields = [
                 'فرستنده' => $name,
@@ -916,7 +916,7 @@ final class UnifiedNotifier
             if ($this->telegramTopics->enabledFor('support_chat')) {
                 $this->telegramTopics->send('support_chat', $botText, null, null, $deepLinkUrl, 'مشاهده و پاسخ در پنل چت');
             } else {
-                $this->telegram->send($botText);
+                $this->telegram->send($botText, $deepLinkUrl, 'مشاهده و پاسخ در پنل چت');
             }
 
             // Send IPPanel SMS ONLY on the first message per user/conversation.
@@ -990,7 +990,9 @@ final class UnifiedNotifier
             return;
         }
         if (! $this->isAdminSmsEnabled()) {
-            Log::notice('Admin SMS skipped because SMS notifications are disabled', ['pattern_key' => $patternKey]);
+            if (! app()->environment('testing')) {
+                Log::notice('Admin SMS skipped because SMS notifications are disabled', ['pattern_key' => $patternKey]);
+            }
 
             return;
         }
@@ -1004,7 +1006,9 @@ final class UnifiedNotifier
         }
 
         if ($activePattern === '') {
-            Log::warning('Admin SMS skipped because pattern code is not configured', ['pattern_key' => $patternKey]);
+            if (! app()->environment('testing')) {
+                Log::warning('Admin SMS skipped because pattern code is not configured', ['pattern_key' => $patternKey]);
+            }
 
             return;
         }
@@ -1149,7 +1153,9 @@ final class UnifiedNotifier
             return;
         }
         if (! config('notifications.email.enabled')) {
-            Log::notice('Admin email skipped because NOTIFICATIONS_EMAIL_ENABLED is false');
+            if (! app()->environment('testing')) {
+                Log::notice('Admin email skipped because NOTIFICATIONS_EMAIL_ENABLED is false');
+            }
 
             return;
         }

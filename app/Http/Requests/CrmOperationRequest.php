@@ -23,6 +23,14 @@ class CrmOperationRequest extends PrivateRepairFormRequest
 
     protected function prepareForValidation(): void
     {
+        if ($this->operation() === 'consultation.entry' && $this->has('activity')) {
+            $note = $this->input('activity') === 'note';
+            $this->merge([
+                'kind' => $note ? 'note' : 'contact',
+                'channel' => $note ? null : $this->input('contact_channel'),
+                'outcome' => $note ? null : $this->input('activity'),
+            ]);
+        }
         if ($this->operation() === 'customer.save') {
             $this->merge(['contact_phone' => RepairIdentity::phone($this->input('contact_phone'))]);
         }
@@ -38,7 +46,7 @@ class CrmOperationRequest extends PrivateRepairFormRequest
             'customer.note' => ['body' => ['required', 'string', 'min:2', 'max:2000']],
             'consultation.assign' => ['assigned_to' => ['required', 'integer', 'exists:users,id']],
             'consultation.transition' => ['status' => ['required', Rule::in(array_keys(Consultation::STATUSES))]],
-            'consultation.entry' => ['kind' => ['required', Rule::in(['note', 'contact'])], 'body' => ['required', 'string', 'min:5', 'max:2000'], 'channel' => ['required_if:kind,contact', 'prohibited_if:kind,note', Rule::in(['phone', 'in_person', 'external_message'])], 'outcome' => ['required_if:kind,contact', 'prohibited_if:kind,note', Rule::in(['answered', 'no_answer', 'unreachable'])]],
+            'consultation.entry' => ['kind' => ['required', Rule::in(['note', 'contact'])], 'body' => ['required', 'string', 'min:5', 'max:2000'], 'channel' => ['nullable', 'required_if:kind,contact', 'prohibited_if:kind,note', Rule::in(['phone', 'in_person', 'external_message'])], 'outcome' => ['nullable', 'required_if:kind,contact', 'prohibited_if:kind,note', Rule::in(['answered', 'no_answer', 'unreachable'])]],
             default => [],
         };
         if ($this->route('customer') || $this->route('consultation')) {

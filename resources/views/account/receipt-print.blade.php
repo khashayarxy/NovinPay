@@ -73,16 +73,16 @@
                     @if($isOrder)
                         @foreach($order->lines as $idx => $line)
                             <tr>
-                                <td>{{ \App\Support\FaNumber::digits($idx + 1) }}</td>
-                                <td>
+                                <td data-label="ردیف">{{ \App\Support\FaNumber::digits($idx + 1) }}</td>
+                                <td data-label="شرح کالا / خدمات">
                                     <strong>{{ \App\Support\LatinText::html($line->description) }}</strong>
                                     @if($line->sku)
                                         <small class="block text-slate-500">کد کالا: <bdi dir="ltr" class="np-latin-code">{{ $line->sku }}</bdi></small>
                                     @endif
                                 </td>
-                                <td>{{ \App\Support\FaNumber::digits($line->quantity) }}</td>
-                                <td>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($line->unit_price))) }}</td>
-                                <td><strong>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($line->line_total))) }}</strong></td>
+                                <td data-label="تعداد">{{ \App\Support\FaNumber::digits($line->quantity) }}</td>
+                                <td data-label="مبلغ واحد (تومان)">{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($line->unit_price))) }}</td>
+                                <td data-label="مبلغ کل (تومان)"><strong>{{ \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman(\App\Support\FinanceMoney::minor($line->line_total))) }}</strong></td>
                             </tr>
                         @endforeach
                     @else
@@ -91,8 +91,8 @@
                             $paidToman = \App\Support\FaNumber::digits(\App\Support\FinanceMoney::toman($document->paid_minor));
                         @endphp
                         <tr>
-                            <td>۱</td>
-                            <td>
+                            <td data-label="ردیف">۱</td>
+                            <td data-label="شرح کالا / خدمات">
                                 <strong>خدمات عیب‌یابی و تعمیر تخصصی دستگاه <bdi dir="ltr" class="np-latin-code">{{ $repairDevice }}</bdi></strong>
                                 <small class="block text-slate-500">
                                     کد پیگیری پرونده: <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi>
@@ -104,9 +104,9 @@
                                     <small class="block text-slate-600">{{ $repair->currentEstimate->customer_summary }}</small>
                                 @endif
                             </td>
-                            <td>۱</td>
-                            <td>{{ $paidToman }}</td>
-                            <td><strong>{{ $paidToman }}</strong></td>
+                            <td data-label="تعداد">۱</td>
+                            <td data-label="مبلغ واحد (تومان)">{{ $paidToman }}</td>
+                            <td data-label="مبلغ کل (تومان)"><strong>{{ $paidToman }}</strong></td>
                         </tr>
                     @endif
                 </tbody>

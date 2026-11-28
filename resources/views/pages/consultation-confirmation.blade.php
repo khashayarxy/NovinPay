@@ -1,5 +1,14 @@
 @extends('layouts.app')
 @section('title', 'درخواست مشاوره ثبت شد')
+@section('meta_description', 'درخواست مشاورهٔ شما در نوین‌پی ثبت شد.')
 @section('content')
-<div class="np-container public-section"><section class="public-panel public-confirmation"><span class="public-icon"><x-home.icon name="shield-check"/></span><h1 class="text-2xl font-bold mt-4">درخواست مشاوره ثبت شد</h1><p class="mt-4">پرسش شما برای بررسی همکاران نوین‌پی ثبت شده است. زمان مشخصی برای پاسخ تضمین نمی‌شود.</p><p class="public-hint">این فرم، پذیرش دستگاه یا سفارش خرید نیست. اطلاعات شخصی درخواست در این صفحه نمایش داده نمی‌شود.</p><a class="np-button np-button--primary mt-6" href="{{ route('home') }}">بازگشت به صفحهٔ اصلی</a></section></div>
+    <div class="np-container public-section">
+        <x-status-confirmation title="درخواست مشاوره ثبت شد">
+            ممنون که پرسشتان را با ما در میان گذاشتید. کارشناسان نوین‌پی درخواست شما را بررسی می‌کنند و با شما تماس می‌گیرند.
+            <x-slot:actions>
+                <a class="np-button np-button--primary" href="{{ route('home') }}">بازگشت به صفحهٔ اصلی</a>
+                <a class="np-button np-button--outline" href="{{ route('products.index') }}">مشاهدهٔ فروشگاه</a>
+            </x-slot:actions>
+        </x-status-confirmation>
+    </div>
 @endsection

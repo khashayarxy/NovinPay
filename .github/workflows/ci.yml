@@ -3,12 +3,18 @@ name: NovinPay CI
 on:
   push:
     branches: ['**']
+  workflow_dispatch:
+    inputs:
+      stress:
+        description: Run stress tests and full SQL-engine regression suites
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 env:
@@ -71,12 +77,17 @@ jobs:
       - name: Quota bridge transport and interruption faults
         run: |
           pwsh -NoProfile -File tests/ReleaseQuota/bridge.ps1
-          python3 -B tests/ReleaseQuota/test_detached.py
           bash tests/ReleaseQuota/qualified-operation.sh
       - name: Schema-neutral runtime activation and forced file rollback
         run: php scripts/release/prepare-runtime-rehearsal.php
-      - name: Full SQLite regression suite
+      - name: Fast SQLite regression suite
         run: php artisan test --compact --display-warnings --fail-on-warning
+      - name: PHPUnit stress group and HTTP load scenarios
+        if: github.event_name == 'workflow_dispatch' && inputs.stress
+        run: |
+          php artisan test --group=stress --compact --display-warnings --fail-on-warning
+          python3 tests/Stress/run.py
+          python3 -B tests/ReleaseQuota/test_detached.py
       - name: Article upgrade rollback and reapply preservation
         run: php tests/ArticleMigration/run.php
 
@@ -141,7 +152,18 @@ jobs:
         run: npm ci && npm run build
       - name: Enable ledger triggers on this disposable service only
         run: php -r '$db = new PDO("mysql:host=127.0.0.1;port=3307", "root", "disposable-root"); $db->exec("SET GLOBAL log_bin_trust_function_creators = 1");'
+      - name: Fast MySQL database integration suite
+        if: github.event_name != 'workflow_dispatch' || !inputs.stress
+        run: >-
+          php vendor/bin/phpunit --display-warnings --fail-on-warning
+          tests/Feature/Admin/OrdersInventoryTest.php
+          tests/Feature/Admin/FinancialOperationsTest.php
+          tests/Feature/Admin/MariaDbMigrationPreflightTest.php
+          tests/Feature/CustomerPaymentMigrationTest.php
+          tests/Feature/PersistentCartTest.php
+          tests/Feature/CartStockAndQuantitySpeedTest.php
       - name: Full MySQL regression suite
+        if: github.event_name == 'workflow_dispatch' && inputs.stress
         run: php artisan test --compact --display-warnings --fail-on-warning
       - name: Upgrade from reported seven-migration production baseline
         run: |
@@ -150,12 +172,15 @@ jobs:
       - name: Article upgrade rollback and reapply preservation
         run: php tests/ArticleMigration/run.php
       - name: Actual competing-connection scenarios
+        if: github.event_name == 'workflow_dispatch' && inputs.stress
         run: |
           mkdir -p "$NOVINPAY_COMMERCE_ARTIFACTS"
           php tests/Concurrency/run.php
       - name: Actual competing financial allocations and corrections
+        if: github.event_name == 'workflow_dispatch' && inputs.stress
         run: php tests/FinanceConcurrency/run.php
       - name: Actual competing article edits and publication
+        if: github.event_name == 'workflow_dispatch' && inputs.stress
         run: php tests/ArticleConcurrency/run.php
       - name: Disposable migration rollback and reapply
         run: |
@@ -222,7 +247,18 @@ jobs:
           cache: npm
       - name: Build assets required by rendered PHP responses
         run: npm ci && npm run build
+      - name: Fast MariaDB database integration suite
+        if: github.event_name != 'workflow_dispatch' || !inputs.stress
+        run: >-
+          php vendor/bin/phpunit --display-warnings --fail-on-warning
+          tests/Feature/Admin/OrdersInventoryTest.php
+          tests/Feature/Admin/FinancialOperationsTest.php
+          tests/Feature/Admin/MariaDbMigrationPreflightTest.php
+          tests/Feature/CustomerPaymentMigrationTest.php
+          tests/Feature/PersistentCartTest.php
+          tests/Feature/CartStockAndQuantitySpeedTest.php
       - name: Full MariaDB regression suite
+        if: github.event_name == 'workflow_dispatch' && inputs.stress
         run: php artisan test --compact --display-warnings --fail-on-warning
       - name: Upgrade from reported seven-migration production baseline
         run: |
@@ -231,12 +267,15 @@ jobs:
       - name: Article upgrade rollback and reapply preservation
         run: php tests/ArticleMigration/run.php
       - name: Actual competing-connection scenarios
+        if: github.event_name == 'workflow_dispatch' && inputs.stress
         run: |
           mkdir -p "$NOVINPAY_COMMERCE_ARTIFACTS"
           php tests/Concurrency/run.php
       - name: Actual competing financial allocations and corrections
+        if: github.event_name == 'workflow_dispatch' && inputs.stress
         run: php tests/FinanceConcurrency/run.php
       - name: Actual competing article edits and publication
+        if: github.event_name == 'workflow_dispatch' && inputs.stress
         run: php tests/ArticleConcurrency/run.php
       - name: Disposable migration rollback and reapply
         run: |

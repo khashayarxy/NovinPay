@@ -11,7 +11,6 @@ use App\Models\AdminAccount;
 use App\Models\Consultation;
 use App\Models\User;
 use App\Services\ConsultationManagement;
-use App\Support\AdminAccess;
 use App\Support\AdminHistory;
 use App\Support\FaNumber;
 use App\Support\RepairIdentity;
@@ -81,20 +80,37 @@ class ConsultationController extends Controller
         }
         $consultation->load('assignee:id,name');
 
-        return view('admin.consultations.show', ['consultation' => $consultation, 'contact' => $contact, 'history' => $history ? $consultation->entries()->with('actor:id,name')->latest('id')->paginate(20) : null, 'staff' => Gate::allows('consultations.manage') ? $this->staff() : collect()]);
+        $manage = $consultation->status !== 'closed' && Gate::allows('consultations.manage');
+        $statusOptions = ['closed'];
+        if ($consultation->assigned_to && in_array($consultation->status, ['new', 'contacted'], true)) {
+            array_unshift($statusOptions, 'in_progress');
+        }
+        if ($manage && $consultation->status === 'in_progress'
+            && (! $history || $consultation->entries()->where('kind', 'contact')->where('outcome', 'answered')->exists())) {
+            array_unshift($statusOptions, 'contacted');
+        }
+
+        return view('admin.consultations.show', ['statusOptions' => $statusOptions, 'consultation' => $consultation, 'contact' => $contact, 'history' => $history ? $consultation->entries()->with('actor:id,name')->latest('id')->paginate(20) : null, 'staff' => $manage ? $this->staff() : collect()]);
     }
 
     public function update(CrmOperationRequest $request, Consultation $consultation, ConsultationManagement $management)
     {
         $management->update($request->user(), $consultation, substr($request->operation(), strlen('consultation.')), $request->validated());
 
-        return redirect()->route('admin.consultations.show', $consultation)->with('success', 'عملیات مشاوره ثبت شد؛ هیچ پیامی ارسال نشده است.');
+        return redirect()->route('admin.consultations.show', $consultation)->with('success', 'پیگیری مشاوره ذخیره شد.');
     }
 
     private function staff(bool $historical = false)
     {
-        $staff = User::query()->whereIn('id', AdminAccount::query()->where('is_active', true)->select('user_id'))->select('id', 'name')->get()->filter(fn ($u) => AdminAccess::allows($u, AdminPermission::ConsultationsView) && AdminAccess::allows($u, AdminPermission::ConsultationsManage));
+        $staff = AdminAccount::query()->where('is_active', true)
+            ->with('user:id,name')->get()
+            ->filter(fn (AdminAccount $account) => $account->isSuperAdmin()
+                || ($account->owner_slot === null && ($account->isManager()
+                    || ($account->role === 'staff'
+                        && in_array(AdminPermission::ConsultationsView->value, $account->permissions ?? [], true)
+                        && in_array(AdminPermission::ConsultationsManage->value, $account->permissions ?? [], true)))))
+            ->pluck('user')->filter();
 
-        return $historical ? $staff->merge(User::query()->whereIn('id', Consultation::query()->whereNotNull('assigned_to')->select('assigned_to'))->select('id', 'name')->get())->unique('id') : $staff;
+        return $historical ? $staff->concat(User::query()->whereIn('id', Consultation::query()->whereNotNull('assigned_to')->select('assigned_to'))->select('id', 'name')->get())->unique('id') : $staff;
     }
 }

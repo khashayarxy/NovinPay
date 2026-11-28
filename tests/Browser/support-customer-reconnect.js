@@ -23,7 +23,7 @@ async page=>{
     // Deny all other writes at the network boundary. The fixture returns no real tokens/data.
     return reply({status:'success',push_enabled:false,active:true});
    });
-   await tab.goto(origin+'/',{waitUntil:'domcontentloaded'});await tab.locator('[data-support-launcher]').click();
+   await tab.goto(origin+'/products',{waitUntil:'domcontentloaded'});await tab.locator('[data-support-launcher]').click();
    const frame=tab.frameLocator('#supportWidgetFrame'),shell=frame.locator('#chatWindow');
    await frame.locator('#chatWindow[data-init-state=ready]').waitFor();
    await frame.locator('#chatInput').fill('پیش‌نویس حفظ شود');

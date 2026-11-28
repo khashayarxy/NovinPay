@@ -37,12 +37,12 @@
     </div>
     @if($canPrintDocs || $canViewFinance)
         <div class="admin-actions">
-            <details class="admin-more-menu">
-                <summary>
+            <div class="admin-more-menu" data-admin-menu>
+                <button type="button" data-admin-menu-toggle aria-expanded="false" aria-controls="repair-print-menu">
                     <span>چاپ و اسناد</span>
                     <svg class="admin-more-menu__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
-                </summary>
-                <div class="admin-more-menu__panel">
+                </button>
+                <div class="admin-more-menu__panel" id="repair-print-menu" hidden>
                     @if($canPrintDocs)
                         <a href="{{ route('admin.repair-cases.document', [$case, 'intake']) }}">رسید پذیرش</a>
                         <a href="{{ route('admin.repair-cases.document', [$case, 'summary']) }}">صورتحساب تعمیر</a>
@@ -52,7 +52,7 @@
                         <a href="{{ route('admin.finance.sources.show', ['type' => 'repair', 'reference' => $case->public_id]) }}">پرونده مالی کامل</a>
                     @endif
                 </div>
-            </details>
+            </div>
         </div>
     @endif
 </header>

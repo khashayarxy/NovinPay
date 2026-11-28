@@ -63,8 +63,8 @@ class LoginTest extends TestCase
         $response->assertOk();
         $response->assertSee('lang="fa"', false);
         $response->assertSee('dir="rtl"', false);
-        $response->assertSee('ورود به پنل مدیریت');
-        $response->assertSee('ثبت‌نام عمومی در این وب‌سایت وجود ندارد.');
+        $response->assertSee('پنل مدیریت نوین‌پی');
+        $response->assertSee('بازگشت به وب‌سایت');
     }
 
     public function test_user_can_log_in_with_valid_credentials(): void

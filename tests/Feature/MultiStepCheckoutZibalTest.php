@@ -158,7 +158,7 @@ class MultiStepCheckoutZibalTest extends TestCase
             $this->assertStringContainsString('DanaFaNum-Bold.woff2', $css);
         }
 
-        $appCss = (string) file_get_contents(resource_path('css/app.css'));
+        $appCss = file_get_contents(resource_path('css/app.css')).file_get_contents(resource_path('css/shared.css'));
         $this->assertStringNotContainsString('IRANYekan', $appCss);
         $this->assertStringNotContainsString('font-variation-settings', $appCss);
         $this->assertStringContainsString('DanaFaNum-Regular.woff2', $appCss);

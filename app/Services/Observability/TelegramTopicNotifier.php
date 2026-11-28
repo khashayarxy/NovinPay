@@ -56,7 +56,9 @@ final class TelegramTopicNotifier
         ?string $actionLabel = null,
     ): bool {
         if (! $this->enabledFor($topic)) {
-            Log::notice('Telegram topic notification skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+            if (! app()->environment('testing')) {
+                Log::notice('Telegram topic notification skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+            }
 
             return false;
         }
@@ -64,12 +66,16 @@ final class TelegramTopicNotifier
         $threadId = $this->threadId($topic);
         $fallbackToGeneral = (bool) config('observability.telegram_topics.fallback_to_general', true);
         if ($threadId === null && ! $fallbackToGeneral) {
-            Log::warning('Telegram topic notification skipped', ['topic' => $topic, 'reason' => 'missing_topic_id']);
+            if (! app()->environment('testing')) {
+                Log::warning('Telegram topic notification skipped', ['topic' => $topic, 'reason' => 'missing_topic_id']);
+            }
 
             return false;
         }
         if ($threadId === null) {
-            Log::info('Telegram topic ID unset; falling back to group main thread', ['topic' => $topic]);
+            if (! app()->environment('testing')) {
+                Log::info('Telegram topic ID unset; falling back to group main thread', ['topic' => $topic]);
+            }
         }
 
         $clean = trim(self::redact($text));
@@ -161,7 +167,9 @@ final class TelegramTopicNotifier
         ?int $throttleSeconds = null,
     ): bool {
         if (! $this->enabledFor($topic)) {
-            Log::notice('Telegram topic document skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+            if (! app()->environment('testing')) {
+                Log::notice('Telegram topic document skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+            }
 
             return false;
         }
@@ -174,7 +182,9 @@ final class TelegramTopicNotifier
         $threadId = $this->threadId($topic);
         $fallbackToGeneral = (bool) config('observability.telegram_topics.fallback_to_general', true);
         if ($threadId === null && ! $fallbackToGeneral) {
-            Log::warning('Telegram topic document skipped', ['topic' => $topic, 'reason' => 'missing_topic_id']);
+            if (! app()->environment('testing')) {
+                Log::warning('Telegram topic document skipped', ['topic' => $topic, 'reason' => 'missing_topic_id']);
+            }
 
             return false;
         }
@@ -262,7 +272,9 @@ final class TelegramTopicNotifier
         ?int $throttleSeconds = null,
     ): bool {
         if (! $this->enabledFor($topic)) {
-            Log::notice('Telegram topic keyboard message skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+            if (! app()->environment('testing')) {
+                Log::notice('Telegram topic keyboard message skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+            }
 
             return false;
         }
@@ -353,7 +365,9 @@ final class TelegramTopicNotifier
     ): array {
         $failed = ['ok' => false, 'chat_id' => null, 'message_id' => null];
         if (! $this->enabledFor($topic)) {
-            Log::notice('Telegram topic document with result skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+            if (! app()->environment('testing')) {
+                Log::notice('Telegram topic document with result skipped', ['topic' => $topic, 'reason' => 'configuration_disabled_or_incomplete']);
+            }
 
             return $failed;
         }

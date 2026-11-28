@@ -2,7 +2,6 @@
     $onShopPage = request()->routeIs('products.*');
     $cartService = app(\App\Services\ShoppingCart::class);
     $hasPotentialCart = $cartService->hasPotentialCart(request());
-    $ssrCart = (request()->routeIs('cart.index') || ! $hasPotentialCart) ? null : $cartService->viewData(request());
 @endphp
 <dialog id="cart-dialog" class="cart-dialog store-cart-drawer" data-storefront-dialog data-cart-url="{{ route('cart.index') }}" @if($hasPotentialCart) data-cart-preload @else data-cart-empty-guest="1" @endif aria-labelledby="cart-title">
     <div class="overlay-heading"><h2 id="cart-title">سبد خرید</h2><button type="button" data-storefront-close aria-label="بستن سبد خرید"><x-storefront.icon name="close" /></button></div>
@@ -25,26 +24,6 @@
             @endif
         </div>
     </template>
-    @if ($ssrCart !== null)
-        <template data-ssr-cart>
-            <x-storefront.cart-content
-                :items="$ssrCart['items']"
-                :products="$ssrCart['products']"
-                :quantity="$ssrCart['quantity']"
-                :unavailable="$ssrCart['unavailable']"
-                :available="$ssrCart['available']"
-                :stock-available="$ssrCart['stockAvailable']"
-                :total="$ssrCart['total']"
-                :separate="$ssrCart['separate']"
-                :proof="$ssrCart['proof']"
-                :revision="$ssrCart['revision']"
-                :excluded="$ssrCart['excluded']"
-                :legacy-status="$ssrCart['legacyStatus']"
-                :over-limit="$ssrCart['overLimit']"
-                :drawer="true"
-            />
-        </template>
-    @endif
 </dialog>
 <dialog id="search-dialog" class="search-dialog store-search-dialog" data-storefront-dialog aria-labelledby="search-title">
     <div class="overlay-heading"><h2 id="search-title">جستجو در فروشگاه</h2><button type="button" data-storefront-close aria-label="بستن جستجو"><x-storefront.icon name="close" /></button></div>

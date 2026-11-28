@@ -181,6 +181,8 @@
     color: #991b1b;
 }
 
+.admin-drawer-backdrop, .admin-drawer-close { display: none; }
+.admin-login-box { width: min(100%, 26rem); }
 /* Auth Shell */
 .admin-auth-main { flex: 1; display: grid; place-items: center; padding: 1.5rem 1rem; }
 .admin-auth-card {
@@ -417,7 +419,8 @@
     top: 0;
     z-index: 20;
     display: flex;
-    flex-wrap: wrap;
+    min-height: 56px;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
@@ -1832,7 +1835,7 @@ a.admin-stat-card:hover {
 }
 .simple-repair-details {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
     margin-block: 0.85rem;
 }
@@ -2028,7 +2031,7 @@ a.admin-stat-card:hover {
     display: flex;
     align-items: center;
 }
-.admin-money .input { padding-inline-start: 3.4rem; }
+.admin-money .input[dir="ltr"] { padding-inline-end: 3.75rem; text-align: right; }
 .admin-money-unit {
     position: absolute;
     inset-inline-start: 0.75rem;
@@ -2083,33 +2086,44 @@ a.admin-stat-card:hover {
 
 @media (max-width: 800px) {
     .admin-shell { grid-template-columns: minmax(0, 1fr); }
+    .simple-repair-details { grid-template-columns: minmax(0, 1fr); }
     .admin-sidebar {
-        position: sticky;
-        top: 0;
-        z-index: 35;
+        position: fixed;
+        z-index: 60;
+        inset: 0 0 0 auto;
+        width: min(20rem, 88vw);
         min-height: 0;
         max-height: none;
-        padding: 0.65rem 0.9rem;
-        border-inline-end: 0;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        overscroll-behavior: contain;
+        transform: translateX(101%);
+        visibility: hidden;
+        transition: transform .2s ease, visibility .2s;
     }
-    .admin-brand-row { padding: 0; border-bottom: 0; }
-    .admin-mobile-nav-toggle { display: inline-flex; }
-    .admin-navigation-panel {
-        display: none;
-        padding-top: 0.65rem;
-        border-top: 1px solid rgba(148, 163, 184, 0.18);
-        max-height: calc(100dvh - 4.5rem);
-        overflow-y: auto;
+    .admin-nav-open .admin-sidebar { transform: none; visibility: visible; }
+    .admin-nav-open { overflow: hidden; }
+    .admin-nav-open .admin-drawer-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 55;
+        background: rgb(15 23 42 / 45%);
     }
-    .admin-navigation-panel.is-open { display: block; }
+    .admin-drawer-close { display: block; margin-bottom: .75rem; }
+    .admin-mobile-nav-toggle { display: inline-flex; color: var(--admin-ink); }
     .admin-sidebar-toggle { display: none !important; }
-    .admin-topbar { position: static; padding: 0.65rem 1rem; }
+    .admin-topbar { padding: .4rem .75rem; }
+    .admin-topbar-actions > span { display: none; }
+    @media (prefers-reduced-motion: reduce) { .admin-sidebar { transition: none; } }
     .admin-content { padding: 1rem 1rem 2rem; }
     .commerce-line-fields { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 767px) {
+    :is(.admin-table--cards, .finance-table),
+    :is(.admin-table--cards, .finance-table) tbody { display: block; width: 100%; min-width: 0; }
+    .admin-table--cards td { word-break: normal; overflow-wrap: normal; }
+    .admin-table--cards :is(time, .admin-status, .admin-mobile-cell-label) { white-space: nowrap; }
+    .repair-list-chevron { display: none !important; }
     .admin-btn-mobile-full { width: 100%; }
     .admin-table--cards thead,
     .finance-table thead { display: none; }
@@ -2130,7 +2144,7 @@ a.admin-stat-card:hover {
         padding: 0;
         border: 0;
     }
-    .admin-table--cards td::before {
+    .admin-table--cards td[data-label]::before {
         content: attr(data-label);
         color: var(--admin-muted);
         font-size: 0.76rem;
@@ -2367,7 +2381,7 @@ dialog.admin-calendar > footer button:hover {
     display: inline-block;
 }
 
-.admin-more-menu > summary {
+.admin-more-menu > :is(summary, button) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2392,8 +2406,9 @@ dialog.admin-calendar > footer button:hover {
     content: '';
 }
 
-.admin-more-menu > summary:hover,
-.admin-more-menu[open] > summary {
+.admin-more-menu > :is(summary, button):hover,
+.admin-more-menu[open] > summary,
+.admin-more-menu > button[aria-expanded="true"] {
     background: #f1f7fe;
     border-color: #93c5fd;
     color: #075da6;
@@ -2406,7 +2421,8 @@ dialog.admin-calendar > footer button:hover {
     transition: transform 150ms ease;
 }
 
-.admin-more-menu[open] .admin-more-menu__chevron {
+.admin-more-menu[open] .admin-more-menu__chevron,
+.admin-more-menu > button[aria-expanded="true"] .admin-more-menu__chevron {
     transform: rotate(180deg);
 }
 
@@ -2424,6 +2440,8 @@ dialog.admin-calendar > footer button:hover {
     display: grid;
     gap: 2px;
 }
+
+.admin-more-menu__panel[hidden] { display: none; }
 
 .admin-more-menu__panel a,
 .admin-more-menu__panel button {
@@ -2564,3 +2582,12 @@ dialog.admin-calendar > footer button:hover {
     color: #ffffff;
 }
 
+
+@media screen and (max-width: 767px) {
+    .repair-case-header .admin-more-menu__panel {
+        position: static;
+        width: min(18rem, 100%);
+        min-width: 0;
+        margin-block-start: .4rem;
+    }
+}

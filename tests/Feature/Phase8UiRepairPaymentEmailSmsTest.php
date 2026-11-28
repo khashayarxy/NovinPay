@@ -110,7 +110,7 @@ class Phase8UiRepairPaymentEmailSmsTest extends TestCase
         // 3. /repair/track/recovery heading & shortened helper sit INSIDE .public-panel and full-width CTA class is applied
         $recoveryHtml = $this->get('/repair/track/recovery')->assertOk()->getContent();
         $panelPos = strpos($recoveryHtml, 'repair-recovery-panel');
-        $headingPos = strpos($recoveryHtml, 'بازیابی کد پیگیری تعمیر');
+        $headingPos = strpos($recoveryHtml, '<h1 id="recovery-title">بازیابی کد پیگیری تعمیر</h1>');
         $helperPos = strpos($recoveryHtml, 'شماره موبایل ثبت‌شده را وارد کنید تا کد تأیید پیامک شود.');
         $this->assertNotFalse($panelPos);
         $this->assertNotFalse($headingPos);

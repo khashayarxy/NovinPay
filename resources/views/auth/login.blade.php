@@ -3,12 +3,12 @@
 @section('title', 'ورود مدیر')
 
 @section('content')
-    <div class="mx-auto max-w-md">
-        <div class="card p-6 sm:p-8">
-            <h1 class="text-xl font-bold">ورود به پنل مدیریت</h1>
-            <p class="mt-2 text-sm leading-7 text-slate-600">
-                برای ورود به فضای مدیریت کسب‌وکار، اطلاعات حساب خود را وارد کنید. ثبت‌نام عمومی در این وب‌سایت وجود ندارد.
-            </p>
+    <div class="admin-login-box">
+        <div class="admin-auth-card">
+            <div class="text-center">
+                <x-brand-logo />
+                <h1>پنل مدیریت نوین‌پی</h1>
+            </div>
 
             <form method="POST" action="{{ route('admin.login.store') }}" class="mt-6 space-y-4">
                 @csrf
@@ -27,8 +27,7 @@
                 <div>
                     <label class="label" for="email">ایمیل</label>
                     <input class="input" type="email" id="email" name="email" dir="ltr" value="{{ is_string(old('email')) ? old('email') : '' }}"
-                        autocomplete="username" required aria-describedby="email-hint">
-                    <p class="mt-1 text-xs text-slate-500" id="email-hint">ایمیل مدیریت حساب</p>
+                        autocomplete="username" required>
                 </div>
 
                 <div>
@@ -40,5 +39,6 @@
                 <button type="submit" class="btn btn-primary w-full">ورود</button>
             </form>
         </div>
+        <a class="admin-text-link block mt-4 text-center" href="{{ route('home') }}">بازگشت به وب‌سایت</a>
     </div>
 @endsection

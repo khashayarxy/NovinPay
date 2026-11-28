@@ -63,6 +63,15 @@ frame.addEventListener('load',visibility);
 addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow)return;if(event.data?.type==='support-customer-open')attention();if(event.data?.type==='support-widget-ready'){if(Array.isArray(event.data.source_paths))sourcePaths=event.data.source_paths;visibility();}if(event.data?.type==='support-unread'&&Number.isSafeInteger(event.data.count)&&event.data.count>=0){badge.hidden=event.data.count===0;badge.textContent=event.data.count>999?'۹۹۹+':event.data.count.toLocaleString('fa-IR');button.setAttribute('aria-label',event.data.count?`پشتیبانی، ${event.data.count} پیام خوانده‌نشده`:'پشتیبانی');}});
 addEventListener('message',event=>{if(open&&event.origin===location.origin&&event.source===frame.contentWindow&&event.data==='support-widget-close')requestClose();});
 document.body.append(button,frame);
+const footerSlot=document.querySelector('[data-footer-chat-slot]');
+if(footerSlot && 'IntersectionObserver' in window){
+ const footer=footerSlot.closest('footer');
+ const placement=new IntersectionObserver(([entry])=>{
+  if(entry.isIntersecting) footerSlot.append(button);
+  else if(button.parentNode===footerSlot) document.body.insertBefore(button,frame);
+ },{rootMargin:'0px 0px -168px 0px'});
+ placement.observe(footer);
+}
 if(dialog)document.body.append(dialog);
 const accentVisibility=()=>button.dataset.accentPaused=String(document.hidden);document.addEventListener('visibilitychange',accentVisibility);accentVisibility();
 if(sourceEl?.dataset?.supportV2==='1'){

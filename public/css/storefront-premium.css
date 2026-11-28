@@ -3095,7 +3095,10 @@ html:has(body.premium-storefront) {
     body.product-detail-page .sticky-contact .np-inline-stepper--dock {
         min-height: 42px;
         border-radius: 11px;
-        grid-template-columns: 42px minmax(0, 1fr) 42px;
+        display: grid;
+        inline-size: fit-content;
+        align-self: center;
+        grid-template-columns: repeat(3, 42px);
     }
     body.product-detail-page .sticky-contact .np-inline-stepper--dock .np-inline-stepper__btn {
         width: 42px;

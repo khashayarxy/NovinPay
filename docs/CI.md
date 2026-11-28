@@ -10,9 +10,9 @@ merge; missing checks stay a blocker, never a skipped-check substitute.
 
 | Check | Validation |
 | --- | --- |
-| PHP SQLite | PHP 8.4, locked Composer install/audit, Pint, full PHPUnit suite with in-memory SQLite, article upgrade/rollback/reapply preservation |
-| PHP MySQL 8 | Full PHPUnit suite on a disposable MySQL 8 service, eight inventory, six financial and six article competing-connection scenarios, article upgrade preservation, complete migration rollback and reapply |
-| PHP MariaDB 10.6.28 | Native production-version MariaDB, full PHPUnit/integration suite, competing-connection/financial/article scenarios, upgrade preservation and rollback/reapply |
+| PHP SQLite | PHP 8.4, locked Composer install/audit, Pint, default PHPUnit suite with in-memory SQLite, article upgrade/rollback/reapply preservation |
+| PHP MySQL 8 | Targeted PHPUnit database integration, baseline upgrade, article upgrade preservation and migration rollback/reapply on disposable MySQL |
+| PHP MariaDB 10.6.28 | Targeted PHPUnit database integration, baseline upgrade, article upgrade preservation and migration rollback/reapply on disposable MariaDB |
 | Frontend | Node 24, npm ci/audit, chat frontend functional/recovery regressions and Vite production build |
 
 All three PHP jobs set testing environment variables before Composer hooks execute,
@@ -20,7 +20,7 @@ use array sessions/cache and a randomly generated masked application key, and
 avoid cached application configuration. No owner environment, database, key,
 configuration or data is copied into CI. Each runner creates an empty `.env` to
 avoid missing-file warnings; all testing settings come from explicit variables.
-Both HTTP suites build Vite assets before rendering pages and fail on warnings.
+PHP jobs build Vite assets before rendering pages and fail on warnings.
 No hosting credentials or GitHub repository secrets are required. MySQL credentials
 in the workflow are public disposable service credentials, not deployment values.
 The concurrency harness independently rejects non-disposable database targets.
@@ -34,6 +34,15 @@ download cache are cached; databases, vendor directories, node_modules and
 application data are not. No logs, fixtures or customer-data artifacts are uploaded.
 This workflow performs no deployment. Audit failures require review, not automatic
 dependency updates. Review and refresh action pins separately when needed.
+
+## On-demand stress checks
+
+PHPUnit excludes the `stress` group by default. Run `./scripts/test.ps1 --group=stress`
+for the group, or `python tests/Stress/run.py` for the separate disposable HTTP
+load harness. The same CI workflow offers a manual stress run once the workflow
+dispatch trigger is available on the default branch. Enable **stress** to run the
+full MySQL/MariaDB regression suites, native SQL races, PHPUnit stress group and
+HTTP load harness. Manual runs use their own concurrency group.
 
 ## Integration procedure
 
@@ -53,5 +62,5 @@ APP_KEY, and review of pending migrations and their data-loss implications.
 No active local commit/pre-push hooks were installed at the workflow audit. Keep
 it that way: no heavy automatic test/build/backup hook or new hook framework.
 Owner local acceptance and minimal risk-specific checks belong to development;
-the comprehensive matrix belongs to push. Real browser acceptance is manual or
+the required fast matrix belongs to push. Real browser acceptance is manual or
 explicitly scoped, not claimed from frontend unit tests. No new E2E stack added.

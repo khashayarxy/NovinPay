@@ -1,24 +1,87 @@
 @extends('layouts.admin')
 @section('title', 'جزئیات مشاوره')
 @section('content')
-<header class="admin-page-heading"><div><h1>{{ \App\Models\Consultation::TOPICS[$consultation->topic] }}</h1><p class="crm-code">{{ $consultation->public_id }}</p></div><a class="admin-text-link" href="{{ route('admin.consultations.index') }}">صندوق مشاوره ←</a></header><x-admin.errors/>
-<div class="repair-status-banner"><div><h2>{{ \App\Models\Consultation::STATUSES[$consultation->status] }}</h2><p>ثبت: <x-finance-time :value="$consultation->created_at" /></p></div><p>همکار مسئول: <strong>{{ $consultation->assignee?->name ?? 'تخصیص نیافته' }}</strong></p></div>
-<x-customer-association :record="$consultation"/>
-<nav class="admin-actions repair-jump-links" aria-label="میانبرهای مشاوره"><a class="admin-text-link" href="#consultation-details">اطلاعات درخواست ↓</a>@if($history)<a class="admin-text-link" href="#consultation-history">سابقهٔ تماس ↓</a>@endif @can('consultations.manage')<a class="admin-text-link" href="#consultation-actions">عملیات مشاوره ↓</a>@endcan</nav>
-<div class="crm-two-column mt-6"><div class="repair-main-stack"><section class="admin-panel" id="consultation-details"><h2>پرسش و اطلاعات اعلام‌شده</h2>
-@if($contact)<dl class="admin-definition"><div><dt>نام مشتری</dt><dd>{{ $consultation->customer_name }}</dd></div><div><dt>همراه</dt><dd dir="ltr">{{ $consultation->contact_phone }}</dd></div><div><dt>دستگاه مرتبط</dt><dd>{{ $consultation->device_info ?? 'اعلام نشده' }}</dd></div></dl><h3 class="mt-4">شرح پرسش</h3><p class="whitespace-pre-line mt-4">{{ $consultation->question }}</p>@else<p class="admin-hint">نام، تماس، اطلاعات دستگاه و شرح پرسش به مجوز اطلاعات خصوصی مشاوره نیاز دارند.</p>@endif
-</section>
-@if($history)<section class="admin-panel" id="consultation-history"><h2>یادداشت‌ها و سابقهٔ واقعی تماس</h2>@forelse($history as $entry)<article class="crm-history"><strong>{{ ['contact'=>'تلاش تماس', 'note'=>'یادداشت داخلی', 'event'=>'رویداد مدیریتی'][$entry->kind] }}</strong>
-@if($entry->kind === 'contact')<p>{{ ['phone'=>'تلفن', 'in_person'=>'حضوری', 'external_message'=>'پیام خارج از سامانه'][$entry->channel] }} · {{ ['answered'=>'ارتباط برقرار شد', 'no_answer'=>'بدون پاسخ', 'unreachable'=>'در دسترس نبود'][$entry->outcome] }}</p>@endif
-<p class="whitespace-pre-line">{{ $entry->body }}</p><small>{{ $entry->actor->name }} · <x-finance-time :value="$entry->created_at" /></small></article>@empty<p class="admin-hint">هنوز یادداشت یا تلاشی ثبت نشده است.</p>@endforelse {{ $history->links() }}</section>@endif
-</div><aside class="repair-main-stack" id="consultation-actions">
-@if($consultation->status !== 'closed') @can('consultations.manage')
-<x-crm-operation :action="route('admin.consultations.assign', $consultation)" :version="$consultation->version" title="تخصیص همکار مسئول"><div><label for="assign-consultation" class="label">همکار فعال و مجاز</label><select class="input" id="assign-consultation" name="assigned_to" required><option value="">انتخاب همکار</option>@foreach($staff as $user)<option value="{{ $user->id }}">{{ $user->name }}</option>@endforeach</select></div><button class="btn btn-secondary" type="submit">ثبت تخصیص</button></x-crm-operation>
-<x-crm-operation :action="route('admin.consultations.transition', $consultation)" :version="$consultation->version" title="تغییر مرحله"><div><label for="next-consultation-status" class="label">مرحلهٔ بعد</label><select class="input" id="next-consultation-status" name="status" required>
-@foreach(match($consultation->status){'new'=>['in_progress','closed'],'in_progress'=>['contacted','closed'],'contacted'=>['in_progress','closed'],default=>[]} as $value)<option value="{{ $value }}">{{ \App\Models\Consultation::STATUSES[$value] }}</option>@endforeach
-</select></div><p class="admin-hint">«تماس برقرار شده» نیازمند سابقهٔ تماس موفق است. بستن درخواست به معنی تماس یا ارائهٔ خدمت نیست.</p><button class="btn btn-primary" type="submit">ثبت مرحله</button></x-crm-operation>
-@if($history)<x-crm-operation :action="route('admin.consultations.entry', $consultation)" :version="$consultation->version" title="ثبت تلاش تماس"><input type="hidden" name="kind" value="contact"/><div><label for="contact-channel" class="label">روش ارتباط واقعی</label><select class="input" id="contact-channel" name="channel"><option value="phone">تلفن</option><option value="in_person">حضوری</option><option value="external_message">پیام خارج از سامانه</option></select></div><div><label for="contact-outcome" class="label">نتیجهٔ واقعی</label><select class="input" id="contact-outcome" name="outcome"><option value="no_answer">بدون پاسخ</option><option value="answered">ارتباط برقرار شد</option><option value="unreachable">در دسترس نبود</option></select></div><x-operation-field name="body" label="شرح تلاش و نتیجه؛ خصوصی" kind="textarea"/><p class="admin-hint">ثبت با زمان سرور و نام شما نگهداری می‌شود؛ سامانه تماسی برقرار نمی‌کند.</p><button class="btn btn-secondary" type="submit">ثبت تلاش واقعی</button></x-crm-operation>
-<x-crm-operation :action="route('admin.consultations.entry', $consultation)" :version="$consultation->version" title="یادداشت داخلی"><input type="hidden" name="kind" value="note"/><x-operation-field name="body" label="یادداشت خصوصی مشاوره" kind="textarea"/><button class="btn btn-secondary" type="submit">ثبت یادداشت</button></x-crm-operation>@endif
-@endcan @else<section class="admin-panel"><h2>درخواست بسته شده است</h2><p class="admin-hint">سوابق فقط خواندنی‌اند. بستن درخواست، ادعای تماس یا پرداخت نیست.</p></section>@endif
-</aside></div>
+<header class="admin-page-heading">
+    <h1>{{ \App\Models\Consultation::TOPICS[$consultation->topic] }}</h1>
+    <a class="admin-text-link" href="{{ route('admin.consultations.index') }}">صندوق مشاوره</a>
+</header>
+<x-admin.errors/>
+<div class="repair-main-stack">
+    <section class="admin-panel">
+        <h2>خلاصهٔ درخواست</h2>
+        <dl class="admin-definition">
+            @if($contact)
+                <div><dt>نام مشتری</dt><dd>{{ $consultation->customer_name }}</dd></div>
+                <div><dt>موبایل</dt><dd><a href="tel:{{ $consultation->contact_phone }}"><bdi dir="ltr">{{ \App\Support\FaNumber::digits($consultation->contact_phone) }}</bdi></a></dd></div>
+                @if($consultation->device_info)<div><dt>دستگاه</dt><dd>{{ $consultation->device_info }}</dd></div>@endif
+            @endif
+            <div><dt>زمان ثبت</dt><dd><x-finance-time :value="$consultation->created_at" /></dd></div>
+            <div><dt>وضعیت</dt><dd>{{ \App\Models\Consultation::STATUSES[$consultation->status] }}</dd></div>
+            <div><dt>مسئول پیگیری</dt><dd>{{ $consultation->assignee?->name ?? 'انتخاب نشده' }}</dd></div>
+        </dl>
+        @if($contact)<h3 class="mt-4">پیام مشتری</h3><p class="whitespace-pre-line">{{ $consultation->question }}</p>@endif
+    </section>
+    <x-customer-association :record="$consultation"/>
+    @if($consultation->status !== 'closed')
+        @can('consultations.manage')
+            <div class="crm-two-column">
+                <x-crm-operation :action="route('admin.consultations.assign', $consultation)" :version="$consultation->version" title="مسئول پیگیری">
+                    <label for="assign-consultation" class="label">همکار</label>
+                    <select class="input" id="assign-consultation" name="assigned_to" required>
+                        <option value="">انتخاب همکار</option>
+                        @foreach($staff as $user)
+                            <option value="{{ $user->id }}" @selected($user->id === $consultation->assigned_to)>{{ $user->name }}</option>
+                        @endforeach
+                    </select>
+                    <button class="btn btn-secondary" type="submit">ذخیرهٔ مسئول</button>
+                </x-crm-operation>
+                <x-crm-operation :action="route('admin.consultations.transition', $consultation)" :version="$consultation->version" title="وضعیت درخواست">
+                    <label for="consultation-status" class="label">وضعیت جدید</label>
+                    <select class="input" id="consultation-status" name="status" required>
+                        <option value="" selected disabled>انتخاب وضعیت</option>
+                        @foreach($statusOptions as $value)
+                            <option value="{{ $value }}">{{ \App\Models\Consultation::STATUSES[$value] }}</option>
+                        @endforeach
+                    </select>
+                    <button class="btn btn-primary">ذخیرهٔ وضعیت</button>
+                </x-crm-operation>
+            </div>
+            @if($history)
+                <x-crm-operation :action="route('admin.consultations.entry', $consultation)" :version="$consultation->version" title="ثبت پیگیری">
+                    <label class="label" for="entry-outcome">نتیجهٔ پیگیری</label>
+                    <select class="input" id="entry-outcome" name="activity">
+                        <option value="note">یادداشت داخلی</option>
+                        <option value="answered">پاسخ داده شد</option>
+                        <option value="no_answer">بدون پاسخ</option>
+                        <option value="unreachable">در دسترس نبود</option>
+                    </select>
+                    <label class="label" for="entry-channel">روش ارتباط (برای تماس)</label>
+                    <select class="input" id="entry-channel" name="contact_channel">
+                        <option value="phone">تلفن</option><option value="in_person">حضوری</option><option value="external_message">پیام</option>
+                    </select>
+                    <x-operation-field name="body" label="یادداشت پیگیری" kind="textarea"/>
+                    <button class="btn btn-primary">ثبت پیگیری</button>
+                </x-crm-operation>
+            @endif
+        @endcan
+    @endif
+    @if($history)
+        <section class="admin-panel" id="consultation-history">
+            <h2>تاریخچهٔ پیگیری</h2>
+            @forelse($history as $entry)
+                <article class="crm-history">
+                    <strong>{{ ['contact' => 'تلاش تماس', 'note' => 'یادداشت داخلی', 'event' => 'رویداد مدیریتی'][$entry->kind] }}</strong>
+                    @if($entry->kind === 'contact')
+                        <p>{{ ['phone' => 'تلفن', 'in_person' => 'حضوری', 'external_message' => 'پیام خارج از سامانه'][$entry->channel] }} · {{ ['answered' => 'پاسخ داده شد', 'no_answer' => 'بدون پاسخ', 'unreachable' => 'در دسترس نبود'][$entry->outcome] }}</p>
+                    @endif
+                    <p class="whitespace-pre-line">{{ $entry->body }}</p>
+                    <small>{{ $entry->actor->name }} · <x-finance-time :value="$entry->created_at" /></small>
+                </article>
+            @empty
+                <p class="admin-hint">اولین پیگیری اینجا نمایش داده می‌شود.</p>
+            @endforelse
+            {{ $history->links() }}
+        </section>
+    @endif
+</div>
 @endsection
