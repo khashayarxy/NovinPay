@@ -7,6 +7,13 @@
 - Use targeted `rg` searches. Read only the documents and code needed for the task; reuse existing runners and conventions instead of creating another framework. Do not repeat completed setup or tests without a changed input or unresolved failure.
 - Verify claims against current code, locks and CI. `docs/TASK.md` has older phase numbering; README setup snippets and dated release reports are historical, not the current roadmap or permission to run commands.
 
+## Strict Scope-Lock & Approved-Component Protection (mandatory)
+
+1. **Strict Scope-Lock:** Modify ONLY the exact files, components, routes, and behaviors explicitly requested in the user's prompt.
+2. **Do Not Touch Approved UI or Working Features:** Never redesign, restyle, or refactor existing approved UI elements (such as the top header/navigation bar, layout shells, typography, or unrelated components) unless explicitly instructed.
+3. **No Unrequested "Bonus" Edits:** Do not make opportunistic cleanups, formatting sweeps, CSS overrides, or structural refactors outside the exact task scope.
+4. **Ask Before Expanding Scope:** If fixing a requested item appears to require altering a shared/global component (like header CSS or base layouts), stop and ask the user first instead of modifying it silently.
+
 ## Execution ownership rule
 
 - The agent (Antigravity) is strictly responsible for performing all file edits, host uploads/transfers, deployment file syncing, and database creation/migrations.
