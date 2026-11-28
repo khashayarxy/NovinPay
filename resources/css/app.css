@@ -2419,8 +2419,10 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     transform: translateY(-50%);
     font-size: 0.75rem;
     font-weight: 600;
+    line-height: 1.6;
+    padding: 2px 5px;
     color: #475569;
-    background: linear-gradient(to bottom, transparent 44%, var(--np-float-bg, #ffffff) 44%);
+    background: var(--np-float-bg, #ffffff);
 }
 
 .np-float-field:has(:is(input, textarea, select):focus) > label {
@@ -2449,7 +2451,10 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
 }
 
 .np-float-field:has(:is(input, textarea)[readonly]) > label {
-    background: linear-gradient(to bottom, transparent 44%, #f8fafc 44%);
+    background: #f8fafc;
+}
+.np-float-field:has(:is(input, textarea)[readonly]) {
+    --np-float-bg: #f8fafc;
 }
 
 /* Custom modern storefront dropdown component (.np-cs) */
@@ -2620,8 +2625,10 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     transform: translateY(-50%);
     font-size: 0.75rem;
     font-weight: 600;
+    line-height: 1.6;
+    padding: 2px 5px;
     color: #475569;
-    background: linear-gradient(to bottom, transparent 44%, var(--np-float-bg, #ffffff) 44%);
+    background: var(--np-float-bg, #ffffff);
 }
 
 .np-float-field:has(.np-cs.is-open) > label {
