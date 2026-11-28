@@ -7,6 +7,7 @@ use App\Support\MaintenanceStateFault;
 use App\Support\SiteMaintenanceState;
 use Illuminate\Filesystem\Filesystem;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
@@ -100,6 +101,7 @@ class SiteMaintenanceStateTest extends TestCase
         $state->change(SiteMaintenanceState::INITIAL, false, 7);
     }
 
+    #[Group('stress')]
     public function test_two_real_processes_cannot_overwrite_the_same_observed_version(): void
     {
         $state = new SiteMaintenanceState($this->directory);

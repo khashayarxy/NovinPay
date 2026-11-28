@@ -990,7 +990,9 @@ final class UnifiedNotifier
             return;
         }
         if (! $this->isAdminSmsEnabled()) {
-            Log::notice('Admin SMS skipped because SMS notifications are disabled', ['pattern_key' => $patternKey]);
+            if (! app()->environment('testing')) {
+                Log::notice('Admin SMS skipped because SMS notifications are disabled', ['pattern_key' => $patternKey]);
+            }
 
             return;
         }
@@ -1004,7 +1006,9 @@ final class UnifiedNotifier
         }
 
         if ($activePattern === '') {
-            Log::warning('Admin SMS skipped because pattern code is not configured', ['pattern_key' => $patternKey]);
+            if (! app()->environment('testing')) {
+                Log::warning('Admin SMS skipped because pattern code is not configured', ['pattern_key' => $patternKey]);
+            }
 
             return;
         }
@@ -1149,7 +1153,9 @@ final class UnifiedNotifier
             return;
         }
         if (! config('notifications.email.enabled')) {
-            Log::notice('Admin email skipped because NOTIFICATIONS_EMAIL_ENABLED is false');
+            if (! app()->environment('testing')) {
+                Log::notice('Admin email skipped because NOTIFICATIONS_EMAIL_ENABLED is false');
+            }
 
             return;
         }

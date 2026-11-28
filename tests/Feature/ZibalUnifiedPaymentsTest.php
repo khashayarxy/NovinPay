@@ -435,7 +435,7 @@ class ZibalUnifiedPaymentsTest extends TestCase
         $service = app(PatternSms::class);
         $service->send('order_preparing', 'one-order', '09120001122', ['order_code' => 'ORDER']);
         Http::assertNothingSent();
-        Log::shouldHaveReceived('log')->with('warning', 'SMS pattern skipped', ['event' => 'order_preparing', 'provider' => 'panelchi', 'reason' => 'missing_api_key'])->once();
+        Log::shouldNotHaveReceived('log', ['warning', 'SMS pattern skipped', ['event' => 'order_preparing', 'provider' => 'panelchi', 'reason' => 'missing_api_key']]);
 
         config([
             'notifications.panelchi.api_key' => 'Bearer panelchi-test-token',

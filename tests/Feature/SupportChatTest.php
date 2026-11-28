@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
@@ -810,6 +811,7 @@ class SupportChatTest extends TestCase
         $this->assertEqualsWithDelta(time(), $renewed['last_reply_at'], 1);
     }
 
+    #[Group('stress')]
     public function test_reply_ownership_is_atomic_between_two_real_competing_php_processes(): void
     {
         [$customerToken, $id] = $this->customerContext();

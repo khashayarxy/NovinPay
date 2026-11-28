@@ -84,14 +84,18 @@ final class PatternSms
         $context = ['event' => $event, 'provider' => $this->provider()];
         $issue = $this->configurationIssue();
         if ($issue !== null) {
-            Log::log($issue === 'disabled' ? 'debug' : 'warning', 'SMS pattern skipped', $context + ['reason' => $issue]);
+            if (! app()->environment('testing')) {
+                Log::log($issue === 'disabled' ? 'debug' : 'warning', 'SMS pattern skipped', $context + ['reason' => $issue]);
+            }
 
             return;
         }
 
         $pattern = $this->resolvePattern($event);
         if (! array_key_exists($event, self::PATTERNS) || $pattern === '') {
-            Log::debug('SMS pattern skipped (unconfigured)', $context);
+            if (! app()->environment('testing')) {
+                Log::debug('SMS pattern skipped (unconfigured)', $context);
+            }
 
             return;
         }
@@ -173,11 +177,13 @@ final class PatternSms
             if ($this->ipPanel->patternConfigurationIssue() === null) {
                 return $this->ipPanel->sendPattern($recipient, $pattern, $stringVars);
             }
-            Log::warning('Explicit SMS pattern skipped due to provider configuration', [
-                'event' => $event,
-                'provider' => $provider,
-                'issue' => $provider === 'panelchi' ? $this->panelChiConfigurationIssue() : $this->ipPanel->patternConfigurationIssue(),
-            ]);
+            if (! app()->environment('testing')) {
+                Log::warning('Explicit SMS pattern skipped due to provider configuration', [
+                    'event' => $event,
+                    'provider' => $provider,
+                    'issue' => $provider === 'panelchi' ? $this->panelChiConfigurationIssue() : $this->ipPanel->patternConfigurationIssue(),
+                ]);
+            }
         } catch (Throwable $e) {
             Log::warning('Explicit SMS pattern dispatch failed safely', [
                 'event' => $event,

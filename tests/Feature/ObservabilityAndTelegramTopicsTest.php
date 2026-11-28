@@ -48,7 +48,7 @@ class ObservabilityAndTelegramTopicsTest extends TestCase
         config(['observability.performance.outbox_path' => $fixture]);
         try {
             Route::get('/slow-test/{record}', function () {
-                usleep(10000);
+                request()->attributes->set('performance_started', hrtime(true) - 10_000_000);
 
                 return redirect('/fixture');
             });
