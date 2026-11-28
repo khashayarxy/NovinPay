@@ -301,6 +301,11 @@ class Phase11UxPrintDocsAndPerformanceTest extends TestCase
 
         $case->refresh();
         $this->assertSame('pending_review', $case->activation_docs_status);
+        $directory = storage_path('app/private/activation-docs/repair-'.$case->public_id);
+        $this->assertNotEmpty(glob($directory.'/*.zip'));
+        $this->travel(31)->days();
+        app(ActivationDocumentsService::class)->purgeExpiredDocuments();
+        $this->assertDirectoryDoesNotExist($directory);
     }
 
     public function test_simple_record_step4_done_layout_and_monochrome_prints_with_signed_qr_tracking(): void

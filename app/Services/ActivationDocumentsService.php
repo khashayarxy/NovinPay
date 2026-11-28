@@ -419,17 +419,18 @@ final class ActivationDocumentsService
             File::deleteDirectory($basePrivateDir);
         }
 
+        $hostDeleted = ! is_dir($basePrivateDir);
         $order->forceFill([
-            'documents_purged_at' => now(),
-            'telegram_message_id' => null,
-            'documents_staging_dir' => null,
+            'documents_purged_at' => $deletedOnTelegram && $hostDeleted ? now() : null,
+            'telegram_message_id' => $deletedOnTelegram ? null : $order->telegram_message_id,
+            'documents_staging_dir' => $hostDeleted ? null : $order->documents_staging_dir,
         ])->save();
 
         if ($actor !== null) {
             AdminHistory::record(AdminAction::OrderChanged, 'sales_order', $order->id, $actor->id);
         }
 
-        return $deletedOnTelegram;
+        return $deletedOnTelegram && $hostDeleted;
     }
 
     /**
@@ -472,6 +473,14 @@ final class ActivationDocumentsService
         foreach ($candidates as $order) {
             $this->purgeOrderDocuments($order);
             $purgedCount++;
+        }
+
+        foreach (RepairCase::query()->whereNotNull('activation_docs_submitted_at')
+            ->where('activation_docs_submitted_at', '<=', $abandonedCutoff)->cursor() as $case) {
+            $directory = storage_path('app/private/activation-docs/repair-'.$case->public_id);
+            if (is_dir($directory) && File::deleteDirectory($directory)) {
+                $purgedCount++;
+            }
         }
 
         return $purgedCount;
@@ -668,6 +677,7 @@ final class ActivationDocumentsService
                 return ['telegram_delivered' => true];
             }
 
+            // Retain only the encrypted bundle for a bounded retry window.
             $case->forceFill([
                 'activation_docs_status' => 'pending_review',
                 'activation_docs_revision_reason' => null,
@@ -691,6 +701,47 @@ final class ActivationDocumentsService
                 'documents' => 'خطایی در رمزنگاری و ثبت مدارک رخ داد. لطفاً دوباره تلاش کنید.',
             ]);
         }
+    }
+
+    public function retryRepairDocuments(RepairCase $case): bool
+    {
+        $directory = storage_path('app/private/activation-docs/repair-'.$case->public_id);
+        $bundles = glob($directory.'/*.zip') ?: [];
+        if ($bundles === []) {
+            return false;
+        }
+        foreach ($bundles as $path) {
+            if (is_link($path)) {
+                return false;
+            }
+            $result = $this->topics->sendDocumentWithResult('documents', $path, 'مدارک فعال‌سازی تعمیر #'.$case->tracking_reference, basename($path));
+            if (! $result['ok'] || $result['message_id'] === null) {
+                return false;
+            }
+            $case->forceFill([
+                'activation_docs_telegram_chat_id' => $result['chat_id'],
+                'activation_docs_telegram_message_id' => $result['message_id'],
+            ])->save();
+            if (! unlink($path)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function purgeRepairDocuments(RepairCase $case): bool
+    {
+        $deleted = ! $case->activation_docs_telegram_message_id || $this->topics->deleteMessage(
+            (string) $case->activation_docs_telegram_chat_id, (int) $case->activation_docs_telegram_message_id,
+        );
+        $directory = storage_path('app/private/activation-docs/repair-'.$case->public_id);
+        $hostDeleted = ! is_dir($directory) || File::deleteDirectory($directory);
+        if ($deleted) {
+            $case->forceFill(['activation_docs_telegram_message_id' => null])->save();
+        }
+
+        return $deleted && $hostDeleted;
     }
 
     private function safeExtension(UploadedFile $file): string

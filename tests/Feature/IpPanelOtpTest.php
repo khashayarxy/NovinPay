@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -20,6 +21,21 @@ use Tests\TestCase;
 
 class IpPanelOtpTest extends TestCase
 {
+    public function test_password_failures_are_counted_by_phone_across_sessions_and_expire(): void
+    {
+        $phone = '09129998877';
+        $key = 'customer-password-failures:'.RepairIdentity::digest('password-account', $phone);
+        $limiter = RateLimiter::class;
+        $limiter::clear($key);
+        $login = app(CustomerLogin::class);
+        for ($i = 0; $i < 5; $i++) {
+            $this->assertNull($login->passwordAccount($phone, 'invalid-password'));
+        }
+        $this->assertTrue($limiter::tooManyAttempts($key, 5));
+        $this->travel(16)->minutes();
+        $this->assertFalse($limiter::tooManyAttempts($key, 5));
+    }
+
     private const BASE = 'https://edge.ippanel.com/v1/api';
 
     use RefreshDatabase;

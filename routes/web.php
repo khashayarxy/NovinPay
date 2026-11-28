@@ -42,10 +42,13 @@ use App\Http\Middleware\PreviewAwareSession;
 use App\Http\Middleware\PrivateAdminResponse;
 use App\Http\Middleware\PrivateRepairResponse;
 use App\Http\Middleware\PublicArticleResponse;
+use App\Models\RepairCase;
+use App\Services\ActivationDocumentsService;
 use App\Services\CustomerAccountLink;
 use App\Services\CustomerLogin;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
@@ -418,6 +421,13 @@ Route::middleware([PrivateAdminResponse::class, 'auth:web'])->prefix('admin')->n
             Route::get('repairs/{repairCase}/documents/{document}', [RepairCaseController::class, 'document'])->name('repair-cases.document');
             Route::post('repairs/{repairCase}/payment-link', [RepairCaseController::class, 'generatePaymentLink'])->middleware('throttle:20,1')->name('repair-cases.payment-link');
             Route::post('repairs/{repairCase}/request-activation-docs', [RepairCaseController::class, 'requestActivationDocuments'])->middleware('throttle:20,1')->name('repair-cases.request-activation-docs');
+            Route::post('repairs/{repairCase}/documents/{action}', function (Request $request, RepairCase $repairCase, string $action, ActivationDocumentsService $service) {
+                Gate::authorize('view', $repairCase);
+                Gate::authorize('repairs.transition');
+                $ok = $action === 'purge' ? $service->purgeRepairDocuments($repairCase) : $service->retryRepairDocuments($repairCase);
+
+                return redirect()->route('admin.repair-cases.show', $repairCase)->with($ok ? 'success' : 'error', $ok ? 'عملیات مدارک انجام شد.' : 'عملیات مدارک کامل نشد؛ دوباره تلاش کنید.');
+            })->whereIn('action', ['purge', 'retry-telegram'])->middleware('throttle:10,1')->name('repair-cases.documents.action');
         });
     });
 });

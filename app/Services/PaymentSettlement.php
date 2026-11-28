@@ -77,11 +77,14 @@ class PaymentSettlement
             if ($order && in_array($order->status, ['draft', 'reserved'], true)) {
                 $previousStatus = (string) $order->status;
                 $this->reserveStockForPaidOrder($order, $actor);
-                $order->status = 'confirmed';
+                $lines = $order->lines()->where('is_current', true)->get();
+                $fullyReserved = $lines->isNotEmpty() && $lines->every(fn ($line) => (int) DB::table('stock_reservations')
+                    ->where('sales_order_line_id', $line->id)->where('status', 'active')->sum('quantity') === (int) $line->quantity);
+                $order->status = $fullyReserved ? 'confirmed' : 'pending_review';
                 $order->version++;
                 $order->save();
                 $orderSnapshot = clone $order;
-                DB::afterCommit(static fn () => app(ObservabilityEvents::class)->orderStatusChanged($orderSnapshot, $previousStatus, 'confirmed', fullConfirmation: true));
+                DB::afterCommit(static fn () => app(ObservabilityEvents::class)->orderStatusChanged($orderSnapshot, $previousStatus, $orderSnapshot->status, fullConfirmation: $fullyReserved));
             }
         }
 

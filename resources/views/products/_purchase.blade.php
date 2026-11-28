@@ -26,7 +26,7 @@
                     <strong>{{ $product->is_sample ? $product->stock_status->label() : $sale->stockLabel($product) }}</strong>
                     @if ($canAddToCart && isset($inventory) && $inventory->available > 0)
                         <span class="stock-availability-note">
-                            {{ \App\Support\FaNumber::digits($inventory->available) }} عدد
+                            : {{ \App\Support\FaNumber::digits($inventory->available) }} عدد
                         </span>
                     @endif
                 </div>

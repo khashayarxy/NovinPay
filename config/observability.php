@@ -3,6 +3,7 @@
 return [
     'client_telemetry' => [
         'enabled' => filter_var(env('OBSERVABILITY_CLIENT_TELEMETRY_ENABLED', env('APP_ENV') === 'production'), FILTER_VALIDATE_BOOL),
+        'rate_limit_per_minute' => (int) env('OBSERVABILITY_CLIENT_TELEMETRY_RATE_LIMIT_PER_MINUTE', 10),
     ],
 
     'performance' => [

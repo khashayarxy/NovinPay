@@ -7,8 +7,8 @@
 .store-desktop-tools svg { width: 20px; height: 20px; }
 .store-cart-count {
     position: absolute;
-    inset-inline-end: -4px;
-    inset-block-start: -4px;
+    inset-inline-end: -8px;
+    inset-block-start: -8px;
     min-width: 19px;
     height: 19px;
     padding: 0 4px;

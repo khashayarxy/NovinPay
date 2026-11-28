@@ -57,7 +57,7 @@ class AppServiceProvider extends ServiceProvider
         ]);
         RateLimiter::for('customer-password', fn ($request) => [
             Limit::perMinute(8)->by('customer-password-ip:'.hash('sha256', $request->ip()))->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'password')),
-            Limit::perMinute(5)->by('customer-password-phone:'.RepairIdentity::digest('password-throttle', (string) $request->session()->get('customer_login_phone')))->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'password')),
+            Limit::perMinute(5)->by('customer-password-phone:'.RepairIdentity::digest('password-throttle', RepairIdentity::phone($request->input('identifier', $request->input('phone', '')))))->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'password')),
         ]);
         RateLimiter::for('customer-verify', fn ($request) => Limit::perMinute(20)->by(hash('sha256', $request->ip()))
             ->response(fn ($request, $headers) => CustomerAuthThrottle::respond($request, $headers, 'verify')));

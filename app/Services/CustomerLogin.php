@@ -107,7 +107,18 @@ class CustomerLogin
                 ? Hash::check($password, $account->password)
                 : Hash::check($password, Hash::make(Str::random(48))) && false;
 
-            return $matches && $account->is_active ? $account : null;
+            $key = 'customer-password-failures:'.RepairIdentity::digest('password-account', $phone);
+            if (RateLimiter::tooManyAttempts($key, 5)) {
+                return null;
+            }
+            if (! $matches || ! $account?->is_active) {
+                RateLimiter::hit($key, 900);
+
+                return null;
+            }
+            RateLimiter::clear($key);
+
+            return $account;
         }, 400000);
     }
 

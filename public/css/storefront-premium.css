@@ -2948,6 +2948,7 @@ html:has(body.premium-storefront) {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    flex-wrap: wrap;
 }
 .purchase-stock-row .stock {
     margin: 0;
@@ -2957,10 +2958,12 @@ html:has(body.premium-storefront) {
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
+    gap: 4px;
+    white-space: nowrap;
     padding-block: 0;
     box-sizing: border-box;
 }
-.np-inline-stepper--purchase { width: auto; flex: 0 0 auto; margin-top: 0; }
+.np-inline-stepper--purchase { width: auto; flex: 0 0 auto; margin: 0; height: 42px; min-height: 42px; box-sizing: border-box; }
 
 .np-added-bar {
     position: fixed;
