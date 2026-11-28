@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Http\Middleware\AttachIncidentId;
 use App\Models\AdminAccount;
 use App\Models\InventoryItem;
 use App\Models\PaymentAttempt;
@@ -15,11 +14,11 @@ use App\Services\Observability\SystemHealthService;
 use App\Services\Observability\TelegramTopicNotifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -39,21 +38,32 @@ class ObservabilityAndTelegramTopicsTest extends TestCase
         Http::assertNotSent(fn ($request) => $request['message_thread_id'] === 17);
     }
 
-    public function test_routine_redirects_are_filtered_but_slow_successful_requests_still_alert(): void
+    public function test_slow_responses_are_queued_and_failed_delivery_can_be_retried(): void
     {
         $this->enableTelegramTopics();
-        Http::fake(['*' => Http::response(['ok' => true])]);
+        Http::fakeSequence()->push(['ok' => false], 503)->push(['ok' => true]);
         config(['observability.performance.slow_request_ms' => 1]);
-        $middleware = app(AttachIncidentId::class);
-        $next = function ($response) {
-            usleep(5000);
+        $fixture = sys_get_temp_dir().'/novinpay-performance-'.Str::uuid();
+        File::ensureDirectoryExists($fixture, 0700);
+        config(['observability.performance.outbox_path' => $fixture]);
+        try {
+            Route::get('/slow-test/{record}', function () {
+                usleep(10000);
 
-            return $response;
-        };
-        $middleware->handle(Request::create('/payments/fixture/gateway'), fn () => $next(redirect('/fixture', 303)));
-        Http::assertNothingSent();
-        $middleware->handle(Request::create('/products'), fn () => $next(response('fixture')));
-        Http::assertSentCount(1);
+                return redirect('/fixture');
+            });
+            $this->get('/slow-test/private-reference')->assertRedirect('/fixture')
+                ->assertHeader('Server-Timing')->assertHeader('X-Request-Id');
+            Http::assertNothingSent();
+            $this->artisan('novinpay:deliver-performance-alerts')->assertFailed();
+            $this->artisan('novinpay:deliver-performance-alerts')->assertSuccessful();
+            $this->artisan('novinpay:deliver-performance-alerts')->assertSuccessful();
+            Http::assertSentCount(2);
+            Http::assertSent(fn ($request) => str_contains($request['text'], '/slow-test/{record}')
+                && ! str_contains($request['text'], 'private-reference'));
+        } finally {
+            File::deleteDirectory($fixture);
+        }
     }
 
     public function test_raw_confirmed_transition_is_suppressed_without_losing_metrics(): void

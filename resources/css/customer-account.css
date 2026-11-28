@@ -302,12 +302,6 @@
 .np-account-form__field { display: grid; gap: .35rem; align-content: start; min-width: 0; }
 .np-account-form label { font-weight: 500; margin-top: .25rem; }
 .np-account-form__field label { margin-top: 0; }
-.np-latin-code {
-    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-    direction: ltr;
-    unicode-bidi: isolate;
-    font-variant-numeric: tabular-nums;
-}
 .np-account-form input, .np-account-form textarea, .np-account-form select {
     width: 100%;
     min-height: 48px;
@@ -1026,45 +1020,6 @@ a.np-account-row:hover .np-account-row__chevron { color: var(--account-blue); tr
 .np-address-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; font-size: .78rem; color: var(--account-muted); }
 .np-address-card__actions { display: inline-flex; align-items: center; gap: .45rem; flex: 0 0 auto; }
 
-.np-file-picker {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: .6rem;
-    min-height: 44px;
-    padding: .35rem .55rem;
-    border: 1px solid #cbd9e8;
-    border-radius: .7rem;
-    background: #ffffff;
-}
-.np-file-picker__btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    padding: .3rem .85rem;
-    border-radius: .5rem;
-    background: #edf5ff;
-    border: 1px solid #b8d5f7;
-    color: var(--account-blue);
-    font-size: .8rem;
-    font-weight: 600;
-    cursor: pointer;
-    margin: 0 !important;
-    white-space: nowrap;
-}
-.np-file-picker__btn:hover { background: #dceeff; }
-.np-file-picker__name {
-    font-size: .8rem;
-    color: #64748b;
-    min-width: 0;
-    flex: 1 1 10rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.np-file-picker__name.has-file { color: #0f2942; font-weight: 600; }
-
 .repair-saved-devices {
     margin: 0 0 1rem;
     padding: .75rem .9rem;
@@ -1248,4 +1203,15 @@ button.repair-track-action-btn {
     .repair-track-inline-handover__actions .repair-track-action-btn {
         width: 100%;
     }
+}
+
+@media screen and (max-width: 599px) {
+    .np-receipt-table, .np-receipt-table tbody { display: block; }
+    .np-receipt-table thead { display: none; }
+    .np-receipt-table tr { display: grid; margin-block: .75rem; border: 1px solid #e2e8f0; border-radius: .65rem; }
+    .np-receipt-table td { display: grid; grid-template-columns: minmax(6rem, 40%) minmax(0, 1fr); gap: .5rem; }
+    .np-receipt-table td::before { content: attr(data-label); grid-row: 1 / span 3; color: #475569; }
+    .np-receipt-table td > * { min-width: 0; overflow-wrap: anywhere; }
+    .np-account-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+    .np-account-row__end { justify-self: end; }
 }

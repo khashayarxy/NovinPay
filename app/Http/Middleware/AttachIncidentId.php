@@ -2,8 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Services\Observability\ObservabilityMetrics;
-use App\Services\Observability\TelegramTopicNotifier;
+use App\Services\Observability\PerformanceAlerts;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -21,33 +20,32 @@ final class AttachIncidentId
 
         Log::withContext(['incident_id' => $incidentId]);
 
-        $started = hrtime(true);
+        $request->attributes->set('performance_started', hrtime(true));
 
-        /** @var Response $response */
-        $response = $next($request);
+        return $next($request);
+    }
 
-        $response->headers->set('X-Request-Id', $incidentId);
-
-        $durationMs = (int) round((hrtime(true) - $started) / 1_000_000);
+    public function terminate(Request $request, Response $response): void
+    {
         $threshold = (int) config('observability.performance.slow_request_ms', 2000);
-        $anomalousRedirect = $response->isRedirection() && $durationMs >= max(10000, $threshold * 5);
-        if ($threshold > 0 && $durationMs >= $threshold && (! $response->isRedirection() || $anomalousRedirect)) {
-            $path = '/'.ltrim($request->path(), '/');
-            Log::channel('performance')->warning('Slow HTTP request detected', [
-                'incident_id' => $incidentId,
-                'method' => $request->method(),
-                'path' => $path,
-                'status' => $response->getStatusCode(),
-                'duration_ms' => $durationMs,
-            ]);
-            app(ObservabilityMetrics::class)->increment('performance.slow_requests');
-            app(TelegramTopicNotifier::class)->send(
-                'performance',
-                "⏱ درخواست کند HTTP\nمسیر: {$request->method()} {$path}\nزمان: {$durationMs}ms | وضعیت: {$response->getStatusCode()}\nکد رخداد: {$incidentId}",
-                dedupeKey: "slow-http:{$request->method()}:{$path}",
-            );
+        $duration = (float) $request->attributes->get('performance_response_ms', 0);
+        if ($threshold <= 0 || $duration < $threshold) {
+            return;
+        }
+        if ($response->isRedirection() && $request->isMethodSafe() === false && $duration < max(10000, $threshold * 5)) {
+            return;
         }
 
-        return $response;
+        app(PerformanceAlerts::class)->record('requests', 'Slow HTTP request detected', [
+            'incident_id' => $request->attributes->get('incident_id', 'unknown'),
+            'method' => $request->method(),
+            'path' => '/'.ltrim($request->route()?->uri() ?? 'unmatched', '/'),
+            'status' => $response->getStatusCode(),
+            'duration_ms' => round($duration, 1),
+            'bootstrap_ms' => $request->attributes->get('performance_bootstrap_ms'),
+            'database_ms' => round((float) $request->attributes->get('performance_sql_ms', 0), 1),
+            'other_ms' => round(max(0, $duration - $request->attributes->get('performance_bootstrap_ms', 0) - $request->attributes->get('performance_sql_ms', 0)), 1),
+            'query_count' => $request->attributes->get('performance_query_count', 0),
+        ]);
     }
 }

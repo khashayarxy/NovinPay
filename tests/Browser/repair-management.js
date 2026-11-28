@@ -8,27 +8,28 @@ async page => {
             const tab = await context.newPage();
             await tab.goto(origin + '/admin/login');
             const assets = await tab.evaluate(() => ({
-                css: [...document.querySelectorAll('link[rel=stylesheet]')].find(node => node.href.includes('/build/assets/app-'))?.href,
+                css: [...document.querySelectorAll('link[rel=stylesheet]')].find(node => node.href.includes('/build/assets/admin-app-'))?.href,
                 js: [...document.querySelectorAll('script[type=module]')].find(node => node.src.includes('/build/assets/app-'))?.src,
             }));
             if (!assets.css || !assets.js) throw new Error('Local Vite build is required');
             const fixture = origin + '/__repair-management-fixture';
             await context.route(fixture, route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: `<!doctype html>
                 <html lang="fa" dir="rtl"><link rel="stylesheet" href="${assets.css}"><script type="module" src="${assets.js}"></script>
-                <body class="admin-site"><section class="simple-repair-details"><div>مشتری</div><div>دستگاه</div></section>
+                <body class="admin-site admin-body"><main id="main-content"><section class="simple-repair-details"><div>مشتری</div><div>دستگاه</div></section>
                 <form data-simple-repair>
                   <select name="status"><option value="repairing">در حال تعمیر</option><option value="ready">آماده تحویل</option></select>
                   <div data-repair-cost hidden><input name="repair_cost" data-money-input inputmode="numeric" disabled></div>
                   <select name="delivery_method"><option value="in_person">حضوری</option><option value="shipping">ارسال</option></select>
                   <div data-carrier-options hidden><select name="delivery_carrier" disabled><option value="">انتخاب نشده</option><option value="tipax">تیپاکس</option></select></div>
-                </form></body></html>` }));
+                </form></main></body></html>` }));
             await tab.goto(fixture);
             const cost = tab.locator('[name=repair_cost]');
             const carrier = tab.locator('[name=delivery_carrier]');
             const expect = (ok, reason) => { if (!ok) throw new Error(reason); };
             expect(await cost.isHidden() && await cost.isDisabled(), 'Earlier cost is hidden and omitted');
             await tab.selectOption('[name=status]', 'ready');
-            expect(await cost.isVisible() && await cost.isEnabled(), 'Ready status enables cost');
+            await cost.waitFor({state: 'visible'});
+            expect(await cost.isEnabled(), 'Ready status enables cost');
             expect(await cost.inputValue() === '', 'Unset amount starts empty');
             await cost.press('0');
             expect(await cost.inputValue() === '۰', 'Explicit zero is visible');

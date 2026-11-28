@@ -156,15 +156,6 @@
         }
     }
 
-    function hydrateCartFromSsr(dialog) {
-        const tpl = dialog.querySelector('template[data-ssr-cart]');
-        if (!tpl) return false;
-        const fragment = tpl.content.cloneNode(true);
-        if (!fragment.querySelector('[data-storefront-cart]')) return false;
-        applyCartDocument(dialog, fragment, cartEpoch, null);
-        return true;
-    }
-
     function preloadCart(dialog) {
         if (!dialog?.dataset.cartUrl || !dialog.hasAttribute('data-cart-preload') || cartPreloadPromise || cartRead || active === dialog) return;
         const epochAtStart = cartEpoch;
@@ -408,7 +399,7 @@
             commerce?.postMessage('cart-change');
             if (epoch !== cartEpoch) return;
             cartSnapshot = null;
-            cartDialog?.querySelector('template[data-ssr-cart]')?.remove();
+
             renderCartCount(count);
             if (!fromDrawer && !inPageCart) {
                 playFlyToCart(submitter || form);
@@ -653,7 +644,7 @@
         }
         if (Number.isInteger(payload.count)) {
             cartSnapshot = null;
-            cartDialog?.querySelector('template[data-ssr-cart]')?.remove();
+
             if (!pendingQtySync.has(entry.slug)) {
                 renderCartCount(payload.count);
                 syncProductControls(payload.quantities, payload.separate, payload.available);
@@ -853,8 +844,6 @@
                     cartSnapshot = null;
                     refreshCart(dialog);
                 }
-            } else if (dialog.hasAttribute('data-cart-preload') && cartEpoch === 0 && hydrateCartFromSsr(dialog)) {
-                // Rendered synchronously from SSR cart payload in 0ms; no network wait needed.
             } else if (dialog.dataset.cartEmptyGuest === '1' && cartEpoch === 0) {
                 const emptyTpl = dialog.querySelector('[data-empty-cart]');
                 if (emptyTpl) {
@@ -1049,7 +1038,7 @@
         if (active && active === cartDialog) refreshCart(active, {discard: true});
         else if (cartDialog && (!cartSnapshot || cartSnapshot.epoch !== cartEpoch)) preloadCart(cartDialog);
     });
-    if (cartDialog?.dataset.cartUrl && cartDialog.hasAttribute('data-cart-preload') && !cartDialog.querySelector('template[data-ssr-cart]') && !document.querySelector('[data-storefront-cart]')) {
+    if (cartDialog?.dataset.cartUrl && cartDialog.hasAttribute('data-cart-preload') && !document.querySelector('[data-storefront-cart]')) {
         const scheduleAfterLoad = () => {
             const idle = window.requestIdleCallback
                 ? fn => window.requestIdleCallback(fn, {timeout: 2500})

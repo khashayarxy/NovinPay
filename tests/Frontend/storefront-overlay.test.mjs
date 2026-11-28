@@ -123,7 +123,6 @@ test('Chromium: mobile bottom navigation still auto-hides on scroll after closin
             <p data-cart-status role="status" hidden></p><div data-live-cart></div><p data-cart-error hidden></p>
             <footer data-cart-footer hidden><div data-cart-summary></div><button data-cart-retry hidden>Retry</button></footer>
             <template data-empty-cart><p class="empty-cart">Empty</p></template>
-            <template data-ssr-cart><section data-storefront-cart data-cart-count="0" data-cart-empty="true"></section></template>
         </dialog>
         <script>window.requestAnimationFrame = fn => setTimeout(fn, 16);</script>
         <script>${source('storefront-scroll-lock')}</script>

@@ -2,7 +2,6 @@
 .homepage { background: #fff; color: #121d47; }
 .homepage h1, .homepage h2, .homepage h3 { color: #101a43; }
 .np-container { width: min(100% - 64px, 1200px); margin-inline: auto; }
-.np-icon { display: inline-block; width: 24px; height: 24px; flex: 0 0 auto; background: currentColor; mask: var(--icon) center / contain no-repeat; }
 .np-header { background: #fff; border-bottom: 1px solid #edf2f8; }
 .np-header__inner { display: flex; align-items: center; justify-content: space-between; gap: 30px; min-height: 54px; }
 .np-logo-link { display: inline-flex; border-radius: 6px; flex-shrink: 0; }

@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
+define('NOVINPAY_REQUEST_START', hrtime(true));
 
 // Determine if the application is in maintenance mode...
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
@@ -44,4 +45,17 @@ require __DIR__.'/../vendor/autoload.php';
 /** @var Application $app */
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
-$app->handleRequest(Request::capture());
+$request = Request::capture();
+$app->handleRequest($request);
+$finished = $request->attributes->get('performance_response_end');
+$threshold = (int) config('observability.performance.slow_request_ms');
+if (is_int($finished) && $threshold > 0 && ($postResponseMs = (hrtime(true) - $finished) / 1e6) >= $threshold) {
+    try {
+        logger()->channel('performance')->warning('Slow response send or termination', [
+            'incident_id' => $request->attributes->get('incident_id'),
+            'send_and_terminate_ms' => round($postResponseMs, 1),
+        ]);
+    } catch (Throwable) {
+        // The response has already been sent.
+    }
+}

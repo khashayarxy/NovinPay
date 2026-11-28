@@ -4,6 +4,8 @@ use App\Services\CustomerLogin;
 use App\Services\CustomerOtpSms;
 use App\Services\IndependentSupportOperators;
 use App\Services\IpPanel;
+use App\Services\Observability\PerformanceAlerts;
+use App\Services\Observability\TelegramTopicNotifier;
 use App\Services\OperationalReadiness;
 use App\Services\ZibalGateway;
 use App\Services\ZibalPayments;
@@ -54,6 +56,13 @@ Schedule::command('payments:reconcile')->everyMinute()->withoutOverlapping(10)
 
 Schedule::call(fn () => app(OperationalReadiness::class)->heartbeat())
     ->name('operations:heartbeat')->everyMinute()->withoutOverlapping(2);
+
+Artisan::command('novinpay:deliver-performance-alerts', function (PerformanceAlerts $alerts): int {
+    return $alerts->deliver() ? 0 : 1;
+})->purpose('Deliver pending performance alerts to Telegram');
+
+Schedule::command('novinpay:deliver-performance-alerts')->everyMinute()->withoutOverlapping(5)
+    ->when(fn () => app(TelegramTopicNotifier::class)->enabledFor('performance'));
 
 Schedule::command('novinpay:prune-ephemeral')
     ->everyFifteenMinutes()

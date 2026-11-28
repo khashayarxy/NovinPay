@@ -9,8 +9,7 @@ use App\Events\RepairPaymentLinkGenerated;
 use App\Http\Middleware\PreviewAwareSession;
 use App\Models\User;
 use App\Services\Notifications\UnifiedNotifier;
-use App\Services\Observability\ObservabilityMetrics;
-use App\Services\Observability\TelegramTopicNotifier;
+use App\Services\Observability\PerformanceAlerts;
 use App\Support\AdminAccess;
 use App\Support\Chat\ChatBridge;
 use App\Support\CustomerAuthThrottle;
@@ -19,6 +18,7 @@ use App\Support\SiteMaintenanceState;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -95,48 +95,61 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(RepairPaid::class, fn (RepairPaid $event) => app(UnifiedNotifier::class)->repairPaid($event->repairCase, $event->document, $event->transaction));
         Event::listen(RepairPaymentLinkGenerated::class, fn (RepairPaymentLinkGenerated $event) => app(UnifiedNotifier::class)->repairPaymentLinkGenerated($event->repairCase, $event->document, $event->paymentUrl));
 
+        Event::listen(function (RequestHandled $event): void {
+            $request = $event->request;
+            $started = $request->attributes->get('performance_started');
+            if (! is_int($started)) {
+                return;
+            }
+            $end = hrtime(true);
+            $entry = defined('NOVINPAY_REQUEST_START') ? NOVINPAY_REQUEST_START : $started;
+            $bootstrap = round(($started - $entry) / 1e6, 1);
+            $duration = round(($end - $entry) / 1e6, 1);
+            $database = (float) $request->attributes->get('performance_sql_ms', 0);
+            $request->attributes->set('performance_response_end', $end);
+            $request->attributes->set('performance_bootstrap_ms', $bootstrap);
+            $request->attributes->set('performance_response_ms', $duration);
+            $event->response->headers->set('X-Request-Id', $request->attributes->get('incident_id'));
+            $event->response->headers->set('Server-Timing', "app;dur={$duration}, boot;dur={$bootstrap}, db;dur=".round($database, 1), false);
+        });
+
         $slowQueryThreshold = (int) config('observability.performance.slow_query_ms', 500);
-        if ($slowQueryThreshold > 0) {
-            DB::listen(function (QueryExecuted $query) use ($slowQueryThreshold): void {
-                static $recording = false;
-                if ($recording || $query->time < $slowQueryThreshold) {
-                    return;
-                }
-                if (preg_match('/^\s*(?:create|alter|drop|truncate)\b/i', $query->sql)) {
-                    return;
-                }
-                if (preg_match('/\bcache_locks\b/i', $query->sql)
-                    && $query->time < max(5000, $slowQueryThreshold * 10)) {
-                    return;
-                }
+        DB::listen(function (QueryExecuted $query) use ($slowQueryThreshold): void {
+            static $recording = false;
+            $request = app()->bound('request') ? request() : null;
+            if ($request?->attributes->has('performance_started') && ! $request->attributes->has('performance_response_end') && ! $recording) {
+                $request->attributes->set('performance_sql_ms', $request->attributes->get('performance_sql_ms', 0) + $query->time);
+                $request->attributes->set('performance_query_count', $request->attributes->get('performance_query_count', 0) + 1);
+            }
+            if ($recording || $slowQueryThreshold <= 0 || $query->time < $slowQueryThreshold) {
+                return;
+            }
+            if (preg_match('/^\s*(?:create|alter|drop|truncate)\b/i', $query->sql)) {
+                return;
+            }
+            if (preg_match('/\bcache_locks\b/i', $query->sql)
+                && $query->time < max(5000, $slowQueryThreshold * 10)) {
+                return;
+            }
 
-                $recording = true;
-                try {
-                    // Never log raw bindings or literal values from SQL.
-                    $shape = preg_replace("/'[^']*'/", "'?'", $query->sql) ?? $query->sql;
-                    $shape = preg_replace('/\b\d+\b/', '?', $shape) ?? $shape;
-                    $shape = mb_substr(preg_replace('/\s+/u', ' ', trim($shape)) ?? '', 0, 220);
-                    $durationMs = (int) round($query->time);
-                    $path = app()->runningInConsole() ? 'cli' : '/'.ltrim(request()->path(), '/');
-
-                    Log::channel('performance')->warning('Slow DB query detected', [
-                        'connection' => $query->connectionName,
-                        'duration_ms' => $durationMs,
-                        'path' => $path,
-                        'sql_shape' => $shape,
-                    ]);
-
-                    app(ObservabilityMetrics::class)->increment('performance.slow_queries');
-                    app(TelegramTopicNotifier::class)->send(
-                        'performance',
-                        "🐢 کوئری کند دیتابیس\nمدت: {$durationMs}ms\nاتصال: {$query->connectionName}\nمسیر: {$path}\nالگو: {$shape}",
-                        'slow_query:'.md5($shape),
-                    );
-                } catch (Throwable) {
-                } finally {
-                    $recording = false;
-                }
-            });
-        }
+            $recording = true;
+            try {
+                // Never log raw bindings or literal values from SQL.
+                $shape = preg_replace("/'[^']*'/", "'?'", $query->sql) ?? $query->sql;
+                $shape = preg_replace('/\b\d+\b/', '?', $shape) ?? $shape;
+                $shape = mb_substr(preg_replace('/\s+/u', ' ', trim($shape)) ?? '', 0, 220);
+                $durationMs = (int) round($query->time);
+                app(PerformanceAlerts::class)->record('queries', 'Slow DB query detected', [
+                    'connection' => $query->connectionName,
+                    'duration_ms' => $durationMs,
+                    'path' => '/'.ltrim($request?->route()?->uri() ?? 'unmatched', '/'),
+                    'incident_id' => $request?->attributes->get('incident_id', 'cli') ?? 'cli',
+                    'sql_shape' => $shape,
+                ]);
+            } catch (Throwable) {
+            } finally {
+                $recording = false;
+            }
+        });
     }
 }

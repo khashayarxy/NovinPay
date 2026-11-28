@@ -1228,14 +1228,16 @@ runWhenDomReady(() => {
             const shouldOpen = !desktop.matches && open;
             adminNavigation.classList.toggle('is-open', shouldOpen);
             document.body.classList.toggle('admin-nav-open', shouldOpen);
+            const workspace = document.querySelector('.admin-workspace');
+            if (workspace) workspace.inert = shouldOpen;
+            if (sidebar) sidebar.inert = !desktop.matches && !shouldOpen;
+            if (shouldOpen) adminNavigation.querySelector('[data-admin-drawer-close]')?.focus();
             if (adminMobileToggle instanceof HTMLButtonElement) {
                 adminMobileToggle.setAttribute('aria-expanded', String(shouldOpen));
             }
         };
         const updateNavigation = () => {
-            if (desktop.matches) {
-                setMobileOpen(false);
-            }
+            setMobileOpen(false);
             if (sidebar instanceof HTMLElement) sidebar.hidden = false;
             if (toggle instanceof HTMLButtonElement) {
                 toggle.hidden = !desktop.matches;
@@ -1264,6 +1266,12 @@ runWhenDomReady(() => {
             if (event.key !== 'Escape' || desktop.matches || !adminNavigation.classList.contains('is-open')) return;
             setMobileOpen(false);
             adminMobileToggle?.focus();
+        });
+        document.querySelectorAll('[data-admin-drawer-close]').forEach((button) => {
+            button.addEventListener('click', () => {
+                setMobileOpen(false);
+                adminMobileToggle?.focus();
+            });
         });
         const groups = [...adminNavigation.querySelectorAll('.admin-nav-group')];
         const initialOpenGroup = groups.find((group) => group.hasAttribute('open')) || null;
@@ -2861,6 +2869,26 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 menu.open = false;
             });
         }
+    });
+
+    const adminMenus = document.querySelectorAll('[data-admin-menu]');
+    adminMenus.forEach(menu => {
+        const toggle = menu.querySelector('[data-admin-menu-toggle]');
+        const panel = document.getElementById(toggle.getAttribute('aria-controls'));
+        const setOpen = open => {
+            panel.hidden = !open;
+            toggle.setAttribute('aria-expanded', String(open));
+        };
+        toggle.addEventListener('click', () => setOpen(panel.hidden));
+        document.addEventListener('click', event => {
+            if (!menu.contains(event.target)) setOpen(false);
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !panel.hidden) {
+                setOpen(false);
+                toggle.focus();
+            }
+        });
     });
 
     if (document.body.classList.contains('admin-site')) {

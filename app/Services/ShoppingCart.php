@@ -119,6 +119,7 @@ class ShoppingCart
 
         $request->attributes->remove('storefront-cart-committed');
         $request->attributes->remove('storefront-cart-count');
+        $request->attributes->remove('storefront-cart-snapshot');
 
         if (! $usable($device)) {
             return;
@@ -229,6 +230,7 @@ class ShoppingCart
 
         $request->attributes->remove('storefront-cart-committed');
         $request->attributes->remove('storefront-cart-count');
+        $request->attributes->remove('storefront-cart-snapshot');
     }
 
     public function read(Request $request, bool $initialize = true): array
@@ -239,10 +241,15 @@ class ShoppingCart
 
         $scopes = $this->scopes($request, $initialize);
         $skipDb = ($scopes['fresh_device'] ?? false) && $scopes['account'] === null;
+        $snapshot = $request->attributes->get('storefront-cart-snapshot');
+        if (is_array($snapshot) && $snapshot['proof'] === $scopes['proof']) {
+            return $snapshot;
+        }
+
         $states = $skipDb ? [] : $this->states($scopes, false);
         $items = $this->combined($scopes, $states);
 
-        return [
+        $snapshot = [
             'items' => $items,
             'quantity' => array_column($items, 'quantity', 'slug'),
             'revision' => $this->revision($items),
@@ -251,6 +258,9 @@ class ShoppingCart
             'excluded' => array_keys(array_intersect_key(array_filter($states[$scopes['view']] ?? [], fn ($item) => $item === 0),
                 ($states[$scopes['device']] ?? []) + ($states[$scopes['account']] ?? []))),
         ];
+        $request->attributes->set('storefront-cart-snapshot', $snapshot);
+
+        return $snapshot;
     }
 
     public function change(Request $request, string $slug, string $action, int $quantity = 0, ?Product $product = null): int
@@ -377,6 +387,7 @@ class ShoppingCart
 
         $request->attributes->remove('storefront-cart-committed');
         $request->attributes->remove('storefront-cart-count');
+        $request->attributes->remove('storefront-cart-snapshot');
 
         return $count;
     }
@@ -535,8 +546,11 @@ class ShoppingCart
             return [];
         }
         sort($keys, SORT_STRING);
-        $query = DB::table('shopping_carts')->whereIn('scope', $keys)->orderBy('scope');
-        $rows = ($lock ? $query->lockForUpdate() : $query)->pluck('state', 'scope');
+        $query = DB::table('shopping_carts')->whereIn('scope', $keys);
+        if ($lock) {
+            $query->orderBy('scope')->lockForUpdate();
+        }
+        $rows = $query->pluck('state', 'scope');
 
         if ($lock && $rows->count() < count($keys)) {
             $missing = array_values(array_diff($keys, $rows->keys()->all()));

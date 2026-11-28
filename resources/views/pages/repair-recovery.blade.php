@@ -1,5 +1,6 @@
 @extends('layouts.app')
-@section('title', 'بازیابی کد پیگیری')
+@section('title', 'بازیابی کد پیگیری تعمیر')
+@section('meta_description', 'بازیابی کد پیگیری تعمیر نوین‌پی با شماره موبایل ثبت‌شده.')
 @section('content')
 <div class="np-container public-section repair-track-page">
     <div class="repair-track-shell">

@@ -1,2 +1,4 @@
-@import './app.css';
+@import 'tailwindcss';
+@import './shared.css';
+@import './simple-repair.css';
 @import './admin.css';

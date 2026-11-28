@@ -14,7 +14,7 @@ final class TelegramNotifier
             && trim((string) config('notifications.telegram.chat_id', '')) !== '';
     }
 
-    public function send(string $text): bool
+    public function send(string $text, ?string $buttonUrl = null, ?string $buttonLabel = null): bool
     {
         if (! $this->enabled() || trim($text) === '') {
             return false;
@@ -33,6 +33,9 @@ final class TelegramNotifier
                     'chat_id' => $chatId,
                     'text' => $text,
                     'disable_web_page_preview' => true,
+                    ...($buttonUrl !== null && $buttonLabel !== null ? [
+                        'reply_markup' => ['inline_keyboard' => [[['text' => $buttonLabel, 'url' => $buttonUrl]]]],
+                    ] : []),
                 ]);
 
             if ($response->successful() && $response->json('ok') === true) {

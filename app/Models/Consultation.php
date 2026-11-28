@@ -10,7 +10,7 @@ class Consultation extends Model
 {
     public const TOPICS = ['purchase' => 'مشاورهٔ خرید', 'repair' => 'پرسش دربارهٔ تعمیر', 'service' => 'خدمات کارتخوان', 'other' => 'سایر پرسش‌ها'];
 
-    public const STATUSES = ['new' => 'جدید', 'in_progress' => 'در حال بررسی', 'contacted' => 'تماس برقرار شده', 'closed' => 'بسته شده'];
+    public const STATUSES = ['new' => 'جدید', 'in_progress' => 'در حال پیگیری', 'contacted' => 'پاسخ داده شد', 'closed' => 'بسته شد'];
 
     protected $guarded = ['*'];
 

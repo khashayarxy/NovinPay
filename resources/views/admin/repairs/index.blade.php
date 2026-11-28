@@ -42,7 +42,7 @@
         </x-admin.empty-state>
     @else
         <div class="admin-table-wrap" role="region" aria-label="درخواست‌های آنلاین" tabindex="0">
-            <table class="admin-table admin-compact-table repair-list-table admin-clickable-table" role="table">
+            <table class="admin-table admin-table--cards admin-compact-table repair-list-table admin-clickable-table" role="table">
                 <thead role="rowgroup"><tr role="row">
                     <th scope="col" role="columnheader">کد پیگیری</th>
                     @if($canReadCustomer)<th scope="col" role="columnheader">مشتری</th>@endif

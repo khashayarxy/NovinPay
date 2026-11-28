@@ -1,5 +1,6 @@
 @props(['compact' => false])
 <footer @class(['np-footer', 'np-footer--compact' => $compact])>
+    <div class="np-footer-chat-slot" data-footer-chat-slot></div>
     @if ($compact)
         <div class="np-container np-footer__transaction">
             <a href="{{ route('home') }}">{{ config('business.name') }}</a>
