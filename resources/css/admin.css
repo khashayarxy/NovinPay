@@ -1835,7 +1835,7 @@ a.admin-stat-card:hover {
 }
 .simple-repair-details {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
     margin-block: 0.85rem;
 }
@@ -2086,6 +2086,7 @@ a.admin-stat-card:hover {
 
 @media (max-width: 800px) {
     .admin-shell { grid-template-columns: minmax(0, 1fr); }
+    .simple-repair-details { grid-template-columns: minmax(0, 1fr); }
     .admin-sidebar {
         position: fixed;
         z-index: 60;

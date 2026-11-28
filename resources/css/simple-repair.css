@@ -1,4 +1,3 @@
-.simple-repair-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
 .simple-repair-details dd{overflow-wrap:anywhere}
 .simple-repair-details > *{min-width:0}
 .repair-management-layout > *{min-width:0}
@@ -6,4 +5,3 @@
 .repair-delivery-options legend{font-weight:500;padding-inline-end:.5rem}
 .repair-history{display:grid;gap:.75rem;margin-block:1rem;overflow-wrap:anywhere}
 .repair-history li + li{border-block-start:1px solid #e2e8f0;padding-block-start:.75rem}
-@media(max-width:800px){.simple-repair-details{grid-template-columns:1fr}}

@@ -8,8 +8,11 @@ async page=>{
    await context.route('https://neshan.org/**',route=>{requests++;return route.fulfill({contentType:'text/html',body:'<!doctype html><p>synthetic interactive map</p>'});});
    await tab.goto('https://novinpaypos.test/',{waitUntil:'domcontentloaded'});
    const panel=tab.locator('[data-map-preview]'),button=panel.locator('[data-map-activate]');
-   await button.scrollIntoViewIfNeeded();await button.waitFor();await tab.waitForTimeout(200);
-   if(requests||await panel.locator('iframe').count())throw Error('eager map request');
+   if(requests||await panel.locator('iframe').count())throw Error('map fetched before approaching the viewport');
+   await button.scrollIntoViewIfNeeded();await button.waitFor();
+   await tab.waitForFunction(()=>document.querySelector('[data-map-preview]').dataset.mapState==='ready');
+   const frame=panel.locator('iframe');
+   if(requests!==1||await frame.getAttribute('aria-hidden')!=='true')throw Error('preview must load once and await activation');
    if(await tab.locator('[data-copy-address]').count())throw Error('obsolete copy action');
    if(!await tab.getByText('لطفاً پیش از مراجعه حضوری، تماس بگیرید.',{exact:true}).isVisible())throw Error('missing visit notice');
    const google=tab.getByRole('link',{name:/گوگل مپ/});
@@ -18,12 +21,12 @@ async page=>{
    if(Math.abs((before.x+before.width/2)-(cta.x+cta.width/2))>2)throw Error('button not centered');
    if(await tab.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('horizontal overflow');
    await button.focus();await button.press('Enter');
-   await tab.waitForFunction(()=>document.querySelector('[data-map-preview]').dataset.mapState==='ready');
+   await tab.waitForFunction(()=>document.querySelector('[data-map-preview]').dataset.mapActive==='true');
    const after=await panel.boundingBox();
    if(requests!==1||before.height!==after.height||before.width!==after.width)throw Error('duplicate request or layout shift');
    if(!await panel.locator('.np-map-fallback').isVisible())throw Error('lost external fallback');
    if(errors.length)throw Error(errors.join('; '));
-   results.push({width,preActivationRequests:0,activationRequests:requests,centered:true,keyboard:true,layoutShift:0,overflow:false});
+   results.push({width,previewRequests:1,activationRequests:requests,centered:true,keyboard:true,layoutShift:0,overflow:false});
   }finally{await context.close();}
  }
  return results;

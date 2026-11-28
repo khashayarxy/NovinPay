@@ -21,7 +21,7 @@ async page=>{
     }
     return reply(route,{status:'success',push_enabled:false,active:true});
    });
-   await p.goto(origin+'/',{waitUntil:'domcontentloaded'});
+   await p.goto(origin+'/products',{waitUntil:'domcontentloaded'});
    const launch=p.locator('[data-support-launcher]');await launch.evaluate(el=>el.addEventListener('click',()=>window.chatClick=performance.now(),{once:true}));await launch.click();
    const f=p.frameLocator('#supportWidgetFrame'),shell=f.locator('#chatWindow');
    await f.locator('#supportInit').waitFor({state:'visible'});

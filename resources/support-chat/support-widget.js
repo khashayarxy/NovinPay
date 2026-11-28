@@ -69,7 +69,7 @@ if(footerSlot && 'IntersectionObserver' in window){
  const placement=new IntersectionObserver(([entry])=>{
   if(entry.isIntersecting) footerSlot.append(button);
   else if(button.parentNode===footerSlot) document.body.insertBefore(button,frame);
- });
+ },{rootMargin:'0px 0px -168px 0px'});
  placement.observe(footer);
 }
 if(dialog)document.body.append(dialog);
