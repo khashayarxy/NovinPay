@@ -18,7 +18,7 @@
     $settledOrders = $settledOrderIds ?? [];
     $settledRepairs = $settledRepairIds ?? [];
 @endphp
-<div class="np-account np-container">
+<div class="np-account np-account-dashboard np-container">
     <header class="np-account-banner">
         <div>
             <p class="np-account-banner__eyebrow">حساب کاربری نوین‌پی</p>
@@ -144,7 +144,7 @@
                         <h2>{{ $section === 'overview' ? 'سفارش‌های اخیر' : 'سابقه سفارش‌ها' }}</h2>
                         @if($section === 'overview')
                             <a class="np-account-link" href="{{ route('account.index', ['section' => 'orders']) }}">همه سفارش‌ها</a>
-                        @else
+                        @elseif($orders->isNotEmpty())
                             <a class="np-account-link" href="{{ route('products.index') }}">مشاهده فروشگاه</a>
                         @endif
                     </div>
@@ -226,7 +226,7 @@
                                         <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', $deviceLabel))<bdi class="np-latin-code" dir="ltr">{{ $deviceLabel }}</bdi>@else{{ $deviceLabel }}@endif</span>
                                         <span class="np-account-row__meta">
                                             <span>کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
-                                            <span class="np-account-dot" aria-hidden="true">·</span>
+                                            <span class="np-account-dot" aria-hidden="true">|</span>
                                             <span><x-finance-time :value="$repair->received_at ?? $repair->created_at" :with-time="false" /></span>
                                         </span>
                                     </span>
@@ -268,7 +268,7 @@
                                         <span class="np-account-row__title">@if(preg_match('/[A-Za-z]/', $deviceLabel))<bdi class="np-latin-code" dir="ltr">{{ $deviceLabel }}</bdi>@else{{ $deviceLabel }}@endif</span>
                                         <span class="np-account-row__meta">
                                             <span>کد پیگیری <bdi dir="ltr">{{ \App\Support\FaNumber::digits($repair->tracking_reference) }}</bdi></span>
-                                            <span class="np-account-dot" aria-hidden="true">·</span>
+                                            <span class="np-account-dot" aria-hidden="true">|</span>
                                             <span><x-finance-time :value="$repair->created_at" :with-time="false" /></span>
                                         </span>
                                     </span>
@@ -366,12 +366,12 @@
             @endif
 
             @if($section === 'profile')
-                <section class="np-account-card">
+                <section class="np-account-card np-account-profile-card">
                     <h2>اطلاعات شخصی و تنظیمات اطلاع‌رسانی</h2>
                     <form method="post" class="np-account-form" data-prevent-double-submit action="{{ route('account.profile') }}">
                         @csrf
                         <input type="hidden" name="email_notifications_present" value="1">
-                        <div class="np-account-form__field">
+                        <div class="np-account-form__field np-account-profile-half">
                             <div class="np-float-field" data-float-field>
                                 <input id="profile-name" name="name" placeholder=" " value="{{ old('name', $account->name) }}" autocomplete="name" minlength="2" maxlength="100" @class(['is-invalid' => $errors->has('name')]) @error('name') aria-invalid="true" @enderror required>
                                 <label for="profile-name">نام و نام خانوادگی</label>
@@ -379,7 +379,7 @@
                             @error('name')<p class="np-field-error" role="alert">{{ $message }}</p>@enderror
                         </div>
 
-                        <div class="np-account-form__field">
+                        <div class="np-account-form__field np-account-profile-half">
                             <div class="np-float-field" data-float-field>
                                 <input id="profile-email" name="email" type="email" placeholder=" " value="{{ old('email', $account->email) }}" autocomplete="email" maxlength="254" dir="ltr" @class(['is-invalid' => $errors->has('email')]) @error('email') aria-invalid="true" @enderror>
                                 <label for="profile-email">نشانی ایمیل (اختیاری)</label>
@@ -444,7 +444,7 @@
                     $activeAddressFormKey = $errors->any() ? (string) old('address_form_key', '') : '';
                     $openNewAddress = $addresses->isEmpty() || $activeAddressFormKey === 'new';
                 @endphp
-                <section class="np-account-card" data-addresses-accordion>
+                <section class="np-account-card np-account-addresses-card" data-addresses-accordion>
                     <div class="np-account-card__heading">
                         <h2>آدرس‌های ذخیره‌شده</h2>
                     </div>
@@ -498,6 +498,7 @@
                     </div>
 
                     <div class="np-account-address np-account-address--new">
+                        @if($addresses->isNotEmpty())
                         <button
                             type="button"
                             class="np-account-add-btn"
@@ -508,6 +509,9 @@
                             <svg class="np-account-address__plus" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                             <span>افزودن آدرس جدید</span>
                         </button>
+                        @else
+                            <h3 class="np-account-address-subtitle">آدرس تحویل سفارش‌ها را ثبت کنید.</h3>
+                        @endif
                         <div id="account-new-address-panel" class="np-account-address-panel" data-address-accordion-panel {{ $openNewAddress ? '' : 'hidden' }}>
                             <x-account.address-form />
                         </div>
@@ -518,7 +522,8 @@
             @if($section === 'security')
                 <section class="np-account-card">
                     <h2>{{ $account->password ? 'تغییر رمز عبور' : 'انتخاب رمز عبور' }}</h2>
-                    @if(($canSetInitialPassword ?? false) || $recentOtp || $account->password)
+                    @php($showPasswordForm = ($canSetInitialPassword ?? false) || $recentOtp || $account->password)
+                    @if($showPasswordForm)
                         <form method="post" class="np-account-form" data-prevent-double-submit action="{{ route('account.password.update') }}">
                             @csrf
                             @if($account->password && !$recentOtp)
@@ -552,9 +557,11 @@
                             <button class="np-account-primary" type="submit">ذخیره رمز عبور</button>
                         </form>
                     @else
-                        <p>برای انتخاب رمز، از حساب خارج شوید و دوباره با کد تأیید وارد شوید.</p>
+                        <div class="np-account-security-info" role="status">
+                            <p>برای انتخاب رمز، از حساب خارج شوید و دوباره با کد تأیید وارد شوید.</p>
+                        </div>
                     @endif
-                    @if(session('customer_password_offer'))
+                    @if($showPasswordForm && session('customer_password_offer'))
                         <form method="post" class="mt-5" action="{{ route('account.password.skip') }}">@csrf<button class="np-account-link">فعلاً نمی‌خواهم</button></form>
                     @endif
                 </section>

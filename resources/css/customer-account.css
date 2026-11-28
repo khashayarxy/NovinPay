@@ -325,6 +325,24 @@
 
 .np-account-form { display: grid; gap: .6rem; max-width: 38rem; margin-block: 1rem; }
 .np-account-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+.np-account-dashboard :is(.np-account-profile-card, .np-account-addresses-card) .np-account-form {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    gap: 1rem;
+    margin-block: 1rem 0;
+}
+.np-account-dashboard :is(.np-account-profile-card, .np-account-addresses-card) .np-account-primary { width: 100%; }
+.np-account-dashboard .np-account-profile-card .np-account-form > * { grid-column: 1 / -1; min-width: 0; }
+.np-account-dashboard .np-account-profile-card .np-notify-pref-box { margin: 0; }
+.np-account-dashboard .np-account-addresses-card .np-account-add-btn[aria-expanded="true"] { display: none; }
+.np-account-dashboard .np-account-address-subtitle { font-size: .9rem; font-weight: 500; color: var(--account-muted); margin: 0; }
+.np-account-dashboard .np-account-security-info { margin-top: .85rem; padding: 1rem; border: 1px solid #dbe7f3; border-radius: 12px; background: #f8fbff; color: #334e68; line-height: 1.9; }
+.np-account-dashboard .np-account-security-info p { margin: 0; }
+@media (min-width: 721px) {
+    .np-account-dashboard .np-account-profile-card .np-account-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .np-account-dashboard .np-account-profile-card .np-account-form > .np-account-profile-half { grid-column: auto; }
+}
 .np-account-form__field { display: grid; gap: .35rem; align-content: start; min-width: 0; }
 .np-account-form label { font-weight: 500; margin-top: .25rem; }
 .np-account-form__field label { margin-top: 0; }
