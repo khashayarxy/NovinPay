@@ -23,7 +23,7 @@
              data-remove-scope="{{ $removeScope }}">
             <div class="purchase-stock-row">
                 <div @class(['stock', 'is-available' => $canAddToCart])>
-                    <strong>{{ $product->is_sample ? $product->stock_status->label() : $sale->stockLabel($product) }}</strong>
+                    <strong>@if ($canAddToCart && isset($inventory) && $inventory->available > 0)موجودی:@else{{ $product->is_sample ? $product->stock_status->label() : $sale->stockLabel($product) }}@endif</strong>
                     @if ($canAddToCart && isset($inventory) && $inventory->available > 0)
                         <span class="stock-availability-note">
                             {{ \App\Support\FaNumber::digits($inventory->available) }} عدد
@@ -79,7 +79,7 @@
     @endif
     <dl class="purchase-meta">
         @if ($sku)
-            <div><dt><x-storefront.icon name="identifier" />شناسه کالا</dt><dd><bdi dir="ltr">{{ $sku }}</bdi></dd></div>
+            <div><dt><x-storefront.icon name="identifier" />شناسه کالا</dt><dd class="purchase-meta__sku" dir="ltr" title="{{ $sku }}"><bdi dir="ltr">{{ $sku }}</bdi></dd></div>
         @endif
         @if ($product->category)
             <div><dt><x-storefront.icon name="shop" />دسته‌بندی</dt><dd><a href="{{ route('products.index', ['category' => $product->category->value]) }}">{{ $product->category->label() }}</a></dd></div>

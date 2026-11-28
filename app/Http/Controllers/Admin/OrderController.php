@@ -157,9 +157,11 @@ class OrderController extends Controller
     public function purgeDocuments(Request $request, SalesOrder $order, ActivationDocumentsService $service)
     {
         abort_unless($request->user()->can('orders.confirm') && CommerceAccess::contact(), 403);
-        $service->purgeOrderDocuments($order, $request->user());
+        $purged = $service->purgeOrderDocuments($order, $request->user());
 
-        return redirect()->route('admin.orders.show', $order)->with('success', 'فایل مدارک از تلگرام و حافظه موقت پاکسازی شد.');
+        return redirect()->route('admin.orders.show', $order)->with($purged ? 'success' : 'error', $purged
+            ? 'فایل مدارک از تلگرام و حافظه موقت پاکسازی شد.'
+            : 'پاک‌سازی کامل نشد؛ دوباره تلاش کنید.');
     }
 
     public function retryDocumentsTelegram(Request $request, SalesOrder $order, ActivationDocumentsService $service)

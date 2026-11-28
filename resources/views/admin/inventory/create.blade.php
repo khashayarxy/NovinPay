@@ -12,7 +12,7 @@
     <section class="admin-panel">
         <x-commerce-operation :action="route('admin.inventory.store')" title="تعریف کالا با موجودی صفر">
             <div class="admin-form-grid">
-                <x-operation-field name="sku" label="کد کالا (لاتین)" :maxlength="64"/>
+                <x-operation-field name="sku" label="کد کالا (لاتین)" :maxlength="20"/>
                 <x-operation-field name="name" label="عنوان کالا" :maxlength="150"/>
             </div>
             <div class="admin-form-grid">

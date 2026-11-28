@@ -22,7 +22,7 @@ class ZibalGateway
 
     public function isLocalSimulator(): bool
     {
-        return app()->isLocal() && ! $this->canVerify();
+        return app()->isLocal() && (bool) config('payments.zibal.simulator_enabled', false) && ! $this->canVerify();
     }
 
     public function available(): bool

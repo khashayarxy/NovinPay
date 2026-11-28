@@ -10,6 +10,7 @@ use App\Models\FinancialEntry;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
 use App\Models\User;
+use App\Services\Notifications\UnifiedNotifier;
 use App\Support\AdminHistory;
 use App\Support\FinanceAccess;
 use App\Support\FinanceInput;
@@ -17,6 +18,7 @@ use App\Support\FinanceMoney;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -105,6 +107,19 @@ final class FinancialOperations
                 event('finance.after-write', [$action, $entry->id]);
                 DB::table('financial_operations')->where('id', $operation->id)->update(['result_id' => $entry->id]);
                 AdminHistory::record(AdminAction::FinancePosted, 'financial_entry', $entry->id, $actor->id);
+                if ($action === 'issue' && $document?->repair_case_id) {
+                    $caseId = $document->repair_case_id;
+                    $documentId = $document->id;
+                    DB::afterCommit(static function () use ($caseId, $documentId): void {
+                        $case = RepairCase::query()->find($caseId);
+                        $issuedDocument = FinancialDocument::query()->find($documentId);
+                        if ($case && $issuedDocument) {
+                            app(UnifiedNotifier::class)->repairPaymentLinkGenerated($case, $issuedDocument,
+                                URL::temporarySignedRoute('payments.repair.link', now()->addDays(14), ['repair' => $case->public_id]));
+                            app(UnifiedNotifier::class)->repairStatusUpdated($case, 'صدور هزینه تعمیر');
+                        }
+                    });
+                }
 
                 return $entry->id;
             }, 3);

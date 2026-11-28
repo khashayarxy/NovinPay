@@ -7,6 +7,17 @@
 - Use targeted `rg` searches. Read only the documents and code needed for the task; reuse existing runners and conventions instead of creating another framework. Do not repeat completed setup or tests without a changed input or unresolved failure.
 - Verify claims against current code, locks and CI. `docs/TASK.md` has older phase numbering; README setup snippets and dated release reports are historical, not the current roadmap or permission to run commands.
 
+## Strict Scope-Lock & Approved-Component Protection (mandatory)
+
+1. **Strict Scope-Lock:** Modify ONLY the exact files, components, routes, and behaviors explicitly requested in the user's prompt.
+2. **Do Not Touch Approved UI or Working Features:** Never redesign, restyle, or refactor existing approved UI elements (such as the top header/navigation bar, layout shells, typography, or unrelated components) unless explicitly instructed.
+3. **No Unrequested "Bonus" Edits:** Do not make opportunistic cleanups, formatting sweeps, CSS overrides, or structural refactors outside the exact task scope.
+4. **Ask Before Expanding Scope:** If fixing a requested item appears to require altering a shared/global component (like header CSS or base layouts), stop and ask the user first instead of modifying it silently.
+5. **Check & Report Similar Occurrences:** Whenever you fix a bug or UI alignment flaw, scan the codebase for identical instances of the same issue. Respect Strict Scope-Lock—do NOT silently edit out-of-scope files, but explicitly list any matching occurrences in your report so the user can decide whether to fix them.
+6. **Reuse Approved UI Patterns:** When implementing or updating a UI block that has an already-approved equivalent elsewhere in the app (e.g., store address + routing/navigation buttons, badges, cards, dialogs), always reuse or extract that exact approved component/pattern instead of building a simplified or inconsistent duplicate.
+7. **Cross-Viewport Regression Guard (Desktop ↔ Mobile):** Fixing or optimizing layout/UI for desktop must never break mobile or small-screen viewports (and vice versa). After every UI change, verify both desktop and mobile/small-screen responsive rules. If a potential layout issue or regression is detected on another viewport outside the current task's scope, do NOT silently modify unrelated responsive rules—explicitly report it to the user and wait for their approval before fixing.
+8. **Streamlined Direct Deployment (No Bureaucracy):** When the user explicitly asks to deploy to production (`novinpaypos.com`), deploy directly and efficiently without wasting time on heavy preflight rituals, multi-layer encryption ceremonies, or unnecessary manual backup loops. Rely on clean git/rollback safety and only trigger a scheduled backup if the 72-hour backup window is actually due. Build assets, push/sync to production, run any needed non-destructive migrations, refresh Laravel caches, and run a fast live HTTP smoke check.
+
 ## Execution ownership rule
 
 - The agent (Antigravity) is strictly responsible for performing all file edits, host uploads/transfers, deployment file syncing, and database creation/migrations.

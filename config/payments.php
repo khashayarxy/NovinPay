@@ -2,6 +2,7 @@
 
 return [
     'zibal' => [
+        'simulator_enabled' => filter_var(env('ZIBAL_SIMULATOR_ENABLED', false), FILTER_VALIDATE_BOOL),
         'enabled' => (bool) env('ZIBAL_ENABLED', false),
         // Separate release switch: development never authorizes real provider requests.
         'live_requests' => (bool) env('ZIBAL_LIVE_REQUESTS', false),

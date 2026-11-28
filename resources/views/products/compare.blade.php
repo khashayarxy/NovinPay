@@ -28,7 +28,7 @@
                         <input type="hidden" name="products[]" value="{{ $product->slug }}">
                     @endforeach
                     <label class="sr-only" for="compare-add">افزودن محصول به مقایسه</label>
-                    <select class="input" id="compare-add" name="add" required>
+                    <select class="input" id="compare-add" name="add" data-custom-select required>
                         <option value="">افزودن محصول از همین دسته…</option>
                         @foreach ($choices as $option)
                             <option value="{{ $option->slug }}">{{ $option->displayName() }}</option>

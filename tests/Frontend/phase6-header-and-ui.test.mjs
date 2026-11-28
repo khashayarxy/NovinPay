@@ -62,9 +62,10 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
         const scrollLockJs = readFileSync(new URL('../../public/js/storefront-scroll-lock.js', import.meta.url), 'utf8');
         const premiumJs = readFileSync(new URL('../../public/js/storefront-premium.js', import.meta.url), 'utf8');
 
-        const buildHeaderFixture = () => `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>${css}</style></head>
-        <body class="public-site homepage">
+        const premiumCss = readFileSync(new URL('../../public/css/storefront-premium.css', import.meta.url), 'utf8');
+        const buildHeaderFixture = (premium = false) => `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>${css}\n${premium ? premiumCss : ''}</style></head>
+        <body class="public-site ${premium ? 'premium-storefront' : 'homepage'}">
             <header class="np-header" data-mobile-header>
                 <div class="np-container np-header__inner">
                     <a href="/" class="np-logo-link" aria-label="صفحهٔ اصلی نوین‌پی"><span class="np-wordmark" style="display:block;width:168px;height:34px;background:#098cf7;border-radius:6px"></span></a>
@@ -88,6 +89,7 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                             </a>
                             <a class="np-customer-trigger" id="desktop-cart-btn" href="/cart" data-storefront-open="cart-dialog" aria-haspopup="dialog" aria-label="سبد خرید">
                                 <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="10" cy="20" r="2"/></svg>
+                                <span class="store-cart-count">۷</span>
                             </a>
                         </div>
                         <div data-customer-entry data-customer-state="authenticated">
@@ -98,14 +100,27 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                     </div>
                 </div>
             </header>
-            <main id="main-content" style="min-height:600px"></main>
+            <main id="main-content" style="min-height:600px">
+                <aside class="purchase"><div class="purchase-stock-row">
+                    <div class="stock is-available"><strong>موجودی:</strong> <span class="stock-availability-note">۷ عدد</span></div>
+                    <div class="np-inline-stepper np-inline-stepper--purchase"><button type="button" class="np-inline-stepper__btn">+</button><span>۱</span><button type="button" class="np-inline-stepper__btn">×</button></div>
+                </div>
+                <form class="product-cart-form"><button class="primary" type="submit">خرید محصول</button></form>
+                <dl class="purchase-meta">
+                    <div><dt><svg viewBox="0 0 24 24"></svg>شناسه کالا</dt><dd class="purchase-meta__sku" dir="ltr" title="ACCEPTANCE-SYNTHETIC-CART" style="max-width:120px"><bdi dir="ltr">ACCEPTANCE-SYNTHETIC-CART</bdi></dd></div>
+                    <div><dt><svg viewBox="0 0 24 24"></svg>دسته‌بندی</dt><dd>دستگاه کارتخوان</dd></div>
+                </dl></aside>
+            </main>
             <nav class="global-store-nav" data-mobile-bottom-nav aria-label="راهبری فروشگاه"><a href="/">خانه</a></nav>
             <dialog id="search-dialog" class="search-dialog store-search-dialog" data-storefront-dialog aria-labelledby="search-title">
                 <div class="overlay-heading"><h2 id="search-title">جستجو در فروشگاه</h2><button type="button" data-storefront-close aria-label="بستن جستجو">×</button></div>
                 <form action="/products" method="get">
                     <label for="product-search">نام یا مدل دستگاه</label>
-                    <input id="product-search" name="q" type="search" placeholder="مثلاً ME31">
-                    <button type="submit" class="primary">جستجو</button>
+                    <div class="store-search-input-row">
+                        <input id="product-search" name="q" type="search" placeholder="مثلاً ME31">
+                        <button type="submit" class="primary" aria-label="جستجو"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/></svg></button>
+                    </div>
+                    <div class="search-quick-suggestions"><span>جستجوی سریع</span><a href="/products?q=ME31">ME31</a></div>
                 </form>
             </dialog>
             <script>${scrollLockJs}</script>
@@ -152,6 +167,36 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                     navCenterY: Math.round(navRect.top + navRect.height / 2),
                     custCenterY: Math.round(custRect.top + custRect.height / 2),
                     dialogOpened,
+                    navWidth: navRect.width,
+                    navHeight: navRect.height,
+                    navBorder: getComputedStyle(nav).borderWidth,
+                    navPadding: getComputedStyle(nav).padding,
+                    navGap: getComputedStyle(nav).gap,
+                    navLineHeight: getComputedStyle(nav).lineHeight,
+                    searchRow: document.querySelector('.store-search-input-row').getBoundingClientRect().toJSON(),
+                    suggestions: document.querySelector('.search-quick-suggestions').getBoundingClientRect().toJSON(),
+                    stock: document.querySelector('.purchase-stock-row .stock').getBoundingClientRect().toJSON(),
+                    stepper: document.querySelector('.np-inline-stepper--purchase').getBoundingClientRect().toJSON(),
+                    stockRadius: getComputedStyle(document.querySelector('.purchase-stock-row .stock')).borderRadius,
+                    stepperRadius: getComputedStyle(document.querySelector('.np-inline-stepper--purchase')).borderRadius,
+                    skuStyle: (() => {
+                        const sku = document.querySelector('.purchase-meta__sku');
+                        const style = getComputedStyle(sku);
+                        const text = document.createRange();
+                        text.selectNodeContents(sku.querySelector('bdi').firstChild);
+                        return {whiteSpace: style.whiteSpace, overflow: style.overflow, ellipsis: style.textOverflow,
+                            title: sku.title, direction: style.direction,
+                            lines: new Set([...text.getClientRects()].map(rect => Math.round(rect.top))).size};
+                    })(),
+                    purchaseGap: document.querySelector('.product-cart-form').getBoundingClientRect().top - document.querySelector('.purchase-stock-row').getBoundingClientRect().bottom,
+                    metaCenterOffsets: [...document.querySelectorAll('.purchase-meta > div')].map(row => {
+                        const label = row.querySelector('dt').getBoundingClientRect();
+                        const value = row.querySelector('dd').getBoundingClientRect();
+                        return Math.abs(label.top + label.height / 2 - value.top - value.height / 2);
+                    }),
+                    searchButton: document.querySelector('.store-search-input-row button').getBoundingClientRect().toJSON(),
+                    searchButtonLabel: document.querySelector('.store-search-input-row button').getAttribute('aria-label'),
+                    badgePaddingTop: getComputedStyle(document.querySelector('.store-cart-count')).paddingTop,
                 };
                 document.body.setAttribute('data-probe', JSON.stringify(payload));
             });
@@ -160,7 +205,7 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
 
         server = http.createServer((req, res) => {
             res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'});
-            res.end(buildHeaderFixture());
+            res.end(buildHeaderFixture(req.url === '/product'));
         });
         await new Promise((resolve, reject) => {
             server.once('error', reject);
@@ -168,16 +213,19 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
         });
         const origin = `http://127.0.0.1:${server.address().port}`;
 
-        for (const [w, h] of [[1280, 800], [1366, 768], [1440, 900], [1920, 1080], [390, 844]]) {
+        const homeMetrics = new Map();
+        const viewports = [[1280, 800], [1366, 768], [1440, 900], [1920, 1080], [390, 844]];
+        const scenarios = ['/', '/product'].flatMap(page => viewports.map(([w, h]) => [page, w, h]));
+        for (const [page, w, h] of scenarios) {
             const res = await runChrome(executable, [
                 '--headless=new',
                 '--disable-gpu',
                 '--no-sandbox',
-                `--user-data-dir=${path.join(directory, `p-${w}`)}`,
+                `--user-data-dir=${path.join(directory, `p-${page === '/' ? 'home' : 'product'}-${w}`)}`,
                 `--window-size=${w},${h}`,
                 '--virtual-time-budget=2500',
                 '--dump-dom',
-                origin + '/',
+                origin + page,
             ]);
             assert.equal(res.status, 0, `Chromium failed at ${w}x${h}: ${res.stderr}`);
             const match = res.stdout.match(/data-probe="([^"]+)"/);
@@ -189,7 +237,33 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
             assert.ok(probe.innerHeight <= 88, `Header must remain single-row (<=88px) at ${w}x${h}, got ${probe.innerHeight}px`);
             assert.equal(probe.dialogOpened, true, `Search modal must open cleanly when clicked at ${w}x${h}`);
 
+            assert.ok(probe.suggestions.top >= probe.searchRow.bottom, 'Quick search must sit below input and submit row');
+            assert.ok(probe.searchRow.width >= probe.suggestions.width - 1, 'Search row must fill dialog body');
+            assert.equal(probe.searchButton.width, 44, 'Icon submit must stay 44px wide');
+            assert.equal(probe.searchButton.height, 44, 'Icon submit must stay 44px high');
+            assert.equal(probe.searchButtonLabel, 'جستجو');
+            assert.equal(probe.badgePaddingTop, '1px');
+            if (page === '/product') {
+                assert.equal(probe.purchaseGap, 12, 'Purchase button must have a 12px gap below stock row');
+                assert.ok(probe.metaCenterOffsets.every(offset => offset <= 0.5), 'Meta labels and values must be vertically centered');
+                assert.equal(probe.stock.height, 44, 'Stock pill must be exactly 44px');
+                assert.equal(probe.stepper.height, 44, 'Stepper must be exactly 44px');
+                assert.ok(Math.abs(probe.stock.width - probe.stepper.width) <= 0.5, `Both pills must have equal widths at ${w}px: stock=${probe.stock.width}, stepper=${probe.stepper.width}`);
+                assert.equal(probe.stockRadius, probe.stepperRadius);
+                assert.equal(probe.skuStyle.whiteSpace, 'nowrap');
+                assert.equal(probe.skuStyle.overflow, 'hidden');
+                assert.equal(probe.skuStyle.ellipsis, 'ellipsis');
+                assert.equal(probe.skuStyle.direction, 'ltr');
+                assert.equal(probe.skuStyle.title, 'ACCEPTANCE-SYNTHETIC-CART');
+                assert.equal(probe.skuStyle.lines, 1, 'Long SKU must occupy exactly one line');
+                assert.ok(Math.abs(probe.stock.top - probe.stepper.top) <= 0.5, 'Stock and stepper must share the same top edge');
+            }
             if (probe.isDesktop) {
+                const keys = ['navWidth', 'navHeight', 'navBorder', 'navPadding', 'navGap', 'navLineHeight'];
+                const metrics = Object.fromEntries(keys.map(key => [key, probe[key]]));
+                if (page === '/') homeMetrics.set(w, metrics);
+                else assert.deepEqual(metrics, homeMetrics.get(w), 'Product nav must match homepage dimensions and styles');
+                assert.equal(probe.navBorder, '0px');
                 assert.equal(probe.mobileSearchDisplay, 'none', `.store-mobile-search must be hidden at ${w}x${h}`);
                 assert.ok(Math.abs(probe.logoCenterY - probe.navCenterY) <= 6, `Logo and nav must share single row at ${w}x${h}`);
                 assert.ok(Math.abs(probe.logoCenterY - probe.custCenterY) <= 6, `Logo and customer tools must share single row (no wrapping) at ${w}x${h}`);
