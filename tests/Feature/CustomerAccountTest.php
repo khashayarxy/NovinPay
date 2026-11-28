@@ -610,6 +610,9 @@ class CustomerAccountTest extends TestCase
             ->assertSee('تعمیر و تحویل')
             ->assertSee('<bdi class="np-latin" dir="ltr">FHDFJDK3243524</bdi>', false)
             ->assertSee('تغییر نحوهٔ تحویل')
+            ->assertSee('خودم ارسال می‌کنم')
+            ->assertSee('np-repair-device-card', false)
+            ->assertSee('np-repair-device-cost', false)
             ->assertSee('به پیک شما تحویل میدم');
 
         $ineligible = new RepairRequest;
@@ -659,6 +662,7 @@ class CustomerAccountTest extends TestCase
             ->assertSee('neshan.svg', false)
             ->assertSee('balad.svg', false)
             ->assertSee('گوگل مپ')
+            ->assertDontSee('— تلفن:')
             ->assertSeeInOrder(['repair-handover-panel--office', 'data-open-handover-modal']);
 
         $owner = User::factory()->superAdmin()->create();

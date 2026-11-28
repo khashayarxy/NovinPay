@@ -2867,7 +2867,7 @@ html:has(body.premium-storefront) {
 .premium-storefront .product-overview { display: contents; }
 .premium-storefront .product-overview .key-mobile dl { border: 0; overflow: visible; margin: 10px 0; }
 .premium-storefront .product-overview .key-mobile dl > div {
-    align-items: baseline; gap: 12px; padding: 6px 0;
+    align-items: center; gap: 12px; padding: 6px 0;
 }
 .premium-storefront .product-overview .key-mobile dl :is(dt, dd) {
     background: transparent; padding: 2px 0; border: 0;

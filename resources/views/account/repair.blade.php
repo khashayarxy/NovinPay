@@ -41,7 +41,7 @@
         </section>
 
         <div class="np-account-order-columns">
-            <section class="np-account-card">
+            <section class="np-account-card np-repair-device-card">
                 <h2>مشخصات دستگاه</h2>
                 <dl class="np-account-facts">
                     <div><dt>برند</dt><dd>{{ $repair->device_brand?->value ?? 'ثبت نشده' }}</dd></div>
@@ -71,7 +71,7 @@
                         @endif
                         <div><dt>وضعیت برآورد</dt><dd>{{ ['approved' => 'تأیید شده', 'rejected' => 'رد شده', 'pending' => 'در انتظار پاسخ'][$repair->currentEstimate->decisionStatus()] ?? 'نامشخص' }}</dd></div>
                     @endif
-                    <div><dt>هزینه تعمیر</dt><dd>{{ \App\Support\AdminRepairMoney::display($case ? $repair->repair_price_toman : null) }}</dd></div>
+                    <div><dt>هزینه تعمیر</dt><dd><span class="np-repair-device-cost">{{ \App\Support\AdminRepairMoney::display($case ? $repair->repair_price_toman : null) }}</span></dd></div>
                 </dl>
             </section>
 
@@ -125,7 +125,7 @@
                                     @foreach ($availableHandoverMethods as $key => $label)
                                         <label class="repair-choice-card repair-choice-card--handover-modal">
                                             <input type="radio" name="handover_method" value="{{ $key }}" @checked($currentHandover === $key) data-handover-radio>
-                                            <span>{{ $label }}</span>
+                                            <span>{{ $key === 'self_ship' ? 'خودم ارسال می‌کنم' : $label }}</span>
                                         </label>
                                     @endforeach
                                 </div>

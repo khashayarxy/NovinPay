@@ -55,6 +55,61 @@ function loadStorefrontCssBundle() {
     ].join('\n');
 }
 
+test('Repair device facts and product key rows stay centered without overflow on mobile and desktop', async t => {
+    const executable = findChrome();
+    if (!executable) { t.skip('Chromium unavailable'); return; }
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'novinpay-repair-facts-'));
+    const manifest = JSON.parse(readFileSync(path.join(rootDir, 'public/build/manifest.json'), 'utf8'));
+    const css = readFileSync(path.join(rootDir, 'public/build', manifest['resources/css/app.css'].file), 'utf8')
+        + readFileSync(path.join(rootDir, 'public/css/storefront-premium.css'), 'utf8');
+    const html = [
+        '<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>',
+        css, '</style><body class="public-site"><div class="np-account np-account-detail np-container np-account-repair-tracking"><div class="np-account-order-columns">',
+        '<section class="np-account-card np-repair-device-card"><h2>مشخصات دستگاه</h2><dl class="np-account-facts">',
+        '<div><dt>برند</dt><dd>Newland</dd></div>',
+        '<div><dt>شماره سریال</dt><dd><bdi dir="ltr">LONG-SERIAL-1234567890123456789012345678901234567890</bdi></dd></div>',
+        '<div><dt>شرح مشکل</dt><dd class="whitespace-pre-line">شرح چندخطی مشکل دستگاه که باید خوانا و متوازن نمایش داده شود<br>توضیحات بیشتر درباره باتری دستگاه و مشکل شارژ</dd></div>',
+        '<div><dt>هزینه تعمیر</dt><dd><span class="np-repair-device-cost">ثبت نشده</span></dd></div>',
+        '</dl></section><section class="np-account-card"><h2>گام بعدی و نحوهٔ تحویل دستگاه</h2><div class="repair-handover-panel repair-handover-panel--office"><p class="repair-office-address">نشانی مراجعهٔ حضوری فروشگاه</p><p class="repair-office-hours">تلفن: ۰۹۳۶۲۸۹۶۳۷۳</p></div></section></div></div>',
+        '<div class="premium-storefront"><div class="product-overview"><section class="key-mobile"><dl><div style="display:flex"><dt>باتری</dt><dd>ظرفیت باتری<br>۲۶۰۰ میلی‌آمپر ساعت</dd></div></dl></section></div></div>',
+        '<script>const rows=[...document.querySelectorAll(".np-repair-device-card .np-account-facts > div")];',
+        'const result={viewport:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth,rows:rows.map(row=>{const d=row.querySelector("dt").getBoundingClientRect(),v=row.querySelector("dd").getBoundingClientRect();return Math.abs(d.top+d.height/2-v.top-v.height/2);}),keyAlign:getComputedStyle(document.querySelector(".key-mobile dl > div")).alignItems};',
+        'parent.document.body.dataset.probe=JSON.stringify(result);</script></body></html>',
+    ].join('');
+    const server = http.createServer((req, res) => {
+        res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+        const url = new URL(req.url, 'http://localhost');
+        if (url.pathname === '/fixture') {
+            res.end(html);
+        } else {
+            const width = Number(url.searchParams.get('width'));
+            res.end('<!doctype html><html><body><iframe src="/fixture" style="width:' + width + 'px;height:900px;border:0"></iframe></body></html>');
+        }
+    });
+    try {
+        await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+        for (const width of [320, 390, 1024, 1440]) {
+            const result = await runChrome(executable, [
+                '--headless=new', '--disable-gpu', '--no-sandbox',
+                '--user-data-dir=' + path.join(directory, String(width)),
+                '--window-size=1600,1000', '--virtual-time-budget=1000', '--dump-dom',
+                'http://127.0.0.1:' + server.address().port + '/?width=' + width,
+            ]);
+            assert.equal(result.status, 0);
+            const match = result.stdout.match(/data-probe="([^"]+)"/);
+            assert.ok(match, 'Missing responsive probe at ' + width);
+            const probe = JSON.parse(match[1].replace(/&quot;/g, '"'));
+            assert.equal(probe.viewport, width, 'Requested viewport must be used');
+            assert.equal(probe.overflow, false, 'Horizontal overflow at ' + width);
+            assert.ok(probe.rows.every(delta => delta <= 1), 'Device labels and values must be centered at ' + width);
+            assert.equal(probe.keyAlign, 'center');
+        }
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+        rmSync(directory, {recursive: true, force: true});
+    }
+});
+
 test('Phase 10 static stylesheet contracts: admin enterprise design system and single support-chat startup state', () => {
     const adminCss = readFileSync(path.join(rootDir, 'resources/css/admin.css'), 'utf8');
     const customerV2Css = readFileSync(path.join(rootDir, 'resources/support-chat/support-client/customer-v2.css'), 'utf8');

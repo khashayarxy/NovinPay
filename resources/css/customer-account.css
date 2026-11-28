@@ -227,6 +227,30 @@
 .np-auth p, .np-account-card p { margin-block: .55rem; }
 .np-account-repair-tracking .repair-handover-panel--office :is(.repair-office-address, .repair-office-hours) { margin: 0; }
 .np-account-repair-tracking .np-account-order-stepper .np-timeline__status { display: none; }
+.np-account-repair-tracking .np-repair-device-card h2 { margin-bottom: 12px; }
+.np-account-repair-tracking .np-repair-device-card .np-account-facts { gap: 8px; margin: 0; }
+.np-account-repair-tracking .np-repair-device-card .np-account-facts > div {
+    display: grid;
+    grid-template-columns: minmax(0, .8fr) minmax(0, 1.6fr);
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid #edf2f7;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+.np-account-repair-tracking .np-repair-device-card :is(dt, dd) { min-width: 0; line-height: 1.9; }
+.np-account-repair-tracking .np-repair-device-card dt { color: #64748b; font-weight: 400; }
+.np-account-repair-tracking .np-repair-device-card dd { margin: 0; color: #102a43; text-align: start; }
+.np-account-repair-tracking .np-repair-device-cost {
+    display: inline-block;
+    max-width: 100%;
+    padding: 4px 9px;
+    border-radius: 8px;
+    background: #eaf4ff;
+    color: #075da6;
+    font-weight: 600;
+}
 .np-auth__edit { background: transparent; border: 0; padding: .1rem .25rem; color: var(--account-blue); font-size: .82rem; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .np-auth__edit:hover { color: #05469e; }
 .np-account-otp-error {

@@ -1,7 +1,8 @@
 <div {{ $attributes->class(['repair-handover-panel', 'repair-handover-panel--office']) }}>
     <h3>نشانی مراجعهٔ حضوری نوین‌پی</h3>
     <p class="repair-office-address">{{ config('business.address') }}</p>
-    <p class="repair-office-hours">ساعات کاری: <x-business-hours /> — تلفن: <a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></p>
+    <p class="repair-office-hours">ساعات کاری: <x-business-hours /></p>
+    <p class="repair-office-hours">تلفن: <a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></p>
     <div class="repair-inperson-routing">
         <span class="repair-inperson-routing__label">مسیریابی با:</span>
         <nav class="repair-inperson-routing__links" aria-label="مسیریابی مراجعه حضوری">
