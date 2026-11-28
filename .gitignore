@@ -31,3 +31,4 @@ upload-*.ps1
 /*.zip
 /*.sql
 /*.sql.gz
+.cpanel.env
