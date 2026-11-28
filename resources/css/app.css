@@ -2457,6 +2457,25 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     --np-float-bg: #f8fafc;
 }
 
+/* Dependent location fields share their muted surface with the floating label. */
+.np-float-field:has(select:is([data-iran-city], [data-repair-city]):disabled) {
+    --np-float-bg: #f8fafc;
+}
+
+.np-float-field:has(select:is([data-iran-city], [data-repair-city]):disabled) :is(select, [data-ss-input], .np-cs__trigger) {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #cbd5e1;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 1;
+    transition: none;
+}
+
+.np-float-field:has(select:is([data-iran-city], [data-repair-city]):disabled) > label {
+    color: #94a3b8;
+}
+
 /* Custom modern storefront dropdown component (.np-cs) */
 .np-cs-native {
     position: absolute !important;

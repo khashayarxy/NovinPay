@@ -351,7 +351,12 @@ runWhenDomReady(() => {
                 inputEl.value = selectEl.value || '';
                 wrapper.classList.toggle('is-floated', Boolean(inputEl.value.trim()));
                 if (key === 'city') {
+                    inputEl.disabled = selectEl.disabled;
                     inputEl.placeholder = provinceSelect?.value ? 'جستجو یا انتخاب شهر…' : 'ابتدا استان را انتخاب کنید…';
+                    if (inputEl.disabled) {
+                        inputEl.blur();
+                        closeList();
+                    }
                 }
             };
             const closeList = () => {
@@ -359,6 +364,7 @@ runWhenDomReady(() => {
                 inputEl.setAttribute('aria-expanded', 'false');
             };
             const renderList = (query = '') => {
+                if (inputEl.disabled) return closeList();
                 const q = normalizePersianSearch(query);
                 const opts = getOptions().filter((o) => !q || normalizePersianSearch(o.textContent).includes(q));
                 listEl.innerHTML = '';
@@ -519,8 +525,15 @@ runWhenDomReady(() => {
         const populateRepairCities = (targetCity = '') => {
             if (!(provinceSelect instanceof HTMLSelectElement) || !(citySelect instanceof HTMLSelectElement)) return;
             const prov = provinceSelect.value;
+            citySelect.disabled = !prov;
+            searchableWidgets.get('city')?.syncInputFromSelect();
             if (prov && Object.keys(iranLocations).length === 0 && iranLocationsEl?.dataset?.src) {
                 if (targetCity) citySelect.dataset.pendingCity = targetCity;
+                else {
+                    delete citySelect.dataset.pendingCity;
+                    citySelect.value = '';
+                    searchableWidgets.get('city')?.syncInputFromSelect();
+                }
                 ensureRepairIranLocations();
                 return;
             }
@@ -1211,11 +1224,7 @@ runWhenDomReady(() => {
         }
         syncOtherPersonField();
 
-        if (provinceSelect?.value) {
-            populateRepairCities(citySelect?.dataset.selectedCity || citySelect?.value || '');
-        } else {
-            syncPickupAvailability();
-        }
+        populateRepairCities(citySelect?.dataset.selectedCity || citySelect?.value || '');
         goToStep(currentStep);
     }
     const adminNavigation = document.querySelector('[data-admin-navigation]');
@@ -1431,6 +1440,9 @@ runWhenDomReady(() => {
             if (!(provinceSelect instanceof HTMLSelectElement) || !(citySelect instanceof HTMLSelectElement)) return;
             const populateCities = (preserveCity = '') => {
                 const province = provinceSelect.value;
+                citySelect.disabled = !province;
+                if (citySelect.disabled) citySelect.blur();
+                if (!province) preserveCity = '';
                 const cities = Array.isArray(iranLocations[province]) ? [...iranLocations[province]] : [];
                 if (preserveCity && !cities.includes(preserveCity)) cities.unshift(preserveCity);
                 citySelect.innerHTML = '';
@@ -1457,9 +1469,7 @@ runWhenDomReady(() => {
                 provinceSelect.closest('[data-float-field]')?.classList.toggle('is-floated', Boolean(provinceSelect.value) || document.activeElement === provinceSelect);
             };
             form._populateIranCities = populateCities;
-            if (provinceSelect.value) {
-                populateCities(citySelect.dataset.selectedCity || citySelect.value || '');
-            }
+            populateCities(citySelect.dataset.selectedCity || citySelect.dataset.initialCity || citySelect.value || '');
             provinceSelect.addEventListener('change', () => populateCities(''));
         });
     }
@@ -3542,6 +3552,10 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                     floatWrap.classList.toggle('is-floated', hasVal || open);
                 }
                 trigger.disabled = select.disabled;
+                if (select.matches('[data-iran-city]') && select.disabled) {
+                    trigger.blur();
+                    instance.close(false);
+                }
                 if (select.getAttribute('aria-invalid') === 'true' || select.classList.contains('is-invalid')) {
                     trigger.setAttribute('aria-invalid', 'true');
                 } else {

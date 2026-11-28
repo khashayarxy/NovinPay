@@ -19,6 +19,7 @@
     $selectedProvince = is_string($selectedProvince) ? $selectedProvince : '';
     $selectedCity = old('city', '');
     $selectedCity = is_string($selectedCity) ? $selectedCity : '';
+    $citiesForProvince = config('iran_locations', [])[$selectedProvince] ?? [];
     $selectedHandover = old('handover_method', '');
     $selectedHandover = is_string($selectedHandover) ? $selectedHandover : '';
     $pickupAddress = old('pickup_address', '');
@@ -239,11 +240,14 @@
                             </div>
                             <div class="public-field">
                                 <div class="np-searchable-select np-float-field" data-searchable-select="city" data-float-field>
-                                    <input type="text" id="repair_city_search" class="input np-searchable-select__input" placeholder="ابتدا استان را انتخاب کنید…" autocomplete="off" value="{{ $selectedCity }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_city_list">
+                                    <input type="text" id="repair_city_search" class="input np-searchable-select__input" placeholder="ابتدا استان را انتخاب کنید…" autocomplete="off" value="{{ $selectedCity }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_city_list" @disabled(empty($selectedProvince))>
                                     <label for="repair_city_search">شهر <span aria-hidden="true">*</span></label>
                                     <ul id="repair_city_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
-                                    <select id="repair_city" name="city" class="sr-only" tabindex="-1" data-repair-city data-selected-city="{{ $selectedCity }}" aria-invalid="{{ $errors->has('city') ? 'true' : 'false' }}">
-                                        <option value="">ابتدا استان را انتخاب کنید...</option>
+                                    <select id="repair_city" name="city" class="sr-only" tabindex="-1" data-repair-city data-selected-city="{{ $selectedCity }}" aria-invalid="{{ $errors->has('city') ? 'true' : 'false' }}" @disabled(empty($selectedProvince))>
+                                        <option value="">{{ $selectedProvince !== '' ? 'انتخاب شهر...' : 'ابتدا استان را انتخاب کنید...' }}</option>
+                                        @foreach ($citiesForProvince as $cityName)
+                                            <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <p class="public-field-error" data-field-error="city" role="alert" @unless($errors->has('city')) hidden @endunless>@error('city'){{ $message }}@enderror</p>

@@ -213,6 +213,40 @@ class MultiStepCheckoutZibalTest extends TestCase
             ->assertSee('پرداخت آنلاین فعلاً در دسترس نیست');
     }
 
+    public function test_city_selects_render_disabled_without_province_and_preserve_old_and_edit_values(): void
+    {
+        $this->seedCartItem();
+
+        foreach ([['province' => '', 'city' => ''], ['province' => 'البرز', 'city' => 'کرج']] as $old) {
+            foreach ([
+                '/cart/checkout' => 'checkout-city',
+                '/account?section=addresses' => 'new-address-city',
+                '/repair' => 'repair_city',
+            ] as $path => $id) {
+                $html = $this->withSession(['_old_input' => $old])
+                    ->get('https://novinpaypos.test'.$path)->assertOk()->getContent();
+                $dom = new \DOMDocument;
+                @$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+                $xpath = new \DOMXPath($dom);
+                $city = $xpath->query('//select[@id="'.$id.'"]')->item(0);
+                $this->assertInstanceOf(\DOMElement::class, $city);
+                $this->assertSame($old['province'] === '', $city->hasAttribute('disabled'), $path);
+                if ($old['city'] !== '') {
+                    $this->assertSame($old['city'], $xpath->query('option[@selected]', $city)->item(0)?->getAttribute('value'), $path);
+                }
+                if ($path === '/repair') {
+                    $input = $xpath->query('//input[@id="repair_city_search"]')->item(0);
+                    $this->assertSame($old['province'] === '', $input->hasAttribute('disabled'));
+                }
+                if ($id === 'new-address-city') {
+                    $edit = $xpath->query('//select[@id="'.$this->address->public_id.'-city"]')->item(0);
+                    $this->assertFalse($edit->hasAttribute('disabled'));
+                    $this->assertSame('شهریار', $xpath->query('option[@selected]', $edit)->item(0)?->getAttribute('value'));
+                }
+            }
+        }
+    }
+
     public function test_unlinked_account_and_high_value_pos_checkout_with_inline_profile_and_map_succeeds_without_403(): void
     {
         Event::fake([OrderPaid::class]);

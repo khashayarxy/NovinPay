@@ -60,7 +60,7 @@
         </div>
         <div class="np-account-form__field">
             <div class="np-float-field" data-float-field>
-                <select id="{{ $prefix }}-city" name="city" autocomplete="address-level2" data-iran-city data-initial-city="{{ $selectedCity }}" @class(['is-invalid' => $isThisForm && $errors->has('city')]) @if($isThisForm && $errors->has('city')) aria-invalid="true" @endif required>
+                <select id="{{ $prefix }}-city" name="city" autocomplete="address-level2" data-iran-city data-initial-city="{{ $selectedCity }}" @disabled(empty($selectedProvince)) @class(['is-invalid' => $isThisForm && $errors->has('city')]) @if($isThisForm && $errors->has('city')) aria-invalid="true" @endif required>
                     <option value="" disabled @selected(empty($selectedCity)) hidden></option>
                     @foreach($citiesForProvince as $cityName)
                         <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>
