@@ -22,6 +22,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -55,6 +56,23 @@ class OrdersInventoryTest extends TestCase
     private function item(bool $serialized = false, string $condition = 'new'): InventoryItem
     {
         return InventoryItem::findOrFail($this->command('item.create', ['sku' => 'SKU-'.Str::upper(Str::random(8)), 'name' => 'کالای آزمایشی', 'condition' => $condition, 'serialized' => $serialized, 'low_stock_threshold' => 2, 'reason' => 'Synthetic approved item']));
+    }
+
+    public function test_new_inventory_sku_accepts_twenty_characters_and_rejects_twenty_one(): void
+    {
+        $this->get('/admin/inventory/create')->assertOk()->assertSee('maxlength="20"', false);
+        $payload = ['sku' => str_repeat('A', 20), 'name' => 'SKU boundary item', 'condition' => 'new',
+            'serialized' => false, 'low_stock_threshold' => 0, 'reason' => 'SKU boundary validation'];
+        $id = $this->command('item.create', $payload);
+        $this->assertSame($payload['sku'], InventoryItem::findOrFail($id)->sku);
+
+        try {
+            $this->command('item.create', array_replace($payload, ['sku' => str_repeat('B', 21)]));
+            $this->fail('An SKU longer than twenty characters must be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('sku', $exception->errors());
+        }
+        $this->assertDatabaseCount('inventory_items', 1);
     }
 
     private function receive(InventoryItem $item, int $quantity, string $serials = ''): void

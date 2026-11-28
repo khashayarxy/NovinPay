@@ -327,8 +327,8 @@ runWhenDomReady(() => {
             device_model: modelInput,
             device_serial: serialInput,
             issue: issueInput,
-            province: repairStepper.querySelector('#repair_province_search') || provinceSelect,
-            city: repairStepper.querySelector('#repair_city_search') || citySelect,
+            province: provinceSelect,
+            city: citySelect,
             pickup_address: pickupAddressInput,
             pickup_notes: pickupNotesInput,
             responsive_phone: responsivePhoneInput,
@@ -338,99 +338,11 @@ runWhenDomReady(() => {
             repair_auth_code: repairStepper.querySelector('#repair_auth_code'),
         };
 
-        const searchableWidgets = new Map();
-        const initSearchableSelect = (key, selectEl) => {
-            const wrapper = repairStepper.querySelector(`[data-searchable-select="${key}"]`);
-            if (!(wrapper instanceof HTMLElement) || !(selectEl instanceof HTMLSelectElement)) return null;
-            const inputEl = wrapper.querySelector('[data-ss-input]');
-            const listEl = wrapper.querySelector('[data-ss-list]');
-            if (!(inputEl instanceof HTMLInputElement) || !(listEl instanceof HTMLElement)) return null;
-
-            const getOptions = () => [...selectEl.options].filter((o) => o.value !== '');
-            const syncInputFromSelect = () => {
-                inputEl.value = selectEl.value || '';
-                wrapper.classList.toggle('is-floated', Boolean(inputEl.value.trim()));
-                if (key === 'city') {
-                    inputEl.placeholder = provinceSelect?.value ? 'جستجو یا انتخاب شهر…' : 'ابتدا استان را انتخاب کنید…';
-                }
-            };
-            const closeList = () => {
-                listEl.hidden = true;
-                inputEl.setAttribute('aria-expanded', 'false');
-            };
-            const renderList = (query = '') => {
-                const q = normalizePersianSearch(query);
-                const opts = getOptions().filter((o) => !q || normalizePersianSearch(o.textContent).includes(q));
-                listEl.innerHTML = '';
-                if (opts.length === 0) {
-                    const empty = document.createElement('li');
-                    empty.className = 'np-searchable-select__empty';
-                    empty.textContent = getOptions().length === 0 ? 'ابتدا استان را انتخاب کنید' : 'موردی یافت نشد';
-                    listEl.append(empty);
-                } else {
-                    opts.forEach((opt) => {
-                        const li = document.createElement('li');
-                        li.className = 'np-searchable-select__option';
-                        li.setAttribute('role', 'option');
-                        li.setAttribute('aria-selected', String(opt.value === selectEl.value));
-                        li.textContent = opt.textContent;
-                        li.addEventListener('mousedown', (ev) => {
-                            ev.preventDefault();
-                            selectEl.value = opt.value;
-                            inputEl.value = opt.textContent;
-                            closeList();
-                            inputEl.blur();
-                            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
-                        });
-                        listEl.append(li);
-                    });
-                }
-                listEl.hidden = false;
-                inputEl.setAttribute('aria-expanded', 'true');
-            };
-
-            inputEl.addEventListener('focus', () => renderList(''));
-            inputEl.addEventListener('click', () => renderList(''));
-            inputEl.addEventListener('input', () => {
-                const qNorm = normalizePersianSearch(inputEl.value);
-                const exact = qNorm ? getOptions().find((o) => normalizePersianSearch(o.textContent) === qNorm) : null;
-                if (exact && selectEl.value !== exact.value) {
-                    selectEl.value = exact.value;
-                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
-                } else if (!inputEl.value.trim() && selectEl.value !== '') {
-                    selectEl.value = '';
-                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-                renderList(inputEl.value);
+        const syncLocationSelects = () => {
+            [provinceSelect, citySelect].forEach((select) => {
+                select?.dispatchEvent(new Event('np:select-refresh'));
             });
-            inputEl.addEventListener('blur', () => {
-                window.setTimeout(() => {
-                    closeList();
-                    syncInputFromSelect();
-                }, 140);
-            });
-            inputEl.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Escape') {
-                    closeList();
-                    syncInputFromSelect();
-                    inputEl.blur();
-                } else if (ev.key === 'Enter' && !listEl.hidden) {
-                    const first = listEl.querySelector('.np-searchable-select__option');
-                    if (first) {
-                        ev.preventDefault();
-                        first.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-                    }
-                }
-            });
-
-            const api = { syncInputFromSelect, closeList };
-            searchableWidgets.set(key, api);
-            syncInputFromSelect();
-            return api;
         };
-
-        initSearchableSelect('province', provinceSelect);
-        initSearchableSelect('city', citySelect);
 
         const setFieldError = (fieldName, message) => {
             const slot = repairStepper.querySelector(`[data-field-error="${fieldName}"]`);
@@ -519,8 +431,15 @@ runWhenDomReady(() => {
         const populateRepairCities = (targetCity = '') => {
             if (!(provinceSelect instanceof HTMLSelectElement) || !(citySelect instanceof HTMLSelectElement)) return;
             const prov = provinceSelect.value;
+            citySelect.disabled = !prov;
+            syncLocationSelects();
             if (prov && Object.keys(iranLocations).length === 0 && iranLocationsEl?.dataset?.src) {
                 if (targetCity) citySelect.dataset.pendingCity = targetCity;
+                else {
+                    delete citySelect.dataset.pendingCity;
+                    citySelect.value = '';
+                    syncLocationSelects();
+                }
                 ensureRepairIranLocations();
                 return;
             }
@@ -538,8 +457,7 @@ runWhenDomReady(() => {
                 if (city === targetCity) opt.selected = true;
                 citySelect.append(opt);
             });
-            searchableWidgets.get('province')?.syncInputFromSelect();
-            searchableWidgets.get('city')?.syncInputFromSelect();
+            syncLocationSelects();
             syncPickupAvailability();
         };
 
@@ -1211,11 +1129,7 @@ runWhenDomReady(() => {
         }
         syncOtherPersonField();
 
-        if (provinceSelect?.value) {
-            populateRepairCities(citySelect?.dataset.selectedCity || citySelect?.value || '');
-        } else {
-            syncPickupAvailability();
-        }
+        populateRepairCities(citySelect?.dataset.selectedCity || citySelect?.value || '');
         goToStep(currentStep);
     }
     const adminNavigation = document.querySelector('[data-admin-navigation]');
@@ -1431,6 +1345,9 @@ runWhenDomReady(() => {
             if (!(provinceSelect instanceof HTMLSelectElement) || !(citySelect instanceof HTMLSelectElement)) return;
             const populateCities = (preserveCity = '') => {
                 const province = provinceSelect.value;
+                citySelect.disabled = !province;
+                if (citySelect.disabled) citySelect.blur();
+                if (!province) preserveCity = '';
                 const cities = Array.isArray(iranLocations[province]) ? [...iranLocations[province]] : [];
                 if (preserveCity && !cities.includes(preserveCity)) cities.unshift(preserveCity);
                 citySelect.innerHTML = '';
@@ -1457,9 +1374,7 @@ runWhenDomReady(() => {
                 provinceSelect.closest('[data-float-field]')?.classList.toggle('is-floated', Boolean(provinceSelect.value) || document.activeElement === provinceSelect);
             };
             form._populateIranCities = populateCities;
-            if (provinceSelect.value) {
-                populateCities(citySelect.dataset.selectedCity || citySelect.value || '');
-            }
+            populateCities(citySelect.dataset.selectedCity || citySelect.dataset.initialCity || citySelect.value || '');
             provinceSelect.addEventListener('change', () => populateCities(''));
         });
     }
@@ -3448,11 +3363,14 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
     // Custom modern accessible dropdowns replacing native OS <select> popups on storefront forms
     const initCustomSelects = () => {
         const selects = document.querySelectorAll(
-            'select[data-custom-select], #delivery-address, #checkout-province, #checkout-city'
+            'select[data-custom-select], select[data-iran-province], select[data-iran-city], select[data-repair-province], select[data-repair-city], #delivery-address, #delivery-carrier'
         );
         if (!selects.length) return;
 
         const allInstances = [];
+        const normalizeSearch = (value) => String(value || '').toLowerCase()
+            .replace(/[يى]/gu, 'ی').replace(/ك/gu, 'ک')
+            .replace(/[\u064b-\u065f\u0670\u200b-\u200f\u0640\s]+/gu, '');
         const closeAllExcept = (active) => {
             allInstances.forEach((inst) => {
                 if (inst !== active) inst.close(false);
@@ -3461,7 +3379,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
 
         selects.forEach((select, idx) => {
             if (!(select instanceof HTMLSelectElement) || select.dataset.npCsReady === '1') return;
-            if (select.closest('.admin-shell')) return;
+            if (select.multiple || select.size > 1 || select.closest('.admin-shell, header, footer')) return;
             select.dataset.npCsReady = '1';
 
             const floatWrap = select.closest('.np-float-field');
@@ -3477,6 +3395,10 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             trigger.setAttribute('aria-haspopup', 'listbox');
             trigger.setAttribute('aria-expanded', 'false');
             trigger.setAttribute('aria-controls', listId);
+            trigger.setAttribute('aria-required', String(select.required));
+            if (select.getAttribute('aria-describedby')) {
+                trigger.setAttribute('aria-describedby', select.getAttribute('aria-describedby'));
+            }
             if (select.getAttribute('aria-invalid') === 'true' || select.classList.contains('is-invalid')) {
                 trigger.setAttribute('aria-invalid', 'true');
             }
@@ -3510,11 +3432,32 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             trigger.appendChild(valueSpan);
             trigger.appendChild(chevron);
 
+            const panel = document.createElement('div');
+            panel.className = 'np-cs__panel';
+            panel.hidden = true;
+            const supportsPopover = typeof panel.showPopover === 'function';
+            if (supportsPopover) panel.setAttribute('popover', 'manual');
+
+            const searchWrap = document.createElement('div');
+            searchWrap.className = 'np-cs__search-wrap';
+            const search = document.createElement('input');
+            search.type = 'search';
+            search.className = 'np-cs__search';
+            search.placeholder = 'جست‌وجو…';
+            search.setAttribute('aria-label', 'جست‌وجو در گزینه‌ها');
+            search.setAttribute('role', 'combobox');
+            search.setAttribute('aria-autocomplete', 'list');
+            search.setAttribute('aria-controls', listId);
+            search.setAttribute('aria-expanded', 'false');
+            search.autocomplete = 'off';
+            searchWrap.appendChild(search);
+
             const menu = document.createElement('ul');
             menu.id = listId;
             menu.className = 'np-cs__menu';
             menu.setAttribute('role', 'listbox');
             menu.hidden = true;
+            panel.append(searchWrap, menu);
 
             select.classList.add('np-cs-native');
             select.tabIndex = -1;
@@ -3523,10 +3466,14 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             select.parentNode.insertBefore(wrapper, select);
             wrapper.appendChild(select);
             wrapper.appendChild(trigger);
-            wrapper.appendChild(menu);
+            wrapper.appendChild(panel);
 
             let open = false;
             let activeIndex = -1;
+            let anchorTop = null;
+            const scrollSpace = document.createElement('div');
+            scrollSpace.setAttribute('aria-hidden', 'true');
+            scrollSpace.style.height = '240px';
 
             const visibleOptions = () =>
                 Array.from(select.options).filter((opt) => !opt.hidden && !(opt.value === '' && opt.disabled));
@@ -3534,7 +3481,7 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
             const syncDisplay = () => {
                 const selected = select.options[select.selectedIndex];
                 const hasVal = Boolean(selected && selected.value !== '');
-                const labelText = selected ? selected.textContent.trim() : '';
+                const labelText = selected ? selected.label.trim() : '';
                 valueSpan.textContent = hasVal ? labelText : (floatWrap ? '' : (labelText || 'انتخاب کنید...'));
                 valueSpan.classList.toggle('is-placeholder', !hasVal);
                 wrapper.classList.toggle('has-value', hasVal);
@@ -3542,6 +3489,10 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                     floatWrap.classList.toggle('is-floated', hasVal || open);
                 }
                 trigger.disabled = select.disabled;
+                if (select.disabled) {
+                    trigger.blur();
+                    instance.close(false);
+                }
                 if (select.getAttribute('aria-invalid') === 'true' || select.classList.contains('is-invalid')) {
                     trigger.setAttribute('aria-invalid', 'true');
                 } else {
@@ -3551,20 +3502,29 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
 
             const renderMenu = () => {
                 menu.innerHTML = '';
-                const opts = visibleOptions();
+                activeIndex = -1;
+                trigger.removeAttribute('aria-activedescendant');
+                search.removeAttribute('aria-activedescendant');
+                const allOptions = visibleOptions();
+                searchWrap.hidden = allOptions.filter((opt) => opt.value !== '').length <= 6;
+                if (searchWrap.hidden) search.value = '';
+                const query = normalizeSearch(search.value);
+                const opts = allOptions.filter((opt) => !query || normalizeSearch(opt.label).includes(query));
                 opts.forEach((opt, i) => {
                     const li = document.createElement('li');
                     li.className = 'np-cs__option';
+                    li.id = `${listId}-option-${i}`;
                     li.setAttribute('role', 'option');
                     li.dataset.value = opt.value;
                     li.dataset.index = String(i);
                     const isSelected = opt.selected && opt.value === select.value && opt.value !== '';
                     li.setAttribute('aria-selected', String(isSelected));
                     if (isSelected) li.classList.add('is-selected');
-                    if (opt.disabled) li.setAttribute('aria-disabled', 'true');
+                    const disabled = opt.disabled || (opt.parentElement instanceof HTMLOptGroupElement && opt.parentElement.disabled);
+                    if (disabled) li.setAttribute('aria-disabled', 'true');
 
                     const text = document.createElement('span');
-                    text.textContent = opt.textContent.trim();
+                    text.textContent = opt.label.trim();
 
                     const check = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                     check.setAttribute('class', 'np-cs__check');
@@ -3580,13 +3540,24 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
 
                     li.addEventListener('mousedown', (e) => e.preventDefault());
                     li.addEventListener('click', () => {
-                        if (opt.disabled) return;
+                        if (disabled || select.disabled) return;
                         selectValue(opt.value);
                         instance.close(true);
                     });
 
                     menu.appendChild(li);
                 });
+                if (!opts.length) {
+                    const empty = document.createElement('li');
+                    empty.className = 'np-cs__empty';
+                    empty.setAttribute('role', 'status');
+                    empty.textContent = 'گزینه‌ای پیدا نشد.';
+                    menu.appendChild(empty);
+                }
+                if (open) {
+                    setActive(0);
+                    positionPanel();
+                }
             };
 
             const setActive = (index) => {
@@ -3595,7 +3566,25 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 const clamped = ((index % items.length) + items.length) % items.length;
                 items.forEach((el, i) => el.classList.toggle('is-active', i === clamped));
                 activeIndex = clamped;
-                items[clamped].scrollIntoView({ block: 'nearest' });
+                trigger.setAttribute('aria-activedescendant', items[clamped].id);
+                search.setAttribute('aria-activedescendant', items[clamped].id);
+                const itemRect = items[clamped].getBoundingClientRect();
+                const menuRect = menu.getBoundingClientRect();
+                if (itemRect.top < menuRect.top) menu.scrollTop -= menuRect.top - itemRect.top;
+                else if (itemRect.bottom > menuRect.bottom) menu.scrollTop += itemRect.bottom - menuRect.bottom;
+            };
+
+            const positionPanel = () => {
+                const rect = trigger.getBoundingClientRect();
+                const viewport = window.visualViewport;
+                const viewportBottom = (viewport?.offsetTop || 0) + (viewport?.height || window.innerHeight);
+                panel.style.top = `${rect.bottom + 6}px`;
+                panel.style.left = `${rect.left}px`;
+                panel.style.width = `${rect.width}px`;
+                panel.style.maxHeight = `${Math.max(0, Math.min(240, viewportBottom - rect.bottom - 14))}px`;
+                // The top layer's origin can include a left scrollbar in RTL layouts.
+                panel.style.left = `${rect.left + rect.left - panel.getBoundingClientRect().left}px`;
+                anchorTop = rect.top;
             };
 
             const selectValue = (val) => {
@@ -3612,33 +3601,61 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 open() {
                     if (trigger.disabled || open) return;
                     closeAllExcept(instance);
+                    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+                    if (viewportHeight - trigger.getBoundingClientRect().bottom < 160) {
+                        trigger.scrollIntoView({ block: 'center', behavior: 'instant' });
+                        if (viewportHeight - trigger.getBoundingClientRect().bottom < 160) {
+                            // Supply scroll room when the final field is at the end of a page/dialog.
+                            (select.closest('dialog') || document.body).appendChild(scrollSpace);
+                            trigger.scrollIntoView({ block: 'center', behavior: 'instant' });
+                        }
+                    }
+                    search.value = '';
                     renderMenu();
                     open = true;
+                    panel.hidden = false;
                     menu.hidden = false;
+                    if (supportsPopover) panel.showPopover();
+                    else (select.closest('dialog') || document.body).appendChild(panel);
+                    positionPanel();
                     wrapper.classList.add('is-open');
                     trigger.setAttribute('aria-expanded', 'true');
+                    search.setAttribute('aria-expanded', 'true');
                     if (floatWrap) floatWrap.classList.add('is-floated');
                     const items = Array.from(menu.querySelectorAll('.np-cs__option:not([aria-disabled="true"])'));
                     const selIdx = items.findIndex((el) => el.classList.contains('is-selected'));
                     setActive(selIdx >= 0 ? selIdx : 0);
+                    if (!searchWrap.hidden) search.focus({ preventScroll: true });
                 },
                 close(returnFocus) {
                     if (!open) return;
                     open = false;
+                    if (supportsPopover && panel.matches(':popover-open')) panel.hidePopover();
+                    panel.hidden = true;
                     menu.hidden = true;
+                    scrollSpace.remove();
+                    search.value = '';
                     wrapper.classList.remove('is-open');
                     trigger.setAttribute('aria-expanded', 'false');
+                    search.setAttribute('aria-expanded', 'false');
+                    trigger.removeAttribute('aria-activedescendant');
+                    search.removeAttribute('aria-activedescendant');
                     syncDisplay();
-                    if (returnFocus) trigger.focus();
+                    if (returnFocus && !trigger.disabled) trigger.focus({ preventScroll: true });
                 },
                 toggle() {
                     if (open) instance.close(true);
                     else instance.open();
                 },
+                contains(target) { return wrapper.contains(target) || panel.contains(target); },
+                onScroll(target) {
+                    if (open && !panel.contains(target) && Math.abs(trigger.getBoundingClientRect().top - anchorTop) > 1) instance.close(false);
+                },
+                onResize() { if (open) positionPanel(); },
             };
 
             trigger.addEventListener('click', () => instance.toggle());
-            trigger.addEventListener('keydown', (e) => {
+            const onKeyDown = (e) => {
                 if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                     e.preventDefault();
                     if (!open) {
@@ -3646,14 +3663,14 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                     } else {
                         setActive(activeIndex + (e.key === 'ArrowDown' ? 1 : -1));
                     }
-                } else if (e.key === 'Home' && open) {
+                } else if (e.key === 'Home' && open && e.target === trigger) {
                     e.preventDefault();
                     setActive(0);
-                } else if (e.key === 'End' && open) {
+                } else if (e.key === 'End' && open && e.target === trigger) {
                     e.preventDefault();
                     const items = menu.querySelectorAll('.np-cs__option:not([aria-disabled="true"])');
                     setActive(items.length - 1);
-                } else if (e.key === 'Enter' || e.key === ' ') {
+                } else if (e.key === 'Enter' || (e.key === ' ' && e.target === trigger)) {
                     e.preventDefault();
                     if (!open) {
                         instance.open();
@@ -3670,18 +3687,28 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
                 } else if (e.key === 'Tab' && open) {
                     instance.close(false);
                 }
-            });
+            };
+            trigger.addEventListener('keydown', onKeyDown);
+            search.addEventListener('keydown', onKeyDown);
+            search.addEventListener('input', renderMenu);
+            select.addEventListener('focus', () => trigger.focus({ preventScroll: true }));
+            select.addEventListener('np:select-refresh', syncDisplay);
+            select.form?.addEventListener('reset', () => queueMicrotask(() => {
+                instance.close(false);
+                syncDisplay();
+            }));
 
             select.addEventListener('change', () => {
                 syncDisplay();
                 if (open) renderMenu();
             });
 
-            const observer = new MutationObserver(() => {
+            const observer = new MutationObserver((records) => {
+                if (records.some((record) => record.type === 'childList')) search.value = '';
                 syncDisplay();
                 if (open) renderMenu();
             });
-            observer.observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'aria-invalid', 'class'] });
+            observer.observe(select, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['disabled', 'aria-invalid', 'class', 'hidden', 'selected', 'value', 'label'] });
 
             syncDisplay();
             allInstances.push(instance);
@@ -3689,10 +3716,14 @@ document.querySelectorAll('[data-checkout-stepper]').forEach((stepper) => {
 
         document.addEventListener('click', (e) => {
             const target = e.target;
-            if (!(target instanceof Element) || !target.closest('.np-cs')) {
-                closeAllExcept(null);
-            }
+            allInstances.forEach((instance) => { if (!(target instanceof Node) || !instance.contains(target)) instance.close(false); });
         });
+        document.addEventListener('focusin', (event) => {
+            allInstances.forEach((instance) => { if (!instance.contains(event.target)) instance.close(false); });
+        });
+        document.addEventListener('scroll', (event) => allInstances.forEach((instance) => instance.onScroll(event.target)), true);
+        window.addEventListener('resize', () => allInstances.forEach((instance) => instance.onResize()));
+        window.visualViewport?.addEventListener('resize', () => allInstances.forEach((instance) => instance.onResize()));
     };
 
     initCustomSelects();

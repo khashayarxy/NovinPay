@@ -7,6 +7,7 @@ use App\Models\CustomerAccount;
 use App\Models\DeliveryPlan;
 use App\Models\FinancialDocument;
 use App\Models\FinancialEntry;
+use App\Models\InventoryItem;
 use App\Models\PaymentAttempt;
 use App\Models\RepairCase;
 use App\Models\SalesOrder;
@@ -150,6 +151,16 @@ class ZibalPayments
                 abort_unless($prior->customer_account_id === $freshAccount->id && $prior->amount_minor === $amountMinor, 409);
 
                 return [$prior, false];
+            }
+
+            foreach ($lockedOrder->lines()->where('is_current', true)->orderBy('inventory_item_id')->get() as $line) {
+                $item = InventoryItem::query()->lockForUpdate()->find($line->inventory_item_id);
+                $reserved = (int) DB::table('stock_reservations')->where('sales_order_line_id', $line->id)->where('status', 'active')->sum('quantity');
+                abort_unless($item && $item->available + $reserved >= $line->quantity, 409, 'موجودی کالا تغییر کرده است؛ سبد را بررسی کنید.');
+                if ($item->serialized) {
+                    $freeUnits = $item->units()->where('state', 'on_hand')->orderBy('id')->lockForUpdate()->get(['id'])->count();
+                    abort_unless($freeUnits + $reserved >= $line->quantity, 409, 'موجودی کالا تغییر کرده است؛ سبد را بررسی کنید.');
+                }
             }
 
             $document = FinancialDocument::query()->where('sales_order_id', $lockedOrder->id)->lockForUpdate()->first();

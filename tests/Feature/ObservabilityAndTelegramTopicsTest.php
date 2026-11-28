@@ -238,6 +238,7 @@ class ObservabilityAndTelegramTopicsTest extends TestCase
 
     public function test_client_telemetry_validates_sanitizes_caps_size_and_rate_limits(): void
     {
+        config(['observability.client_telemetry.enabled' => true]);
         $this->enableTelegramTopics();
         Http::fake(['*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]], 200)]);
         Cache::flush();
@@ -251,8 +252,8 @@ class ObservabilityAndTelegramTopicsTest extends TestCase
 
         // Valid payload accepted (204), sanitized, and sent to errors topic
         $res = $this->postJson('/telemetry/client-error', [
-            'message' => 'TypeError for 09123456789 and test@example.com',
-            'source' => 'https://novinpaypos.com/build/app.js?token=secret123',
+            'message' => "TypeError\nfor 09123456789 and test@example.com",
+            'source' => "https://novinpaypos.com/build/app.js\rsource?token=secret123",
             'line' => 42,
             'column' => 7,
             'path' => '/products?search=pos&phone=09123456789',
@@ -267,6 +268,8 @@ class ObservabilityAndTelegramTopicsTest extends TestCase
             return ($request['message_thread_id'] ?? null) === 17
                 && ! str_contains($text, '09123456789')
                 && ! str_contains($text, 'test@example.com')
+                && ! str_contains($text, "TypeError\nfor")
+                && ! str_contains($text, "app.js\rsource")
                 && ! str_contains($text, 'secret123');
         });
 
@@ -281,6 +284,15 @@ class ObservabilityAndTelegramTopicsTest extends TestCase
             'message' => 'Eleventh request must be throttled',
             'path' => '/repair',
         ])->assertStatus(429);
+    }
+
+    public function test_disabled_client_telemetry_rejects_direct_submission(): void
+    {
+        config(['observability.client_telemetry.enabled' => false]);
+        Http::fake();
+
+        $this->postJson('/telemetry/client-error', ['message' => 'test'])->assertNotFound();
+        Http::assertNothingSent();
     }
 
     public function test_sms_categorization_counts_categories_without_leaking_otp_and_alerts_failures(): void

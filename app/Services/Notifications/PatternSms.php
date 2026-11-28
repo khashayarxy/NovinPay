@@ -115,7 +115,7 @@ final class PatternSms
             // Preserve existing claims across provider switches and method-specific repair_created variants.
             $dedupeEvent = str_starts_with($event, 'repair_created') ? 'repair_created' : $event;
             $key = 'panelchi:'.hash('sha256', $dedupeEvent.':'.$identity);
-            if (! Cache::store('database')->add($key, true, now()->addYear())) {
+            if (! Cache::store('database')->add($key, true, $event === 'repair_payment' ? now()->addMinute() : now()->addYear())) {
                 Log::debug('SMS pattern duplicate suppressed', $context);
 
                 return;

@@ -183,7 +183,7 @@
                                 </div>
                                 <div class="checkout-field">
                                     <div class="np-float-field" data-float-field>
-                                        <select id="checkout-city" name="city" class="checkout-input @error('city') is-invalid @enderror" data-iran-city data-selected-city="{{ $selectedCity }}">
+                                        <select id="checkout-city" name="city" class="checkout-input @error('city') is-invalid @enderror" data-iran-city data-selected-city="{{ $selectedCity }}" @disabled(empty($selectedProvince))>
                                             <option value="" disabled @selected(empty($selectedCity)) hidden></option>
                                             @foreach ($citiesForProvince as $cityName)
                                                 <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>

@@ -12,6 +12,8 @@ final class ClientTelemetryController extends Controller
 {
     public function store(Request $request, ObservabilityMetrics $metrics, TelegramTopicNotifier $topics): Response
     {
+        abort_unless(config('observability.client_telemetry.enabled'), 404);
+
         if (strlen($request->getContent()) > 4096) {
             abort(413, 'Payload too large.');
         }
@@ -29,7 +31,8 @@ final class ClientTelemetryController extends Controller
             if ($value === null || trim($value) === '') {
                 return null;
             }
-            $clean = preg_replace('/\?.*$/', '', trim($value)) ?? trim($value);
+            $clean = preg_replace('/[\x00-\x1F\x7F-\x9F]/u', ' ', trim($value)) ?? '';
+            $clean = preg_replace('/\?.*$/', '', $clean) ?? $clean;
             $clean = preg_replace('/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/', '[REDACTED_EMAIL]', $clean) ?? $clean;
             $clean = preg_replace('/(?:\+98|0)9[0-9]{9}/', '[REDACTED_PHONE]', $clean) ?? $clean;
 

@@ -25,11 +25,12 @@
             </span>
             <span
                 class="badge {{ $sale === \App\Support\ProductSale::Online ? 'badge-success' : 'badge-warning' }}">
-                {{ $status }}
+                @if ($sale === \App\Support\ProductSale::Online && $quantity > 0)
+                    موجودی: {{ \App\Support\FaNumber::digits($quantity) }} عدد
+                @else
+                    {{ $status }}
+                @endif
             </span>
-            @if ($sale === \App\Support\ProductSale::Online && $quantity > 0)
-                <span class="text-sm">{{ \App\Support\FaNumber::digits($quantity) }} عدد</span>
-            @endif
             @if ($product->isPrivatePaymentTest())
                 <span class="badge badge-sample">خصوصی · تست درگاه</span>
             @endif

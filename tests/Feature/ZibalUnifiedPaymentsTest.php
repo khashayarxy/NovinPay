@@ -419,6 +419,9 @@ class ZibalUnifiedPaymentsTest extends TestCase
         }
         $payment = Http::recorded(fn ($request) => $request['code'] === 'a7h9o09htzyjk17')->sole()[0];
         $this->assertSame($case->public_id, RepairPaymentCode::resolve($payment['params']['pay_code'])['repair']);
+        $this->travel(2)->minutes();
+        $notifier->repairPaymentLinkGenerated($case, $document, $url);
+        Http::assertSentCount(count($expected) + 1);
     }
 
     public function test_panelchi_missing_config_does_not_claim_events_and_provider_errors_are_sanitized(): void
@@ -537,6 +540,76 @@ class ZibalUnifiedPaymentsTest extends TestCase
         return [$order, $document];
     }
 
+    public function test_simulator_requires_explicit_opt_in_and_rejects_production(): void
+    {
+        $this->app->instance('env', 'local');
+        config(['payments.zibal.simulator_enabled' => false, 'payments.zibal.live_requests' => false]);
+        $this->assertFalse(app(ZibalGateway::class)->isLocalSimulator());
+        config(['payments.zibal.simulator_enabled' => true]);
+        $this->assertTrue(app(ZibalGateway::class)->isLocalSimulator());
+        $this->app->instance('env', 'production');
+        $this->assertFalse(app(ZibalGateway::class)->isLocalSimulator());
+    }
+
+    public function test_paid_draft_without_reservable_lines_requires_review(): void
+    {
+        Event::fake([OrderPaid::class]);
+
+        [$order, $document] = $this->createPayableOrder(2500000); // 25,000.00 Toman = 250,000 Rial
+
+        $order->forceFill(['status' => 'draft'])->save();
+
+        Http::fake([
+            'https://gateway.zibal.ir/v1/request' => Http::response(['result' => 100, 'trackId' => 987654321], 200),
+        ]);
+
+        $this->actingAs($this->account, 'customer')
+            ->withSession(['customer_session_version' => 1]);
+
+        $start = $this->post('https://novinpaypos.test/payments/documents/'.$document->public_id.'/zibal', [
+            'amount' => '25000.00',
+            'operation_key' => (string) Str::uuid(),
+        ]);
+
+        $attempt = PaymentAttempt::query()->sole();
+        $this->assertSame(2500000, $attempt->amount_minor);
+        $this->assertSame(250000, $attempt->amount_rial);
+        $this->assertSame('987654321', $attempt->track_id);
+        $this->assertSame('pending', $attempt->state);
+        $start->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/connect');
+
+        Http::fake([
+            'https://gateway.zibal.ir/v1/verify' => Http::response([
+                'result' => 100,
+                'status' => 1,
+                'amount' => 250000,
+                'orderId' => $attempt->public_id,
+                'trackId' => 987654321,
+                'paidAt' => '2026-11-23T01:05:00',
+            ], 200),
+        ]);
+
+        $callback = $this->get('https://novinpaypos.test/payments/zibal/callback?trackId=987654321&orderId='.$attempt->public_id);
+        $callback->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/result');
+
+        $this->assertSame('pending_review', $order->fresh()->status);
+        $this->assertSame('settled', $attempt->fresh()->state);
+        $this->assertSame(2500000, $document->fresh()->paid_minor);
+
+        // Idempotent replay of callback must NOT double-verify or double-dispatch OrderPaid.
+        $this->get('https://novinpaypos.test/payments/zibal/callback?trackId=987654321&orderId='.$attempt->public_id)
+            ->assertRedirect('https://novinpaypos.test/payments/'.$attempt->public_id.'/result');
+
+        Event::assertDispatchedTimes(OrderPaid::class, 1);
+        Event::assertDispatched(OrderPaid::class, fn (OrderPaid $e) => $e->order->id === $order->id && $e->document->id === $document->id);
+
+        $this->get('https://novinpaypos.test/payments/'.$attempt->public_id.'/result')
+            ->assertOk()
+            ->assertSee('پرداخت با موفقیت انجام شد')
+            ->assertSee('۹۸۷۶۵۴۳۲۱')
+            ->assertSee('پیگیری سفارش')->assertSee(route('account.orders.show', $order->public_id));
+    }
+
     private function createPayableRepair(int $minor): array
     {
         $tracking = '40219900';
@@ -616,6 +689,7 @@ class ZibalUnifiedPaymentsTest extends TestCase
 
     public function test_local_simulator_outcomes_paid_cancelled_failed_work_when_app_env_is_local(): void
     {
+        config(['payments.zibal.simulator_enabled' => true]);
         $this->app->detectEnvironment(fn () => 'local');
         config()->set('payments.zibal.enabled', false);
         config()->set('payments.zibal.live_requests', false);

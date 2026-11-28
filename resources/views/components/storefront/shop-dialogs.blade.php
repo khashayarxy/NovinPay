@@ -29,7 +29,10 @@
     <div class="overlay-heading"><h2 id="search-title">جستجو در فروشگاه</h2><button type="button" data-storefront-close aria-label="بستن جستجو"><x-storefront.icon name="close" /></button></div>
     <form action="{{ route('products.index') }}" method="get">
         <label for="product-search">نام یا مدل دستگاه</label>
-        <input id="product-search" name="q" type="search" maxlength="100" class="np-latin-mixed" placeholder="مثلاً ME31" autocomplete="off" enterkeyhint="search">
+        <div class="store-search-input-row">
+            <input id="product-search" name="q" type="search" maxlength="100" class="np-latin-mixed" placeholder="مثلاً ME31" autocomplete="off" enterkeyhint="search">
+            <button type="submit" class="primary" aria-label="جستجو"><x-storefront.icon name="search" /></button>
+        </div>
         <div class="search-quick-suggestions" aria-label="جستجوهای پیشنهادی">
             <span class="search-quick-suggestions__label">جستجوی سریع:</span>
             <div class="search-quick-suggestions__chips">
@@ -38,6 +41,5 @@
                 <a class="search-quick-chip" href="{{ route('products.index', ['q' => 'ME31']) }}" rel="nofollow"><bdi class="np-latin" dir="ltr">ME31</bdi></a>
             </div>
         </div>
-        <button type="submit" class="primary"><x-storefront.icon name="search" />جستجو</button>
     </form>
 </dialog>

@@ -73,7 +73,7 @@
         @if ($kind === 'review' && $feedback[$kind]->total() > 1)
             <form class="product-review-sort" method="get" action="{{ route('products.show', $product) }}#product-review">
                 <label class="label" for="review-sort">ترتیب دیدگاه‌ها</label>
-                <select class="input" id="review-sort" name="review_sort">
+                <select class="input" id="review-sort" name="review_sort" data-custom-select>
                     @foreach ($reviewSorts as $key => $label)
                         <option value="{{ $key }}" @selected($reviewSort === $key)>{{ $label }}</option>
                     @endforeach
@@ -231,7 +231,7 @@
                             <form method="post" action="{{ route('products.feedback.report', [$product, $entry]) }}">
                                 @csrf
                                 <label class="label" for="report-{{ $entry->id }}">دلیل گزارش</label>
-                                <select class="input" name="reason" id="report-{{ $entry->id }}" required>
+                                <select class="input" name="reason" id="report-{{ $entry->id }}" data-custom-select required>
                                     @foreach (\App\Http\Controllers\ProductFeedbackController::REPORT_REASONS as $key => $label)
                                         <option value="{{ $key }}">{{ $label }}</option>
                                     @endforeach

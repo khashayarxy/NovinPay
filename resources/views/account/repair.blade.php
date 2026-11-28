@@ -8,7 +8,7 @@
     $currentHandover = old('handover_method', $parsed['handover_key'] ?? 'self_ship');
     $isRepairSettled = $case && $document && $document->charged_minor > 0 && $document->paid_minor >= $document->charged_minor;
 @endphp
-<div class="np-account np-account-detail np-container">
+<div @class(['np-account np-account-detail np-container', 'np-account-repair-tracking' => request()->routeIs('account.repairs.request')])>
     <div class="np-detail-topbar">
         <a class="np-account-link" href="{{ route('account.index', ['section' => 'repairs']) }}">بازگشت به تعمیرات</a>
         @if($isRepairSettled)
@@ -41,7 +41,7 @@
         </section>
 
         <div class="np-account-order-columns">
-            <section class="np-account-card">
+            <section class="np-account-card np-repair-device-card">
                 <h2>مشخصات دستگاه</h2>
                 <dl class="np-account-facts">
                     <div><dt>برند</dt><dd>{{ $repair->device_brand?->value ?? 'ثبت نشده' }}</dd></div>
@@ -71,7 +71,7 @@
                         @endif
                         <div><dt>وضعیت برآورد</dt><dd>{{ ['approved' => 'تأیید شده', 'rejected' => 'رد شده', 'pending' => 'در انتظار پاسخ'][$repair->currentEstimate->decisionStatus()] ?? 'نامشخص' }}</dd></div>
                     @endif
-                    <div><dt>هزینه تعمیر</dt><dd>{{ \App\Support\AdminRepairMoney::display($case ? $repair->repair_price_toman : null) }}</dd></div>
+                    <div><dt>هزینه تعمیر</dt><dd><span class="np-repair-device-cost">{{ \App\Support\AdminRepairMoney::display($case ? $repair->repair_price_toman : null) }}</span></dd></div>
                 </dl>
             </section>
 
@@ -88,10 +88,7 @@
                             </dl>
                         @elseif ($currentHandover === 'in_person')
                             <p>لطفاً دستگاه را همراه با کد پیگیری به فروشگاه نوین‌پی تحویل دهید:</p>
-                            <dl class="np-account-facts">
-                                <div><dt>نشانی فروشگاه</dt><dd>{{ config('business.address') }}</dd></div>
-                                <div><dt>ساعات کاری</dt><dd><x-business-hours /></dd></div>
-                            </dl>
+                            <x-repair.store-delivery />
                         @else
                             <p>درخواست دریافت با پیک نوین‌پی ثبت شده است. همکاران ما برای هماهنگی زمان مراجعهٔ پیک با شما تماس می‌گیرند.</p>
                             @if (! empty($parsed['pickup_address']) || ! empty($parsed['pickup_notes']))
@@ -128,7 +125,7 @@
                                     @foreach ($availableHandoverMethods as $key => $label)
                                         <label class="repair-choice-card repair-choice-card--handover-modal">
                                             <input type="radio" name="handover_method" value="{{ $key }}" @checked($currentHandover === $key) data-handover-radio>
-                                            <span>{{ $label }}</span>
+                                            <span>{{ $key === 'self_ship' ? 'خودم ارسال می‌کنم' : $label }}</span>
                                         </label>
                                     @endforeach
                                 </div>

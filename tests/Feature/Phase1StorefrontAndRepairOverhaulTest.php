@@ -150,7 +150,7 @@ class Phase1StorefrontAndRepairOverhaulTest extends TestCase
         ]);
         $repairPage->assertSee('اطلاعات تماس و تحویل');
         $repairPage->assertSee('بازبینی و ثبت نهایی');
-        $repairPage->assertSee('data-searchable-select="province"', false);
+        $repairPage->assertSee('data-custom-select data-repair-province', false);
         $repairPage->assertSee('repair-handover-card__svg', false);
 
         $confirmPage = $this->withSession([

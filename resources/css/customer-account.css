@@ -225,6 +225,32 @@
 .np-auth .np-account-form label { text-align: start; font-size: .82rem; font-weight: 500; color: #475569; }
 .np-account h1 { font-size: clamp(1.55rem, 4vw, 2.15rem); font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 .np-auth p, .np-account-card p { margin-block: .55rem; }
+.np-account-repair-tracking .repair-handover-panel--office :is(.repair-office-address, .repair-office-hours) { margin: 0; }
+.np-account-repair-tracking .np-account-order-stepper .np-timeline__status { display: none; }
+.np-account-repair-tracking .np-repair-device-card h2 { margin-bottom: 12px; }
+.np-account-repair-tracking .np-repair-device-card .np-account-facts { gap: 8px; margin: 0; }
+.np-account-repair-tracking .np-repair-device-card .np-account-facts > div {
+    display: grid;
+    grid-template-columns: minmax(0, .8fr) minmax(0, 1.6fr);
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid #edf2f7;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+.np-account-repair-tracking .np-repair-device-card :is(dt, dd) { min-width: 0; line-height: 1.9; }
+.np-account-repair-tracking .np-repair-device-card dt { color: #64748b; font-weight: 400; }
+.np-account-repair-tracking .np-repair-device-card dd { margin: 0; color: #102a43; text-align: start; }
+.np-account-repair-tracking .np-repair-device-cost {
+    display: inline-block;
+    max-width: 100%;
+    padding: 4px 9px;
+    border-radius: 8px;
+    background: #eaf4ff;
+    color: #075da6;
+    font-weight: 600;
+}
 .np-auth__edit { background: transparent; border: 0; padding: .1rem .25rem; color: var(--account-blue); font-size: .82rem; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .np-auth__edit:hover { color: #05469e; }
 .np-account-otp-error {
@@ -299,6 +325,24 @@
 
 .np-account-form { display: grid; gap: .6rem; max-width: 38rem; margin-block: 1rem; }
 .np-account-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+.np-account-dashboard :is(.np-account-profile-card, .np-account-addresses-card) .np-account-form {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    gap: 1rem;
+    margin-block: 1rem 0;
+}
+.np-account-dashboard :is(.np-account-profile-card, .np-account-addresses-card) .np-account-primary { width: 100%; }
+.np-account-dashboard .np-account-profile-card .np-account-form > * { grid-column: 1 / -1; min-width: 0; }
+.np-account-dashboard .np-account-profile-card .np-notify-pref-box { margin: 0; }
+.np-account-dashboard .np-account-addresses-card .np-account-add-btn[aria-expanded="true"] { display: none; }
+.np-account-dashboard .np-account-address-subtitle { font-size: .9rem; font-weight: 500; color: var(--account-muted); margin: 0; }
+.np-account-dashboard .np-account-security-info { margin-top: .85rem; padding: 1rem; border: 1px solid #dbe7f3; border-radius: 12px; background: #f8fbff; color: #334e68; line-height: 1.9; }
+.np-account-dashboard .np-account-security-info p { margin: 0; }
+@media (min-width: 721px) {
+    .np-account-dashboard .np-account-profile-card .np-account-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .np-account-dashboard .np-account-profile-card .np-account-form > .np-account-profile-half { grid-column: auto; }
+}
 .np-account-form__field { display: grid; gap: .35rem; align-content: start; min-width: 0; }
 .np-account-form label { font-weight: 500; margin-top: .25rem; }
 .np-account-form__field label { margin-top: 0; }

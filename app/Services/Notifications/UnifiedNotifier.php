@@ -268,7 +268,8 @@ final class UnifiedNotifier
             $customerPhone = $this->normalizePhone($case->contact_phone);
             $costText = $costToman !== null ? FaNumber::digits(number_format($costToman)).' تومان' : 'ثبت نشده';
 
-            if ($customerPhone !== null && $this->patternSms->configurationIssue() !== null) {
+            // This synchronous fallback also covers installations without notification workers.
+            if ($customerPhone !== null) {
                 $repairLink = RepairTracking::url($ref);
                 $doc = FinancialDocument::query()->where('repair_case_id', $case->id)->first();
                 if ($doc && ($doc->charged_minor - $doc->paid_minor) > 0) {
@@ -845,7 +846,7 @@ final class UnifiedNotifier
             if ($expires <= now()->timestamp) {
                 return;
             }
-            $this->patternSms->send('repair_payment', $document->public_id.':'.$document->version,
+            $this->patternSms->send('repair_payment', $document->public_id.':'.$document->version.':'.hash('sha256', $paymentUrl),
                 $this->normalizePhone($repairCase->contact_phone), [
                     'repair_code' => (string) $repairCase->tracking_reference,
                     'pay_code' => RepairPaymentCode::issue($repairCase->public_id, $expires),

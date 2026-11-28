@@ -403,7 +403,11 @@ class ShoppingCart
             $states = $this->states($scopes, true);
             $items = $this->combined($scopes, $states);
             $this->checkRevision($request, $items);
+            $requestedOrder = SalesOrder::query()->where('checkout_key', $key)->first();
+            abort_if($requestedOrder && $requestedOrder->customer_account_id !== $account->id, 409);
             abort_if(count($items) > 30, 422, 'هر سفارش می‌تواند حداکثر ۳۰ کالا داشته باشد.');
+            $identity = hash_hmac('sha256', $account->id.':'.$this->revision($items), config('app.key'));
+            $key = substr($identity, 0, 8).'-'.substr($identity, 8, 4).'-4'.substr($identity, 13, 3).'-8'.substr($identity, 17, 3).'-'.substr($identity, 20, 12);
             $order = $this->checkout->create($account, array_column($items, 'quantity', 'slug'), $key, $quote);
             foreach (array_filter($states, fn ($state) => $state === []) as $scope => $state) {
                 $this->save($scope, $state);

@@ -7,8 +7,8 @@
 .store-desktop-tools svg { width: 20px; height: 20px; }
 .store-cart-count {
     position: absolute;
-    inset-inline-end: -4px;
-    inset-block-start: -4px;
+    inset-inline-end: -8px;
+    inset-block-start: -8px;
     min-width: 19px;
     height: 19px;
     padding: 0 4px;
@@ -435,10 +435,10 @@ body.public-site .store-search-dialog .overlay-heading h2 {
     font-weight: 700;
     color: #122940;
 }
-body.public-site .store-search-dialog form {
+body.public-site .store-search-dialog form[action] {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     padding: 16px;
 }
 body.public-site .store-search-dialog label {
@@ -458,6 +458,34 @@ body.public-site .store-search-dialog input {
 }
 body.public-site .store-search-dialog .search-quick-suggestions {
     width: 100%;
+}
+body.public-site .store-search-dialog .store-search-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+    padding: 4px;
+    border: 1px solid #cddde9;
+    border-radius: 12px;
+    background: #f8fbfe;
+}
+body.public-site .store-search-dialog .store-search-input-row input {
+    min-width: 0;
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+}
+body.public-site .store-search-dialog .store-search-input-row button.primary {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
 }
 body.public-site .store-search-dialog button.primary {
     width: 100%;

@@ -7,6 +7,7 @@
 .np-logo-link { display: inline-flex; border-radius: 6px; flex-shrink: 0; }
 .np-header .np-logo-link img { width: 40px; height: 40px; }
 .np-nav { display: flex; gap: clamp(18px, calc(var(--storefront-unlocked-viewport, 100vw) * 0.025), 36px); align-items: center; }
+.np-header .np-nav { color: #121d47; font-size: 16px; line-height: var(--site-line-height, 1.85); }
 .np-nav a { display: inline-flex; align-items: center; min-height: 44px; position: relative; font-size: 13px; white-space: nowrap; }
 .np-nav a:hover, .np-nav [aria-current] { color: var(--color-brand-700); }
 .np-button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 48px; border: 1px solid transparent; border-radius: 999px; padding: 11px 22px; font-size: 13px; font-weight: 700; line-height: 1.6; text-align: center; transition: background-color .15s, border-color .15s; }
@@ -249,7 +250,7 @@
 .np-nav__item--dropdown { position: relative; display: inline-flex; align-items: center; }
 .np-nav__item--dropdown::after { content: ''; position: absolute; inset-inline: -10px; top: 100%; height: 14px; }
 .np-nav__trigger { display: inline-flex; align-items: center; gap: 4px; }
-.np-nav__chevron { width: 15px; height: 15px; flex: none; color: #64748b; transition: transform 150ms ease, color 150ms ease; }
+.np-header .np-nav__chevron { width: 15px; height: 15px; flex: none; color: #64748b; transition: transform 150ms ease, color 150ms ease; }
 .np-nav__item--dropdown:is(:hover, :focus-within):not(.is-dismissed) .np-nav__chevron { transform: rotate(180deg); color: var(--color-brand-700); }
 .np-nav__dropdown {
     position: absolute;
@@ -296,7 +297,7 @@
     color: var(--color-brand-700);
 }
 .np-nav__dropdown a[aria-current="page"] { font-weight: 700; }
-.np-nav__dropdown-arrow { width: 14px; height: 14px; flex: none; color: #94a3b8; transition: transform 150ms ease, color 150ms ease; }
+.np-header .np-nav__dropdown-arrow { width: 14px; height: 14px; flex: none; color: #94a3b8; transition: transform 150ms ease, color 150ms ease; }
 .np-nav__dropdown a:hover .np-nav__dropdown-arrow { color: var(--color-brand-700); transform: translateX(-2px); }
 .np-nav__dropdown-footer { margin-top: 5px; padding-top: 5px; border-top: 1px solid #edf2f8; }
 .np-nav__dropdown-all { color: var(--color-brand-700); font-weight: 500; }
@@ -409,7 +410,7 @@
 @media (min-width: 851px) {
     .np-header__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 18px; }
     .np-header .np-logo-link { grid-column: 1; grid-row: 1; justify-self: start; }
-    .np-header .np-nav { grid-column: 2; grid-row: 1; width: max-content; gap: 12px; padding: 2px 14px; border: 1px solid #cce5ff; border-radius: 15px; }
+    .np-header .np-nav { grid-column: 2; grid-row: 1; width: max-content; gap: 12px; padding: 0; border: 0; border-radius: 0; }
     .np-header .np-customer-header { grid-column: 3; grid-row: 1; justify-self: end; display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; }
     .global-store-nav,
     .np-header .store-mobile-search,
@@ -418,7 +419,7 @@
     .np-customer-trigger { padding-inline: 13px; }
 }
 @media (min-width: 851px) and (max-width: 1100px) {
-    .np-header .np-nav { gap: 4px; padding-inline: 8px; }
+    .np-header .np-nav { gap: 4px; }
     .np-header .np-nav a { padding-inline: 7px; font-size: 12px; }
 }
 .homepage .np-hero__art::before { content: ""; position: absolute; z-index: -1; width: 88%; height: 76%; inset-inline: 6%; bottom: 5%; border: 18px solid #7ac4ff38; border-bottom: 0; border-radius: 55% 55% 0 0; }

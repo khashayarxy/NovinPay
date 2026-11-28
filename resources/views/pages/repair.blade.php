@@ -19,6 +19,7 @@
     $selectedProvince = is_string($selectedProvince) ? $selectedProvince : '';
     $selectedCity = old('city', '');
     $selectedCity = is_string($selectedCity) ? $selectedCity : '';
+    $citiesForProvince = config('iran_locations', [])[$selectedProvince] ?? [];
     $selectedHandover = old('handover_method', '');
     $selectedHandover = is_string($selectedHandover) ? $selectedHandover : '';
     $pickupAddress = old('pickup_address', '');
@@ -224,27 +225,26 @@
                     <div class="repair-location-block" data-repair-location>
                         <div class="public-form__grid">
                             <div class="public-field">
-                                <div class="np-searchable-select np-float-field" data-searchable-select="province" data-float-field>
-                                    <input type="text" id="repair_province_search" class="input np-searchable-select__input" placeholder="جستجو یا انتخاب استان…" autocomplete="off" value="{{ $selectedProvince }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_province_list">
-                                    <label for="repair_province_search">استان <span aria-hidden="true">*</span></label>
-                                    <ul id="repair_province_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
-                                    <select id="repair_province" name="province" class="sr-only" tabindex="-1" data-repair-province aria-invalid="{{ $errors->has('province') ? 'true' : 'false' }}">
+                                <div class="np-float-field" data-float-field>
+                                    <select id="repair_province" name="province" class="input" data-custom-select data-repair-province aria-invalid="{{ $errors->has('province') ? 'true' : 'false' }}">
                                         <option value="">انتخاب استان...</option>
                                         @foreach (($iranLocationProvinces ?? array_keys($iranLocations ?? [])) as $provinceName)
                                             <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
                                         @endforeach
                                     </select>
+                                    <label for="repair_province">استان <span aria-hidden="true">*</span></label>
                                 </div>
                                 <p class="public-field-error" data-field-error="province" role="alert" @unless($errors->has('province')) hidden @endunless>@error('province'){{ $message }}@enderror</p>
                             </div>
                             <div class="public-field">
-                                <div class="np-searchable-select np-float-field" data-searchable-select="city" data-float-field>
-                                    <input type="text" id="repair_city_search" class="input np-searchable-select__input" placeholder="ابتدا استان را انتخاب کنید…" autocomplete="off" value="{{ $selectedCity }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_city_list">
-                                    <label for="repair_city_search">شهر <span aria-hidden="true">*</span></label>
-                                    <ul id="repair_city_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
-                                    <select id="repair_city" name="city" class="sr-only" tabindex="-1" data-repair-city data-selected-city="{{ $selectedCity }}" aria-invalid="{{ $errors->has('city') ? 'true' : 'false' }}">
-                                        <option value="">ابتدا استان را انتخاب کنید...</option>
+                                <div class="np-float-field" data-float-field>
+                                    <select id="repair_city" name="city" class="input" data-custom-select data-repair-city data-selected-city="{{ $selectedCity }}" aria-invalid="{{ $errors->has('city') ? 'true' : 'false' }}" @disabled(empty($selectedProvince))>
+                                        <option value="">{{ $selectedProvince !== '' ? 'انتخاب شهر...' : 'ابتدا استان را انتخاب کنید...' }}</option>
+                                        @foreach ($citiesForProvince as $cityName)
+                                            <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>
+                                        @endforeach
                                     </select>
+                                    <label for="repair_city">شهر <span aria-hidden="true">*</span></label>
                                 </div>
                                 <p class="public-field-error" data-field-error="city" role="alert" @unless($errors->has('city')) hidden @endunless>@error('city'){{ $message }}@enderror</p>
                             </div>
@@ -298,30 +298,7 @@
                         </div>
 
                         {{-- Conditional Details: In-Person Drop-Off --}}
-                        <div class="repair-handover-panel repair-handover-panel--office" data-handover-panel="in_person" hidden>
-                            <h3>نشانی مراجعهٔ حضوری نوین‌پی</h3>
-                            <p class="repair-office-address">{{ config('business.address') }}</p>
-                            <p class="repair-office-hours">ساعات کاری: <x-business-hours /> — تلفن: <a href="{{ config('business.phone_uri') }}" dir="ltr">{{ \App\Support\FaNumber::digits(config('business.phone')) }}</a></p>
-                            <div class="repair-inperson-routing">
-                                <span class="repair-inperson-routing__label">مسیریابی با:</span>
-                                <nav class="repair-inperson-routing__links" aria-label="مسیریابی مراجعه حضوری">
-                                    @foreach (['نشان' => ['neshan.svg', 16, 16], 'بلد' => ['balad.svg', 16, 16], 'Google Maps' => ['google-maps-2026.png', 13, 17]] as $mapLabel => [$iconFile, $iconW, $iconH])
-                                        <a href="{{ config('business.maps')[$mapLabel] }}" target="_blank" rel="noopener noreferrer">
-                                            @if ($iconFile === 'google-maps-2026.png' && is_file(public_path('brand/maps/google-maps-2026-28.webp')))
-                                                <picture class="inline-flex items-center">
-                                                    <source type="image/webp" srcset="{{ asset('brand/maps/google-maps-2026-28.webp') }} 28w, {{ asset('brand/maps/google-maps-2026-56.webp') }} 56w" sizes="14px">
-                                                    <source type="image/avif" srcset="{{ asset('brand/maps/google-maps-2026-28.avif') }} 28w, {{ asset('brand/maps/google-maps-2026-56.avif') }} 56w" sizes="14px">
-                                                    <img src="{{ asset('brand/maps/'.$iconFile) }}" width="{{ $iconW }}" height="{{ $iconH }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
-                                                </picture>
-                                            @else
-                                                <img src="{{ asset('brand/maps/'.$iconFile) }}" width="{{ $iconW }}" height="{{ $iconH }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
-                                            @endif
-                                            <span>{{ $mapLabel === 'Google Maps' ? 'گوگل مپ' : $mapLabel }}</span>
-                                        </a>
-                                    @endforeach
-                                </nav>
-                            </div>
-                        </div>
+                        <x-repair.store-delivery data-handover-panel="in_person" hidden />
 
                         {{-- Conditional Details: Doorstep Pickup --}}
                         <div class="repair-handover-panel repair-handover-panel--pickup" data-handover-panel="pickup" hidden>
