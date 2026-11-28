@@ -17,12 +17,13 @@ async page=>{
    if(!await tab.getByText('لطفاً پیش از مراجعه حضوری، تماس بگیرید.',{exact:true}).isVisible())throw Error('missing visit notice');
    const google=tab.getByRole('link',{name:/گوگل مپ/});
    if(await google.getAttribute('href')!=='https://maps.app.goo.gl/RSY3QKrJAMNiqPEB8')throw Error('changed navigation destination');
-   const before=await panel.boundingBox(),cta=await button.boundingBox();
+   const viewport=panel.locator('[data-map-viewport]');
+   const before=await viewport.boundingBox(),cta=await button.boundingBox();
    if(Math.abs((before.x+before.width/2)-(cta.x+cta.width/2))>2)throw Error('button not centered');
    if(await tab.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('horizontal overflow');
    await button.focus();await button.press('Enter');
    await tab.waitForFunction(()=>document.querySelector('[data-map-preview]').dataset.mapActive==='true');
-   const after=await panel.boundingBox();
+   const after=await viewport.boundingBox();
    if(requests!==1||before.height!==after.height||before.width!==after.width)throw Error('duplicate request or layout shift');
    if(!await google.isVisible())throw Error('lost external fallback');
    if(errors.length)throw Error(errors.join('; '));

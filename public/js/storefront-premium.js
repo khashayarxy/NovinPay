@@ -1013,7 +1013,7 @@
     window.addEventListener('pagehide', () => finish(false));
     window.addEventListener('pageshow', event => {
         const state = history.state;
-        if (!event.persisted && state?.storefrontOverlay === 'storefront-support-dialog'
+        if (!event.persisted && state?.storefrontOverlay === 'support-chat-dialog'
             && performance.getEntriesByType('navigation')[0]?.type === 'reload') {
             const {storefrontOverlay, ...rest} = state;
             const url = new URL(location.href);
