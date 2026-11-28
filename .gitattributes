@@ -1,5 +1,39 @@
 * text=auto eol=lf
 
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Images (SVG remains text).
+*.avif binary
+*.bmp binary
+*.gif binary
+*.ico binary
+*.jpeg binary
+*.jpg binary
+*.png binary
+*.tif binary
+*.tiff binary
+*.webp binary
+
+# Fonts.
+*.eot binary
+*.otf binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+
+# Archives and documents.
+*.7z binary
+*.bz2 binary
+*.gz binary
+*.pdf binary
+*.rar binary
+*.tar binary
+*.tgz binary
+*.xz binary
+*.zip binary
+
 *.blade.php diff=html
 *.css diff=css
 *.html diff=html
