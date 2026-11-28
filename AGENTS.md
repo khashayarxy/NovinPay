@@ -13,6 +13,7 @@
 2. **Do Not Touch Approved UI or Working Features:** Never redesign, restyle, or refactor existing approved UI elements (such as the top header/navigation bar, layout shells, typography, or unrelated components) unless explicitly instructed.
 3. **No Unrequested "Bonus" Edits:** Do not make opportunistic cleanups, formatting sweeps, CSS overrides, or structural refactors outside the exact task scope.
 4. **Ask Before Expanding Scope:** If fixing a requested item appears to require altering a shared/global component (like header CSS or base layouts), stop and ask the user first instead of modifying it silently.
+5. **Check & Report Similar Occurrences:** Whenever you fix a bug or UI alignment flaw, scan the codebase for identical instances of the same issue. Respect Strict Scope-Lock—do NOT silently edit out-of-scope files, but explicitly list any matching occurrences in your report so the user can decide whether to fix them.
 
 ## Execution ownership rule
 

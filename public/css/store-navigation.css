@@ -1,4 +1,12 @@
 .global-store-nav, .store-mobile-search, .store-mobile-cart { display: none; }
+.np-header .store-cart-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding-block-start: 1px;
+    box-sizing: border-box;
+}
 
 @media (max-width: 850px) {
     html:has(.global-store-nav) {
@@ -121,6 +129,7 @@
         min-width: 19px;
         height: 19px;
         padding: 0 4.5px;
+        padding-block-start: 1px;
         border-radius: 999px;
         background: #b4232d;
         color: #fff;

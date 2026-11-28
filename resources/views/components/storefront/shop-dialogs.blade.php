@@ -31,7 +31,7 @@
         <label for="product-search">نام یا مدل دستگاه</label>
         <div class="store-search-input-row">
             <input id="product-search" name="q" type="search" maxlength="100" class="np-latin-mixed" placeholder="مثلاً ME31" autocomplete="off" enterkeyhint="search">
-            <button type="submit" class="primary"><x-storefront.icon name="search" />جستجو</button>
+            <button type="submit" class="primary" aria-label="جستجو"><x-storefront.icon name="search" /></button>
         </div>
         <div class="search-quick-suggestions" aria-label="جستجوهای پیشنهادی">
             <span class="search-quick-suggestions__label">جستجوی سریع:</span>

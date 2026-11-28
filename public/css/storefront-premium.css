@@ -2964,6 +2964,7 @@ html:has(body.premium-storefront) {
     box-sizing: border-box;
 }
 .np-inline-stepper--purchase { width: auto; flex: 0 0 auto; margin: 0; height: 42px; min-height: 42px; box-sizing: border-box; }
+.premium-storefront .purchase .purchase-stock-row + .product-cart-form { margin: 12px 0 0; }
 
 .np-added-bar {
     position: fixed;
@@ -3316,8 +3317,8 @@ html:has(body.premium-storefront) {
     display: grid; gap: 5px; margin: 14px 0 0;
 }
 .premium-storefront .purchase-meta > div {
-    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-    padding: 7px 10px; background: #f2f6fa; border-radius: 8px; font-size: 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 7px 10px; background: #f2f6fa; border-radius: 8px; font-size: 12px; line-height: 1.7;
 }
 .premium-storefront .purchase-meta dt {
     display: inline-flex; flex: none; align-items: center; gap: 6px; color: #455c71;

@@ -89,6 +89,7 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                             </a>
                             <a class="np-customer-trigger" id="desktop-cart-btn" href="/cart" data-storefront-open="cart-dialog" aria-haspopup="dialog" aria-label="سبد خرید">
                                 <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="10" cy="20" r="2"/></svg>
+                                <span class="store-cart-count">۷</span>
                             </a>
                         </div>
                         <div data-customer-entry data-customer-state="authenticated">
@@ -103,7 +104,12 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                 <aside class="purchase"><div class="purchase-stock-row">
                     <div class="stock is-available"><strong>موجودی:</strong> <span class="stock-availability-note">۷ عدد</span></div>
                     <div class="np-inline-stepper np-inline-stepper--purchase"><button type="button" class="np-inline-stepper__btn">+</button><span>۱</span><button type="button" class="np-inline-stepper__btn">×</button></div>
-                </div></aside>
+                </div>
+                <form class="product-cart-form"><button class="primary" type="submit">خرید محصول</button></form>
+                <dl class="purchase-meta">
+                    <div><dt><svg viewBox="0 0 24 24"></svg>شناسه کالا</dt><dd style="max-width:120px"><bdi dir="ltr">ACCEPTANCE-SYNTHETIC-CART</bdi></dd></div>
+                    <div><dt><svg viewBox="0 0 24 24"></svg>دسته‌بندی</dt><dd>دستگاه کارتخوان</dd></div>
+                </dl></aside>
             </main>
             <nav class="global-store-nav" data-mobile-bottom-nav aria-label="راهبری فروشگاه"><a href="/">خانه</a></nav>
             <dialog id="search-dialog" class="search-dialog store-search-dialog" data-storefront-dialog aria-labelledby="search-title">
@@ -112,7 +118,7 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                     <label for="product-search">نام یا مدل دستگاه</label>
                     <div class="store-search-input-row">
                         <input id="product-search" name="q" type="search" placeholder="مثلاً ME31">
-                        <button type="submit" class="primary">جستجو</button>
+                        <button type="submit" class="primary" aria-label="جستجو"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/></svg></button>
                     </div>
                     <div class="search-quick-suggestions"><span>جستجوی سریع</span><a href="/products?q=ME31">ME31</a></div>
                 </form>
@@ -171,6 +177,15 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                     suggestions: document.querySelector('.search-quick-suggestions').getBoundingClientRect().toJSON(),
                     stock: document.querySelector('.purchase-stock-row .stock').getBoundingClientRect().toJSON(),
                     stepper: document.querySelector('.np-inline-stepper--purchase').getBoundingClientRect().toJSON(),
+                    purchaseGap: document.querySelector('.product-cart-form').getBoundingClientRect().top - document.querySelector('.purchase-stock-row').getBoundingClientRect().bottom,
+                    metaCenterOffsets: [...document.querySelectorAll('.purchase-meta > div')].map(row => {
+                        const label = row.querySelector('dt').getBoundingClientRect();
+                        const value = row.querySelector('dd').getBoundingClientRect();
+                        return Math.abs(label.top + label.height / 2 - value.top - value.height / 2);
+                    }),
+                    searchButton: document.querySelector('.store-search-input-row button').getBoundingClientRect().toJSON(),
+                    searchButtonLabel: document.querySelector('.store-search-input-row button').getAttribute('aria-label'),
+                    badgePaddingTop: getComputedStyle(document.querySelector('.store-cart-count')).paddingTop,
                 };
                 document.body.setAttribute('data-probe', JSON.stringify(payload));
             });
@@ -213,7 +228,13 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
 
             assert.ok(probe.suggestions.top >= probe.searchRow.bottom, 'Quick search must sit below input and submit row');
             assert.ok(probe.searchRow.width >= probe.suggestions.width - 1, 'Search row must fill dialog body');
+            assert.equal(probe.searchButton.width, 44, 'Icon submit must stay 44px wide');
+            assert.equal(probe.searchButton.height, 44, 'Icon submit must stay 44px high');
+            assert.equal(probe.searchButtonLabel, 'جستجو');
+            assert.equal(probe.badgePaddingTop, '1px');
             if (page === '/product') {
+                assert.equal(probe.purchaseGap, 12, 'Purchase button must have a 12px gap below stock row');
+                assert.ok(probe.metaCenterOffsets.every(offset => offset <= 0.5), 'Meta labels and values must be vertically centered');
                 assert.equal(probe.stock.height, 42, 'Stock pill must be exactly 42px');
                 assert.equal(probe.stepper.height, 42, 'Stepper must be exactly 42px');
                 assert.ok(Math.abs(probe.stock.top - probe.stepper.top) <= 0.5, 'Stock and stepper must share the same top edge');
