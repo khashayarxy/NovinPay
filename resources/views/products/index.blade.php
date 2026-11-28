@@ -94,7 +94,7 @@
                         <div class="catalog-filter-chips" role="radiogroup" aria-label="وضعیت کالا">
                             <label class="catalog-filter-chip">
                                 <input type="radio" name="condition" value="" @checked(! $condition) data-auto-submit-filter>
-                                <span>همه وضعیت‌ها</span>
+                                <span>همه</span>
                             </label>
                             @foreach (\App\Enums\ProductCondition::cases() as $item)
                                 <label class="catalog-filter-chip">
@@ -220,7 +220,7 @@
                     <div class="catalog-filter-chips" role="radiogroup" aria-label="وضعیت کالا">
                         <label class="catalog-filter-chip">
                             <input type="radio" name="condition" value="" @checked(! $condition)>
-                            <span>همه وضعیت‌ها</span>
+                            <span>همه</span>
                         </label>
                         @foreach (\App\Enums\ProductCondition::cases() as $item)
                             <label class="catalog-filter-chip">
