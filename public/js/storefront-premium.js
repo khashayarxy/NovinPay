@@ -1011,7 +1011,19 @@
     });
     window.addEventListener('popstate', restoreLayer);
     window.addEventListener('pagehide', () => finish(false));
-    window.addEventListener('pageshow', event => { if (event.persisted || (!active && !closing)) restoreLayer(); });
+    window.addEventListener('pageshow', event => {
+        const state = history.state;
+        if (!event.persisted && state?.storefrontOverlay === 'storefront-support-dialog'
+            && performance.getEntriesByType('navigation')[0]?.type === 'reload') {
+            const {storefrontOverlay, ...rest} = state;
+            const url = new URL(location.href);
+            if (url.hash === '#overlay-' + storefrontOverlay) {
+                url.hash = '';
+                history.replaceState(rest, '', url);
+            }
+        }
+        if (event.persisted || (!active && !closing)) restoreLayer();
+    });
     commerce?.addEventListener('message', event => {
         if (event.data === 'identity-change') {
             ++cartEpoch;

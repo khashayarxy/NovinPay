@@ -451,6 +451,7 @@
 .np-footer-chat-slot { display: flex; justify-content: end; padding-inline: 1rem; }
 .np-footer-chat-slot:not(:empty) { padding-block: .5rem; }
 body.public-site:has(.np-footer-chat-slot) .np-footer-chat-slot button[data-support-launcher] {
-    position: static;
+    position: relative;
+    inset: auto !important;
     transform: none;
 }

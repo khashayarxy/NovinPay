@@ -24,7 +24,7 @@ async page=>{
    await tab.waitForFunction(()=>document.querySelector('[data-map-preview]').dataset.mapActive==='true');
    const after=await panel.boundingBox();
    if(requests!==1||before.height!==after.height||before.width!==after.width)throw Error('duplicate request or layout shift');
-   if(!await panel.locator('.np-map-fallback').isVisible())throw Error('lost external fallback');
+   if(!await google.isVisible())throw Error('lost external fallback');
    if(errors.length)throw Error(errors.join('; '));
    results.push({width,previewRequests:1,activationRequests:requests,centered:true,keyboard:true,layoutShift:0,overflow:false});
   }finally{await context.close();}
