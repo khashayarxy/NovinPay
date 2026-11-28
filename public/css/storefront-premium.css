@@ -2944,26 +2944,28 @@ html:has(body.premium-storefront) {
     font-variant-numeric: tabular-nums;
 }
 .purchase-stock-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
     gap: 10px;
-    flex-wrap: wrap;
 }
+.purchase-stock-row:has(.np-inline-stepper[hidden]) { grid-template-columns: minmax(0, 1fr); }
 .premium-storefront .purchase .purchase-stock-row .stock {
     margin: 0;
-    flex: 0 1 auto;
-    height: 42px;
-    min-height: 42px;
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    min-height: 44px;
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     white-space: nowrap;
     padding-block: 0;
     box-sizing: border-box;
 }
-.np-inline-stepper--purchase { width: auto; flex: 0 0 auto; margin: 0; height: 42px; min-height: 42px; box-sizing: border-box; }
+.np-inline-stepper--purchase { width: 100%; min-width: 0; margin: 0; height: 44px; min-height: 44px; border-radius: 12px; justify-content: space-between; box-sizing: border-box; }
 .premium-storefront .purchase .purchase-stock-row + .product-cart-form { margin: 12px 0 0; }
 
 .np-added-bar {
@@ -3325,6 +3327,7 @@ html:has(body.premium-storefront) {
 }
 .premium-storefront .purchase-meta svg { width: 16px; height: 16px; color: #3975a4; }
 .premium-storefront .purchase-meta dd { margin: 0; text-align: end; overflow-wrap: anywhere; }
+.premium-storefront .purchase-meta .purchase-meta__sku { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .premium-storefront .purchase-meta a { color: #075da6; text-underline-offset: 3px; }
 .premium-storefront .purchase-meta a:is(:hover,:focus-visible) { text-decoration: underline; }
 .premium-storefront .more-key-specs summary {

@@ -107,7 +107,7 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                 </div>
                 <form class="product-cart-form"><button class="primary" type="submit">خرید محصول</button></form>
                 <dl class="purchase-meta">
-                    <div><dt><svg viewBox="0 0 24 24"></svg>شناسه کالا</dt><dd style="max-width:120px"><bdi dir="ltr">ACCEPTANCE-SYNTHETIC-CART</bdi></dd></div>
+                    <div><dt><svg viewBox="0 0 24 24"></svg>شناسه کالا</dt><dd class="purchase-meta__sku" dir="ltr" title="ACCEPTANCE-SYNTHETIC-CART" style="max-width:120px"><bdi dir="ltr">ACCEPTANCE-SYNTHETIC-CART</bdi></dd></div>
                     <div><dt><svg viewBox="0 0 24 24"></svg>دسته‌بندی</dt><dd>دستگاه کارتخوان</dd></div>
                 </dl></aside>
             </main>
@@ -177,6 +177,17 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
                     suggestions: document.querySelector('.search-quick-suggestions').getBoundingClientRect().toJSON(),
                     stock: document.querySelector('.purchase-stock-row .stock').getBoundingClientRect().toJSON(),
                     stepper: document.querySelector('.np-inline-stepper--purchase').getBoundingClientRect().toJSON(),
+                    stockRadius: getComputedStyle(document.querySelector('.purchase-stock-row .stock')).borderRadius,
+                    stepperRadius: getComputedStyle(document.querySelector('.np-inline-stepper--purchase')).borderRadius,
+                    skuStyle: (() => {
+                        const sku = document.querySelector('.purchase-meta__sku');
+                        const style = getComputedStyle(sku);
+                        const text = document.createRange();
+                        text.selectNodeContents(sku.querySelector('bdi').firstChild);
+                        return {whiteSpace: style.whiteSpace, overflow: style.overflow, ellipsis: style.textOverflow,
+                            title: sku.title, direction: style.direction,
+                            lines: new Set([...text.getClientRects()].map(rect => Math.round(rect.top))).size};
+                    })(),
                     purchaseGap: document.querySelector('.product-cart-form').getBoundingClientRect().top - document.querySelector('.purchase-stock-row').getBoundingClientRect().bottom,
                     metaCenterOffsets: [...document.querySelectorAll('.purchase-meta > div')].map(row => {
                         const label = row.querySelector('dt').getBoundingClientRect();
@@ -235,8 +246,16 @@ test('Chromium: desktop header stays single-row with exactly one compact search 
             if (page === '/product') {
                 assert.equal(probe.purchaseGap, 12, 'Purchase button must have a 12px gap below stock row');
                 assert.ok(probe.metaCenterOffsets.every(offset => offset <= 0.5), 'Meta labels and values must be vertically centered');
-                assert.equal(probe.stock.height, 42, 'Stock pill must be exactly 42px');
-                assert.equal(probe.stepper.height, 42, 'Stepper must be exactly 42px');
+                assert.equal(probe.stock.height, 44, 'Stock pill must be exactly 44px');
+                assert.equal(probe.stepper.height, 44, 'Stepper must be exactly 44px');
+                assert.ok(Math.abs(probe.stock.width - probe.stepper.width) <= 0.5, `Both pills must have equal widths at ${w}px: stock=${probe.stock.width}, stepper=${probe.stepper.width}`);
+                assert.equal(probe.stockRadius, probe.stepperRadius);
+                assert.equal(probe.skuStyle.whiteSpace, 'nowrap');
+                assert.equal(probe.skuStyle.overflow, 'hidden');
+                assert.equal(probe.skuStyle.ellipsis, 'ellipsis');
+                assert.equal(probe.skuStyle.direction, 'ltr');
+                assert.equal(probe.skuStyle.title, 'ACCEPTANCE-SYNTHETIC-CART');
+                assert.equal(probe.skuStyle.lines, 1, 'Long SKU must occupy exactly one line');
                 assert.ok(Math.abs(probe.stock.top - probe.stepper.top) <= 0.5, 'Stock and stepper must share the same top edge');
             }
             if (probe.isDesktop) {
