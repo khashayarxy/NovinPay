@@ -225,30 +225,26 @@
                     <div class="repair-location-block" data-repair-location>
                         <div class="public-form__grid">
                             <div class="public-field">
-                                <div class="np-searchable-select np-float-field" data-searchable-select="province" data-float-field>
-                                    <input type="text" id="repair_province_search" class="input np-searchable-select__input" placeholder="جستجو یا انتخاب استان…" autocomplete="off" value="{{ $selectedProvince }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_province_list">
-                                    <label for="repair_province_search">استان <span aria-hidden="true">*</span></label>
-                                    <ul id="repair_province_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
-                                    <select id="repair_province" name="province" class="sr-only" tabindex="-1" data-repair-province aria-invalid="{{ $errors->has('province') ? 'true' : 'false' }}">
+                                <div class="np-float-field" data-float-field>
+                                    <select id="repair_province" name="province" class="input" data-custom-select data-repair-province aria-invalid="{{ $errors->has('province') ? 'true' : 'false' }}">
                                         <option value="">انتخاب استان...</option>
                                         @foreach (($iranLocationProvinces ?? array_keys($iranLocations ?? [])) as $provinceName)
                                             <option value="{{ $provinceName }}" @selected($selectedProvince === $provinceName)>{{ $provinceName }}</option>
                                         @endforeach
                                     </select>
+                                    <label for="repair_province">استان <span aria-hidden="true">*</span></label>
                                 </div>
                                 <p class="public-field-error" data-field-error="province" role="alert" @unless($errors->has('province')) hidden @endunless>@error('province'){{ $message }}@enderror</p>
                             </div>
                             <div class="public-field">
-                                <div class="np-searchable-select np-float-field" data-searchable-select="city" data-float-field>
-                                    <input type="text" id="repair_city_search" class="input np-searchable-select__input" placeholder="ابتدا استان را انتخاب کنید…" autocomplete="off" value="{{ $selectedCity }}" data-ss-input aria-expanded="false" aria-autocomplete="list" role="combobox" aria-controls="repair_city_list" @disabled(empty($selectedProvince))>
-                                    <label for="repair_city_search">شهر <span aria-hidden="true">*</span></label>
-                                    <ul id="repair_city_list" class="np-searchable-select__list" role="listbox" data-ss-list hidden></ul>
-                                    <select id="repair_city" name="city" class="sr-only" tabindex="-1" data-repair-city data-selected-city="{{ $selectedCity }}" aria-invalid="{{ $errors->has('city') ? 'true' : 'false' }}" @disabled(empty($selectedProvince))>
+                                <div class="np-float-field" data-float-field>
+                                    <select id="repair_city" name="city" class="input" data-custom-select data-repair-city data-selected-city="{{ $selectedCity }}" aria-invalid="{{ $errors->has('city') ? 'true' : 'false' }}" @disabled(empty($selectedProvince))>
                                         <option value="">{{ $selectedProvince !== '' ? 'انتخاب شهر...' : 'ابتدا استان را انتخاب کنید...' }}</option>
                                         @foreach ($citiesForProvince as $cityName)
                                             <option value="{{ $cityName }}" @selected($selectedCity === $cityName)>{{ $cityName }}</option>
                                         @endforeach
                                     </select>
+                                    <label for="repair_city">شهر <span aria-hidden="true">*</span></label>
                                 </div>
                                 <p class="public-field-error" data-field-error="city" role="alert" @unless($errors->has('city')) hidden @endunless>@error('city'){{ $message }}@enderror</p>
                             </div>

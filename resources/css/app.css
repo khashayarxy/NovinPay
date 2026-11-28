@@ -297,56 +297,6 @@
     .repair-handover-note[hidden] { display: none; }
     .repair-handover-note svg { flex: none; color: #075da6; }
 
-    /* Searchable Province & City Combobox */
-    .np-searchable-select {
-        position: relative;
-    }
-    .np-searchable-select__input {
-        padding-inline-end: 2.25rem;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475e73' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: left 12px center;
-        background-size: 16px 16px;
-    }
-    .np-searchable-select__list {
-        position: absolute;
-        inset-inline: 0;
-        top: calc(100% + 4px);
-        z-index: 45;
-        max-height: 220px;
-        overflow-y: auto;
-        margin: 0;
-        padding: 5px;
-        list-style: none;
-        border: 1px solid #cbd9e8;
-        border-radius: 12px;
-        background: #fff;
-        box-shadow: 0 12px 28px rgb(15 35 66 / 14%);
-    }
-    .np-searchable-select__list[hidden] { display: none; }
-    .np-searchable-select__option {
-        display: block;
-        width: 100%;
-        padding: 8px 11px;
-        border-radius: 8px;
-        font-size: 13.5px;
-        color: #163a61;
-        cursor: pointer;
-        transition: background-color 120ms ease, color 120ms ease;
-    }
-    .np-searchable-select__option:hover,
-    .np-searchable-select__option[aria-selected="true"] {
-        background: #edf6ff;
-        color: #075da6;
-        font-weight: 600;
-    }
-    .np-searchable-select__empty {
-        padding: 10px 12px;
-        font-size: 13px;
-        color: #64748b;
-        text-align: center;
-    }
-
     /* Confirmation Shipping Card with Top-Left Copy Button */
     .repair-shipping-card {
         margin: 12px 0;
@@ -2462,7 +2412,7 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     --np-float-bg: #f8fafc;
 }
 
-.np-float-field:has(select:is([data-iran-city], [data-repair-city]):disabled) :is(select, [data-ss-input], .np-cs__trigger) {
+.np-float-field:has(select:is([data-iran-city], [data-repair-city]):disabled) :is(select, .np-cs__trigger) {
     background-color: #f8fafc;
     color: #94a3b8;
     border-color: #cbd5e1;
@@ -2503,6 +2453,7 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
 .np-cs {
     position: relative;
     width: 100%;
+    min-width: 0;
 }
 
 .np-cs__trigger {
@@ -2529,6 +2480,15 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
 .np-float-field .np-cs__trigger {
     min-height: 54px;
 }
+
+.np-float-field:has(.np-cs__trigger:disabled) {
+    --np-float-bg: #f8fafc;
+}
+
+.compare-add-form .np-cs { width: 210px; flex: 1 1 auto; }
+.compare-add-form .np-cs__trigger { min-height: 44px; height: 44px; border-radius: 11px; }
+.product-review-sort .np-cs { width: auto; max-width: 100%; }
+.product-review-sort .np-cs__trigger { min-height: 38px; height: 38px; padding-block: 6px; }
 
 .np-cs__trigger:hover:not(:disabled) {
     border-color: #94a3b8;
@@ -2584,24 +2544,78 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     color: #075da6;
 }
 
-.np-cs__menu {
-    position: absolute;
-    top: calc(100% + 6px);
-    inset-inline: 0;
+.np-cs__panel {
+    position: fixed;
+    inset: auto;
     z-index: 65;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     margin: 0;
     padding: 6px;
-    list-style: none;
-    max-height: 264px;
-    overflow-y: auto;
+    max-height: 240px;
+    overflow: hidden;
+    box-sizing: border-box;
+    font-family: inherit;
+    direction: rtl;
     border: 1px solid #e2e8f0;
     border-radius: 14px;
     background: #ffffff;
     box-shadow: 0 14px 34px rgb(15 23 42 / 14%), 0 2px 6px rgb(15 23 42 / 6%);
 }
 
+.np-cs__panel[hidden],
+.np-cs__search-wrap[hidden],
 .np-cs__menu[hidden] {
     display: none;
+}
+
+.np-cs__search-wrap {
+    flex: none;
+    padding: 2px 2px 7px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.np-cs__panel input.np-cs__search[type="search"],
+.np-float-field .np-cs__panel input.np-cs__search[type="search"] {
+    display: block;
+    width: 100%;
+    min-height: 36px;
+    height: 36px;
+    padding: 7px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #0f172a;
+    box-shadow: none;
+    font: inherit;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    outline: none;
+}
+
+.np-cs__panel input.np-cs__search[type="search"]:focus {
+    border-color: #b7d4f7;
+}
+
+.np-cs__menu {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.np-cs__empty {
+    padding: 12px;
+    color: #64748b;
+    font-size: 0.85rem;
+    text-align: center;
 }
 
 .np-cs__option {
@@ -2609,13 +2623,22 @@ summary::-webkit-details-marker, summary::marker { display: none; content: ''; }
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border-radius: 9px;
     font-size: 0.9rem;
     line-height: 1.45;
     color: #1e293b;
     cursor: pointer;
     transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.np-cs__option > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .np-cs__menu { scroll-behavior: auto; }
 }
 
 .np-cs__option:hover,

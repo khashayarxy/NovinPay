@@ -235,8 +235,7 @@ class MultiStepCheckoutZibalTest extends TestCase
                     $this->assertSame($old['city'], $xpath->query('option[@selected]', $city)->item(0)?->getAttribute('value'), $path);
                 }
                 if ($path === '/repair') {
-                    $input = $xpath->query('//input[@id="repair_city_search"]')->item(0);
-                    $this->assertSame($old['province'] === '', $input->hasAttribute('disabled'));
+                    $this->assertTrue($city->hasAttribute('data-custom-select'));
                 }
                 if ($id === 'new-address-city') {
                     $edit = $xpath->query('//select[@id="'.$this->address->public_id.'-city"]')->item(0);

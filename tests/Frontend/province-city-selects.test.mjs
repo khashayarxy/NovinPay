@@ -38,12 +38,10 @@ function fixture(old) {
         <style>${css}\n*{box-sizing:border-box}body{margin:0;padding:16px}form{margin-bottom:24px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}</style>
         <body class="public-site">${address('new-address', false)}${address('edit-address', true)}${address('old-address', true)}${address('checkout', old)}
         <form data-repair-stepper data-is-guest="0" data-initial-step="3"><div data-step="3" class="public-form__grid">
-        <div class="np-float-field np-searchable-select" data-float-field data-searchable-select="province">
-            <input id="repair_province_search" class="input np-searchable-select__input" data-ss-input value="${old ? 'تهران' : ''}"><label>استان</label><ul data-ss-list hidden></ul>
-            <select data-repair-province class="sr-only">${provinces(old ? 'تهران' : '')}</select></div>
-        <div class="np-float-field np-searchable-select" data-float-field data-searchable-select="city">
-            <input id="repair_city_search" class="input np-searchable-select__input" data-ss-input value="${old ? 'شهریار' : ''}" ${old ? '' : 'disabled'}><label>شهر</label><ul data-ss-list hidden></ul>
-            <select data-repair-city data-selected-city="${old ? 'شهریار' : ''}" class="sr-only" ${old ? '' : 'disabled'}>${old ? cities('شهریار') : '<option value=""></option>'}</select></div>
+        <div class="np-float-field" data-float-field>
+            <select id="repair_province" data-repair-province>${provinces(old ? 'تهران' : '')}</select><label for="repair_province">استان</label></div>
+        <div class="np-float-field" data-float-field>
+            <select id="repair_city" data-repair-city data-selected-city="${old ? 'شهریار' : ''}" ${old ? '' : 'disabled'}>${old ? cities('شهریار') : '<option value=""></option>'}</select><label for="repair_city">شهر</label></div>
         </div></form>
         <script type="application/json" id="iran-locations-data">${JSON.stringify(locations)}</script>
         <script type="application/json" id="repair-iran-locations" ${old ? 'data-src="/locations"' : ''}>${old ? '' : JSON.stringify(locations)}</script>
@@ -86,19 +84,20 @@ function fixture(old) {
                     change(province,'تهران');await tick();
                     check(!city.disabled&&!visible().disabled,form.id+': re-enable city');
                 }
-                const repair=document.querySelector('[data-repair-stepper]'), province=repair.querySelector('[data-repair-province]'),city=repair.querySelector('[data-repair-city]'),input=repair.querySelector('#repair_city_search');
-                ${old ? `check(!city.disabled&&!input.disabled&&city.value==='شهریار'&&input.value==='شهریار','Repair old city survives pending fetch');
-                change(province,'');disabledStyle(city,input);window.releaseLocations();await tick();await tick();
-                check(city.disabled&&input.disabled&&city.value==='','Late dataset must not undo cleared province');` : 'disabledStyle(city,input);'}
+                const repair=document.querySelector('[data-repair-stepper]'), province=repair.querySelector('[data-repair-province]'),city=repair.querySelector('[data-repair-city]'),trigger=city.closest('.np-cs').querySelector('.np-cs__trigger');
+                ${old ? `check(!city.disabled&&!trigger.disabled&&city.value==='شهریار'&&trigger.textContent==='شهریار','Repair old city survives pending fetch');
+                change(province,'');await tick();disabledStyle(city,trigger);window.releaseLocations();await tick();await tick();
+                check(city.disabled&&trigger.disabled&&city.value==='','Late dataset must not undo cleared province');` : 'disabledStyle(city,trigger);'}
                 change(province,'البرز');await tick();
-                check(!city.disabled&&!input.disabled,'Repair enables native and searchable city');
-                input.focus();check(!repair.querySelector('[data-searchable-select="city"] [data-ss-list]').hidden,'Searchable cities open');
+                check(!city.disabled&&!trigger.disabled,'Repair enables native and searchable city');
+                trigger.click();check(!city.closest('.np-cs').querySelector('.np-cs__panel').hidden,'Searchable cities open');
                 check([...city.options].some(o=>o.value==='کرج'),'Repair corresponding cities');
                 change(city,'کرج');
                 province.value='';province.dispatchEvent(new Event('change',{bubbles:true}));
-                check(input.value===''&&city.value==='','Repair cleared values');
-                check(repair.querySelector('[data-searchable-select="city"] [data-ss-list]').hidden,'Disabled city list closes');
-                disabledStyle(city,input);
+                await tick();
+                check(trigger.textContent===''&&city.value==='','Repair cleared values');
+                check(city.closest('.np-cs').querySelector('.np-cs__panel').hidden,'Disabled city list closes');
+                disabledStyle(city,trigger);
                 check(testErrors.length===0,'Application errors: '+testErrors.join(';'));
                 check(document.documentElement.scrollWidth<=innerWidth,'No horizontal overflow');
                 parent.document.body.dataset.probe=JSON.stringify({ok:true,viewport:innerWidth,old:${old},forms:4,repair:true});
